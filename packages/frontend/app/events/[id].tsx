@@ -20,6 +20,7 @@ import { useUser } from '../../components/contexts'
 import { Badge, UnderlineTabBar, Avatar, PrimaryButton, DestructiveButton } from '../../components/ui'
 import { useDetailColors, type DetailColors } from '../../hooks/useDetailColors'
 import { removeEvent } from '../../utils/api'
+import { buildEventBoard, ThreadPanel } from '../../components/connect'
 
 const ADMIN_EMAIL = 'chinmayajanata@gmail.com'
 
@@ -74,6 +75,14 @@ function formatRelativeDateTime(dateStr: string, timeStr: string): string {
 
   if (relative === 'Now') return `Now · ${absolute}`
   return `${relative} · ${absolute}`
+}
+
+function formatEventDateLabel(dateStr: string): string {
+  const d = new Date(`${dateStr}T00:00:00`)
+  if (Number.isNaN(d.getTime())) return dateStr.toUpperCase()
+  const weekday = d.toLocaleDateString('en-US', { weekday: 'short' }).toUpperCase()
+  const month = d.toLocaleDateString('en-US', { month: 'short' }).toUpperCase()
+  return `${weekday}, ${month} ${d.getDate()}`
 }
 
 // ── Sub-components ───────────────────────────────────────────────────────
@@ -659,6 +668,14 @@ export default function EventDetailPage() {
   // ── Derived state ────────────────────────────────────────────────────
 
   const isRegistered = !!event?.isRegistered && !isPast
+  const canPostToThread = !!user?.isVerified
+  const eventBoard = buildEventBoard({
+    id: event.id,
+    title: event.title,
+    dateLabel: formatEventDateLabel(event.date),
+    centerLabel: event.location,
+    attendeesLabel: `${event.attendees} going`,
+  })
 
   // ── Registered state (with tabs) ─────────────────────────────────────
 
@@ -679,9 +696,10 @@ export default function EventDetailPage() {
 
         <View style={{ paddingTop: 8 }}>
           <UnderlineTabBar
-            tabs={['Details', 'People']}
+            tabs={['Details', 'Thread', 'People']}
             activeTab={activeTab}
             onTabChange={handleTabChange}
+            counts={{ Thread: eventBoard.messages.length }}
           />
         </View>
 
@@ -773,6 +791,17 @@ export default function EventDetailPage() {
             </View>
           )}
 
+          {activeTab === 'Thread' && (
+            <ThreadPanel
+              messages={eventBoard.messages}
+              colors={colors}
+              emptyTitle="Be the first to post"
+              emptySubtitle={`Ask about carpooling, what to bring, or anything else for the ${event.attendees} people going.`}
+              composerPlaceholder="Write to the group..."
+              composerState={canPostToThread ? 'open' : 'locked'}
+            />
+          )}
+
         </ScrollView>
 
         <ActionBar
@@ -831,6 +860,15 @@ export default function EventDetailPage() {
         </View>
       ) : null}
 
+      <View style={{ paddingTop: 8 }}>
+        <UnderlineTabBar
+          tabs={['Details', 'Thread', 'Attendees']}
+          activeTab={activeTab}
+          onTabChange={handleTabChange}
+          counts={{ Thread: eventBoard.messages.length }}
+        />
+      </View>
+
       <ScrollView
         style={{ flex: 1 }}
         contentContainerStyle={{
@@ -841,22 +879,95 @@ export default function EventDetailPage() {
         }}
         showsVerticalScrollIndicator={false}
       >
-        {/* Attended banner (past + user was registered) */}
-        {isPast && isRegistered && <AttendedBanner count={event.attendees} colors={colors} />}
+        {activeTab === 'Details' && (
+          <>
+            {/* Attended banner (past + user was registered) */}
+            {isPast && isRegistered && <AttendedBanner count={event.attendees} colors={colors} />}
 
-        {/* Date & time */}
-        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12 }}>
-          <MetaIcon icon={Clock} color={isPast ? colors.textMuted : '#E8862A'} colors={colors} />
-          <Text style={{ fontFamily: 'Inter-Medium', fontSize: 14, color: colors.text }}>
-            {formatRelativeDateTime(event.date, event.time)}
-          </Text>
-        </View>
+            {/* Date & time */}
+            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12 }}>
+              <MetaIcon icon={Clock} color={isPast ? colors.textMuted : '#E8862A'} colors={colors} />
+              <Text style={{ fontFamily: 'Inter-Medium', fontSize: 14, color: colors.text }}>
+                {formatRelativeDateTime(event.date, event.time)}
+              </Text>
+            </View>
 
-        {/* Meta rows */}
-        <MetaSection event={event} attendees={attendees} isPast={isPast} colors={colors} />
+            {/* Meta rows */}
+            <MetaSection event={event} attendees={attendees} isPast={isPast} colors={colors} />
 
-        {/* About */}
-        <AboutSection description={event.description} colors={colors} />
+            {/* About */}
+            <AboutSection description={event.description} colors={colors} />
+          </>
+        )}
+
+        {activeTab === 'Thread' && (
+          <ThreadPanel
+            messages={eventBoard.messages}
+            colors={colors}
+            emptyTitle="Be the first to post"
+            emptySubtitle={`Ask about carpooling, what to bring, or anything else for the ${event.attendees} people going.`}
+            composerPlaceholder="Write to the group..."
+            composerState={canPostToThread ? 'open' : 'locked'}
+          />
+        )}
+
+        {activeTab === 'Attendees' && (
+          <View style={{ paddingTop: 8 }}>
+            {attendees.length > 0 ? (
+              attendees.map((attendee, index) => (
+                <View
+                  key={index}
+                  style={{
+                    flexDirection: 'row',
+                    alignItems: 'center',
+                    paddingVertical: 12,
+                    gap: 12,
+                  }}
+                >
+                  <Avatar
+                    image={attendee.image}
+                    initials={attendee.initials}
+                    name={attendee.name}
+                    size={42}
+                  />
+                  <View style={{ flex: 1, gap: 2 }}>
+                    <Text
+                      style={{ fontFamily: 'Inter-Medium', fontSize: 14, color: colors.text }}
+                    >
+                      {attendee.name}
+                    </Text>
+                    {attendee.subtitle ? (
+                      <Text
+                        style={{
+                          fontFamily: 'Inter-Regular',
+                          fontSize: 12,
+                          color: colors.textSecondary,
+                        }}
+                      >
+                        {attendee.subtitle}
+                      </Text>
+                    ) : null}
+                  </View>
+                  {index === 0 && <Badge label="HOST" variant="host" />}
+                </View>
+              ))
+            ) : (
+              <View style={{ alignItems: 'center', paddingVertical: 32 }}>
+                <Users size={48} color={colors.textMuted} />
+                <Text
+                  style={{
+                    fontFamily: 'Inter-Regular',
+                    fontSize: 14,
+                    color: colors.textSecondary,
+                    marginTop: 12,
+                  }}
+                >
+                  No attendees yet
+                </Text>
+              </View>
+            )}
+          </View>
+        )}
       </ScrollView>
 
       <ActionBar

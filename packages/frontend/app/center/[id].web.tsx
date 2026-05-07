@@ -1,10 +1,13 @@
-import { useEffect, useRef } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { View, Text, ScrollView, Image, Pressable, ActivityIndicator, Linking, useWindowDimensions } from 'react-native'
 import { useLocalSearchParams, useRouter } from 'expo-router'
 import { ChevronLeft, Share2, MapPin, Globe, Phone, User, Navigation, BadgeCheck, Users } from 'lucide-react-native'
 import { useCenterDetail } from '../../hooks/useApiData'
 import { useDetailColors } from '../../hooks/useDetailColors'
 import type { EventDisplay } from '../../utils/api'
+import UnderlineTabBar from '../../components/ui/UnderlineTabBar'
+import { buildCenterBoard, ThreadPanel } from '../../components/connect'
+import { useUser } from '../../components/contexts'
 
 export default function CenterDetailWeb() {
   const { id: rawId } = useLocalSearchParams()
@@ -44,8 +47,10 @@ function formatDateCallout(dateStr: string): { month: string; day: string } {
 
 function MobileCenterDetail({ centerId }: { centerId: string }) {
   const router = useRouter()
+  const { user } = useUser()
   const { center, events, loading } = useCenterDetail(centerId)
   const colors = useDetailColors()
+  const [activeTab, setActiveTab] = useState('About')
 
   const handleShare = () => {
     if (typeof navigator !== 'undefined' && navigator.share) {
@@ -95,6 +100,12 @@ function MobileCenterDetail({ centerId }: { centerId: string }) {
   }
 
   const displayWebsite = (center.website ?? '').replace(/^https?:\/\//, '').replace(/\/$/, '')
+  const board = buildCenterBoard({
+    id: center.id,
+    centerName: center.name,
+    subtitle: `Ask about rides, seva, and announcements for ${center.name}.`,
+  })
+  const canPostToThread = !!user?.isVerified
 
   return (
     <View style={{ flex: 1, backgroundColor: colors.panelBg }}>
@@ -139,7 +150,18 @@ function MobileCenterDetail({ centerId }: { centerId: string }) {
           <Image source={{ uri: center.image }} style={{ width: '100%', height: 200 }} resizeMode="cover" />
         ) : null}
 
+        <View style={{ paddingTop: 8 }}>
+          <UnderlineTabBar
+            tabs={['About', 'Thread', 'Events']}
+            activeTab={activeTab}
+            onTabChange={setActiveTab}
+            counts={{ Thread: board.messages.length, Events: events.length }}
+          />
+        </View>
+
         <View style={{ paddingHorizontal: 16, paddingTop: 20, gap: 16 }}>
+          {activeTab === 'About' && (
+            <>
           {/* Point of contact */}
           {center.pointOfContact ? (
             <Text style={{ color: colors.textSecondary, fontSize: 13 }}>
@@ -191,46 +213,61 @@ function MobileCenterDetail({ centerId }: { centerId: string }) {
                 <Text style={{ color: colors.textSecondary, fontSize: 13 }}>Resident Acharya</Text>
               </View>
             </View>
-          ) : null}
+            ) : null}
+            </>
+          )}
 
-          {/* Upcoming Events */}
-          {events.length > 0 && (
-            <View style={{ marginTop: 8 }}>
-              <Text style={{ color: colors.textSecondary, fontSize: 12, fontWeight: '600', marginBottom: 12, letterSpacing: 0.5 }}>
-                UPCOMING EVENTS
-              </Text>
-              <View style={{ gap: 8 }}>
-                {events.map((event) => {
-                  const { month, day } = formatDateCallout(event.date)
-                  return (
-                    <Pressable
-                      key={event.id}
-                      onPress={() => handleEventPress(event)}
-                      style={{
-                        flexDirection: 'row',
-                        alignItems: 'center',
-                        backgroundColor: colors.cardBg,
-                        borderRadius: 8,
-                        paddingVertical: 12,
-                        paddingHorizontal: 14,
-                      }}
-                    >
-                      <View style={{ width: 52, alignItems: 'center' }}>
-                        <Text style={{ fontSize: 11, fontWeight: '600', color: '#E8862A', textTransform: 'uppercase' }}>{month}</Text>
-                        <Text style={{ fontSize: 22, fontWeight: '600', color: colors.text }}>{day}</Text>
-                      </View>
-                      <View style={{ width: 1, backgroundColor: colors.border, alignSelf: 'stretch', marginHorizontal: 12 }} />
-                      <View style={{ flex: 1 }}>
-                        <Text style={{ fontSize: 14, fontWeight: '600', color: colors.text }} numberOfLines={2}>{event.title}</Text>
-                        <Text style={{ fontSize: 12, color: colors.textSecondary, marginTop: 2 }}>
-                          {event.time}{event.attendees > 0 ? ` · ${event.attendees} attending` : ''}
-                        </Text>
-                      </View>
-                    </Pressable>
-                  )
-                })}
-              </View>
-            </View>
+          {activeTab === 'Thread' && (
+            <ThreadPanel
+              messages={board.messages}
+              colors={colors}
+              emptyTitle="Be the first to post"
+              emptySubtitle={`Ask about rides, what to bring, or anything else for ${center.name}.`}
+              composerPlaceholder="Write to the board..."
+              composerState={canPostToThread ? 'open' : 'locked'}
+            />
+          )}
+
+          {activeTab === 'Events' && (
+            <>
+              {events.length > 0 ? (
+                <View style={{ gap: 8 }}>
+                  {events.map((event) => {
+                    const { month, day } = formatDateCallout(event.date)
+                    return (
+                      <Pressable
+                        key={event.id}
+                        onPress={() => handleEventPress(event)}
+                        style={{
+                          flexDirection: 'row',
+                          alignItems: 'center',
+                          backgroundColor: colors.cardBg,
+                          borderRadius: 8,
+                          paddingVertical: 12,
+                          paddingHorizontal: 14,
+                        }}
+                      >
+                        <View style={{ width: 52, alignItems: 'center' }}>
+                          <Text style={{ fontSize: 11, fontWeight: '600', color: '#E8862A', textTransform: 'uppercase' }}>{month}</Text>
+                          <Text style={{ fontSize: 22, fontWeight: '600', color: colors.text }}>{day}</Text>
+                        </View>
+                        <View style={{ width: 1, backgroundColor: colors.border, alignSelf: 'stretch', marginHorizontal: 12 }} />
+                        <View style={{ flex: 1 }}>
+                          <Text style={{ fontSize: 14, fontWeight: '600', color: colors.text }} numberOfLines={2}>{event.title}</Text>
+                          <Text style={{ fontSize: 12, color: colors.textSecondary, marginTop: 2 }}>
+                            {event.time}{event.attendees > 0 ? ` · ${event.attendees} attending` : ''}
+                          </Text>
+                        </View>
+                      </Pressable>
+                    )
+                  })}
+                </View>
+              ) : (
+                <View style={{ alignItems: 'center', paddingVertical: 32 }}>
+                  <Text style={{ fontSize: 14, color: colors.textSecondary }}>No upcoming events yet</Text>
+                </View>
+              )}
+            </>
           )}
         </View>
       </ScrollView>

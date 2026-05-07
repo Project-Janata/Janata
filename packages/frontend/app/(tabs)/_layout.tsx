@@ -1,8 +1,8 @@
-import { Link, Tabs, useRouter } from 'expo-router'
+import { Tabs, usePathname, useRouter } from 'expo-router'
 import { Platform, View, Text, Pressable, Image, StatusBar } from 'react-native'
 import { useState, useEffect } from 'react'
 import { useUser, useTheme } from '../../components/contexts'
-import { Plus, User } from 'lucide-react-native'
+import { Compass, House, MessagesSquare, Plus, User } from 'lucide-react-native'
 import SettingsPanel from '../../components/SettingsPanel'
 import Logo from '../../components/ui/Logo'
 import { Avatar } from '../../components/ui'
@@ -15,6 +15,7 @@ import { usePostHog } from 'posthog-react-native'
 
 export default function TabLayout() {
   const router = useRouter()
+  const pathname = usePathname()
   const { user, loading, logout } = useUser()
   const { isDark } = useTheme()
   const [settingsVisible, setSettingsVisible] = useState(false)
@@ -35,15 +36,63 @@ export default function TabLayout() {
     router.replace('/auth')
   }
 
-  // Custom header for web - just the logo
-  const HeaderTitle = () => {
+  const navItems = [
+    { label: 'Home', href: '/home' },
+    { label: 'Explore', href: '/' },
+    { label: 'Connect', href: '/connect' },
+  ] as const
+
+  const isRouteActive = (href: (typeof navItems)[number]['href']) => {
+    if (href === '/') {
+      return pathname === '/' || pathname === '/explore'
+    }
+    return pathname === href || pathname.startsWith(`${href}/`)
+  }
+
+  const WebHeaderLeft = () => {
     if (Platform.OS !== 'web') {
-      return null // Use default title on mobile
+      return null
     }
 
     return (
-      <View className="flex-row items-center">
-        <Logo size={28} />
+      <View className="flex-row items-center" style={{ gap: 24, marginLeft: 12 }}>
+        <Pressable
+          accessibilityLabel="Go to Home"
+          className="flex-row items-center"
+          onPress={() => router.push('/home')}
+          style={{ gap: 10 }}
+        >
+          <Logo size={28} />
+        </Pressable>
+        <View className="flex-row items-center" style={{ gap: 6 }}>
+          {navItems.map(({ label, href }) => {
+            const active = isRouteActive(href)
+
+            return (
+              <Pressable
+                key={href}
+                accessibilityRole="link"
+                onPress={() => router.push(href)}
+                style={{
+                  paddingHorizontal: 12,
+                  paddingVertical: 10,
+                  borderRadius: 999,
+                  backgroundColor: active ? (isDark ? 'rgba(232,134,42,0.16)' : '#FFF7ED') : 'transparent',
+                }}
+              >
+                <Text
+                  style={{
+                    fontFamily: active ? 'Inter-SemiBold' : 'Inter-Medium',
+                    fontSize: 14,
+                    color: active ? '#E8862A' : isDark ? '#E7E5E4' : '#44403C',
+                  }}
+                >
+                  {label}
+                </Text>
+              </Pressable>
+            )
+          })}
+        </View>
       </View>
     )
   }
@@ -185,7 +234,18 @@ export default function TabLayout() {
       )}
       <Tabs
         screenOptions={{
-          tabBarStyle: { display: 'none' },
+          tabBarStyle:
+            Platform.OS === 'web'
+              ? { display: 'none' }
+              : {
+                  backgroundColor: isDark ? '#171717' : '#FFFFFF',
+                  borderTopColor: isDark ? '#262626' : '#E7E5E4',
+                  height: 84,
+                  paddingTop: 8,
+                  paddingBottom: 18,
+                },
+          tabBarActiveTintColor: '#E8862A',
+          tabBarInactiveTintColor: isDark ? '#A8A29E' : '#78716C',
           headerStyle: {
             backgroundColor: Platform.OS === 'web' ? (isDark ? '#171717' : '#fff') : 'transparent',
             borderBottomWidth: Platform.OS === 'web' ? 1 : 0,
@@ -196,16 +256,45 @@ export default function TabLayout() {
             fontFamily: 'Inter-Bold',
           },
           headerTintColor: isDark ? '#fff' : '#000',
-          headerTitle: Platform.OS === 'web' ? () => <HeaderTitle /> : undefined,
+          headerLeft: Platform.OS === 'web' ? () => <WebHeaderLeft /> : undefined,
+          headerTitle: Platform.OS === 'web' ? '' : undefined,
           headerTransparent: Platform.OS !== 'web',
           headerShadowVisible: Platform.OS === 'web',
         }}
       >
         <Tabs.Screen
+          name="home"
+          options={{
+            title: Platform.OS === 'web' ? 'Home' : 'Janata',
+            headerShown: true,
+            ...(Platform.OS !== 'web'
+              ? {
+                  headerTransparent: false,
+                  headerShadowVisible: true,
+                  headerStyle: {
+                    backgroundColor: isDark ? '#171717' : '#FFFFFF',
+                  },
+                }
+              : {}),
+            headerRight: () => <HeaderRight />,
+            tabBarIcon: ({ color, size }) => <House size={size} color={color} />,
+          }}
+        />
+        <Tabs.Screen
           name="index"
           options={{
-            title: '',
+            title: 'Explore',
             headerRight: () => <HeaderRight />,
+            tabBarIcon: ({ color, size }) => <Compass size={size} color={color} />,
+          }}
+        />
+        <Tabs.Screen
+          name="connect"
+          options={{
+            title: 'Connect',
+            headerShown: Platform.OS === 'web',
+            headerRight: () => <HeaderRight />,
+            tabBarIcon: ({ color, size }) => <MessagesSquare size={size} color={color} />,
           }}
         />
         {/* Explore tab disabled: merged into unified Discover tab (B3 design) */}

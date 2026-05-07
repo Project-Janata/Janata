@@ -26,6 +26,7 @@ export interface MapProps {
   userCenterID?: string | null
   /** Extra bottom padding so controls stay above a bottom sheet (native only, ignored on web) */
   bottomPadding?: number
+  showControls?: boolean
 }
 
 const DEFAULT_REGION: Region = {
@@ -59,6 +60,7 @@ const Map = memo<MapProps>(function Map({
   showUserLocation = true,
   userCenterID,
   bottomPadding = 0,
+  showControls = true,
 }) {
   const mapRef = useRef<MapView>(null)
 
@@ -211,9 +213,9 @@ const Map = memo<MapProps>(function Map({
         initialRegion={region}
         onRegionChangeComplete={(r) => { currentRegionRef.current = r }}
         showsUserLocation={showUserLocation}
-        showsMyLocationButton={true}
-        showsCompass={true}
-        showsScale={true}
+        showsMyLocationButton={showControls}
+        showsCompass={showControls}
+        showsScale={showControls}
         scrollEnabled={true}
         zoomEnabled={true}
         pitchEnabled={true}
@@ -249,29 +251,31 @@ const Map = memo<MapProps>(function Map({
       {/* Custom controls in the top-right, sitting under the profile icon.
           react-native-maps' built-in user-location button is Android-only,
           and zoom buttons aren't built in at all. */}
-      <View style={[styles.controls, { top: insets.top + 64 }]} pointerEvents="box-none">
-        <Pressable
-          onPress={() => handleZoom(0.5)}
-          style={[styles.controlButton, { backgroundColor: buttonBg }]}
-          accessibilityLabel="Zoom in"
-        >
-          <ZoomIn size={18} color={iconColor} strokeWidth={2} />
-        </Pressable>
-        <Pressable
-          onPress={() => handleZoom(2)}
-          style={[styles.controlButton, { backgroundColor: buttonBg }]}
-          accessibilityLabel="Zoom out"
-        >
-          <ZoomOut size={18} color={iconColor} strokeWidth={2} />
-        </Pressable>
-        <Pressable
-          onPress={handleLocate}
-          style={[styles.controlButton, { backgroundColor: buttonBg, marginTop: 8 }]}
-          accessibilityLabel="Show my location"
-        >
-          <LocateFixed size={18} color={iconColor} strokeWidth={2} />
-        </Pressable>
-      </View>
+      {showControls && (
+        <View style={[styles.controls, { top: insets.top + 64 }]} pointerEvents="box-none">
+          <Pressable
+            onPress={() => handleZoom(0.5)}
+            style={[styles.controlButton, { backgroundColor: buttonBg }]}
+            accessibilityLabel="Zoom in"
+          >
+            <ZoomIn size={18} color={iconColor} strokeWidth={2} />
+          </Pressable>
+          <Pressable
+            onPress={() => handleZoom(2)}
+            style={[styles.controlButton, { backgroundColor: buttonBg }]}
+            accessibilityLabel="Zoom out"
+          >
+            <ZoomOut size={18} color={iconColor} strokeWidth={2} />
+          </Pressable>
+          <Pressable
+            onPress={handleLocate}
+            style={[styles.controlButton, { backgroundColor: buttonBg, marginTop: 8 }]}
+            accessibilityLabel="Show my location"
+          >
+            <LocateFixed size={18} color={iconColor} strokeWidth={2} />
+          </Pressable>
+        </View>
+      )}
     </View>
   )
 })

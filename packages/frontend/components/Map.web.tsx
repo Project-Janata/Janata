@@ -38,6 +38,7 @@ export interface MapProps {
   userCenterID?: string | null
   /** Extra bottom padding so controls stay above a bottom sheet (native only, ignored on web) */
   bottomPadding?: number
+  showControls?: boolean
   /**
    * Programmatic fly-to (e.g. list selection). `key` must change each time you want a new animation,
    * including re-selecting the same place.
@@ -197,6 +198,7 @@ const MapComponent = memo<MapProps>(
     userCenterID,
     flyTo,
     autoOpenPoint,
+    showControls = true,
   }) => {
     const { isDark } = useTheme()
     const mapRef = useRef<MapRef>(null)
@@ -474,7 +476,7 @@ const MapComponent = memo<MapProps>(
             }}
           />
         </Map>
-        <CustomControls mapRef={mapRef} isDark={isDark} />
+        {showControls && <CustomControls mapRef={mapRef} isDark={isDark} />}
       </div>
     )
   }

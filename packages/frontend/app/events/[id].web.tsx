@@ -13,6 +13,15 @@ import PrimaryButton from '../../components/ui/buttons/PrimaryButton'
 import DestructiveButton from '../../components/ui/buttons/DestructiveButton'
 import AuthPromptModal from '../../components/ui/AuthPromptModal'
 import { useDetailColors } from '../../hooks/useDetailColors'
+import { buildEventBoard, ThreadPanel } from '../../components/connect'
+
+function formatEventDateLabel(dateStr: string): string {
+  const d = new Date(`${dateStr}T00:00:00`)
+  if (isNaN(d.getTime())) return dateStr.toUpperCase()
+  const weekday = d.toLocaleDateString('en-US', { weekday: 'short' }).toUpperCase()
+  const month = d.toLocaleDateString('en-US', { month: 'short' }).toUpperCase()
+  return `${weekday}, ${month} ${d.getDate()}`
+}
 
 export default function EventDetailWeb() {
   const { id: rawId } = useLocalSearchParams()
@@ -55,6 +64,7 @@ function MobileEventDetail({ eventId }: { eventId: string }) {
 
   const isPast = event?.date ? new Date(event.date + 'T23:59:59') < new Date() : false
   const canEdit = !!user && (isSuperAdmin(user) || isCreator)
+  const canPostToThread = !!user?.isVerified
 
   const handleDelete = async () => {
     if (!event) return
@@ -88,6 +98,14 @@ function MobileEventDetail({ eventId }: { eventId: string }) {
       </View>
     )
   }
+
+  const eventBoard = buildEventBoard({
+    id: event.id,
+    title: event.title,
+    dateLabel: formatEventDateLabel(event.date),
+    centerLabel: event.location,
+    attendeesLabel: `${event.attendees} going`,
+  })
 
   return (
     <View style={{ flex: 1, backgroundColor: colors.panelBg }}>
@@ -140,9 +158,10 @@ function MobileEventDetail({ eventId }: { eventId: string }) {
 
       {/* Tabs */}
       <UnderlineTabBar
-        tabs={['Details', 'People']}
+        tabs={['Details', 'Thread', 'People']}
         activeTab={activeTab}
         onTabChange={setActiveTab}
+        counts={{ Thread: eventBoard.messages.length }}
       />
 
       <ScrollView style={{ flex: 1 }} contentContainerStyle={{ padding: 16, gap: 16 }}>
@@ -194,6 +213,15 @@ function MobileEventDetail({ eventId }: { eventId: string }) {
               </View>
             )}
           </>
+        ) : activeTab === 'Thread' ? (
+          <ThreadPanel
+            messages={eventBoard.messages}
+            colors={colors}
+            emptyTitle="Be the first to post"
+            emptySubtitle={`Ask about carpooling, what to bring, or anything else for the ${event.attendees} people going.`}
+            composerPlaceholder="Write to the group..."
+            composerState={canPostToThread ? 'open' : 'locked'}
+          />
         ) : (
           <>
             <Text style={{ color: colors.textSecondary, fontSize: 14 }}>
