@@ -7,6 +7,7 @@ import type { CenterDisplay } from '../../hooks/useApiData'
 import type { EventDisplay } from '../../utils/api'
 import { useDetailColors } from '../../hooks/useDetailColors'
 import { buildCenterBoard, ThreadPanel } from '../../components/connect'
+import { useUser } from '../../components/contexts'
 
 // ── Props ────────────────────────────────────────────────────────────────
 
@@ -37,6 +38,7 @@ export default function CenterDetailPanel({
   onEventPress,
 }: CenterDetailPanelProps) {
   const colors = useDetailColors()
+  const { user } = useUser()
   const [activeTab, setActiveTab] = useState('About')
 
   const handleAddressPress = () => {
@@ -64,6 +66,7 @@ export default function CenterDetailPanel({
     centerName: center.name,
     subtitle: `Ask about rides, seva, and announcements for ${center.name}.`,
   })
+  const canPostToThread = !!user?.isVerified
 
   return (
     <View
@@ -362,7 +365,7 @@ export default function CenterDetailPanel({
               emptyTitle="Be the first to post"
               emptySubtitle={`Ask about rides, what to bring, or anything else for ${center.name}.`}
               composerPlaceholder="Write to the board..."
-              composerState="open"
+              composerState={canPostToThread ? 'open' : 'locked'}
             />
           )}
 

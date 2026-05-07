@@ -15,6 +15,10 @@ export interface BoardMessage {
   timestamp: string
   body: string
   attachmentLabel?: string
+  reactions?: Array<{ emoji: string; count: number }>
+  replyCount?: number
+  pinned?: boolean
+  sourceLabel?: string
 }
 
 export interface EventBoard {
@@ -136,18 +140,25 @@ export const eventBoards: EventBoard[] = [
         author: people.anjali,
         timestamp: '2:14 PM',
         body: 'Anyone driving in from the Peninsula? Happy to coordinate a carpool — I have room for 3.',
+        reactions: [{ emoji: '🚗', count: 4 }, { emoji: '🙏', count: 2 }],
+        replyCount: 2,
       },
       {
         id: 'b2',
         author: people.ravi,
         timestamp: '4:02 PM',
         body: "Quick reminder we're starting at 9:30 sharp this time, not 10. Aarti at 9:00 for those who can make it.",
+        reactions: [{ emoji: '🪔', count: 6 }],
+        replyCount: 1,
+        pinned: true,
       },
       {
         id: 'b3',
         author: people.priya,
         timestamp: '8:11 AM',
         body: "I'd love a ride if you've still got room — I'm in Burlingame.",
+        reactions: [{ emoji: '🙋', count: 3 }],
+        replyCount: 1,
       },
       {
         id: 'b4',
@@ -155,6 +166,8 @@ export const eventBoards: EventBoard[] = [
         timestamp: '9:47 AM',
         body: "Sharing a few photos from last week's session — hope folks who couldn't attend get a feel for it.",
         attachmentLabel: 'Photo · seva session',
+        reactions: [{ emoji: '📸', count: 5 }],
+        replyCount: 3,
       },
     ],
   },
@@ -171,12 +184,16 @@ export const eventBoards: EventBoard[] = [
         author: people.meera,
         timestamp: 'Yesterday',
         body: 'Can someone bring extra gloves and water coolers? The park contact said the drinking fountain is unreliable.',
+        reactions: [{ emoji: '🧤', count: 4 }],
+        replyCount: 2,
       },
       {
         id: 's2',
         author: people.ravi,
         timestamp: 'Yesterday',
         body: 'I can cover gloves. Still need one more car from downtown if anyone is free.',
+        reactions: [{ emoji: '🙏', count: 7 }],
+        replyCount: 1,
       },
     ],
   },
@@ -333,18 +350,25 @@ export const centerBoards: CenterBoard[] = [
         author: people.ravi,
         timestamp: '4:20 PM',
         body: 'Need two more volunteers for setup before Sunday satsang. Mostly chairs and AV. DM me if you can help.',
+        reactions: [{ emoji: '🪑', count: 6 }],
+        replyCount: 1,
+        pinned: true,
       },
       {
         id: 'c2',
         author: people.anjali,
         timestamp: 'Today',
         body: 'Carpool from Fremont has 2 open spots for tomorrow evening if anyone wants to join.',
+        reactions: [{ emoji: '🚗', count: 4 }],
+        replyCount: 2,
       },
       {
         id: 'c3',
         author: people.karthik,
         timestamp: 'Yesterday',
         body: 'Uploading the chanting packet tonight so newer folks can print it ahead of class.',
+        reactions: [{ emoji: '📄', count: 5 }],
+        replyCount: 1,
       },
     ],
   },

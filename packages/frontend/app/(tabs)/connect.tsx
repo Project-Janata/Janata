@@ -50,7 +50,7 @@ import {
 } from '../../components/connect'
 import type { DiscoverCenter, EventDisplay } from '../../utils/api'
 
-type ConnectMode = 'Groups' | 'DMs'
+type ConnectMode = 'Feed' | 'Messages'
 type GroupKind = 'center' | 'event'
 
 type GroupBoard = {
@@ -64,6 +64,38 @@ type GroupBoard = {
   unreadCount: number
   messages: BoardMessage[]
   distanceMi?: number
+}
+
+type FeedPost = BoardMessage & {
+  groupId: string
+  groupKind: GroupKind
+  sourceTitle: string
+  sourceSubtitle: string
+  sourceLabel: string
+  replyMessages: BoardMessage[]
+}
+
+type ChatMessage = {
+  id: string
+  sender: 'them' | 'you'
+  timestamp: string
+  body: string
+  authorName?: string
+}
+
+type Conversation = {
+  id: string
+  type: 'group' | 'dm'
+  title: string
+  subtitle: string
+  preview: string
+  lastActiveLabel: string
+  unread: boolean
+  groupKind?: GroupKind
+  avatarName?: string
+  avatarInitials?: string
+  avatarColor?: string
+  messages: ChatMessage[]
 }
 
 type ColorSet = {
@@ -159,7 +191,7 @@ function centerToGroup(board: CenterBoard, distanceMi?: number): GroupBoard {
     id: board.id,
     kind: 'center',
     title: board.centerName,
-    eyebrow: 'Center group',
+    eyebrow: 'Center board',
     subtitle: board.subtitle,
     meta: distanceLabel ? `${distanceLabel} away` : `${board.messages.length} posts`,
     preview: latest?.body || 'No posts yet.',
@@ -177,7 +209,7 @@ function eventToGroup(board: EventBoard, distanceMi?: number): GroupBoard {
     title: board.title,
     eyebrow: board.dateLabel,
     subtitle: `${board.centerLabel} - ${board.attendeesLabel}`,
-    meta: distanceLabel ? `${distanceLabel} away` : `${board.messages.length} replies`,
+    meta: distanceLabel ? `${distanceLabel} away` : `${board.messages.length} posts`,
     preview: board.preview,
     unreadCount: board.messages.length > 2 ? 1 : 0,
     messages: board.messages,
@@ -192,7 +224,7 @@ function centerToNearbyGroup(
 ) {
   const distanceMi = haversineMiles(anchor, center)
   const eventCount = events.filter((event) => event.centerId === center.id).length
-  const locationLabel = extractCityState(center.address) || center.address || 'Center group'
+  const locationLabel = extractCityState(center.address) || center.address || 'Center board'
   const distanceLabel = formatDistance(distanceMi)
   const subtitle = [
     locationLabel,
@@ -224,6 +256,65 @@ function matchesQuery(value: string, query: string) {
   return value.toLowerCase().includes(query.toLowerCase().trim())
 }
 
+function buildFeedPosts(groups: GroupBoard[]): FeedPost[] {
+  return groups.flatMap((group) =>
+    group.messages.map((message, index) => {
+      const replies = group.messages.filter((candidate) => candidate.id !== message.id)
+      return {
+        ...message,
+        id: `${group.id}-${message.id}`,
+        sourceLabel: group.title,
+        sourceTitle: group.title,
+        sourceSubtitle: group.subtitle,
+        groupId: group.id,
+        groupKind: group.kind,
+        timestamp: index === 0 ? message.timestamp : message.timestamp,
+        replyMessages: replies.slice(0, Math.max(message.replyCount ?? 2, 1)),
+      }
+    })
+  )
+}
+
+function boardMessagesToChat(group: GroupBoard): ChatMessage[] {
+  return group.messages.map((message, index) => ({
+    id: `${group.id}-chat-${message.id}`,
+    sender: index === 2 ? 'you' : 'them',
+    timestamp: message.timestamp,
+    body: message.body,
+    authorName: message.author.name,
+  }))
+}
+
+function groupToConversation(group: GroupBoard): Conversation {
+  return {
+    id: `group-${group.id}`,
+    type: 'group',
+    title: group.title,
+    subtitle: group.kind === 'center' ? 'Center chat' : 'Event chat',
+    preview: group.preview,
+    lastActiveLabel: group.messages[0]?.timestamp || 'Now',
+    unread: group.unreadCount > 0,
+    groupKind: group.kind,
+    messages: boardMessagesToChat(group),
+  }
+}
+
+function dmToConversation(thread: InboxThread): Conversation {
+  return {
+    id: `dm-${thread.id}`,
+    type: 'dm',
+    title: thread.person.name,
+    subtitle: thread.connectedSince,
+    preview: thread.preview,
+    lastActiveLabel: thread.lastActiveLabel,
+    unread: thread.unread,
+    avatarName: thread.person.name,
+    avatarInitials: thread.person.initials,
+    avatarColor: thread.person.accentColor,
+    messages: thread.messages,
+  }
+}
+
 export default function ConnectScreen() {
   const router = useRouter()
   const navigation = useNavigation()
@@ -246,10 +337,10 @@ export default function ConnectScreen() {
   } = useDiscoverData('Centers', '', user?.id, false, false, user?.interests ?? undefined, user?.centerID)
 
   const isDesktop = width >= 980
-  const [mode, setMode] = useState<ConnectMode>('Groups')
+  const [mode, setMode] = useState<ConnectMode>('Feed')
   const [query, setQuery] = useState('')
-  const [selectedGroupId, setSelectedGroupId] = useState('')
-  const [selectedDmId, setSelectedDmId] = useState('')
+  const [selectedPostId, setSelectedPostId] = useState('')
+  const [selectedConversationId, setSelectedConversationId] = useState('')
   const [demoVerified, setDemoVerified] = useState(false)
 
   const colors = useMemo<ColorSet>(
@@ -309,7 +400,7 @@ export default function ConnectScreen() {
   )
 
   const isVerifiedMember = user?.isVerified === true || demoVerified
-  const canAccessGroups = !!user && isVerifiedMember
+  const canAccessBoards = !!user && isVerifiedMember
   const userCenter = center || allCenters.find((item) => item.id === user?.centerID)
   const groups = useMemo<GroupBoard[]>(() => {
     if (user && !isVerifiedMember) return []
@@ -360,37 +451,43 @@ export default function ConnectScreen() {
     return sortGroupsByDistance(nextGroups)
   }, [allCenters, allEvents, center, centerEvents.length, isVerifiedMember, myEvents, user, userCenter])
 
-  const filteredGroups = useMemo(() => {
-    if (!query.trim()) return groups
-    return groups.filter(
-      (group) =>
-        matchesQuery(group.title, query) ||
-        matchesQuery(group.subtitle, query) ||
-        matchesQuery(group.preview, query)
-    )
-  }, [groups, query])
+  const feedPosts = useMemo(() => buildFeedPosts(groups), [groups])
+  const conversations = useMemo(() => {
+    const groupConversations = canAccessBoards ? groups.map(groupToConversation) : []
+    return [...groupConversations, ...inboxThreads.map(dmToConversation)]
+  }, [canAccessBoards, groups])
 
-  const filteredDms = useMemo(() => {
-    if (!query.trim()) return inboxThreads
-    return inboxThreads.filter(
-      (thread) =>
-        matchesQuery(thread.person.name, query) ||
-        matchesQuery(thread.preview, query) ||
-        matchesQuery(thread.person.subtitle || '', query)
+  const filteredFeedPosts = useMemo(() => {
+    if (!query.trim()) return feedPosts
+    return feedPosts.filter(
+      (post) =>
+        matchesQuery(post.body, query) ||
+        matchesQuery(post.author.name, query) ||
+        matchesQuery(post.sourceTitle, query)
     )
-  }, [query])
+  }, [feedPosts, query])
 
-  const selectedGroup = groups.find((group) => group.id === selectedGroupId) ?? groups[0]
-  const selectedDm = inboxThreads.find((thread) => thread.id === selectedDmId) ?? inboxThreads[0]
-  const mobileGroupOpen = !isDesktop && mode === 'Groups' && !!selectedGroupId
-  const mobileDmOpen = !isDesktop && mode === 'DMs' && !!selectedDmId
-  const nativeDetailOpen = Platform.OS !== 'web' && (mobileGroupOpen || mobileDmOpen)
-  const groupSummaryLabel = !user
-    ? 'Sign in for groups'
-    : canAccessGroups
-      ? `${groups.length} groups`
-      : 'Verify for groups'
-  const groupAnchorLabel = userCenter?.name ? `Sorted from ${userCenter.name}` : 'Sorted by nearby centers'
+  const filteredConversations = useMemo(() => {
+    if (!query.trim()) return conversations
+    return conversations.filter(
+      (conversation) =>
+        matchesQuery(conversation.title, query) ||
+        matchesQuery(conversation.preview, query) ||
+        matchesQuery(conversation.subtitle, query)
+    )
+  }, [conversations, query])
+
+  const selectedPost = feedPosts.find((post) => post.id === selectedPostId) ?? feedPosts[0]
+  const selectedConversation =
+    conversations.find((conversation) => conversation.id === selectedConversationId) ?? conversations[0]
+  const mobilePostOpen = !isDesktop && mode === 'Feed' && !!selectedPostId
+  const mobileConversationOpen = !isDesktop && mode === 'Messages' && !!selectedConversationId
+  const nativeDetailOpen = Platform.OS !== 'web' && (mobilePostOpen || mobileConversationOpen)
+  const feedSummaryLabel = !user
+    ? 'Sign in for feed'
+    : canAccessBoards
+      ? `${feedPosts.length} posts`
+      : 'Verify for feed'
   const listTopPadding = Platform.OS === 'web' ? 20 : Math.max(insets.top, 54) + 16
   const isLoading = user ? myEventsLoading || centerLoading || discoverLoading : false
   const nativeTabBarStyle = useMemo(
@@ -444,13 +541,13 @@ export default function ConnectScreen() {
   }
 
   const clearDetailSelection = () => {
-    setSelectedGroupId('')
-    setSelectedDmId('')
+    setSelectedPostId('')
+    setSelectedConversationId('')
   }
 
-  const handleGroupAccessCta = () => {
+  const handleBoardAccessCta = () => {
     if (!user) {
-      posthog?.capture('connect_signin_pressed', { source: 'groups_cta' })
+      posthog?.capture('connect_signin_pressed', { source: 'feed_cta' })
       router.push('/auth')
       return
     }
@@ -478,18 +575,18 @@ export default function ConnectScreen() {
     clearDetailSelection()
   }
 
-  const openGroup = (id: string) => {
-    posthog?.capture('connect_group_selected', { groupId: id })
+  const openPost = (id: string) => {
+    posthog?.capture('connect_feed_post_selected', { postId: id })
     primeNativeDetailTransition()
-    setSelectedDmId('')
-    setSelectedGroupId(id)
+    setSelectedConversationId('')
+    setSelectedPostId(id)
   }
 
-  const openDm = (id: string) => {
-    posthog?.capture('connect_dm_selected', { threadId: id })
+  const openConversation = (id: string) => {
+    posthog?.capture('connect_conversation_selected', { conversationId: id })
     primeNativeDetailTransition()
-    setSelectedGroupId('')
-    setSelectedDmId(id)
+    setSelectedPostId('')
+    setSelectedConversationId(id)
   }
 
   if (isLoading) {
@@ -519,10 +616,10 @@ export default function ConnectScreen() {
           query={query}
           isDesktop={isDesktop}
           colors={colors}
-          groupLabel={groupSummaryLabel}
-          unreadCount={unreadInboxCount}
+          feedLabel={feedSummaryLabel}
+          unreadCount={conversations.filter((conversation) => conversation.unread).length || unreadInboxCount}
           requestCount={connectionRequests.length}
-          mobileInDetail={(mobileGroupOpen || mobileDmOpen) && !nativeDetailOpen}
+          mobileInDetail={(mobilePostOpen || mobileConversationOpen) && !nativeDetailOpen}
           onBack={closeDetail}
           onChangeMode={setMode}
           onChangeQuery={setQuery}
@@ -538,73 +635,30 @@ export default function ConnectScreen() {
           />
         ) : null}
 
-        {isDesktop ? (
-          <View style={{ flexDirection: 'row', gap: 14, alignItems: 'flex-start' }}>
-            <View style={{ width: 328 }}>
-              <GroupRail
-                groups={filteredGroups}
-                selectedGroupId={selectedGroup?.id}
-                colors={colors}
-                canAccessGroups={canAccessGroups}
-                isSignedIn={!!user}
-                anchorLabel={groupAnchorLabel}
-                onRequestAccess={handleGroupAccessCta}
-                onSelect={openGroup}
-              />
-            </View>
-            <View style={{ flex: 1, minWidth: 0 }}>
-              {selectedGroup ? (
-                <GroupThread group={selectedGroup} colors={colors} threadColors={threadColors} />
-              ) : (
-                <EmptyPanel title="No groups yet" subtitle="Join an event or choose a center to start seeing boards." colors={colors} />
-              )}
-            </View>
-            <View style={{ width: 330, gap: 14 }}>
-              <RequestsCard colors={colors} />
-              <DmRail
-                threads={filteredDms}
-                selectedThreadId={selectedDm?.id}
-                colors={colors}
-                compact
-                onSelect={openDm}
-              />
-            </View>
-          </View>
+        {mode === 'Feed' ? (
+          <FeedWorkspace
+            posts={filteredFeedPosts}
+            selectedPost={selectedPost}
+            colors={colors}
+            threadColors={threadColors}
+            isDesktop={isDesktop}
+            canAccessBoards={canAccessBoards}
+            isSignedIn={!!user}
+            nativeDetailOpen={nativeDetailOpen}
+            mobilePostOpen={mobilePostOpen}
+            onRequestAccess={handleBoardAccessCta}
+            onSelectPost={openPost}
+          />
         ) : (
-          <View>
-            {mode === 'Groups' && (!mobileGroupOpen || nativeDetailOpen) ? (
-              <GroupRail
-                groups={filteredGroups}
-                selectedGroupId={selectedGroupId}
-                colors={colors}
-                canAccessGroups={canAccessGroups}
-                isSignedIn={!!user}
-                anchorLabel={groupAnchorLabel}
-                onRequestAccess={handleGroupAccessCta}
-                onSelect={openGroup}
-              />
-            ) : null}
-
-            {mode === 'Groups' && mobileGroupOpen && !nativeDetailOpen && selectedGroup ? (
-              <GroupThread group={selectedGroup} colors={colors} threadColors={threadColors} />
-            ) : null}
-
-            {mode === 'DMs' && (!mobileDmOpen || nativeDetailOpen) ? (
-              <View style={{ gap: 12 }}>
-                <RequestsCard colors={colors} />
-                <DmRail
-                  threads={filteredDms}
-                  selectedThreadId={selectedDmId}
-                  colors={colors}
-                  onSelect={openDm}
-                />
-              </View>
-            ) : null}
-
-            {mode === 'DMs' && mobileDmOpen && !nativeDetailOpen && selectedDm ? (
-              <DmThread thread={selectedDm} colors={colors} />
-            ) : null}
-          </View>
+          <MessagesWorkspace
+            conversations={filteredConversations}
+            selectedConversation={selectedConversation}
+            colors={colors}
+            isDesktop={isDesktop}
+            nativeDetailOpen={nativeDetailOpen}
+            mobileConversationOpen={mobileConversationOpen}
+            onSelectConversation={openConversation}
+          />
         )}
       </ScrollView>
 
@@ -627,25 +681,228 @@ export default function ConnectScreen() {
             <NativeChatHeader
               colors={colors}
               insetsTop={insets.top}
-              title={mobileDmOpen && selectedDm ? selectedDm.person.name : selectedGroup?.title || 'Group'}
-              subtitle={mobileDmOpen && selectedDm ? selectedDm.connectedSince : selectedGroup?.subtitle}
-              avatarName={mobileDmOpen && selectedDm ? selectedDm.person.name : undefined}
-              avatarInitials={mobileDmOpen && selectedDm ? selectedDm.person.initials : undefined}
-              avatarColor={mobileDmOpen && selectedDm ? selectedDm.person.accentColor : undefined}
-              groupKind={mobileGroupOpen && selectedGroup ? selectedGroup.kind : undefined}
+              title={mobileConversationOpen && selectedConversation ? selectedConversation.title : 'Thread'}
+              subtitle={
+                mobileConversationOpen && selectedConversation
+                  ? selectedConversation.subtitle
+                  : selectedPost?.sourceTitle
+              }
+              avatarName={mobileConversationOpen && selectedConversation ? selectedConversation.avatarName : undefined}
+              avatarInitials={mobileConversationOpen && selectedConversation ? selectedConversation.avatarInitials : undefined}
+              avatarColor={mobileConversationOpen && selectedConversation ? selectedConversation.avatarColor : undefined}
+              groupKind={
+                mobileConversationOpen && selectedConversation
+                  ? selectedConversation.groupKind
+                  : selectedPost?.groupKind
+              }
               onBack={closeDetail}
             />
             <View style={{ flex: 1 }}>
-              {mobileGroupOpen && selectedGroup ? (
-                <GroupThread group={selectedGroup} colors={colors} threadColors={threadColors} fullScreen bottomInset={insets.bottom} />
+              {mobilePostOpen && selectedPost ? (
+                <PostThread post={selectedPost} colors={colors} threadColors={threadColors} fullScreen bottomInset={insets.bottom} />
               ) : null}
-              {mobileDmOpen && selectedDm ? (
-                <DmThread thread={selectedDm} colors={colors} fullScreen bottomInset={insets.bottom} />
+              {mobileConversationOpen && selectedConversation ? (
+                <ConversationThread conversation={selectedConversation} colors={colors} fullScreen bottomInset={insets.bottom} />
               ) : null}
             </View>
           </KeyboardAvoidingView>
         </Animated.View>
       ) : null}
+    </View>
+  )
+}
+
+function FeedWorkspace({
+  posts,
+  selectedPost,
+  colors,
+  threadColors,
+  isDesktop,
+  canAccessBoards,
+  isSignedIn,
+  nativeDetailOpen,
+  mobilePostOpen,
+  onRequestAccess,
+  onSelectPost,
+}: {
+  posts: FeedPost[]
+  selectedPost?: FeedPost
+  colors: ColorSet
+  threadColors: ThreadPanelColors
+  isDesktop: boolean
+  canAccessBoards: boolean
+  isSignedIn: boolean
+  nativeDetailOpen: boolean
+  mobilePostOpen: boolean
+  onRequestAccess: () => void
+  onSelectPost: (id: string) => void
+}) {
+  if (!canAccessBoards) {
+    return (
+      <ThreadPanel
+        messages={[]}
+        colors={threadColors}
+        emptyTitle="No posts yet"
+        emptySubtitle="Once your boards have posts, they will show up here."
+        composerPlaceholder="Share something with the center..."
+        composerState="locked"
+        lockedTitle={isSignedIn ? 'For verified members' : 'Sign in for member boards'}
+        lockedSubtitle={
+          isSignedIn
+            ? "Boards are conversations between verified CHYKs at a center. Get verified and you're in."
+            : 'Sign in to see your center board, event boards, and member conversations.'
+        }
+        primaryActionLabel={isSignedIn ? 'Redeem invite' : 'Sign in'}
+        secondaryActionLabel={isSignedIn ? 'Apply' : 'Learn more'}
+        onPrimaryAction={onRequestAccess}
+        onSecondaryAction={onRequestAccess}
+      />
+    )
+  }
+
+  if (isDesktop) {
+    return (
+      <View style={{ flexDirection: 'row', gap: 18, alignItems: 'flex-start' }}>
+        <View style={{ flex: 1.05, minWidth: 0 }}>
+          <FeedList posts={posts} colors={threadColors} onSelectPost={onSelectPost} />
+        </View>
+        <View style={{ flex: 0.95, minWidth: 0 }}>
+          {selectedPost ? (
+            <PostThread post={selectedPost} colors={colors} threadColors={threadColors} />
+          ) : (
+            <EmptyPanel title="No posts found" subtitle="Try a different search." colors={colors} />
+          )}
+        </View>
+      </View>
+    )
+  }
+
+  if (mobilePostOpen && !nativeDetailOpen && selectedPost) {
+    return <PostThread post={selectedPost} colors={colors} threadColors={threadColors} />
+  }
+
+  return <FeedList posts={posts} colors={threadColors} onSelectPost={onSelectPost} />
+}
+
+function FeedList({
+  posts,
+  colors,
+  onSelectPost,
+}: {
+  posts: FeedPost[]
+  colors: ThreadPanelColors
+  onSelectPost: (id: string) => void
+}) {
+  return (
+    <ThreadPanel
+      messages={posts}
+      colors={colors}
+      emptyTitle="No posts found"
+      emptySubtitle="Try a different search or check back after your next event."
+      composerPlaceholder="Share something with your center..."
+      visibleLabel="Visible to verified members across your center and event boards."
+      showSource
+      onMessagePress={(message) => onSelectPost(message.id)}
+    />
+  )
+}
+
+function PostThread({
+  post,
+  colors,
+  threadColors,
+  fullScreen = false,
+  bottomInset = 0,
+}: {
+  post: FeedPost
+  colors: ColorSet
+  threadColors: ThreadPanelColors
+  fullScreen?: boolean
+  bottomInset?: number
+}) {
+  const messages = [post, ...post.replyMessages]
+
+  return (
+    <View style={{ flex: fullScreen ? 1 : undefined, backgroundColor: colors.page }}>
+      {!fullScreen ? (
+        <View style={{ paddingHorizontal: 4, paddingTop: 6, paddingBottom: 14, gap: 9 }}>
+          <Text style={{ fontFamily: 'Inter-SemiBold', fontSize: 12, color: colors.orange }}>
+            {post.sourceLabel}
+          </Text>
+          <Text style={{ fontFamily: 'Inter-Bold', fontSize: 24, lineHeight: 30, color: colors.text }}>
+            Thread
+          </Text>
+          <Text style={{ fontFamily: 'Inter-Regular', fontSize: 14, lineHeight: 20, color: colors.textMuted }}>
+            {post.sourceSubtitle}
+          </Text>
+        </View>
+      ) : null}
+      <ThreadPanel
+        messages={messages}
+        colors={threadColors}
+        emptyTitle="No replies yet"
+        emptySubtitle="Be the first to reply."
+        composerPlaceholder="Reply to thread..."
+        showComposer={false}
+        scrollable={fullScreen}
+        bottomInset={bottomInset}
+      />
+    </View>
+  )
+}
+
+function MessagesWorkspace({
+  conversations,
+  selectedConversation,
+  colors,
+  isDesktop,
+  nativeDetailOpen,
+  mobileConversationOpen,
+  onSelectConversation,
+}: {
+  conversations: Conversation[]
+  selectedConversation?: Conversation
+  colors: ColorSet
+  isDesktop: boolean
+  nativeDetailOpen: boolean
+  mobileConversationOpen: boolean
+  onSelectConversation: (id: string) => void
+}) {
+  if (isDesktop) {
+    return (
+      <View style={{ flexDirection: 'row', gap: 18, alignItems: 'flex-start' }}>
+        <View style={{ width: 360 }}>
+          <ConversationList
+            conversations={conversations}
+            selectedConversationId={selectedConversation?.id}
+            colors={colors}
+            onSelectConversation={onSelectConversation}
+          />
+        </View>
+        <View style={{ flex: 1, minWidth: 0 }}>
+          {selectedConversation ? (
+            <ConversationThread conversation={selectedConversation} colors={colors} />
+          ) : (
+            <EmptyPanel title="No messages found" subtitle="Try a different search." colors={colors} />
+          )}
+        </View>
+      </View>
+    )
+  }
+
+  if (mobileConversationOpen && !nativeDetailOpen && selectedConversation) {
+    return <ConversationThread conversation={selectedConversation} colors={colors} />
+  }
+
+  return (
+    <View style={{ gap: 12 }}>
+      <RequestsCard colors={colors} />
+      <ConversationList
+        conversations={conversations}
+        selectedConversationId={selectedConversation?.id}
+        colors={colors}
+        onSelectConversation={onSelectConversation}
+      />
     </View>
   )
 }
@@ -732,7 +989,7 @@ function Header({
   query,
   isDesktop,
   colors,
-  groupLabel,
+  feedLabel,
   unreadCount,
   requestCount,
   mobileInDetail,
@@ -744,7 +1001,7 @@ function Header({
   query: string
   isDesktop: boolean
   colors: ColorSet
-  groupLabel: string
+  feedLabel: string
   unreadCount: number
   requestCount: number
   mobileInDetail: boolean
@@ -787,15 +1044,13 @@ function Header({
             Connect
           </Text>
           <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
-            <StatPill icon={<Hash size={13} color={colors.orange} />} label={groupLabel} colors={colors} />
+            <StatPill icon={<Hash size={13} color={colors.orange} />} label={feedLabel} colors={colors} />
             <StatPill icon={<Inbox size={13} color={colors.orange} />} label={`${unreadCount} unread`} colors={colors} />
             <StatPill icon={<Bell size={13} color={colors.orange} />} label={`${requestCount} requests`} colors={colors} />
           </View>
         </View>
 
-        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10 }}>
-          <ModeSwitch mode={mode} colors={colors} onChangeMode={onChangeMode} />
-        </View>
+        <ModeSwitch mode={mode} colors={colors} onChangeMode={onChangeMode} />
       </View>
 
       <View
@@ -813,7 +1068,7 @@ function Header({
         <TextInput
           value={query}
           onChangeText={onChangeQuery}
-          placeholder="Search groups, posts, or people"
+          placeholder="Search posts, groups, or messages"
           placeholderTextColor={colors.textSoft}
           style={{
             flex: 1,
@@ -838,13 +1093,8 @@ function ModeSwitch({
   onChangeMode: (mode: ConnectMode) => void
 }) {
   return (
-    <View
-      style={{
-        flexDirection: 'row',
-        gap: 18,
-      }}
-    >
-      {(['Groups', 'DMs'] as ConnectMode[]).map((item) => {
+    <View style={{ flexDirection: 'row', gap: 18 }}>
+      {(['Feed', 'Messages'] as ConnectMode[]).map((item) => {
         const active = item === mode
         return (
           <Pressable
@@ -872,362 +1122,67 @@ function ModeSwitch({
   )
 }
 
-function GroupRail({
-  groups,
-  selectedGroupId,
+function ConversationList({
+  conversations,
+  selectedConversationId,
   colors,
-  canAccessGroups = true,
-  isSignedIn = true,
-  anchorLabel,
-  onRequestAccess,
-  onSelect,
+  onSelectConversation,
 }: {
-  groups: GroupBoard[]
-  selectedGroupId?: string
+  conversations: Conversation[]
+  selectedConversationId?: string
   colors: ColorSet
-  canAccessGroups?: boolean
-  isSignedIn?: boolean
-  anchorLabel?: string
-  onRequestAccess: () => void
-  onSelect: (id: string) => void
+  onSelectConversation: (id: string) => void
 }) {
   return (
-    <View style={{ gap: 10 }}>
-      <GroupAccessHeader
-        canAccessGroups={canAccessGroups}
-        isSignedIn={isSignedIn}
-        groupCount={groups.length}
-        anchorLabel={anchorLabel}
-        colors={colors}
-        onRequestAccess={onRequestAccess}
-      />
-
-      {!canAccessGroups ? null : groups.length === 0 ? (
-        <EmptyPanel title="No groups yet" subtitle="Your center and joined events will appear here." colors={colors} />
-      ) : (
-        <View style={{ gap: 6 }}>
-          {groups.map((group) => (
-            <GroupCard
-              key={group.id}
-              group={group}
-              active={group.id === selectedGroupId}
-              colors={colors}
-              onPress={() => onSelect(group.id)}
-            />
-          ))}
-        </View>
-      )}
-    </View>
-  )
-}
-
-function GroupAccessHeader({
-  canAccessGroups,
-  isSignedIn,
-  groupCount,
-  anchorLabel,
-  colors,
-  onRequestAccess,
-}: {
-  canAccessGroups: boolean
-  isSignedIn: boolean
-  groupCount: number
-  anchorLabel?: string
-  colors: ColorSet
-  onRequestAccess: () => void
-}) {
-  if (canAccessGroups) {
-    return (
-      <View style={{ gap: 3, paddingHorizontal: 4 }}>
-        <Text style={{ fontFamily: 'Inter-SemiBold', fontSize: 12, letterSpacing: 0.6, color: colors.textMuted }}>
-          GROUPS NEAR YOU
-        </Text>
-        <Text style={{ fontFamily: 'Inter-Regular', fontSize: 13, lineHeight: 18, color: colors.textSoft }}>
-          {groupCount > 0 ? `${groupCount} center and event groups. ${anchorLabel}.` : anchorLabel}
-        </Text>
-      </View>
-    )
-  }
-
-  return (
-    <View
-      style={{
-        borderRadius: 18,
-        backgroundColor: colors.orangeSoft,
-        padding: 14,
-        gap: 10,
-      }}
-    >
-      <View style={{ gap: 4 }}>
-        <Text style={{ fontFamily: 'Inter-Bold', fontSize: 17, color: colors.text }}>
-          {isSignedIn ? 'Verify to unlock groups' : 'Sign in to see groups'}
-        </Text>
-        <Text style={{ fontFamily: 'Inter-Regular', fontSize: 14, lineHeight: 20, color: colors.textMuted }}>
-          {isSignedIn
-            ? 'Verified members can browse center boards and joined event groups, starting with the ones closest to them.'
-            : 'Your center boards, event groups, requests, and DMs will live here.'}
-        </Text>
-      </View>
-      <Pressable
-        onPress={onRequestAccess}
-        style={{
-          alignSelf: 'flex-start',
-          borderRadius: 999,
-          backgroundColor: colors.orange,
-          paddingHorizontal: 14,
-          paddingVertical: 9,
-        }}
-      >
-        <Text style={{ fontFamily: 'Inter-SemiBold', fontSize: 13, color: '#FFFFFF' }}>
-          {isSignedIn ? 'Get verified' : 'Sign in'}
-        </Text>
-      </Pressable>
-    </View>
-  )
-}
-
-function GroupCard({
-  group,
-  active,
-  colors,
-  onPress,
-}: {
-  group: GroupBoard
-  active: boolean
-  colors: ColorSet
-  onPress: () => void
-}) {
-  return (
-    <Pressable
-      onPress={onPress}
-      style={{
-        backgroundColor: active ? colors.cardActive : 'transparent',
-        borderRadius: 16,
-        paddingHorizontal: 4,
-        paddingVertical: 10,
-        gap: 8,
-      }}
-    >
-      <View style={{ flexDirection: 'row', alignItems: 'flex-start', gap: 12 }}>
-        <GroupIcon kind={group.kind} colors={colors} active={active} />
-        <View style={{ flex: 1, gap: 4 }}>
-          <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: 8 }}>
-            <Text style={{ fontFamily: 'Inter-SemiBold', fontSize: 12, color: colors.orange }}>
-              {group.eyebrow}
-            </Text>
-            {group.unreadCount > 0 ? <UnreadDot count={group.unreadCount} colors={colors} /> : null}
-          </View>
-          <Text style={{ fontFamily: 'Inter-Bold', fontSize: 17, lineHeight: 22, color: colors.text }} numberOfLines={2}>
-            {group.title}
-          </Text>
-          <Text style={{ fontFamily: 'Inter-Regular', fontSize: 13, lineHeight: 18, color: colors.textMuted }} numberOfLines={1}>
-            {group.subtitle}
-          </Text>
-        </View>
-      </View>
-
-      <Text style={{ fontFamily: 'Inter-Regular', fontSize: 14, lineHeight: 20, color: colors.textMuted }} numberOfLines={2}>
-        {group.preview}
-      </Text>
-
-      <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
-        <Text style={{ fontFamily: 'Inter-Medium', fontSize: 12, color: colors.textSoft }}>
-          {group.meta}
-        </Text>
-        <ChevronRight size={16} color={colors.textSoft} />
-      </View>
-    </Pressable>
-  )
-}
-
-function GroupThread({
-  group,
-  colors,
-  threadColors,
-  fullScreen = false,
-  bottomInset = 0,
-}: {
-  group: GroupBoard
-  colors: ColorSet
-  threadColors: ThreadPanelColors
-  fullScreen?: boolean
-  bottomInset?: number
-}) {
-  return (
-    <View
-      style={{
-        flex: fullScreen ? 1 : undefined,
-        backgroundColor: 'transparent',
-        borderWidth: 0,
-        borderColor: 'transparent',
-        borderRadius: fullScreen ? 0 : 16,
-        overflow: fullScreen ? 'visible' : 'hidden',
-      }}
-    >
-      {!fullScreen ? (
-        <View style={{ paddingHorizontal: 4, paddingTop: 6, paddingBottom: 14, gap: 12 }}>
-          <View style={{ flexDirection: 'row', alignItems: 'flex-start', gap: 12 }}>
-            <GroupIcon kind={group.kind} colors={colors} active />
-            <View style={{ flex: 1, gap: 5 }}>
-              <Text style={{ fontFamily: 'Inter-SemiBold', fontSize: 12, color: colors.orange }}>
-                {group.eyebrow}
-              </Text>
-              <Text style={{ fontFamily: 'Inter-Bold', fontSize: 24, lineHeight: 30, color: colors.text }}>
-                {group.title}
-              </Text>
-              <Text style={{ fontFamily: 'Inter-Regular', fontSize: 14, lineHeight: 20, color: colors.textMuted }}>
-                {group.subtitle}
-              </Text>
-            </View>
-          </View>
-
-          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
-            <StatPill icon={<UsersRound size={13} color={colors.orange} />} label={group.meta} colors={colors} />
-            <StatPill icon={<MessageCircleMore size={13} color={colors.orange} />} label="Thread" colors={colors} />
-          </View>
-        </View>
-      ) : null}
-
-      <ThreadPanel
-        messages={group.messages}
-        colors={threadColors}
-        emptyTitle="Be the first to post"
-        emptySubtitle={`Ask about rides, prep, seva, or anything for this ${group.kind === 'center' ? 'center' : 'event'} group.`}
-        composerPlaceholder={`Post in ${group.kind === 'center' ? 'center group' : 'event group'}...`}
-        composerState="open"
-        scrollable={fullScreen}
-        bottomInset={fullScreen ? bottomInset : 0}
-      />
-    </View>
-  )
-}
-
-function RequestsCard({ colors }: { colors: ColorSet }) {
-  const firstRequest = connectionRequests[0]
-
-  return (
-    <View
-      style={{
-        paddingVertical: 4,
-        gap: 12,
-      }}
-    >
-      <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
-        <Text style={{ fontFamily: 'Inter-Bold', fontSize: 18, color: colors.text }}>
-          Requests
-        </Text>
-        <UnreadDot count={connectionRequests.length} colors={colors} />
-      </View>
-      {firstRequest ? (
-        <View style={{ flexDirection: 'row', alignItems: 'flex-start', gap: 10 }}>
-          <Avatar
-            name={firstRequest.person.name}
-            initials={firstRequest.person.initials}
-            size={40}
-            backgroundColor={firstRequest.person.accentColor}
-          />
-          <View style={{ flex: 1, gap: 4 }}>
-            <Text style={{ fontFamily: 'Inter-SemiBold', fontSize: 15, color: colors.text }}>
-              {firstRequest.person.name}
-            </Text>
-            <Text style={{ fontFamily: 'Inter-Regular', fontSize: 13, lineHeight: 18, color: colors.textMuted }} numberOfLines={2}>
-              {firstRequest.note}
-            </Text>
-          </View>
-        </View>
-      ) : null}
-      <View style={{ flexDirection: 'row', gap: 8 }}>
-        <Pressable
-          style={{
-            flex: 1,
-            borderRadius: 999,
-            backgroundColor: colors.orange,
-            paddingVertical: 10,
-            alignItems: 'center',
-          }}
-        >
-          <Text style={{ fontFamily: 'Inter-SemiBold', fontSize: 13, color: '#FFFFFF' }}>
-            Review
-          </Text>
-        </Pressable>
-        <Pressable
-          style={{
-            flex: 1,
-            borderRadius: 999,
-            backgroundColor: colors.panel,
-            paddingVertical: 10,
-            alignItems: 'center',
-          }}
-        >
-          <Text style={{ fontFamily: 'Inter-SemiBold', fontSize: 13, color: colors.textMuted }}>
-            Later
-          </Text>
-        </Pressable>
-      </View>
-    </View>
-  )
-}
-
-function DmRail({
-  threads,
-  selectedThreadId,
-  colors,
-  compact = false,
-  onSelect,
-}: {
-  threads: InboxThread[]
-  selectedThreadId?: string
-  colors: ColorSet
-  compact?: boolean
-  onSelect: (id: string) => void
-}) {
-  return (
-    <View
-      style={{
-        gap: 6,
-      }}
-    >
+    <View style={{ gap: 6 }}>
       <View style={{ paddingHorizontal: 4, paddingVertical: 4, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
         <Text style={{ fontFamily: 'Inter-Bold', fontSize: 18, color: colors.text }}>
-          DMs
+          Messages
         </Text>
         <MessageCircleMore size={17} color={colors.textMuted} />
       </View>
-      {threads.length === 0 ? (
-        <EmptyPanel title="No DMs found" subtitle="Try a different search." colors={colors} />
+      {conversations.length === 0 ? (
+        <EmptyPanel title="No messages found" subtitle="Try a different search." colors={colors} />
       ) : null}
-      {threads.map((thread) => (
+      {conversations.map((conversation) => (
         <Pressable
-          key={thread.id}
-          onPress={() => onSelect(thread.id)}
+          key={conversation.id}
+          onPress={() => onSelectConversation(conversation.id)}
           style={{
             paddingHorizontal: 4,
-            paddingVertical: compact ? 10 : 12,
+            paddingVertical: 12,
             borderRadius: 16,
-            backgroundColor: thread.id === selectedThreadId ? colors.cardActive : 'transparent',
+            backgroundColor: conversation.id === selectedConversationId ? colors.cardActive : 'transparent',
           }}
         >
           <View style={{ flexDirection: 'row', alignItems: 'center', gap: 11 }}>
-            <Avatar
-              name={thread.person.name}
-              initials={thread.person.initials}
-              size={42}
-              backgroundColor={thread.person.accentColor}
-            />
+            {conversation.type === 'group' && conversation.groupKind ? (
+              <GroupIcon kind={conversation.groupKind} colors={colors} active={conversation.id === selectedConversationId} />
+            ) : (
+              <Avatar
+                name={conversation.avatarName || conversation.title}
+                initials={conversation.avatarInitials}
+                size={42}
+                backgroundColor={conversation.avatarColor}
+              />
+            )}
             <View style={{ flex: 1, gap: 3 }}>
               <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: 8 }}>
                 <Text style={{ fontFamily: 'Inter-SemiBold', fontSize: 15, color: colors.text }} numberOfLines={1}>
-                  {thread.person.name}
+                  {conversation.title}
                 </Text>
-                <Text style={{ fontFamily: 'Inter-Regular', fontSize: 12, color: thread.unread ? colors.orange : colors.textSoft }}>
-                  {thread.lastActiveLabel}
+                <Text style={{ fontFamily: 'Inter-Regular', fontSize: 12, color: conversation.unread ? colors.orange : colors.textSoft }}>
+                  {conversation.lastActiveLabel}
                 </Text>
               </View>
+              <Text style={{ fontFamily: 'Inter-Regular', fontSize: 12, color: colors.textSoft }} numberOfLines={1}>
+                {conversation.subtitle}
+              </Text>
               <Text style={{ fontFamily: 'Inter-Regular', fontSize: 13, color: colors.textMuted }} numberOfLines={1}>
-                {thread.preview}
+                {conversation.preview}
               </Text>
             </View>
-            {thread.unread ? <View style={{ width: 8, height: 8, borderRadius: 4, backgroundColor: colors.orange }} /> : null}
+            {conversation.unread ? <View style={{ width: 8, height: 8, borderRadius: 4, backgroundColor: colors.orange }} /> : null}
           </View>
         </Pressable>
       ))}
@@ -1235,28 +1190,29 @@ function DmRail({
   )
 }
 
-function DmThread({
-  thread,
+function ConversationThread({
+  conversation,
   colors,
   fullScreen = false,
   bottomInset = 0,
 }: {
-  thread: InboxThread
+  conversation: Conversation
   colors: ColorSet
   fullScreen?: boolean
   bottomInset?: number
 }) {
-  const messages = thread.messages.map((message, index) => {
-    const previous = thread.messages[index - 1]
-    const next = thread.messages[index + 1]
+  const messages = conversation.messages.map((message, index) => {
+    const previous = conversation.messages[index - 1]
+    const next = conversation.messages[index + 1]
 
     return (
-      <DmMessageBubble
+      <MessageBubble
         key={message.id}
         message={message}
         previousSender={previous?.sender}
         nextSender={next?.sender}
         colors={colors}
+        showAuthor={conversation.type === 'group'}
       />
     )
   })
@@ -1284,13 +1240,22 @@ function DmThread({
             gap: 12,
           }}
         >
-          <Avatar name={thread.person.name} initials={thread.person.initials} size={44} backgroundColor={thread.person.accentColor} />
+          {conversation.type === 'group' && conversation.groupKind ? (
+            <GroupIcon kind={conversation.groupKind} colors={colors} active />
+          ) : (
+            <Avatar
+              name={conversation.avatarName || conversation.title}
+              initials={conversation.avatarInitials}
+              size={44}
+              backgroundColor={conversation.avatarColor}
+            />
+          )}
           <View style={{ flex: 1 }}>
             <Text style={{ fontFamily: 'Inter-Bold', fontSize: 18, color: colors.text }}>
-              {thread.person.name}
+              {conversation.title}
             </Text>
             <Text style={{ fontFamily: 'Inter-Regular', fontSize: 13, color: colors.textMuted }}>
-              {thread.connectedSince}
+              {conversation.subtitle}
             </Text>
           </View>
         </View>
@@ -1306,7 +1271,7 @@ function DmThread({
           >
             {messages}
           </ScrollView>
-          <ChatComposer colors={colors} bottomInset={bottomInset} placeholder={`Message ${thread.person.name.split(' ')[0]}`} />
+          <ChatComposer colors={colors} bottomInset={bottomInset} placeholder={`Message ${conversation.title.split(' ')[0]}`} />
         </>
       ) : (
         <>
@@ -1320,16 +1285,18 @@ function DmThread({
   )
 }
 
-function DmMessageBubble({
+function MessageBubble({
   message,
   previousSender,
   nextSender,
   colors,
+  showAuthor,
 }: {
-  message: InboxThread['messages'][number]
+  message: ChatMessage
   previousSender?: 'them' | 'you'
   nextSender?: 'them' | 'you'
   colors: ColorSet
+  showAuthor?: boolean
 }) {
   const isYou = message.sender === 'you'
   const isFirstInRun = previousSender !== message.sender
@@ -1348,7 +1315,7 @@ function DmMessageBubble({
             color: colors.textSoft,
           }}
         >
-          {message.timestamp}
+          {showAuthor && !isYou && message.authorName ? `${message.authorName} · ${message.timestamp}` : message.timestamp}
         </Text>
       ) : null}
       <View
@@ -1452,6 +1419,67 @@ function ChatComposer({
   )
 }
 
+function RequestsCard({ colors }: { colors: ColorSet }) {
+  const firstRequest = connectionRequests[0]
+
+  return (
+    <View style={{ paddingVertical: 4, gap: 12 }}>
+      <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
+        <Text style={{ fontFamily: 'Inter-Bold', fontSize: 18, color: colors.text }}>
+          Requests
+        </Text>
+        <UnreadDot count={connectionRequests.length} colors={colors} />
+      </View>
+      {firstRequest ? (
+        <View style={{ flexDirection: 'row', alignItems: 'flex-start', gap: 10 }}>
+          <Avatar
+            name={firstRequest.person.name}
+            initials={firstRequest.person.initials}
+            size={40}
+            backgroundColor={firstRequest.person.accentColor}
+          />
+          <View style={{ flex: 1, gap: 4 }}>
+            <Text style={{ fontFamily: 'Inter-SemiBold', fontSize: 15, color: colors.text }}>
+              {firstRequest.person.name}
+            </Text>
+            <Text style={{ fontFamily: 'Inter-Regular', fontSize: 13, lineHeight: 18, color: colors.textMuted }} numberOfLines={2}>
+              {firstRequest.note}
+            </Text>
+          </View>
+        </View>
+      ) : null}
+      <View style={{ flexDirection: 'row', gap: 8 }}>
+        <Pressable
+          style={{
+            flex: 1,
+            borderRadius: 999,
+            backgroundColor: colors.orange,
+            paddingVertical: 10,
+            alignItems: 'center',
+          }}
+        >
+          <Text style={{ fontFamily: 'Inter-SemiBold', fontSize: 13, color: '#FFFFFF' }}>
+            Review
+          </Text>
+        </Pressable>
+        <Pressable
+          style={{
+            flex: 1,
+            borderRadius: 999,
+            backgroundColor: colors.panel,
+            paddingVertical: 10,
+            alignItems: 'center',
+          }}
+        >
+          <Text style={{ fontFamily: 'Inter-SemiBold', fontSize: 13, color: colors.textMuted }}>
+            Later
+          </Text>
+        </Pressable>
+      </View>
+    </View>
+  )
+}
+
 function GroupIcon({
   kind,
   colors,
@@ -1531,13 +1559,7 @@ function UnreadDot({ count, colors }: { count: number; colors: ColorSet }) {
 
 function EmptyPanel({ title, subtitle, colors }: { title: string; subtitle: string; colors: ColorSet }) {
   return (
-    <View
-      style={{
-        paddingVertical: 18,
-        paddingHorizontal: 4,
-        gap: 5,
-      }}
-    >
+    <View style={{ paddingVertical: 18, paddingHorizontal: 4, gap: 5 }}>
       <Text style={{ fontFamily: 'Inter-Bold', fontSize: 17, color: colors.text }}>
         {title}
       </Text>
@@ -1574,10 +1596,10 @@ function SignInCallout({ colors, onPress }: { colors: ColorSet; onPress: () => v
       </View>
       <View style={{ flex: 1 }}>
         <Text style={{ fontFamily: 'Inter-Bold', fontSize: 16, color: colors.text }}>
-          Sign in for your real groups
+          Sign in for Connect
         </Text>
         <Text style={{ fontFamily: 'Inter-Regular', fontSize: 13, lineHeight: 19, color: colors.textMuted }}>
-          Your center, joined events, requests, and DMs live here.
+          Your member feed, group chats, requests, and DMs live here.
         </Text>
       </View>
       <Pressable

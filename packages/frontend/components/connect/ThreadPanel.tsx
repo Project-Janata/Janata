@@ -1,6 +1,6 @@
 import React from 'react'
 import { Pressable, ScrollView, Text, TextInput, View } from 'react-native'
-import { Camera, MessageSquare, Send } from 'lucide-react-native'
+import { Lock, MoreHorizontal, Send } from 'lucide-react-native'
 import { Avatar } from '../ui'
 import type { BoardMessage } from './mockData'
 
@@ -31,8 +31,14 @@ export function ThreadPanel({
   lockedSubtitle,
   primaryActionLabel,
   secondaryActionLabel,
+  onPrimaryAction,
+  onSecondaryAction,
   scrollable = false,
   bottomInset = 0,
+  visibleLabel,
+  onMessagePress,
+  showComposer = true,
+  showSource = false,
 }: {
   messages: BoardMessage[]
   colors: ThreadPanelColors
@@ -44,34 +50,71 @@ export function ThreadPanel({
   lockedSubtitle?: string
   primaryActionLabel?: string
   secondaryActionLabel?: string
+  onPrimaryAction?: () => void
+  onSecondaryAction?: () => void
   scrollable?: boolean
   bottomInset?: number
+  visibleLabel?: string
+  onMessagePress?: (message: BoardMessage) => void
+  showComposer?: boolean
+  showSource?: boolean
 }) {
-  const content = messages.length > 0 ? (
-    <View style={{ paddingTop: 8 }}>
-      {messages.map((message, index) => (
-        <ThreadMessageCard
-          key={message.id}
-          message={message}
+  if (composerState === 'locked') {
+    return (
+      <LockedBoardState
+        colors={colors}
+        title={lockedTitle || 'For verified members'}
+        subtitle={
+          lockedSubtitle ||
+          "Boards are conversations between verified CHYKs at a center. Get verified and you're in."
+        }
+        primaryActionLabel={primaryActionLabel || 'Redeem invite'}
+        secondaryActionLabel={secondaryActionLabel || 'Apply'}
+        onPrimaryAction={onPrimaryAction}
+        onSecondaryAction={onSecondaryAction}
+        bottomInset={bottomInset}
+      />
+    )
+  }
+
+  const content = (
+    <View>
+      {showComposer ? (
+        <BoardComposer
           colors={colors}
-          showConnector={index > 0 && index < messages.length - 1}
+          placeholder={composerPlaceholder}
+          visibleLabel={visibleLabel}
         />
-      ))}
+      ) : null}
+
+      {messages.length > 0 ? (
+        <View>
+          {messages.map((message) => (
+            <BoardPostCard
+              key={message.id}
+              message={message}
+              colors={colors}
+              showSource={showSource}
+              onPress={onMessagePress ? () => onMessagePress(message) : undefined}
+            />
+          ))}
+        </View>
+      ) : (
+        <EmptyBoardState
+          colors={colors}
+          title={emptyTitle}
+          subtitle={emptySubtitle}
+        />
+      )}
     </View>
-  ) : (
-    <EmptyThreadState
-      colors={colors}
-      title={emptyTitle}
-      subtitle={emptySubtitle}
-    />
   )
 
   return (
-    <View style={{ flex: 1 }}>
+    <View style={{ flex: 1, backgroundColor: colors.panelBg }}>
       {scrollable ? (
         <ScrollView
           style={{ flex: 1 }}
-          contentContainerStyle={{ paddingBottom: 8 }}
+          contentContainerStyle={{ paddingBottom: Math.max(bottomInset, 0) + 16 }}
           keyboardShouldPersistTaps="handled"
           showsVerticalScrollIndicator={false}
         >
@@ -80,24 +123,65 @@ export function ThreadPanel({
       ) : (
         content
       )}
-
-      {composerState === 'locked' ? (
-        <LockedComposer
-          colors={colors}
-          title={lockedTitle || 'Verify your email to post'}
-          subtitle={lockedSubtitle || 'You can read along until then.'}
-          primaryActionLabel={primaryActionLabel || 'Send verification email'}
-          secondaryActionLabel={secondaryActionLabel || 'I already did'}
-          bottomInset={bottomInset}
-        />
-      ) : (
-        <OpenComposer colors={colors} placeholder={composerPlaceholder} bottomInset={bottomInset} />
-      )}
     </View>
   )
 }
 
-function EmptyThreadState({
+function BoardComposer({
+  colors,
+  placeholder,
+  visibleLabel,
+}: {
+  colors: ThreadPanelColors
+  placeholder: string
+  visibleLabel?: string
+}) {
+  return (
+    <View style={{ paddingHorizontal: 20, paddingTop: 18, paddingBottom: visibleLabel ? 16 : 10 }}>
+      <View
+        style={{
+          minHeight: 58,
+          borderRadius: 16,
+          backgroundColor: colors.iconBoxBg,
+          flexDirection: 'row',
+          alignItems: 'center',
+          paddingHorizontal: 16,
+          gap: 12,
+        }}
+      >
+        <Avatar name="Aditi Mehta" initials="AM" size={36} backgroundColor="#0478A5" />
+        <TextInput
+          editable={false}
+          value=""
+          placeholder={placeholder}
+          placeholderTextColor={colors.textMuted}
+          style={{
+            flex: 1,
+            fontFamily: 'Inter-Regular',
+            fontSize: 16,
+            color: colors.textSecondary,
+          }}
+        />
+        <Send size={18} color={colors.textMuted} />
+      </View>
+      {visibleLabel ? (
+        <Text
+          style={{
+            marginTop: 10,
+            fontFamily: 'Inter-Regular',
+            fontSize: 13,
+            color: colors.textMuted,
+            lineHeight: 19,
+          }}
+        >
+          {visibleLabel}
+        </Text>
+      ) : null}
+    </View>
+  )
+}
+
+function EmptyBoardState({
   colors,
   title,
   subtitle,
@@ -114,25 +198,13 @@ function EmptyThreadState({
         paddingHorizontal: 28,
         paddingTop: 72,
         paddingBottom: 88,
-        gap: 14,
+        gap: 12,
       }}
     >
-      <View
-        style={{
-          width: 84,
-          height: 84,
-          borderRadius: 42,
-          backgroundColor: colors.iconBoxBg,
-          alignItems: 'center',
-          justifyContent: 'center',
-        }}
-      >
-        <MessageSquare size={34} color={colors.textMuted} />
-      </View>
       <Text
         style={{
           fontFamily: 'Inter-SemiBold',
-          fontSize: 18,
+          fontSize: 19,
           color: colors.text,
           textAlign: 'center',
         }}
@@ -154,85 +226,67 @@ function EmptyThreadState({
   )
 }
 
-function ThreadMessageCard({
+export function BoardPostCard({
   message,
   colors,
-  showConnector,
+  onPress,
+  showSource = false,
 }: {
   message: BoardMessage
   colors: ThreadPanelColors
-  showConnector: boolean
+  onPress?: () => void
+  showSource?: boolean
 }) {
+  const replies = message.replyCount ?? Math.max(1, message.author.verification === 'sevak' ? 1 : 2)
+  const reactions = message.reactions ?? [
+    { emoji: message.author.verification === 'sevak' ? '🪔' : '🙏', count: message.author.verification === 'sevak' ? 6 : 2 },
+  ]
+
   return (
-    <View
+    <Pressable
+      disabled={!onPress}
+      onPress={onPress}
       style={{
         paddingHorizontal: 20,
-        paddingVertical: 16,
+        paddingVertical: 18,
         borderBottomWidth: 1,
         borderBottomColor: colors.border,
       }}
     >
       <View style={{ flexDirection: 'row', alignItems: 'flex-start', gap: 12 }}>
-        <View style={{ alignItems: 'center' }}>
-          <Avatar
-            name={message.author.name}
-            initials={message.author.initials}
-            size={42}
-            backgroundColor={message.author.accentColor}
-          />
-          {showConnector ? (
-            <View
-              style={{
-                marginTop: 4,
-                width: 2,
-                flex: 1,
-                minHeight: 72,
-                backgroundColor: colors.border,
-              }}
-            />
-          ) : null}
-        </View>
+        <Avatar
+          name={message.author.name}
+          initials={message.author.initials}
+          size={42}
+          backgroundColor={message.author.accentColor}
+        />
 
-        <View style={{ flex: 1, gap: 10 }}>
-          <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: 10 }}>
-            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, flexWrap: 'wrap', flex: 1 }}>
-              <Text
-                style={{
-                  fontFamily: 'Inter-SemiBold',
-                  fontSize: 15,
-                  color: colors.text,
-                }}
-              >
-                {message.author.name}
-              </Text>
-              {message.author.verification === 'sevak' ? (
-                <Text
-                  style={{
-                    fontFamily: 'Inter-SemiBold',
-                    fontSize: 13,
-                    color: '#E8862A',
-                  }}
-                >
-                  · Sevak
+        <View style={{ flex: 1, gap: 8 }}>
+          <View style={{ flexDirection: 'row', alignItems: 'flex-start', justifyContent: 'space-between', gap: 12 }}>
+            <View style={{ flex: 1 }}>
+              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 7, flexWrap: 'wrap' }}>
+                <Text style={{ fontFamily: 'Inter-SemiBold', fontSize: 16, color: colors.text }}>
+                  {message.author.name}
                 </Text>
-              ) : null}
+                {message.author.verification === 'sevak' ? (
+                  <Text style={{ fontFamily: 'Inter-Bold', fontSize: 12, letterSpacing: 0.4, color: '#C2410C' }}>
+                    SEVAK
+                  </Text>
+                ) : null}
+                {message.pinned ? <Pill label="Pinned" colors={colors} /> : null}
+              </View>
+              <Text style={{ fontFamily: 'Inter-Regular', fontSize: 13, color: colors.textMuted, marginTop: 2 }}>
+                {showSource && message.sourceLabel ? `${message.sourceLabel} · ${message.timestamp}` : message.timestamp}
+              </Text>
             </View>
-            <Text
-              style={{
-                fontFamily: 'Inter-Regular',
-                fontSize: 13,
-                color: colors.textMuted,
-              }}
-            >
-              {message.timestamp}
-            </Text>
+            <MoreHorizontal size={18} color={colors.textMuted} />
           </View>
 
           <Text
             style={{
               fontFamily: 'Inter-Regular',
               fontSize: 17,
-              lineHeight: 27,
+              lineHeight: 26,
               color: colors.textSecondary,
             }}
           >
@@ -250,104 +304,95 @@ function ThreadMessageCard({
                 justifyContent: 'center',
               }}
             >
-              <Text
-                style={{
-                  fontFamily: 'Inter-Medium',
-                  fontSize: 12,
-                  color: colors.textSecondary,
-                }}
-              >
+              <Text style={{ fontFamily: 'Inter-Medium', fontSize: 12, color: colors.textSecondary }}>
                 {message.attachmentLabel}
               </Text>
             </View>
           ) : null}
+
+          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, flexWrap: 'wrap', marginTop: 2 }}>
+            {reactions.map((reaction, index) => (
+              <ReactionPill
+                key={`${reaction.emoji}-${index}`}
+                emoji={reaction.emoji}
+                count={reaction.count}
+                colors={colors}
+              />
+            ))}
+            <View
+              style={{
+                borderRadius: 999,
+                borderWidth: 1,
+                borderColor: colors.border,
+                borderStyle: 'dashed',
+                paddingHorizontal: 12,
+                paddingVertical: 5,
+              }}
+            >
+              <Text style={{ fontFamily: 'Inter-Medium', fontSize: 13, color: colors.textMuted }}>+ React</Text>
+            </View>
+            <Text style={{ fontFamily: 'Inter-SemiBold', fontSize: 13, color: colors.accent ?? '#E8862A' }}>
+              {replies} {replies === 1 ? 'reply' : 'replies'}
+            </Text>
+          </View>
         </View>
       </View>
-    </View>
+    </Pressable>
   )
 }
 
-function OpenComposer({
+function ReactionPill({
+  emoji,
+  count,
   colors,
-  placeholder,
-  bottomInset,
 }: {
+  emoji: string
+  count: number
   colors: ThreadPanelColors
-  placeholder: string
-  bottomInset: number
 }) {
   return (
     <View
       style={{
-        borderTopWidth: 1,
-        borderTopColor: colors.border,
-        paddingHorizontal: 16,
-        paddingTop: 12,
-        paddingBottom: Math.max(bottomInset, 0) + 24,
+        borderRadius: 999,
+        borderWidth: 1,
+        borderColor: colors.accentSoft ?? colors.border,
+        backgroundColor: colors.accentSoft ?? colors.iconBoxBg,
+        paddingHorizontal: 10,
+        paddingVertical: 5,
         flexDirection: 'row',
         alignItems: 'center',
-        gap: 12,
-        backgroundColor: colors.panelBg,
+        gap: 4,
       }}
     >
-      <Pressable
-        style={{
-          width: 42,
-          height: 42,
-          borderRadius: 21,
-          backgroundColor: colors.iconBoxBg,
-          alignItems: 'center',
-          justifyContent: 'center',
-        }}
-      >
-        <Camera size={18} color={colors.textSecondary} />
-      </Pressable>
-
-      <View
-        style={{
-          flex: 1,
-          minHeight: 56,
-          borderRadius: 28,
-          backgroundColor: colors.iconBoxBg,
-          paddingHorizontal: 18,
-          justifyContent: 'center',
-        }}
-      >
-        <TextInput
-          editable={false}
-          value=""
-          placeholder={placeholder}
-          placeholderTextColor={colors.textMuted}
-          style={{
-            fontFamily: 'Inter-Regular',
-            fontSize: 14,
-            color: colors.textSecondary,
-          }}
-        />
-      </View>
-
-      <View
-        style={{
-          width: 42,
-          height: 42,
-          borderRadius: 21,
-          backgroundColor: colors.accent ?? '#E8862A',
-          alignItems: 'center',
-          justifyContent: 'center',
-        }}
-      >
-        <Send size={18} color="#FFFFFF" />
-      </View>
+      <Text style={{ fontSize: 13 }}>{emoji}</Text>
+      <Text style={{ fontFamily: 'Inter-SemiBold', fontSize: 13, color: colors.textSecondary }}>{count}</Text>
     </View>
   )
 }
 
-function LockedComposer({
+function Pill({ label, colors }: { label: string; colors: ThreadPanelColors }) {
+  return (
+    <View
+      style={{
+        borderRadius: 999,
+        backgroundColor: colors.iconBoxBg,
+        paddingHorizontal: 9,
+        paddingVertical: 3,
+      }}
+    >
+      <Text style={{ fontFamily: 'Inter-SemiBold', fontSize: 12, color: colors.textSecondary }}>{label}</Text>
+    </View>
+  )
+}
+
+function LockedBoardState({
   colors,
   title,
   subtitle,
   primaryActionLabel,
   secondaryActionLabel,
+  onPrimaryAction,
+  onSecondaryAction,
   bottomInset,
 }: {
   colors: ThreadPanelColors
@@ -355,74 +400,81 @@ function LockedComposer({
   subtitle: string
   primaryActionLabel: string
   secondaryActionLabel: string
+  onPrimaryAction?: () => void
+  onSecondaryAction?: () => void
   bottomInset: number
 }) {
   const accent = colors.accent ?? '#E8862A'
-  const accentSoft = colors.accentSoft ?? colors.iconBoxBg
 
   return (
     <View
       style={{
-        borderTopWidth: 1,
-        borderTopColor: colors.border,
-        paddingHorizontal: 16,
-        paddingTop: 12,
-        paddingBottom: Math.max(bottomInset, 0) + 24,
+        flex: 1,
+        minHeight: 460,
+        alignItems: 'center',
+        justifyContent: 'center',
+        paddingHorizontal: 26,
+        paddingBottom: Math.max(bottomInset, 0) + 32,
         backgroundColor: colors.panelBg,
-        gap: 12,
       }}
     >
       <View
         style={{
-          flexDirection: 'row',
+          width: 86,
+          height: 86,
+          borderRadius: 43,
+          backgroundColor: colors.iconBoxBg,
           alignItems: 'center',
-          gap: 12,
-          backgroundColor: accentSoft,
-          borderRadius: 18,
-          paddingHorizontal: 14,
-          paddingVertical: 14,
+          justifyContent: 'center',
+          marginBottom: 28,
         }}
       >
-        <View
+        <Lock size={34} color={colors.textMuted} strokeWidth={1.8} />
+      </View>
+      <Text style={{ fontFamily: 'Inter-Bold', fontSize: 21, color: colors.text, textAlign: 'center' }}>
+        {title}
+      </Text>
+      <Text
+        style={{
+          marginTop: 16,
+          maxWidth: 360,
+          fontFamily: 'Inter-Regular',
+          fontSize: 16,
+          lineHeight: 25,
+          color: colors.textSecondary,
+          textAlign: 'center',
+        }}
+      >
+        {subtitle}
+      </Text>
+      <View style={{ flexDirection: 'row', gap: 10, marginTop: 34, width: '100%', maxWidth: 430 }}>
+        <Pressable
+          onPress={onPrimaryAction}
           style={{
-            width: 32,
-            height: 32,
-            borderRadius: 16,
-            backgroundColor: colors.cardBg ?? colors.panelBg,
+            flex: 1,
+            minHeight: 50,
+            borderRadius: 999,
+            backgroundColor: accent,
             alignItems: 'center',
             justifyContent: 'center',
           }}
         >
-          <Text style={{ color: accent, fontSize: 16 }}>✉</Text>
-        </View>
-        <View style={{ flex: 1 }}>
-          <Text style={{ fontFamily: 'Inter-SemiBold', fontSize: 15, color: colors.text }}>
-            {title}
-          </Text>
-          <Text style={{ fontFamily: 'Inter-Regular', fontSize: 13, color: colors.textSecondary, marginTop: 2 }}>
-            {subtitle}
-          </Text>
-        </View>
-      </View>
-
-      <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12 }}>
+          <Text style={{ fontFamily: 'Inter-Bold', fontSize: 15, color: '#FFFFFF' }}>{primaryActionLabel}</Text>
+        </Pressable>
         <Pressable
+          onPress={onSecondaryAction}
           style={{
             flex: 1,
+            minHeight: 50,
             borderRadius: 999,
-            backgroundColor: accent,
-            paddingVertical: 14,
+            borderWidth: 1,
+            borderColor: colors.border,
             alignItems: 'center',
+            justifyContent: 'center',
+            backgroundColor: colors.cardBg ?? colors.panelBg,
           }}
         >
-          <Text style={{ fontFamily: 'Inter-SemiBold', fontSize: 15, color: '#FFFFFF' }}>
-            {primaryActionLabel}
-          </Text>
-        </Pressable>
-        <Pressable style={{ paddingHorizontal: 6, paddingVertical: 6 }}>
-          <Text style={{ fontFamily: 'Inter-SemiBold', fontSize: 15, color: colors.textSecondary }}>
-            {secondaryActionLabel}
-          </Text>
+          <Text style={{ fontFamily: 'Inter-Bold', fontSize: 15, color: colors.textSecondary }}>{secondaryActionLabel}</Text>
         </Pressable>
       </View>
     </View>

@@ -9,6 +9,7 @@ import PrimaryButton from '../ui/buttons/PrimaryButton'
 import DestructiveButton from '../ui/buttons/DestructiveButton'
 import { useDetailColors, type DetailColors } from '../../hooks/useDetailColors'
 import { buildEventBoard, ThreadPanel } from '../../components/connect'
+import { useUser } from '../../components/contexts'
 
 // ---------------------------------------------------------------------------
 // Date helpers
@@ -649,10 +650,12 @@ function RegisteredContent({
   event,
   attendees,
   colors,
+  canPostToThread,
 }: {
   event: EventDetailPanelProps['event']
   attendees: Attendee[]
   colors: DetailColors
+  canPostToThread: boolean
 }) {
   const [activeTab, setActiveTab] = useState('Details')
   const eventBoard = buildEventBoard({
@@ -715,7 +718,7 @@ function RegisteredContent({
             emptyTitle="Be the first to post"
             emptySubtitle={`Ask about carpooling, what to bring, or anything else for the ${event.attendees} people going.`}
             composerPlaceholder="Write to the group..."
-            composerState="open"
+            composerState={canPostToThread ? 'open' : 'locked'}
           />
         )}
 
@@ -916,7 +919,9 @@ export default function EventDetailPanel({
   onDelete,
 }: EventDetailPanelProps) {
   const colors = useDetailColors()
+  const { user } = useUser()
   const isRegistered = event.isRegistered && !isPast
+  const canPostToThread = !!user?.isVerified
 
   return (
     <View
@@ -948,6 +953,7 @@ export default function EventDetailPanel({
           event={event}
           attendees={attendees}
           colors={colors}
+          canPostToThread={canPostToThread}
         />
       ) : (
         <DefaultContent
