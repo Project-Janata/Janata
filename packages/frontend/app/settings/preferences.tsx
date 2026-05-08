@@ -18,7 +18,7 @@ import ThemeSelector from '../../components/ThemeSelector'
 import { usePostHog } from 'posthog-react-native'
 import Constants from 'expo-constants'
 
-const APP_VERSION = Constants.expoConfig?.version || '1.0.0'
+const APP_VERSION = Constants.expoConfig?.version || '0.2.0'
 
 export default function PreferencesNative() {
   const router = useRouter()

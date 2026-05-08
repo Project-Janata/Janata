@@ -103,7 +103,7 @@ describe('GET /api/health', () => {
     expect(res.status).toBe(200)
     expect(body.status).toBe('ok')
     expect(body.message).toBe('Backend is running')
-    expect(body.version).toBe('2.1.0')
+    expect(body.version).toBe('0.2.0')
     expect(body.timestamp).toBeDefined()
   })
 

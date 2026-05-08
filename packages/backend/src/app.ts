@@ -129,7 +129,7 @@ app.get('/health', (c) => {
   return c.json({
     status: 'ok',
     message: 'Backend is running',
-    version: '2.1.0',
+    version: '0.2.0',
     timestamp: new Date().toISOString(),
   })
 })

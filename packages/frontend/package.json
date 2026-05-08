@@ -1,6 +1,6 @@
 {
   "name": "@janatha/frontend",
-  "version": "1.0.0",
+  "version": "0.2.0",
   "description": "The official project to connect the CHYKs of Chinmaya Mission West!",
   "main": "expo-router/entry",
   "scripts": {
