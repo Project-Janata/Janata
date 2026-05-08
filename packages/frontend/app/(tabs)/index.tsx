@@ -153,8 +153,8 @@ export default function HomeScreen() {
   } = useDiscoverData('Events', '', user?.id, false, false, user?.interests ?? undefined, user?.centerID)
 
   const isDesktop = width >= 860
-  const pageBg = isDark ? '#0F0F0F' : '#FAFAF7'
-  const cardBg = isDark ? '#1F1F1F' : '#FFFFFF'
+  const pageBg = isDark ? '#1A1A1A' : '#F5F5F4'
+  const cardBg = isDark ? '#262626' : '#FFFFFF'
   const surfaceBg = isDark ? '#262626' : '#F5F0EB'
   const borderColor = isDark ? '#262626' : '#ECE7DE'
   const dividerColor = isDark ? '#262626' : '#F1ECE3'

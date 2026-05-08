@@ -2,7 +2,15 @@ import { Tabs, usePathname, useRouter } from 'expo-router'
 import { Platform, View, Text, Pressable, Image, StatusBar } from 'react-native'
 import { useState, useEffect } from 'react'
 import { useUser, useTheme } from '../../components/contexts'
-import { Compass, House, MessagesSquare, Plus, User } from 'lucide-react-native'
+import {
+  Compass,
+  House,
+  MessageSquare,
+  MessagesSquare,
+  Newspaper,
+  Plus,
+  User,
+} from 'lucide-react-native'
 import SettingsPanel from '../../components/SettingsPanel'
 import Logo from '../../components/ui/Logo'
 import { Avatar } from '../../components/ui'
@@ -77,7 +85,11 @@ export default function TabLayout() {
                   paddingHorizontal: 12,
                   paddingVertical: 10,
                   borderRadius: 999,
-                  backgroundColor: active ? (isDark ? 'rgba(232,134,42,0.16)' : '#FFF7ED') : 'transparent',
+                  backgroundColor: active
+                    ? isDark
+                      ? 'rgba(232,134,42,0.16)'
+                      : '#FFF7ED'
+                    : 'transparent',
                 }}
               >
                 <Text
@@ -101,7 +113,7 @@ export default function TabLayout() {
     if (!user) {
       if (Platform.OS !== 'web') {
         return (
-          <Pressable className="mr-4 p-1" onPress={() => router.push('/auth')}>
+          <Pressable style={{ marginRight: 16 }} onPress={() => router.push('/auth')}>
             <Avatar name="Sign In" size={36} />
           </Pressable>
         )
@@ -212,7 +224,7 @@ export default function TabLayout() {
 
     return (
       <Pressable
-        className="mr-4 p-2"
+        style={{ marginRight: 16 }}
         onPress={() => {
           posthog?.capture('nav_menu_opened')
           router.push('/settings/preferences')
@@ -242,12 +254,12 @@ export default function TabLayout() {
                   borderTopColor: isDark ? '#262626' : '#E7E5E4',
                   height: 84,
                   paddingTop: 8,
-                  paddingBottom: 18,
+                  paddingBottom: 24,
                 },
           tabBarActiveTintColor: '#E8862A',
           tabBarInactiveTintColor: isDark ? '#A8A29E' : '#78716C',
           headerStyle: {
-            backgroundColor: Platform.OS === 'web' ? (isDark ? '#171717' : '#fff') : 'transparent',
+            backgroundColor: Platform.OS === 'web' ? (isDark ? '#000000' : '#fff') : 'transparent',
             borderBottomWidth: Platform.OS === 'web' ? 1 : 0,
             borderBottomColor:
               Platform.OS === 'web' ? (isDark ? '#262626' : '#E5E7EB') : 'transparent',
@@ -259,7 +271,7 @@ export default function TabLayout() {
           headerLeft: Platform.OS === 'web' ? () => <WebHeaderLeft /> : undefined,
           headerTitle: Platform.OS === 'web' ? '' : undefined,
           headerTransparent: Platform.OS !== 'web',
-          headerShadowVisible: Platform.OS === 'web',
+          headerShadowVisible: false,
         }}
       >
         <Tabs.Screen
@@ -269,13 +281,25 @@ export default function TabLayout() {
             headerShown: true,
             ...(Platform.OS !== 'web'
               ? {
-                  headerTransparent: false,
-                  headerShadowVisible: true,
-                  headerStyle: {
-                    backgroundColor: isDark ? '#171717' : '#FFFFFF',
-                  },
+                  header: () => (
+                    <View
+                      style={{
+                        flexDirection: 'row',
+                        alignItems: 'center',
+                        justifyContent: 'space-between',
+                        paddingTop: 56,
+                        paddingBottom: 14,
+                        paddingHorizontal: 16,
+                        backgroundColor: isDark ? '#000000' : '#FFFFFF',
+                      }}
+                    >
+                      <Logo showText size={24} />
+                      <HeaderRight />
+                    </View>
+                  ),
                 }
               : {}),
+            headerLeft: () => <Logo showText size={24} />,
             headerRight: () => <HeaderRight />,
             tabBarIcon: ({ color, size }) => <House size={size} color={color} />,
           }}
@@ -289,12 +313,20 @@ export default function TabLayout() {
           }}
         />
         <Tabs.Screen
-          name="connect"
+          name="feed"
           options={{
-            title: 'Connect',
+            title: 'Feed',
+            headerRight: () => <HeaderRight />,
+            tabBarIcon: ({ color, size }) => <Newspaper size={size} color={color} />,
+          }}
+        />
+        <Tabs.Screen
+          name="messages"
+          options={{
+            title: 'Messages',
             headerShown: Platform.OS === 'web',
             headerRight: () => <HeaderRight />,
-            tabBarIcon: ({ color, size }) => <MessagesSquare size={size} color={color} />,
+            tabBarIcon: ({ color, size }) => <MessageSquare size={size} color={color} />,
           }}
         />
       </Tabs>

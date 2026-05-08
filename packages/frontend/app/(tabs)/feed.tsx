@@ -19,9 +19,7 @@ import {
   ArrowLeft,
   Building2,
   CalendarDays,
-  Camera,
   ChevronDown,
-  ChevronRight,
   Plus,
   Search,
   Send,
@@ -38,21 +36,15 @@ import {
   buildCenterBoard,
   buildEventBoard,
   centerBoards,
-  connectionRequests,
   eventBoards,
-  groupChats,
-  inboxThreads,
   type BoardMessage,
   type CenterBoard,
   type EventBoard,
-  type GroupChatThread,
-  type InboxThread,
   type PersonSummary,
   type ThreadPanelColors,
 } from '../../components/connect'
 import type { DiscoverCenter, EventDisplay } from '../../utils/api'
 
-type ConnectMode = 'Feed' | 'Messages'
 type GroupKind = 'center' | 'event'
 
 type GroupBoard = {
@@ -77,30 +69,6 @@ type FeedPost = BoardMessage & {
   replyMessages: BoardMessage[]
 }
 
-type ChatMessage = {
-  id: string
-  sender: 'them' | 'you'
-  timestamp: string
-  body: string
-  authorName?: string
-}
-
-type Conversation = {
-  id: string
-  type: 'group' | 'dm'
-  title: string
-  subtitle: string
-  preview: string
-  lastActiveLabel: string
-  unread: boolean
-  groupKind?: GroupKind
-  avatarName?: string
-  avatarInitials?: string
-  avatarColor?: string
-  groupMembers?: PersonSummary[]
-  messages: ChatMessage[]
-}
-
 type ColorSet = {
   page: string
   surface: string
@@ -122,7 +90,6 @@ type ColorSet = {
 function formatEventDateLabel(date: string) {
   const parsed = new Date(`${date}T00:00:00`)
   if (Number.isNaN(parsed.getTime())) return 'EVENT'
-
   return parsed
     .toLocaleDateString('en-US', {
       weekday: 'short',
@@ -168,7 +135,6 @@ function haversineMiles(
   ) {
     return undefined
   }
-
   const toRad = (value: number) => (value * Math.PI) / 180
   const lat1 = toRad(from.latitude!)
   const lat2 = toRad(to.latitude!)
@@ -283,44 +249,7 @@ function buildFeedPosts(groups: GroupBoard[]): FeedPost[] {
   })
 }
 
-function dmToConversation(thread: InboxThread): Conversation {
-  return {
-    id: `dm-${thread.id}`,
-    type: 'dm',
-    title: thread.person.name,
-    subtitle: thread.connectedSince,
-    preview: thread.preview,
-    lastActiveLabel: thread.lastActiveLabel,
-    unread: thread.unread,
-    avatarName: thread.person.name,
-    avatarInitials: thread.person.initials,
-    avatarColor: thread.person.accentColor,
-    messages: thread.messages,
-  }
-}
-
-function mockGroupChatToConversation(chat: GroupChatThread): Conversation {
-  return {
-    id: `groupchat-${chat.id}`,
-    type: 'group',
-    title: chat.title,
-    subtitle: `${chat.kind === 'event' ? 'Event chat' : 'Center chat'} · ${chat.memberCount} members`,
-    preview: chat.preview,
-    lastActiveLabel: chat.lastActiveLabel,
-    unread: chat.unreadCount > 0,
-    groupKind: chat.kind,
-    groupMembers: chat.members,
-    messages: chat.messages.map((message) => ({
-      id: message.id,
-      sender: message.sender,
-      timestamp: message.timestamp,
-      body: message.body,
-      authorName: message.authorName,
-    })),
-  }
-}
-
-export default function ConnectScreen() {
+export default function FeedScreen() {
   const router = useRouter()
   const navigation = useNavigation()
   const { user } = useUser()
@@ -342,10 +271,8 @@ export default function ConnectScreen() {
   } = useDiscoverData('Centers', '', user?.id, false, false, user?.interests ?? undefined, user?.centerID)
 
   const isDesktop = width >= 980
-  const [mode, setMode] = useState<ConnectMode>('Feed')
   const [query, setQuery] = useState('')
   const [selectedPostId, setSelectedPostId] = useState('')
-  const [selectedConversationId, setSelectedConversationId] = useState('')
   const [demoVerified, setDemoVerified] = useState(false)
   const [createPostOpen, setCreatePostOpen] = useState(false)
 
@@ -353,7 +280,7 @@ export default function ConnectScreen() {
     () =>
       isDark
         ? {
-            page: '#171717',
+            page: '#1A1A1A',
             surface: '#171717',
             panel: '#1F1F1F',
             rail: '#171717',
@@ -370,7 +297,7 @@ export default function ConnectScreen() {
             greenSoft: 'rgba(16,185,129,0.14)',
           }
         : {
-            page: '#FFFFFF',
+            page: '#F5F5F4',
             surface: '#FFFFFF',
             panel: '#F7F4EF',
             rail: '#FFFFFF',
@@ -458,11 +385,6 @@ export default function ConnectScreen() {
   }, [allCenters, allEvents, center, centerEvents.length, isVerifiedMember, myEvents, user, userCenter])
 
   const feedPosts = useMemo(() => buildFeedPosts(groups), [groups])
-  const conversations = useMemo(() => {
-    const mockGroupConversations = canAccessBoards ? groupChats.map(mockGroupChatToConversation) : []
-    const dmConversations = inboxThreads.map(dmToConversation)
-    return [...mockGroupConversations, ...dmConversations]
-  }, [canAccessBoards])
 
   const filteredFeedPosts = useMemo(() => {
     if (!query.trim()) return feedPosts
@@ -474,22 +396,9 @@ export default function ConnectScreen() {
     )
   }, [feedPosts, query])
 
-  const filteredConversations = useMemo(() => {
-    if (!query.trim()) return conversations
-    return conversations.filter(
-      (conversation) =>
-        matchesQuery(conversation.title, query) ||
-        matchesQuery(conversation.preview, query) ||
-        matchesQuery(conversation.subtitle, query)
-    )
-  }, [conversations, query])
-
   const selectedPost = feedPosts.find((post) => post.id === selectedPostId) ?? feedPosts[0]
-  const selectedConversation =
-    conversations.find((conversation) => conversation.id === selectedConversationId) ?? conversations[0]
-  const mobilePostOpen = !isDesktop && mode === 'Feed' && !!selectedPostId
-  const mobileConversationOpen = !isDesktop && mode === 'Messages' && !!selectedConversationId
-  const nativeDetailOpen = Platform.OS !== 'web' && (mobilePostOpen || mobileConversationOpen)
+  const mobilePostOpen = !isDesktop && !!selectedPostId
+  const nativeDetailOpen = Platform.OS !== 'web' && mobilePostOpen
   const listTopPadding = Platform.OS === 'web' ? 20 : Math.max(insets.top, 54) + 16
   const isLoading = user ? myEventsLoading || centerLoading || discoverLoading : false
   const nativeTabBarStyle = useMemo(
@@ -544,7 +453,6 @@ export default function ConnectScreen() {
 
   const clearDetailSelection = () => {
     setSelectedPostId('')
-    setSelectedConversationId('')
   }
 
   const handleBoardAccessCta = () => {
@@ -553,7 +461,6 @@ export default function ConnectScreen() {
       router.push('/auth')
       return
     }
-
     posthog?.capture('connect_demo_verified')
     setDemoVerified(true)
   }
@@ -573,22 +480,13 @@ export default function ConnectScreen() {
       })
       return
     }
-
     clearDetailSelection()
   }
 
   const openPost = (id: string) => {
     posthog?.capture('connect_feed_post_selected', { postId: id })
     primeNativeDetailTransition()
-    setSelectedConversationId('')
     setSelectedPostId(id)
-  }
-
-  const openConversation = (id: string) => {
-    posthog?.capture('connect_conversation_selected', { conversationId: id })
-    primeNativeDetailTransition()
-    setSelectedPostId('')
-    setSelectedConversationId(id)
   }
 
   if (isLoading) {
@@ -613,17 +511,15 @@ export default function ConnectScreen() {
         }}
         showsVerticalScrollIndicator={false}
       >
-        <Header
-          mode={mode}
+        <FeedHeader
           query={query}
           isDesktop={isDesktop}
           colors={colors}
-          mobileInDetail={(mobilePostOpen || mobileConversationOpen) && !nativeDetailOpen}
+          mobileInDetail={mobilePostOpen && !nativeDetailOpen}
           onBack={closeDetail}
-          onChangeMode={setMode}
           onChangeQuery={setQuery}
           onCreatePost={() => {
-            posthog?.capture('connect_create_post_pressed', { mode })
+            posthog?.capture('connect_create_post_pressed')
             setCreatePostOpen(true)
           }}
         />
@@ -638,31 +534,19 @@ export default function ConnectScreen() {
           />
         ) : null}
 
-        {mode === 'Feed' ? (
-          <FeedWorkspace
-            posts={filteredFeedPosts}
-            selectedPost={selectedPost}
-            colors={colors}
-            threadColors={threadColors}
-            isDesktop={isDesktop}
-            canAccessBoards={canAccessBoards}
-            isSignedIn={!!user}
-            nativeDetailOpen={nativeDetailOpen}
-            mobilePostOpen={mobilePostOpen}
-            onRequestAccess={handleBoardAccessCta}
-            onSelectPost={openPost}
-          />
-        ) : (
-          <MessagesWorkspace
-            conversations={filteredConversations}
-            selectedConversation={selectedConversation}
-            colors={colors}
-            isDesktop={isDesktop}
-            nativeDetailOpen={nativeDetailOpen}
-            mobileConversationOpen={mobileConversationOpen}
-            onSelectConversation={openConversation}
-          />
-        )}
+        <FeedWorkspace
+          posts={filteredFeedPosts}
+          selectedPost={selectedPost}
+          colors={colors}
+          threadColors={threadColors}
+          isDesktop={isDesktop}
+          canAccessBoards={canAccessBoards}
+          isSignedIn={!!user}
+          nativeDetailOpen={nativeDetailOpen}
+          mobilePostOpen={mobilePostOpen}
+          onRequestAccess={handleBoardAccessCta}
+          onSelectPost={openPost}
+        />
       </ScrollView>
 
       {nativeDetailOpen ? (
@@ -684,30 +568,14 @@ export default function ConnectScreen() {
             <NativeChatHeader
               colors={colors}
               insetsTop={insets.top}
-              title={mobileConversationOpen && selectedConversation ? selectedConversation.title : 'Post'}
-              subtitle={
-                mobileConversationOpen && selectedConversation
-                  ? selectedConversation.subtitle
-                  : selectedPost?.sourceTitle
-              }
-              avatarName={mobileConversationOpen && selectedConversation ? selectedConversation.avatarName : undefined}
-              avatarInitials={mobileConversationOpen && selectedConversation ? selectedConversation.avatarInitials : undefined}
-              avatarColor={mobileConversationOpen && selectedConversation ? selectedConversation.avatarColor : undefined}
-              groupMembers={mobileConversationOpen && selectedConversation ? selectedConversation.groupMembers : undefined}
-              groupKind={
-                mobileConversationOpen && selectedConversation
-                  ? selectedConversation.groupKind
-                  : selectedPost?.groupKind
-              }
-              hideAvatar={!mobileConversationOpen}
+              title="Post"
+              subtitle={selectedPost?.sourceTitle}
+              hideAvatar
               onBack={closeDetail}
             />
             <View style={{ flex: 1 }}>
-              {mobilePostOpen && selectedPost ? (
+              {selectedPost ? (
                 <PostThread post={selectedPost} colors={colors} fullScreen bottomInset={insets.bottom} />
-              ) : null}
-              {mobileConversationOpen && selectedConversation ? (
-                <ConversationThread conversation={selectedConversation} colors={colors} fullScreen bottomInset={insets.bottom} />
               ) : null}
             </View>
           </KeyboardAvoidingView>
@@ -716,7 +584,6 @@ export default function ConnectScreen() {
 
       <CreatePostSheet
         visible={createPostOpen}
-        mode={mode}
         colors={colors}
         groups={groups}
         onClose={() => setCreatePostOpen(false)}
@@ -1091,163 +958,20 @@ function ThreadReplyComposer({
   )
 }
 
-function MessagesWorkspace({
-  conversations,
-  selectedConversation,
-  colors,
-  isDesktop,
-  nativeDetailOpen,
-  mobileConversationOpen,
-  onSelectConversation,
-}: {
-  conversations: Conversation[]
-  selectedConversation?: Conversation
-  colors: ColorSet
-  isDesktop: boolean
-  nativeDetailOpen: boolean
-  mobileConversationOpen: boolean
-  onSelectConversation: (id: string) => void
-}) {
-  if (isDesktop) {
-    return (
-      <View style={{ flexDirection: 'row', gap: 18, alignItems: 'flex-start' }}>
-        <View style={{ width: 360 }}>
-          <ConversationList
-            conversations={conversations}
-            selectedConversationId={selectedConversation?.id}
-            colors={colors}
-            onSelectConversation={onSelectConversation}
-          />
-        </View>
-        <View style={{ flex: 1, minWidth: 0 }}>
-          {selectedConversation ? (
-            <ConversationThread conversation={selectedConversation} colors={colors} />
-          ) : (
-            <EmptyPanel title="No messages found" subtitle="Try a different search." colors={colors} />
-          )}
-        </View>
-      </View>
-    )
-  }
-
-  if (mobileConversationOpen && !nativeDetailOpen && selectedConversation) {
-    return <ConversationThread conversation={selectedConversation} colors={colors} />
-  }
-
-  return (
-    <View style={{ gap: 14 }}>
-      <RequestsBanner colors={colors} />
-      <ConversationList
-        conversations={conversations}
-        selectedConversationId={selectedConversation?.id}
-        colors={colors}
-        onSelectConversation={onSelectConversation}
-      />
-    </View>
-  )
-}
-
-function NativeChatHeader({
-  colors,
-  insetsTop,
-  title,
-  subtitle,
-  avatarName,
-  avatarInitials,
-  avatarColor,
-  groupMembers,
-  groupKind,
-  hideAvatar,
-  onBack,
-}: {
-  colors: ColorSet
-  insetsTop: number
-  title: string
-  subtitle?: string
-  avatarName?: string
-  avatarInitials?: string
-  avatarColor?: string
-  groupMembers?: PersonSummary[]
-  groupKind?: GroupKind
-  hideAvatar?: boolean
-  onBack: () => void
-}) {
-  return (
-    <View
-      style={{
-        paddingTop: Math.max(insetsTop, 48) + 6,
-        paddingHorizontal: 14,
-        paddingBottom: 10,
-        backgroundColor: colors.surface,
-        borderBottomWidth: 1,
-        borderBottomColor: colors.border,
-      }}
-    >
-      <View style={{ minHeight: 52, flexDirection: 'row', alignItems: 'center' }}>
-        <Pressable
-          onPress={onBack}
-          hitSlop={10}
-          style={{
-            width: 82,
-            minHeight: 42,
-            flexDirection: 'row',
-            alignItems: 'center',
-            gap: 5,
-          }}
-        >
-          <ArrowLeft size={21} color={colors.orange} />
-          <Text style={{ fontFamily: 'Inter-Medium', fontSize: 15, color: colors.orange }}>
-            Back
-          </Text>
-        </Pressable>
-
-        <View style={{ flex: 1, alignItems: 'center', gap: 4 }}>
-          {hideAvatar ? null : groupMembers && groupMembers.length > 0 ? (
-            <GroupConversationAvatar members={groupMembers} size={36} colors={colors} />
-          ) : groupKind ? (
-            <GroupIcon kind={groupKind} colors={colors} active />
-          ) : (
-            <Avatar
-              name={avatarName || title}
-              initials={avatarInitials}
-              size={34}
-              backgroundColor={avatarColor}
-            />
-          )}
-          <Text style={{ fontFamily: 'Inter-SemiBold', fontSize: 14, color: colors.text }} numberOfLines={1}>
-            {title}
-          </Text>
-          {subtitle ? (
-            <Text style={{ fontFamily: 'Inter-Regular', fontSize: 11, color: colors.textSoft }} numberOfLines={1}>
-              {subtitle}
-            </Text>
-          ) : null}
-        </View>
-
-        <View style={{ width: 82 }} />
-      </View>
-    </View>
-  )
-}
-
-function Header({
-  mode,
+function FeedHeader({
   query,
   isDesktop,
   colors,
   mobileInDetail,
   onBack,
-  onChangeMode,
   onChangeQuery,
   onCreatePost,
 }: {
-  mode: ConnectMode
   query: string
   isDesktop: boolean
   colors: ColorSet
   mobileInDetail: boolean
   onBack: () => void
-  onChangeMode: (mode: ConnectMode) => void
   onChangeQuery: (query: string) => void
   onCreatePost: () => void
 }) {
@@ -1283,10 +1007,8 @@ function Header({
           marginBottom: 2,
         }}
       >
-        Connect
+        Feed
       </Text>
-
-      <ModeSwitch mode={mode} colors={colors} onChangeMode={onChangeMode} />
 
       <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, marginTop: 4 }}>
         <View
@@ -1305,7 +1027,7 @@ function Header({
           <TextInput
             value={query}
             onChangeText={onChangeQuery}
-            placeholder={mode === 'Feed' ? 'Search posts, people, groups' : 'Search messages'}
+            placeholder="Search posts, people, groups"
             placeholderTextColor={colors.textSoft}
             style={{
               flex: 1,
@@ -1319,7 +1041,7 @@ function Header({
         <Pressable
           onPress={onCreatePost}
           accessibilityRole="button"
-          accessibilityLabel={mode === 'Feed' ? 'New post' : 'New message'}
+          accessibilityLabel="New post"
           style={{
             width: 42,
             height: 42,
@@ -1340,501 +1062,75 @@ function Header({
   )
 }
 
-function ModeSwitch({
-  mode,
+function NativeChatHeader({
   colors,
-  onChangeMode,
+  insetsTop,
+  title,
+  subtitle,
+  hideAvatar,
+  onBack,
 }: {
-  mode: ConnectMode
   colors: ColorSet
-  onChangeMode: (mode: ConnectMode) => void
+  insetsTop: number
+  title: string
+  subtitle?: string
+  hideAvatar?: boolean
+  onBack: () => void
 }) {
-  return (
-    <View style={{ flexDirection: 'row', gap: 24, borderBottomWidth: 1, borderBottomColor: colors.border }}>
-      {(['Feed', 'Messages'] as ConnectMode[]).map((item) => {
-        const active = item === mode
-        return (
-          <Pressable
-            key={item}
-            onPress={() => onChangeMode(item)}
-            style={{
-              paddingTop: 4,
-              paddingBottom: 10,
-              borderBottomWidth: 2,
-              borderBottomColor: active ? colors.orange : 'transparent',
-              marginBottom: -1,
-            }}
-          >
-            <Text
-              style={{
-                fontFamily: 'Inter-Bold',
-                fontSize: 18,
-                color: active ? colors.orange : colors.textMuted,
-              }}
-            >
-              {item}
-            </Text>
-          </Pressable>
-        )
-      })}
-    </View>
-  )
-}
-
-function ConversationList({
-  conversations,
-  selectedConversationId,
-  colors,
-  onSelectConversation,
-}: {
-  conversations: Conversation[]
-  selectedConversationId?: string
-  colors: ColorSet
-  onSelectConversation: (id: string) => void
-}) {
-  return (
-    <View style={{ gap: 2 }}>
-      {conversations.length === 0 ? (
-        <EmptyPanel title="No messages found" subtitle="Try a different search." colors={colors} />
-      ) : null}
-      {conversations.map((conversation) => (
-        <Pressable
-          key={conversation.id}
-          onPress={() => onSelectConversation(conversation.id)}
-          style={{
-            paddingHorizontal: 4,
-            paddingVertical: 12,
-            borderRadius: 16,
-            backgroundColor: conversation.id === selectedConversationId ? colors.cardActive : 'transparent',
-          }}
-        >
-          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 11 }}>
-            {conversation.type === 'group' && conversation.groupMembers ? (
-              <GroupConversationAvatar members={conversation.groupMembers} size={44} colors={colors} />
-            ) : (
-              <Avatar
-                name={conversation.avatarName || conversation.title}
-                initials={conversation.avatarInitials}
-                size={42}
-                backgroundColor={conversation.avatarColor}
-              />
-            )}
-            <View style={{ flex: 1, gap: 3 }}>
-              <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: 8 }}>
-                <View style={{ flex: 1, minWidth: 0, flexDirection: 'row', alignItems: 'center', gap: 5 }}>
-                  <Text style={{ fontFamily: 'Inter-SemiBold', fontSize: 15, color: colors.text }} numberOfLines={1}>
-                    {conversation.title}
-                  </Text>
-                  {conversation.type === 'group' && conversation.groupMembers ? (
-                    <Text style={{ fontFamily: 'Inter-Regular', fontSize: 11, color: colors.textSoft }}>
-                      - {conversation.groupMembers.length}
-                    </Text>
-                  ) : null}
-                </View>
-                <Text style={{ fontFamily: 'Inter-Regular', fontSize: 12, color: conversation.unread ? colors.orange : colors.textSoft }}>
-                  {conversation.lastActiveLabel}
-                </Text>
-              </View>
-              <Text style={{ fontFamily: 'Inter-Regular', fontSize: 12, color: colors.textSoft }} numberOfLines={1}>
-                {conversation.subtitle}
-              </Text>
-              <Text style={{ fontFamily: 'Inter-Regular', fontSize: 13, color: colors.textMuted }} numberOfLines={1}>
-                {conversation.preview}
-              </Text>
-            </View>
-            {conversation.unread ? <View style={{ width: 8, height: 8, borderRadius: 4, backgroundColor: colors.orange }} /> : null}
-          </View>
-        </Pressable>
-      ))}
-    </View>
-  )
-}
-
-function ConversationThread({
-  conversation,
-  colors,
-  fullScreen = false,
-  bottomInset = 0,
-}: {
-  conversation: Conversation
-  colors: ColorSet
-  fullScreen?: boolean
-  bottomInset?: number
-}) {
-  const messages = conversation.messages.map((message, index) => {
-    const previous = conversation.messages[index - 1]
-    const next = conversation.messages[index + 1]
-
-    return (
-      <MessageBubble
-        key={message.id}
-        message={message}
-        previousSender={previous?.sender}
-        nextSender={next?.sender}
-        colors={colors}
-        showAuthor={conversation.type === 'group'}
-      />
-    )
-  })
-
   return (
     <View
       style={{
-        flex: fullScreen ? 1 : undefined,
-        backgroundColor: fullScreen ? colors.page : 'transparent',
-        borderWidth: 0,
-        borderColor: 'transparent',
-        borderRadius: fullScreen ? 0 : 22,
-        overflow: fullScreen ? 'visible' : 'hidden',
+        paddingTop: Math.max(insetsTop, 48) + 6,
+        paddingHorizontal: 14,
+        paddingBottom: 10,
+        backgroundColor: colors.surface,
+        borderBottomWidth: 1,
+        borderBottomColor: colors.border,
       }}
     >
-      {!fullScreen ? (
-        <View
+      <View style={{ minHeight: 52, flexDirection: 'row', alignItems: 'center' }}>
+        <Pressable
+          onPress={onBack}
+          hitSlop={10}
           style={{
-            paddingHorizontal: 16,
-            paddingVertical: 14,
-            borderBottomWidth: 1,
-            borderBottomColor: colors.border,
+            width: 82,
+            minHeight: 42,
             flexDirection: 'row',
             alignItems: 'center',
-            gap: 12,
+            gap: 5,
           }}
         >
-          {conversation.type === 'group' && conversation.groupMembers ? (
-            <GroupConversationAvatar members={conversation.groupMembers} size={44} colors={colors} />
-          ) : (
-            <Avatar
-              name={conversation.avatarName || conversation.title}
-              initials={conversation.avatarInitials}
-              size={44}
-              backgroundColor={conversation.avatarColor}
-            />
-          )}
-          <View style={{ flex: 1 }}>
-            <Text style={{ fontFamily: 'Inter-Bold', fontSize: 18, color: colors.text }}>
-              {conversation.title}
-            </Text>
-            <Text style={{ fontFamily: 'Inter-Regular', fontSize: 13, color: colors.textMuted }}>
-              {conversation.subtitle}
-            </Text>
-          </View>
-        </View>
-      ) : null}
-
-      {fullScreen ? (
-        <>
-          <ScrollView
-            style={{ flex: 1 }}
-            contentContainerStyle={{ paddingHorizontal: 12, paddingTop: 16, paddingBottom: 18, gap: 6 }}
-            keyboardShouldPersistTaps="handled"
-            showsVerticalScrollIndicator={false}
-          >
-            {messages}
-          </ScrollView>
-          <ChatComposer
-            colors={colors}
-            bottomInset={bottomInset}
-            placeholder={conversation.type === 'group' ? 'Message group' : `Message ${conversation.title.split(' ')[0]}`}
-          />
-        </>
-      ) : (
-        <>
-          <View style={{ paddingHorizontal: 14, paddingTop: 14, paddingBottom: 10, gap: 6 }}>
-            {messages}
-          </View>
-          <ChatComposer
-            colors={colors}
-            bottomInset={0}
-            placeholder={conversation.type === 'group' ? 'Message group' : 'Write a message...'}
-            compact
-          />
-        </>
-      )}
-    </View>
-  )
-}
-
-function MessageBubble({
-  message,
-  previousSender,
-  nextSender,
-  colors,
-  showAuthor,
-}: {
-  message: ChatMessage
-  previousSender?: 'them' | 'you'
-  nextSender?: 'them' | 'you'
-  colors: ColorSet
-  showAuthor?: boolean
-}) {
-  const isYou = message.sender === 'you'
-  const isFirstInRun = previousSender !== message.sender
-  const isLastInRun = nextSender !== message.sender
-  const incomingBubble = colors.surface === '#171717' ? '#262626' : '#F5F0EB'
-
-  return (
-    <View style={{ gap: 4, marginTop: isFirstInRun ? 8 : 0 }}>
-      {isFirstInRun ? (
-        <Text
-          style={{
-            alignSelf: isYou ? 'flex-end' : 'flex-start',
-            paddingHorizontal: 8,
-            fontFamily: 'Inter-Regular',
-            fontSize: 11,
-            color: colors.textSoft,
-          }}
-        >
-          {showAuthor && !isYou && message.authorName ? `${message.authorName} · ${message.timestamp}` : message.timestamp}
-        </Text>
-      ) : null}
-      <View
-        style={{
-          alignSelf: isYou ? 'flex-end' : 'flex-start',
-          maxWidth: '78%',
-          paddingHorizontal: 14,
-          paddingVertical: 10,
-          backgroundColor: isYou ? colors.orangeSoft : incomingBubble,
-          borderWidth: 1,
-          borderColor: isYou ? colors.borderStrong : colors.border,
-          borderTopLeftRadius: 20,
-          borderTopRightRadius: 20,
-          borderBottomLeftRadius: isYou || !isLastInRun ? 20 : 6,
-          borderBottomRightRadius: isYou && isLastInRun ? 6 : 20,
-        }}
-      >
-        <Text
-          style={{
-            fontFamily: 'Inter-Regular',
-            fontSize: 15,
-            lineHeight: 21,
-            color: colors.text,
-          }}
-        >
-          {message.body}
-        </Text>
-      </View>
-    </View>
-  )
-}
-
-function ChatComposer({
-  colors,
-  bottomInset,
-  placeholder,
-  compact = false,
-}: {
-  colors: ColorSet
-  bottomInset: number
-  placeholder: string
-  compact?: boolean
-}) {
-  return (
-    <View
-      style={{
-        borderTopWidth: 1,
-        borderTopColor: colors.border,
-        backgroundColor: colors.surface,
-        paddingTop: compact ? 9 : 10,
-        paddingHorizontal: 12,
-        paddingBottom: compact ? 12 : Math.max(bottomInset, 8) + 8,
-      }}
-    >
-      <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
-        <Pressable
-          style={{
-            width: 34,
-            height: 34,
-            borderRadius: 17,
-            alignItems: 'center',
-            justifyContent: 'center',
-            backgroundColor: colors.page,
-            borderWidth: 1,
-            borderColor: colors.border,
-          }}
-        >
-          <Camera size={16} color={colors.textMuted} />
-        </Pressable>
-        <View
-          style={{
-            flex: 1,
-            minHeight: 38,
-            borderRadius: 19,
-            backgroundColor: colors.panel,
-            paddingHorizontal: 14,
-            justifyContent: 'center',
-          }}
-        >
-          <TextInput
-            editable={false}
-            placeholder={placeholder}
-            placeholderTextColor={colors.textSoft}
-            style={{ fontFamily: 'Inter-Regular', fontSize: 15, color: colors.text }}
-          />
-        </View>
-        <View
-          style={{
-            width: 34,
-            height: 34,
-            borderRadius: 17,
-            backgroundColor: colors.orange,
-            alignItems: 'center',
-            justifyContent: 'center',
-          }}
-        >
-          <Send size={15} color="#FFFFFF" />
-        </View>
-      </View>
-    </View>
-  )
-}
-
-function RequestsBanner({ colors }: { colors: ColorSet }) {
-  if (connectionRequests.length === 0) return null
-  const previewNames = connectionRequests
-    .slice(0, 2)
-    .map((request) => request.person.name.split(' ')[0])
-    .join(', ')
-  const subtitle = `${previewNames}${connectionRequests.length > 2 ? ' and others' : ''} · met at recent events`
-  const stackPeople = connectionRequests.slice(0, 3).map((request) => request.person)
-
-  return (
-    <Pressable
-      style={{
-        backgroundColor: colors.card,
-        borderRadius: 18,
-        borderWidth: 1,
-        borderColor: colors.border,
-        padding: 14,
-        flexDirection: 'row',
-        alignItems: 'center',
-        gap: 12,
-      }}
-    >
-      <RequestAvatarStack people={stackPeople} colors={colors} />
-      <View style={{ flex: 1, minWidth: 0, gap: 2 }}>
-        <Text style={{ fontFamily: 'Inter-Bold', fontSize: 14, color: colors.text }} numberOfLines={1}>
-          {connectionRequests.length} message {connectionRequests.length === 1 ? 'request' : 'requests'}
-        </Text>
-        <Text style={{ fontFamily: 'Inter-Regular', fontSize: 12.5, color: colors.textMuted }} numberOfLines={1}>
-          {subtitle}
-        </Text>
-      </View>
-      <ChevronRight size={18} color={colors.textSoft} />
-    </Pressable>
-  )
-}
-
-function RequestAvatarStack({ people, colors }: { people: PersonSummary[]; colors: ColorSet }) {
-  return (
-    <View style={{ flexDirection: 'row' }}>
-      {people.map((person, index) => (
-        <View
-          key={person.id}
-          style={{
-            marginLeft: index === 0 ? 0 : -10,
-            borderWidth: 2,
-            borderColor: colors.card,
-            borderRadius: 16,
-          }}
-        >
-          <Avatar
-            name={person.name}
-            initials={person.initials}
-            size={32}
-            backgroundColor={person.accentColor}
-          />
-        </View>
-      ))}
-    </View>
-  )
-}
-
-function GroupConversationAvatar({
-  members,
-  size = 44,
-  colors,
-}: {
-  members: PersonSummary[]
-  size?: number
-  colors: ColorSet
-}) {
-  const fallbackMember: PersonSummary = { id: 'group', name: 'Group', initials: 'G' }
-  const shown = members.length > 0 ? members.slice(0, 4) : [fallbackMember]
-  const half = size / 2
-
-  return (
-    <View
-      style={{
-        width: size,
-        height: size,
-        borderRadius: size / 2,
-        overflow: 'hidden',
-        backgroundColor: colors.panel,
-        borderWidth: 1,
-        borderColor: colors.border,
-      }}
-    >
-      {shown.map((member, index) => (
-        <View
-          key={`${member.id}-${index}`}
-          style={{
-            position: 'absolute',
-            left: (index % 2) * half,
-            top: Math.floor(index / 2) * half,
-            width: half,
-            height: half,
-            backgroundColor: member.accentColor || colors.orange,
-            alignItems: 'center',
-            justifyContent: 'center',
-          }}
-        >
-          <Text style={{ fontFamily: 'Inter-Bold', fontSize: Math.max(9, half * 0.42), color: '#FFFFFF' }}>
-            {(member.initials || member.name || '?').slice(0, 1).toUpperCase()}
+          <ArrowLeft size={21} color={colors.orange} />
+          <Text style={{ fontFamily: 'Inter-Medium', fontSize: 15, color: colors.orange }}>
+            Back
           </Text>
-        </View>
-      ))}
-    </View>
-  )
-}
+        </Pressable>
 
-function GroupIcon({
-  kind,
-  colors,
-  active,
-}: {
-  kind: GroupKind
-  colors: ColorSet
-  active?: boolean
-}) {
-  return (
-    <View
-      style={{
-        width: 42,
-        height: 42,
-        borderRadius: 15,
-        backgroundColor: active ? colors.orange : colors.orangeSoft,
-        alignItems: 'center',
-        justifyContent: 'center',
-      }}
-    >
-      {kind === 'center' ? (
-        <Building2 size={19} color={active ? '#FFFFFF' : colors.orange} />
-      ) : (
-        <CalendarDays size={19} color={active ? '#FFFFFF' : colors.orange} />
-      )}
+        <View style={{ flex: 1, alignItems: 'center', gap: 4 }}>
+          {hideAvatar ? null : null}
+          <Text style={{ fontFamily: 'Inter-SemiBold', fontSize: 14, color: colors.text }} numberOfLines={1}>
+            {title}
+          </Text>
+          {subtitle ? (
+            <Text style={{ fontFamily: 'Inter-Regular', fontSize: 11, color: colors.textSoft }} numberOfLines={1}>
+              {subtitle}
+            </Text>
+          ) : null}
+        </View>
+
+        <View style={{ width: 82 }} />
+      </View>
     </View>
   )
 }
 
 function CreatePostSheet({
   visible,
-  mode,
   colors,
   groups,
   onClose,
 }: {
   visible: boolean
-  mode: ConnectMode
   colors: ColorSet
   groups: GroupBoard[]
   onClose: () => void
@@ -1843,7 +1139,6 @@ function CreatePostSheet({
   const [groupId, setGroupId] = useState<string | undefined>()
   const [groupPickerOpen, setGroupPickerOpen] = useState(false)
 
-  const isMessage = mode === 'Messages'
   const sortedGroups = useMemo(() => {
     return [...groups].sort((a, b) => {
       if (a.kind !== b.kind) return a.kind === 'center' ? -1 : 1
@@ -1897,7 +1192,7 @@ function CreatePostSheet({
             <X size={22} color={colors.textMuted} />
           </Pressable>
           <Text style={{ fontFamily: 'Inter-Bold', fontSize: 16, color: colors.text }}>
-            {isMessage ? 'New message' : 'New post'}
+            New post
           </Text>
           <Pressable
             disabled={!canPost}
@@ -1910,7 +1205,7 @@ function CreatePostSheet({
             }}
           >
             <Text style={{ fontFamily: 'Inter-Bold', fontSize: 15, color: colors.orange }}>
-              {isMessage ? 'Send' : 'Post'}
+              Post
             </Text>
           </Pressable>
         </View>
@@ -1920,133 +1215,131 @@ function CreatePostSheet({
           contentContainerStyle={{ paddingHorizontal: 16, paddingTop: 16, paddingBottom: 24 }}
           keyboardShouldPersistTaps="handled"
         >
-          {!isMessage ? (
-            <View style={{ marginBottom: 14 }}>
-              <Text
+          <View style={{ marginBottom: 14 }}>
+            <Text
+              style={{
+                fontFamily: 'Inter-SemiBold',
+                fontSize: 11,
+                letterSpacing: 0.8,
+                color: colors.textSoft,
+                marginBottom: 8,
+              }}
+            >
+              POST TO
+            </Text>
+            <Pressable
+              onPress={() => setGroupPickerOpen((open) => !open)}
+              style={{
+                flexDirection: 'row',
+                alignItems: 'center',
+                gap: 10,
+                paddingHorizontal: 12,
+                paddingVertical: 11,
+                borderRadius: 12,
+                borderWidth: 1,
+                borderColor: colors.border,
+                backgroundColor: colors.card,
+              }}
+            >
+              <View
                 style={{
-                  fontFamily: 'Inter-SemiBold',
-                  fontSize: 11,
-                  letterSpacing: 0.8,
-                  color: colors.textSoft,
-                  marginBottom: 8,
+                  width: 28,
+                  height: 28,
+                  borderRadius: 9,
+                  backgroundColor: colors.orangeSoft,
+                  alignItems: 'center',
+                  justifyContent: 'center',
                 }}
               >
-                POST TO
-              </Text>
-              <Pressable
-                onPress={() => setGroupPickerOpen((open) => !open)}
+                {selectedGroup?.kind === 'event' ? (
+                  <CalendarDays size={14} color={colors.orange} strokeWidth={2.4} />
+                ) : (
+                  <Building2 size={14} color={colors.orange} strokeWidth={2.4} />
+                )}
+              </View>
+              <View style={{ flex: 1, minWidth: 0 }}>
+                <Text
+                  style={{ fontFamily: 'Inter-SemiBold', fontSize: 14, color: colors.text }}
+                  numberOfLines={1}
+                >
+                  {selectedGroup ? selectedGroup.title : 'Pick a group'}
+                </Text>
+                {selectedGroup ? (
+                  <Text
+                    style={{ fontFamily: 'Inter-Regular', fontSize: 12, color: colors.textSoft }}
+                    numberOfLines={1}
+                  >
+                    {selectedGroup.kind === 'event' ? 'Event board' : 'Center board'}
+                  </Text>
+                ) : null}
+              </View>
+              <ChevronDown size={16} color={colors.textSoft} />
+            </Pressable>
+
+            {groupPickerOpen ? (
+              <View
                 style={{
-                  flexDirection: 'row',
-                  alignItems: 'center',
-                  gap: 10,
-                  paddingHorizontal: 12,
-                  paddingVertical: 11,
+                  marginTop: 8,
                   borderRadius: 12,
                   borderWidth: 1,
                   borderColor: colors.border,
                   backgroundColor: colors.card,
+                  overflow: 'hidden',
                 }}
               >
-                <View
-                  style={{
-                    width: 28,
-                    height: 28,
-                    borderRadius: 9,
-                    backgroundColor: colors.orangeSoft,
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                  }}
-                >
-                  {selectedGroup?.kind === 'event' ? (
-                    <CalendarDays size={14} color={colors.orange} strokeWidth={2.4} />
-                  ) : (
-                    <Building2 size={14} color={colors.orange} strokeWidth={2.4} />
-                  )}
-                </View>
-                <View style={{ flex: 1, minWidth: 0 }}>
-                  <Text
-                    style={{ fontFamily: 'Inter-SemiBold', fontSize: 14, color: colors.text }}
-                    numberOfLines={1}
-                  >
-                    {selectedGroup ? selectedGroup.title : 'Pick a group'}
-                  </Text>
-                  {selectedGroup ? (
-                    <Text
-                      style={{ fontFamily: 'Inter-Regular', fontSize: 12, color: colors.textSoft }}
-                      numberOfLines={1}
+                {sortedGroups.map((group, index) => {
+                  const active = group.id === selectedGroup?.id
+                  return (
+                    <Pressable
+                      key={group.id}
+                      onPress={() => {
+                        setGroupId(group.id)
+                        setGroupPickerOpen(false)
+                      }}
+                      style={{
+                        flexDirection: 'row',
+                        alignItems: 'center',
+                        gap: 10,
+                        paddingHorizontal: 12,
+                        paddingVertical: 11,
+                        backgroundColor: active ? colors.orangeSoft : colors.card,
+                        borderBottomWidth: index < sortedGroups.length - 1 ? 1 : 0,
+                        borderBottomColor: colors.border,
+                      }}
                     >
-                      {selectedGroup.kind === 'event' ? 'Event board' : 'Center board'}
-                    </Text>
-                  ) : null}
-                </View>
-                <ChevronDown size={16} color={colors.textSoft} />
-              </Pressable>
-
-              {groupPickerOpen ? (
-                <View
-                  style={{
-                    marginTop: 8,
-                    borderRadius: 12,
-                    borderWidth: 1,
-                    borderColor: colors.border,
-                    backgroundColor: colors.card,
-                    overflow: 'hidden',
-                  }}
-                >
-                  {sortedGroups.map((group, index) => {
-                    const active = group.id === selectedGroup?.id
-                    return (
-                      <Pressable
-                        key={group.id}
-                        onPress={() => {
-                          setGroupId(group.id)
-                          setGroupPickerOpen(false)
-                        }}
+                      <View
                         style={{
-                          flexDirection: 'row',
+                          width: 24,
+                          height: 24,
+                          borderRadius: 7,
+                          backgroundColor: colors.panel,
                           alignItems: 'center',
-                          gap: 10,
-                          paddingHorizontal: 12,
-                          paddingVertical: 11,
-                          backgroundColor: active ? colors.orangeSoft : colors.card,
-                          borderBottomWidth: index < sortedGroups.length - 1 ? 1 : 0,
-                          borderBottomColor: colors.border,
+                          justifyContent: 'center',
                         }}
                       >
-                        <View
-                          style={{
-                            width: 24,
-                            height: 24,
-                            borderRadius: 7,
-                            backgroundColor: colors.panel,
-                            alignItems: 'center',
-                            justifyContent: 'center',
-                          }}
-                        >
-                          {group.kind === 'event' ? (
-                            <CalendarDays size={12} color={colors.textMuted} strokeWidth={2.3} />
-                          ) : (
-                            <Building2 size={12} color={colors.textMuted} strokeWidth={2.3} />
-                          )}
-                        </View>
-                        <Text
-                          style={{
-                            flex: 1,
-                            fontFamily: active ? 'Inter-SemiBold' : 'Inter-Regular',
-                            fontSize: 14,
-                            color: colors.text,
-                          }}
-                          numberOfLines={1}
-                        >
-                          {group.title}
-                        </Text>
-                      </Pressable>
-                    )
-                  })}
-                </View>
-              ) : null}
-            </View>
-          ) : null}
+                        {group.kind === 'event' ? (
+                          <CalendarDays size={12} color={colors.textMuted} strokeWidth={2.3} />
+                        ) : (
+                          <Building2 size={12} color={colors.textMuted} strokeWidth={2.3} />
+                        )}
+                      </View>
+                      <Text
+                        style={{
+                          flex: 1,
+                          fontFamily: active ? 'Inter-SemiBold' : 'Inter-Regular',
+                          fontSize: 14,
+                          color: colors.text,
+                        }}
+                        numberOfLines={1}
+                      >
+                        {group.title}
+                      </Text>
+                    </Pressable>
+                  )
+                })}
+              </View>
+            ) : null}
+          </View>
 
           <View style={{ flexDirection: 'row', gap: 12, marginTop: 4 }}>
             <Avatar name="You" initials="YO" size={38} backgroundColor={colors.orange} />
@@ -2057,11 +1350,9 @@ function CreatePostSheet({
                 value={body}
                 onChangeText={setBody}
                 placeholder={
-                  isMessage
-                    ? 'Write a message...'
-                    : selectedGroup?.kind === 'event'
-                      ? `Share something with ${selectedGroup.title}...`
-                      : 'Share something with your center...'
+                  selectedGroup?.kind === 'event'
+                    ? `Share something with ${selectedGroup.title}...`
+                    : 'Share something with your center...'
                 }
                 placeholderTextColor={colors.textSoft}
                 style={{
@@ -2077,19 +1368,17 @@ function CreatePostSheet({
             </View>
           </View>
 
-          {!isMessage ? (
-            <Text
-              style={{
-                marginTop: 16,
-                fontFamily: 'Inter-Regular',
-                fontSize: 12.5,
-                color: colors.textSoft,
-                lineHeight: 18,
-              }}
-            >
-              Visible to verified members in {selectedGroup?.title || 'your group'}.
-            </Text>
-          ) : null}
+          <Text
+            style={{
+              marginTop: 16,
+              fontFamily: 'Inter-Regular',
+              fontSize: 12.5,
+              color: colors.textSoft,
+              lineHeight: 18,
+            }}
+          >
+            Visible to verified members in {selectedGroup?.title || 'your group'}.
+          </Text>
         </ScrollView>
       </KeyboardAvoidingView>
     </Modal>
@@ -2135,10 +1424,10 @@ function SignInCallout({ colors, onPress }: { colors: ColorSet; onPress: () => v
       </View>
       <View style={{ flex: 1 }}>
         <Text style={{ fontFamily: 'Inter-Bold', fontSize: 16, color: colors.text }}>
-          Sign in for Connect
+          Sign in for Feed
         </Text>
         <Text style={{ fontFamily: 'Inter-Regular', fontSize: 13, lineHeight: 19, color: colors.textMuted }}>
-          Your member feed, group chats, requests, and DMs live here.
+          Your member feed, group boards, and announcements live here.
         </Text>
       </View>
       <Pressable
