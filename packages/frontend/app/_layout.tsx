@@ -123,7 +123,7 @@ function RootLayoutNav() {
         // User is fully onboarded
         if (inAuthGroup || inOnboardingGroup) {
           // Redirect away from auth/onboarding pages to Home
-          router.replace('/home')
+          router.replace('/')
         }
       }
     }

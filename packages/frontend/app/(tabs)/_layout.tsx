@@ -37,14 +37,14 @@ export default function TabLayout() {
   }
 
   const navItems = [
-    { label: 'Home', href: '/home' },
-    { label: 'Explore', href: '/' },
+    { label: 'Home', href: '/' },
+    { label: 'Explore', href: '/explore' },
     { label: 'Connect', href: '/connect' },
   ] as const
 
   const isRouteActive = (href: (typeof navItems)[number]['href']) => {
     if (href === '/') {
-      return pathname === '/' || pathname === '/explore'
+      return pathname === '/'
     }
     return pathname === href || pathname.startsWith(`${href}/`)
   }
@@ -59,7 +59,7 @@ export default function TabLayout() {
         <Pressable
           accessibilityLabel="Go to Home"
           className="flex-row items-center"
-          onPress={() => router.push('/home')}
+          onPress={() => router.push('/')}
           style={{ gap: 10 }}
         >
           <Logo size={28} />
@@ -263,7 +263,7 @@ export default function TabLayout() {
         }}
       >
         <Tabs.Screen
-          name="home"
+          name="index"
           options={{
             title: Platform.OS === 'web' ? 'Home' : 'Janata',
             headerShown: true,
@@ -281,7 +281,7 @@ export default function TabLayout() {
           }}
         />
         <Tabs.Screen
-          name="index"
+          name="explore"
           options={{
             title: 'Explore',
             headerRight: () => <HeaderRight />,
@@ -295,13 +295,6 @@ export default function TabLayout() {
             headerShown: Platform.OS === 'web',
             headerRight: () => <HeaderRight />,
             tabBarIcon: ({ color, size }) => <MessagesSquare size={size} color={color} />,
-          }}
-        />
-        {/* Explore tab disabled: merged into unified Discover tab (B3 design) */}
-        <Tabs.Screen
-          name="explore"
-          options={{
-            href: null, // Hide from tab bar and navigation
           }}
         />
       </Tabs>
