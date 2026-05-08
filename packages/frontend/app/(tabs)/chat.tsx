@@ -155,7 +155,7 @@ export default function MessagesScreen() {
     () =>
       isDark
         ? {
-            page: '#171717',
+            page: '#1A1A1A',
             surface: '#171717',
             panel: '#1F1F1F',
             rail: '#171717',
@@ -172,7 +172,7 @@ export default function MessagesScreen() {
             greenSoft: 'rgba(16,185,129,0.14)',
           }
         : {
-            page: '#FFFFFF',
+            page: '#F5F5F4',
             surface: '#FFFFFF',
             panel: '#F7F4EF',
             rail: '#FFFFFF',
@@ -215,7 +215,7 @@ export default function MessagesScreen() {
     conversations[0]
   const mobileConversationOpen = !isDesktop && !!selectedConversationId
   const nativeDetailOpen = Platform.OS !== 'web' && mobileConversationOpen
-  const listTopPadding = Platform.OS === 'web' ? 20 : Math.max(insets.top, 54) + 16
+  const listTopPadding = Platform.OS === 'web' ? 20 : 16
   const nativeTabBarStyle = useMemo(
     () => ({
       backgroundColor: isDark ? '#171717' : '#FFFFFF',
@@ -307,7 +307,6 @@ export default function MessagesScreen() {
       >
         <ConnectHeader
           query={query}
-          isDesktop={isDesktop}
           colors={colors}
           mobileInDetail={mobileConversationOpen && !nativeDetailOpen}
           onBack={closeDetail}
@@ -532,14 +531,12 @@ function NativeChatHeader({
 
 function ConnectHeader({
   query,
-  isDesktop,
   colors,
   mobileInDetail,
   onBack,
   onChangeQuery,
 }: {
   query: string
-  isDesktop: boolean
   colors: ColorSet
   mobileInDetail: boolean
   onBack: () => void
@@ -567,19 +564,6 @@ function ConnectHeader({
 
   return (
     <View style={{ gap: 10 }}>
-      <Text
-        style={{
-          fontFamily: 'Inter-Bold',
-          fontSize: isDesktop ? 30 : 26,
-          lineHeight: 32,
-          letterSpacing: -0.4,
-          color: colors.text,
-          marginBottom: 2,
-        }}
-      >
-        Connect
-      </Text>
-
       <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, marginTop: 4 }}>
         <View
           style={{

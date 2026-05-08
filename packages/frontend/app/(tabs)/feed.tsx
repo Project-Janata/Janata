@@ -29,6 +29,7 @@ import {
 import { usePostHog } from 'posthog-react-native'
 import { Avatar } from '../../components/ui'
 import { useTheme, useUser } from '../../components/contexts'
+import { useHeaderAction } from '../../components/contexts/HeaderActionContext'
 import { useCenterDetail, useDiscoverData, useMyEvents } from '../../hooks/useApiData'
 import { extractCityState } from '../../utils/addressParsing'
 import {
@@ -275,6 +276,12 @@ export default function FeedScreen() {
   const [selectedPostId, setSelectedPostId] = useState('')
   const [demoVerified, setDemoVerified] = useState(false)
   const [createPostOpen, setCreatePostOpen] = useState(false)
+  const { setCreateHandler } = useHeaderAction()
+
+  useEffect(() => {
+    setCreateHandler(() => setCreatePostOpen(true))
+    return () => setCreateHandler(null)
+  }, [setCreateHandler])
 
   const colors = useMemo<ColorSet>(
     () =>
@@ -399,7 +406,7 @@ export default function FeedScreen() {
   const selectedPost = feedPosts.find((post) => post.id === selectedPostId) ?? feedPosts[0]
   const mobilePostOpen = !isDesktop && !!selectedPostId
   const nativeDetailOpen = Platform.OS !== 'web' && mobilePostOpen
-  const listTopPadding = Platform.OS === 'web' ? 20 : Math.max(insets.top, 54) + 16
+  const listTopPadding = Platform.OS === 'web' ? 20 : 16
   const isLoading = user ? myEventsLoading || centerLoading || discoverLoading : false
   const nativeTabBarStyle = useMemo(
     () => ({
@@ -513,15 +520,10 @@ export default function FeedScreen() {
       >
         <FeedHeader
           query={query}
-          isDesktop={isDesktop}
           colors={colors}
           mobileInDetail={mobilePostOpen && !nativeDetailOpen}
           onBack={closeDetail}
           onChangeQuery={setQuery}
-          onCreatePost={() => {
-            posthog?.capture('connect_create_post_pressed')
-            setCreatePostOpen(true)
-          }}
         />
 
         {!user ? (
@@ -960,20 +962,16 @@ function ThreadReplyComposer({
 
 function FeedHeader({
   query,
-  isDesktop,
   colors,
   mobileInDetail,
   onBack,
   onChangeQuery,
-  onCreatePost,
 }: {
   query: string
-  isDesktop: boolean
   colors: ColorSet
   mobileInDetail: boolean
   onBack: () => void
   onChangeQuery: (query: string) => void
-  onCreatePost: () => void
 }) {
   if (mobileInDetail) {
     return (
@@ -997,19 +995,6 @@ function FeedHeader({
 
   return (
     <View style={{ gap: 10 }}>
-      <Text
-        style={{
-          fontFamily: 'Inter-Bold',
-          fontSize: isDesktop ? 30 : 26,
-          lineHeight: 32,
-          letterSpacing: -0.4,
-          color: colors.text,
-          marginBottom: 2,
-        }}
-      >
-        Feed
-      </Text>
-
       <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, marginTop: 4 }}>
         <View
           style={{
@@ -1036,27 +1021,8 @@ function FeedHeader({
               color: colors.text,
               paddingVertical: 9,
             }}
-          />
+           />
         </View>
-        <Pressable
-          onPress={onCreatePost}
-          accessibilityRole="button"
-          accessibilityLabel="New post"
-          style={{
-            width: 42,
-            height: 42,
-            borderRadius: 14,
-            backgroundColor: colors.orange,
-            alignItems: 'center',
-            justifyContent: 'center',
-            shadowColor: '#C2410C',
-            shadowOpacity: 0.18,
-            shadowRadius: 10,
-            shadowOffset: { width: 0, height: 4 },
-          }}
-        >
-          <Plus size={20} color="#FFFFFF" strokeWidth={2.6} />
-        </Pressable>
       </View>
     </View>
   )
