@@ -1,6 +1,6 @@
 import React from 'react'
 import { Pressable, ScrollView, Text, TextInput, View } from 'react-native'
-import { Lock, MoreHorizontal, Send } from 'lucide-react-native'
+import { Building2, CalendarDays, Lock, MessageCircle, MoreHorizontal } from 'lucide-react-native'
 import { Avatar } from '../ui'
 import type { BoardMessage } from './mockData'
 
@@ -162,7 +162,6 @@ function BoardComposer({
             color: colors.textSecondary,
           }}
         />
-        <Send size={18} color={colors.textMuted} />
       </View>
       {visibleLabel ? (
         <Text
@@ -241,18 +240,70 @@ export function BoardPostCard({
   const reactions = message.reactions ?? [
     { emoji: message.author.verification === 'sevak' ? '🪔' : '🙏', count: message.author.verification === 'sevak' ? 6 : 2 },
   ]
+  const accent = colors.accent ?? '#E8862A'
+  const accentSoft = colors.accentSoft ?? '#FFF7ED'
+  const isFeedCard = showSource
+  const sourceIcon =
+    message.sourceKind === 'event' ? (
+      <CalendarDays size={11} color={accent} strokeWidth={2.4} />
+    ) : (
+      <Building2 size={11} color={colors.textSecondary} strokeWidth={2.3} />
+    )
 
   return (
     <Pressable
       disabled={!onPress}
       onPress={onPress}
       style={{
-        paddingHorizontal: 20,
-        paddingVertical: 18,
-        borderBottomWidth: 1,
-        borderBottomColor: colors.border,
+        marginHorizontal: isFeedCard ? 20 : 0,
+        marginBottom: isFeedCard ? 12 : 0,
+        paddingHorizontal: isFeedCard ? 14 : 20,
+        paddingVertical: isFeedCard ? 14 : 18,
+        borderRadius: isFeedCard ? 16 : 0,
+        borderWidth: isFeedCard ? 1 : 0,
+        borderColor: isFeedCard
+          ? message.pinned
+            ? '#FFE0C2'
+            : colors.border
+          : 'transparent',
+        borderBottomWidth: isFeedCard ? 1 : 1,
+        borderBottomColor: isFeedCard ? (message.pinned ? '#FFE0C2' : colors.border) : colors.border,
+        backgroundColor: isFeedCard ? (colors.cardBg ?? '#FFFFFF') : 'transparent',
+        shadowColor: message.pinned ? '#C2410C' : '#000000',
+        shadowOpacity: isFeedCard ? (message.pinned ? 0.08 : 0.03) : 0,
+        shadowRadius: isFeedCard ? 12 : 0,
+        shadowOffset: { width: 0, height: 4 },
       }}
     >
+      {isFeedCard && message.sourceLabel ? (
+        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 7, marginBottom: 10 }}>
+          <View
+            style={{
+              width: 20,
+              height: 20,
+              borderRadius: 6,
+              backgroundColor: message.sourceKind === 'event' ? accentSoft : colors.iconBoxBg,
+              alignItems: 'center',
+              justifyContent: 'center',
+            }}
+          >
+            {sourceIcon}
+          </View>
+          <Text
+            style={{
+              flex: 1,
+              fontFamily: 'Inter-SemiBold',
+              fontSize: 12,
+              color: colors.textSecondary,
+            }}
+            numberOfLines={1}
+          >
+            {message.sourceLabel}
+          </Text>
+          {message.pinned ? <Pill label="Pinned" colors={colors} tone="accent" /> : null}
+        </View>
+      ) : null}
+
       <View style={{ flexDirection: 'row', alignItems: 'flex-start', gap: 12 }}>
         <Avatar
           name={message.author.name}
@@ -265,7 +316,7 @@ export function BoardPostCard({
           <View style={{ flexDirection: 'row', alignItems: 'flex-start', justifyContent: 'space-between', gap: 12 }}>
             <View style={{ flex: 1 }}>
               <View style={{ flexDirection: 'row', alignItems: 'center', gap: 7, flexWrap: 'wrap' }}>
-                <Text style={{ fontFamily: 'Inter-SemiBold', fontSize: 16, color: colors.text }}>
+                <Text style={{ fontFamily: 'Inter-SemiBold', fontSize: isFeedCard ? 14 : 16, color: colors.text }}>
                   {message.author.name}
                 </Text>
                 {message.author.verification === 'sevak' ? (
@@ -273,20 +324,20 @@ export function BoardPostCard({
                     SEVAK
                   </Text>
                 ) : null}
-                {message.pinned ? <Pill label="Pinned" colors={colors} /> : null}
+                {!isFeedCard && message.pinned ? <Pill label="Pinned" colors={colors} /> : null}
               </View>
               <Text style={{ fontFamily: 'Inter-Regular', fontSize: 13, color: colors.textMuted, marginTop: 2 }}>
-                {showSource && message.sourceLabel ? `${message.sourceLabel} · ${message.timestamp}` : message.timestamp}
+                {message.timestamp}
               </Text>
             </View>
-            <MoreHorizontal size={18} color={colors.textMuted} />
+            {!isFeedCard ? <MoreHorizontal size={18} color={colors.textMuted} /> : null}
           </View>
 
           <Text
             style={{
               fontFamily: 'Inter-Regular',
-              fontSize: 17,
-              lineHeight: 26,
+              fontSize: isFeedCard ? 14 : 17,
+              lineHeight: isFeedCard ? 20 : 26,
               color: colors.textSecondary,
             }}
           >
@@ -317,6 +368,7 @@ export function BoardPostCard({
                 emoji={reaction.emoji}
                 count={reaction.count}
                 colors={colors}
+                active={index === 0}
               />
             ))}
             <View
@@ -331,9 +383,19 @@ export function BoardPostCard({
             >
               <Text style={{ fontFamily: 'Inter-Medium', fontSize: 13, color: colors.textMuted }}>+ React</Text>
             </View>
-            <Text style={{ fontFamily: 'Inter-SemiBold', fontSize: 13, color: colors.accent ?? '#E8862A' }}>
-              {replies} {replies === 1 ? 'reply' : 'replies'}
-            </Text>
+            <View
+              style={{
+                marginLeft: isFeedCard ? 'auto' : 0,
+                flexDirection: 'row',
+                alignItems: 'center',
+                gap: 4,
+              }}
+            >
+              {isFeedCard ? <MessageCircle size={13} color={accent} strokeWidth={2.3} /> : null}
+              <Text style={{ fontFamily: 'Inter-SemiBold', fontSize: 13, color: accent }}>
+                {replies} {replies === 1 ? 'reply' : 'replies'}
+              </Text>
+            </View>
           </View>
         </View>
       </View>
@@ -345,18 +407,20 @@ function ReactionPill({
   emoji,
   count,
   colors,
+  active,
 }: {
   emoji: string
   count: number
   colors: ThreadPanelColors
+  active?: boolean
 }) {
   return (
     <View
       style={{
         borderRadius: 999,
         borderWidth: 1,
-        borderColor: colors.accentSoft ?? colors.border,
-        backgroundColor: colors.accentSoft ?? colors.iconBoxBg,
+        borderColor: active ? colors.accentSoft ?? colors.border : colors.border,
+        backgroundColor: active ? colors.accentSoft ?? colors.iconBoxBg : colors.iconBoxBg,
         paddingHorizontal: 10,
         paddingVertical: 5,
         flexDirection: 'row',
@@ -370,17 +434,25 @@ function ReactionPill({
   )
 }
 
-function Pill({ label, colors }: { label: string; colors: ThreadPanelColors }) {
+function Pill({ label, colors, tone = 'neutral' }: { label: string; colors: ThreadPanelColors; tone?: 'neutral' | 'accent' }) {
   return (
     <View
       style={{
         borderRadius: 999,
-        backgroundColor: colors.iconBoxBg,
+        backgroundColor: tone === 'accent' ? colors.accentSoft ?? colors.iconBoxBg : colors.iconBoxBg,
         paddingHorizontal: 9,
         paddingVertical: 3,
       }}
     >
-      <Text style={{ fontFamily: 'Inter-SemiBold', fontSize: 12, color: colors.textSecondary }}>{label}</Text>
+      <Text
+        style={{
+          fontFamily: 'Inter-SemiBold',
+          fontSize: 12,
+          color: tone === 'accent' ? colors.accent ?? colors.textSecondary : colors.textSecondary,
+        }}
+      >
+        {label}
+      </Text>
     </View>
   )
 }

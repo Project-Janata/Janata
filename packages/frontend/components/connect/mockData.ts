@@ -19,6 +19,7 @@ export interface BoardMessage {
   replyCount?: number
   pinned?: boolean
   sourceLabel?: string
+  sourceKind?: 'center' | 'event'
 }
 
 export interface EventBoard {
@@ -57,6 +58,28 @@ export interface InboxThread {
   lastActiveLabel: string
   unread: boolean
   messages: DirectMessage[]
+}
+
+export interface GroupChatMessage {
+  id: string
+  sender: 'them' | 'you'
+  authorName?: string
+  authorInitials?: string
+  authorAccent?: string
+  timestamp: string
+  body: string
+}
+
+export interface GroupChatThread {
+  id: string
+  title: string
+  kind: 'center' | 'event'
+  members: PersonSummary[]
+  memberCount: number
+  preview: string
+  lastActiveLabel: string
+  unreadCount: number
+  messages: GroupChatMessage[]
 }
 
 export interface CenterBoard {
@@ -123,6 +146,30 @@ const people = {
     subtitle: 'Chinmaya San Jose',
     verification: 'member' as const,
     accentColor: '#15803D',
+  },
+  rohit: {
+    id: 'rohit',
+    name: 'Rohit Patel',
+    initials: 'RP',
+    subtitle: 'Edison, NJ',
+    verification: 'member' as const,
+    accentColor: '#B45309',
+  },
+  suresh: {
+    id: 'suresh',
+    name: 'Suresh Nair',
+    initials: 'SN',
+    subtitle: 'CCMT · Sevak',
+    verification: 'sevak' as const,
+    accentColor: '#0369A1',
+  },
+  anand: {
+    id: 'anand',
+    name: 'Anand Raghavan',
+    initials: 'AR',
+    subtitle: 'Chinmaya Saaket',
+    verification: 'member' as const,
+    accentColor: '#7C3AED',
   },
 } as const
 
@@ -347,28 +394,157 @@ export const centerBoards: CenterBoard[] = [
     messages: [
       {
         id: 'c1',
-        author: people.ravi,
-        timestamp: '4:20 PM',
+        author: people.suresh,
+        timestamp: '2h',
         body: 'Need two more volunteers for setup before Sunday satsang. Mostly chairs and AV. DM me if you can help.',
-        reactions: [{ emoji: '🪑', count: 6 }],
-        replyCount: 1,
+        reactions: [
+          { emoji: '🙏', count: 8 },
+          { emoji: '🪔', count: 3 },
+        ],
+        replyCount: 5,
         pinned: true,
       },
       {
         id: 'c2',
-        author: people.anjali,
-        timestamp: 'Today',
-        body: 'Carpool from Fremont has 2 open spots for tomorrow evening if anyone wants to join.',
-        reactions: [{ emoji: '🚗', count: 4 }],
-        replyCount: 2,
+        author: people.priya,
+        timestamp: 'Yesterday',
+        body: "Mother's Day prep — sign-up sheet is open for cooking, decoration, and reception desk.",
+        reactions: [{ emoji: '❤️', count: 6 }],
+        replyCount: 4,
       },
       {
         id: 'c3',
         author: people.karthik,
-        timestamp: 'Yesterday',
+        timestamp: 'Mon',
         body: 'Uploading the chanting packet tonight so newer folks can print it ahead of class.',
         reactions: [{ emoji: '📄', count: 5 }],
         replyCount: 1,
+      },
+    ],
+  },
+]
+
+export interface FeaturedHomeEvent {
+  id: string
+  title: string
+  dateLabel: string
+  timeLabel: string
+  locationLabel: string
+  countdownLabel: string
+  going: boolean
+  attendeesGoingLabel: string
+  attendees: PersonSummary[]
+}
+
+export const featuredHomeEvent: FeaturedHomeEvent = {
+  id: 'aradhana-2026',
+  title: '33rd Mahasamadhi Aradhana Camp',
+  dateLabel: 'Jul 30',
+  timeLabel: '5:00 PM',
+  locationLabel: 'Parsippany, NJ',
+  countdownLabel: 'In 84 days',
+  going: true,
+  attendeesGoingLabel: '23 others going',
+  attendees: [people.anjali, people.karthik, people.meera, people.ravi],
+}
+
+export const groupChats: GroupChatThread[] = [
+  {
+    id: 'group-aradhana-carpool',
+    title: 'Aradhana carpool · NJ',
+    kind: 'event',
+    members: [people.anjali, people.karthik, people.rohit, people.meera],
+    memberCount: 8,
+    preview: "Rohit: I'm leaving at 7 sharp Sat morning.",
+    lastActiveLabel: '15m',
+    unreadCount: 3,
+    messages: [
+      {
+        id: 'gc-ar-1',
+        sender: 'them',
+        authorName: people.anjali.name,
+        authorInitials: people.anjali.initials,
+        authorAccent: people.anjali.accentColor,
+        timestamp: 'Yesterday · 6:02 PM',
+        body: 'Folks — sharing the carpool sheet, please add yourselves with pickup point and time.',
+      },
+      {
+        id: 'gc-ar-2',
+        sender: 'them',
+        authorName: people.karthik.name,
+        authorInitials: people.karthik.initials,
+        authorAccent: people.karthik.accentColor,
+        timestamp: 'Yesterday · 6:14 PM',
+        body: 'Added. Leaving Palo Alto 6 AM, can take 2.',
+      },
+      {
+        id: 'gc-ar-3',
+        sender: 'you',
+        timestamp: 'Yesterday · 6:20 PM',
+        body: 'I can take 3 from Fremont, leaving 5:30.',
+      },
+      {
+        id: 'gc-ar-4',
+        sender: 'them',
+        authorName: people.rohit.name,
+        authorInitials: people.rohit.initials,
+        authorAccent: people.rohit.accentColor,
+        timestamp: 'Today · 8:15 AM',
+        body: "I'm leaving at 7 sharp Sat morning. Two seats open from San Jose.",
+      },
+      {
+        id: 'gc-ar-5',
+        sender: 'them',
+        authorName: people.anjali.name,
+        authorInitials: people.anjali.initials,
+        authorAccent: people.anjali.accentColor,
+        timestamp: 'Today · 9:02 AM',
+        body: "Thanks all — pinning the sheet so it's easy to find.",
+      },
+    ],
+  },
+  {
+    id: 'group-saaket-sevak',
+    title: 'Saaket sevak team',
+    kind: 'center',
+    members: [people.priya, people.suresh, people.anand],
+    memberCount: 12,
+    preview: 'Priya: New roster pinned — please check.',
+    lastActiveLabel: '3h',
+    unreadCount: 0,
+    messages: [
+      {
+        id: 'gc-sk-1',
+        sender: 'them',
+        authorName: people.priya.name,
+        authorInitials: people.priya.initials,
+        authorAccent: people.priya.accentColor,
+        timestamp: 'Mon · 9:14 AM',
+        body: 'New volunteer roster for Mother\'s Day is up — please claim a slot by Wed.',
+      },
+      {
+        id: 'gc-sk-2',
+        sender: 'them',
+        authorName: people.suresh.name,
+        authorInitials: people.suresh.initials,
+        authorAccent: people.suresh.accentColor,
+        timestamp: 'Mon · 11:42 AM',
+        body: 'I have AV setup covered. Need someone on prasad coordination.',
+      },
+      {
+        id: 'gc-sk-3',
+        sender: 'you',
+        timestamp: 'Today · 11:08 AM',
+        body: "I'll take prasad coordination — will sync with the kitchen team tonight.",
+      },
+      {
+        id: 'gc-sk-4',
+        sender: 'them',
+        authorName: people.priya.name,
+        authorInitials: people.priya.initials,
+        authorAccent: people.priya.accentColor,
+        timestamp: 'Today · 1:55 PM',
+        body: 'Thanks! New roster pinned — please check.',
       },
     ],
   },
