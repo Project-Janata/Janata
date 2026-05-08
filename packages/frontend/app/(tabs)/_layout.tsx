@@ -190,17 +190,17 @@ export default function TabLayout() {
             Platform.OS === 'ios' || Platform.OS === 'android'
               ? {
                   display: 'flex',
-                  paddingTop: 8,
-                  paddingBottom: 20,
-                  height: 75,
+                  paddingTop: 6,
+                  paddingBottom: Platform.OS === 'ios' ? 28 : 10,
+                  height: Platform.OS === 'ios' ? 80 : 60,
                 }
               : undefined,
           tabBarItemStyle: {
-            paddingVertical: 4,
+            paddingVertical: 2,
           },
           tabBarLabelStyle: {
-            marginTop: 2,
-            fontSize: 11,
+            marginTop: 1,
+            fontSize: 10,
           },
           tabBarActiveTintColor: '#E8862A',
           tabBarInactiveTintColor: isDark ? '#A1A1AA' : '#4B5563',
@@ -222,18 +222,17 @@ export default function TabLayout() {
         <Tabs.Screen
           name="index"
           options={{
-            title: 'Janata',
+            title: 'Home',
             tabBarIcon: ({ color, size }) => <Home size={size} color={color} />,
             headerRight: () => <HeaderRight />,
           }}
         />
-        {/* Explore tab disabled: merged into unified Discover tab (B3 design) */}
         <Tabs.Screen
           name="explore"
           options={{
-            href: '/explore',
             title: 'Explore',
             tabBarIcon: ({ color, size }) => <Compass size={size} color={color} />,
+            headerRight: () => <HeaderRight />,
           }}
         />
         <Tabs.Screen
