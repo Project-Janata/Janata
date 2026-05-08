@@ -2,11 +2,12 @@ import { Link, Tabs, useRouter } from 'expo-router'
 import { Platform, View, Text, Pressable, Image, StatusBar } from 'react-native'
 import { useState, useEffect } from 'react'
 import { useUser, useTheme } from '../../components/contexts'
-import { Plus, User } from 'lucide-react-native'
+import { MessagesSquare, Newspaper, Plus, User } from 'lucide-react-native'
 import SettingsPanel from '../../components/SettingsPanel'
 import Logo from '../../components/ui/Logo'
 import { Avatar } from '../../components/ui'
 import { usePostHog } from 'posthog-react-native'
+import { Home, Compass } from 'lucide-react-native'
 
 /**
  * TabLayout Component - The main layout for the tab-based navigation.
@@ -185,7 +186,24 @@ export default function TabLayout() {
       )}
       <Tabs
         screenOptions={{
-          tabBarStyle: { display: 'none' },
+          tabBarStyle:
+            Platform.OS === 'ios' || Platform.OS === 'android'
+              ? {
+                  display: 'flex',
+                  paddingTop: 8,
+                  paddingBottom: 20,
+                  height: 75,
+                }
+              : undefined,
+          tabBarItemStyle: {
+            paddingVertical: 4,
+          },
+          tabBarLabelStyle: {
+            marginTop: 2,
+            fontSize: 11,
+          },
+          tabBarActiveTintColor: '#E8862A',
+          tabBarInactiveTintColor: isDark ? '#A1A1AA' : '#4B5563',
           headerStyle: {
             backgroundColor: Platform.OS === 'web' ? (isDark ? '#171717' : '#fff') : 'transparent',
             borderBottomWidth: Platform.OS === 'web' ? 1 : 0,
@@ -204,7 +222,8 @@ export default function TabLayout() {
         <Tabs.Screen
           name="index"
           options={{
-            title: '',
+            title: 'Janata',
+            tabBarIcon: ({ color, size }) => <Home size={size} color={color} />,
             headerRight: () => <HeaderRight />,
           }}
         />
@@ -212,7 +231,25 @@ export default function TabLayout() {
         <Tabs.Screen
           name="explore"
           options={{
-            href: null, // Hide from tab bar and navigation
+            href: '/explore',
+            title: 'Explore',
+            tabBarIcon: ({ color, size }) => <Compass size={size} color={color} />,
+          }}
+        />
+        <Tabs.Screen
+          name="feed"
+          options={{
+            href: '/feed',
+            title: 'Feed',
+            tabBarIcon: ({ color, size }) => <Newspaper size={size} color={color} />,
+          }}
+        />
+        <Tabs.Screen
+          name="connect"
+          options={{
+            href: '/connect',
+            title: 'Connect',
+            tabBarIcon: ({ color, size }) => <MessagesSquare size={size} color={color} />,
           }}
         />
       </Tabs>

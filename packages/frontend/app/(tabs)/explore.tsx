@@ -1,21 +1,41 @@
-// Disabled: Explore tab merged into unified Discover tab (B3 design)
-// This file is kept in place because expo-router requires it for the tab route to exist.
+import React, { useState, Suspense, useRef, useCallback, useMemo } from 'react'
+import { EmptyState } from '../../components/ui/EmptyState'
+import { DiscoverListSkeleton } from '../../components/ui/Skeleton'
+import {
+  View,
+  Text,
+  ScrollView,
+  Pressable,
+  ActivityIndicator,
+  TextInput,
+  Animated,
+  PanResponder,
+  StyleSheet,
+  Image,
+} from 'react-native'
+import {
+  MapPin,
+  Search,
+  Building2,
+  ChevronUp,
+  ChevronDown,
+} from 'lucide-react-native'
+import { useRouter, useFocusEffect, useNavigation } from 'expo-router'
+import { usePostHog } from 'posthog-react-native'
+import { useTheme } from '../../components/contexts'
+import { Badge, UnderlineTabBar, Avatar, FilterChip } from '../../components/ui'
+import FilterPickerModal, { type FilterPickerOption } from '../../components/ui/FilterPickerModal'
+import { useUser } from '../../components/contexts/UserContext'
+import { useDiscoverData, type DiscoverFilter } from '../../hooks/useApiData'
+import type { EventDisplay, DiscoverCenter, AttendeeInfo } from '../../utils/api'
+import { extractCityState } from '../../utils/addressParsing'
 
-import React from 'react'
-import { View, Text } from 'react-native'
-import { useRouter } from 'expo-router'
 
-export default function ExploreScreen() {
-  const router = useRouter()
+// Lazy load Map to avoid loading heavy web dependencies on mobile web
+const Map = React.lazy(() => import('../../components/Map'))
 
-  React.useEffect(() => {
-    // Redirect to Discover tab if someone navigates here directly
-    router.replace('/')
-  }, [router])
-
-  return (
-    <View className="flex-1 justify-center items-center bg-background dark:bg-background-dark">
-      <Text className="text-content dark:text-content-dark font-inter">Redirecting...</Text>
-    </View>
-  )
-}
+const FILTERS: { label: DiscoverFilter }[] = [
+  { label: 'Events' },
+  { label: 'Centers' },
+  { label: 'Seva' },
+]
