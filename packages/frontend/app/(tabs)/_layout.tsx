@@ -91,7 +91,7 @@ export default function TabLayout() {
                 >
                   <Text
                     style={{
-                      fontFamily: active ? 'Inter-SemiBold' : 'Inter-Medium',
+                      fontFamily: active ? 'Inclusive Sans' : 'Inclusive Sans',
                       fontSize: 14,
                       color: active ? '#E8862A' : isDark ? '#E7E5E4' : '#44403C',
                     }}
@@ -131,7 +131,7 @@ export default function TabLayout() {
               }}
             >
               <Plus size={16} color="#E8862A" />
-              <Text style={{ fontFamily: 'Inter-SemiBold', fontSize: 13, color: '#E8862A' }}>
+              <Text style={{ fontFamily: 'Inclusive Sans', fontSize: 13, color: '#E8862A' }}>
                 Create Event
               </Text>
             </Pressable>

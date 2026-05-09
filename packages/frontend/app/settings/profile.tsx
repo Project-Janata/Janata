@@ -344,7 +344,7 @@ export default function ProfileNative() {
   const chipBg = isDark ? '#262626' : '#F3F0ED'
 
   const labelStyle = {
-    fontFamily: 'Inter-SemiBold' as const,
+    fontFamily: 'Inclusive Sans' as const,
     fontSize: 12,
     color: labelColor,
     letterSpacing: 1,
@@ -353,7 +353,7 @@ export default function ProfileNative() {
   }
 
   const inputStyle = {
-    fontFamily: 'Inter-Regular' as const,
+    fontFamily: 'Inclusive Sans' as const,
     fontSize: 15,
     color: textColor,
     paddingHorizontal: 16,
@@ -399,7 +399,7 @@ export default function ProfileNative() {
           {isSaving ? (
             <ActivityIndicator size="small" color="#C2410C" />
           ) : isEditing ? (
-            <Text style={{ fontFamily: 'Inter-SemiBold', fontSize: 15, color: '#C2410C' }}>
+            <Text style={{ fontFamily: 'Inclusive Sans', fontSize: 15, color: '#C2410C' }}>
               Save
             </Text>
           ) : (
@@ -480,7 +480,7 @@ export default function ProfileNative() {
                 }}
                 placeholderTextColor="#9ca3af"
                 style={{
-                  fontFamily: 'Inter-SemiBold',
+                  fontFamily: 'Inclusive Sans',
                   fontSize: 22,
                   color: textColor,
                   letterSpacing: -0.5,
@@ -493,7 +493,7 @@ export default function ProfileNative() {
             ) : (
               <Text
                 style={{
-                  fontFamily: 'Inter-SemiBold',
+                  fontFamily: 'Inclusive Sans',
                   fontSize: 22,
                   color: textColor,
                   letterSpacing: -0.5,
@@ -503,13 +503,13 @@ export default function ProfileNative() {
                 {profileData.name || '—'}
               </Text>
             )}
-            <Text style={{ fontFamily: 'Inter-Regular', fontSize: 14, color: mutedTextColor }}>
+            <Text style={{ fontFamily: 'Inclusive Sans', fontSize: 14, color: mutedTextColor }}>
               {user?.email || (user?.username ? `@${user.username}` : '') || '—'}
             </Text>
             {isEditing && user?.email && user.email !== user.username && (
               <Text
                 style={{
-                  fontFamily: 'Inter-Regular',
+                  fontFamily: 'Inclusive Sans',
                   fontSize: 13,
                   color: mutedTextColor,
                   marginTop: 4,
@@ -538,7 +538,7 @@ export default function ProfileNative() {
             ) : (
               <Text
                 style={{
-                  fontFamily: 'Inter-Regular',
+                  fontFamily: 'Inclusive Sans',
                   fontSize: 15,
                   color: mutedTextColor,
                   lineHeight: 22,
@@ -550,7 +550,7 @@ export default function ProfileNative() {
             {errors.bio && (
               <Text
                 style={{
-                  fontFamily: 'Inter-Regular',
+                  fontFamily: 'Inclusive Sans',
                   fontSize: 13,
                   color: '#DC2626',
                   marginTop: 6,
@@ -573,7 +573,7 @@ export default function ProfileNative() {
             ) : (
               <Text
                 style={{
-                  fontFamily: 'Inter-Medium',
+                  fontFamily: 'Inclusive Sans',
                   fontSize: 16,
                   color: textColor,
                   lineHeight: 24,
@@ -585,7 +585,7 @@ export default function ProfileNative() {
             {errors.birthday && (
               <Text
                 style={{
-                  fontFamily: 'Inter-Regular',
+                  fontFamily: 'Inclusive Sans',
                   fontSize: 13,
                   color: '#DC2626',
                   marginTop: 6,
@@ -670,7 +670,7 @@ export default function ProfileNative() {
                       >
                         <Text
                           style={{
-                            fontFamily: 'Inter-Regular',
+                            fontFamily: 'Inclusive Sans',
                             fontSize: 14,
                             color: profileData.centerID === center.centerID ? '#C2410C' : textColor,
                           }}
@@ -687,7 +687,7 @@ export default function ProfileNative() {
                 <MapPin size={18} color={mutedTextColor} style={{ marginTop: 2 }} />
                 <Text
                   style={{
-                    fontFamily: 'Inter-Regular',
+                    fontFamily: 'Inclusive Sans',
                     fontSize: 15,
                     color: mutedTextColor,
                     flex: 1,
@@ -724,7 +724,7 @@ export default function ProfileNative() {
                   >
                     <Text
                       style={{
-                        fontFamily: 'Inter-SemiBold',
+                        fontFamily: 'Inclusive Sans',
                         fontSize: 14,
                         color: selected ? '#FFFFFF' : mutedTextColor,
                       }}
@@ -738,7 +738,7 @@ export default function ProfileNative() {
             {errors.interests && (
               <Text
                 style={{
-                  fontFamily: 'Inter-Regular',
+                  fontFamily: 'Inclusive Sans',
                   fontSize: 13,
                   color: '#DC2626',
                   marginTop: 8,
@@ -751,7 +751,7 @@ export default function ProfileNative() {
 
           {(errors.form || errors.profileImage) && (
             <Text
-              style={{ fontFamily: 'Inter-Regular', fontSize: 13, color: '#DC2626', marginTop: 8 }}
+              style={{ fontFamily: 'Inclusive Sans', fontSize: 13, color: '#DC2626', marginTop: 8 }}
             >
               {errors.form || errors.profileImage}
             </Text>
@@ -771,7 +771,7 @@ export default function ProfileNative() {
                   justifyContent: 'center',
                 }}
               >
-                <Text style={{ fontFamily: 'Inter-SemiBold', fontSize: 15, color: textColor }}>
+                <Text style={{ fontFamily: 'Inclusive Sans', fontSize: 15, color: textColor }}>
                   Cancel
                 </Text>
               </Pressable>

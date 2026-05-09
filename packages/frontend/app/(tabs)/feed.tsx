@@ -707,7 +707,7 @@ function PostThread({
       <PostMessageBlock message={post} colors={colors} original />
 
       <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10, marginTop: 18, marginBottom: 14 }}>
-        <Text style={{ fontFamily: 'Inter-Bold', fontSize: 12, letterSpacing: 0.5, color: colors.textSoft }}>
+        <Text style={{ fontFamily: 'Inclusive Sans', fontSize: 12, letterSpacing: 0.5, color: colors.textSoft }}>
           {replies.length} {replies.length === 1 ? 'REPLY' : 'REPLIES'}
         </Text>
         <View style={{ flex: 1, height: 1, backgroundColor: colors.border }} />
@@ -725,13 +725,13 @@ function PostThread({
     <View style={{ flex: fullScreen ? 1 : undefined, backgroundColor: colors.page }}>
       {!fullScreen ? (
         <View style={{ paddingHorizontal: 4, paddingTop: 6, paddingBottom: 14, gap: 8 }}>
-          <Text style={{ fontFamily: 'Inter-SemiBold', fontSize: 12, color: colors.orange }}>
+          <Text style={{ fontFamily: 'Inclusive Sans', fontSize: 12, color: colors.orange }}>
             {post.sourceLabel}
           </Text>
-          <Text style={{ fontFamily: 'Inter-Bold', fontSize: 24, lineHeight: 29, color: colors.text }}>
+          <Text style={{ fontFamily: 'Inclusive Sans', fontSize: 24, lineHeight: 29, color: colors.text }}>
             Post
           </Text>
-          <Text style={{ fontFamily: 'Inter-Regular', fontSize: 14, lineHeight: 20, color: colors.textMuted }}>
+          <Text style={{ fontFamily: 'Inclusive Sans', fontSize: 14, lineHeight: 20, color: colors.textMuted }}>
             {post.sourceSubtitle}
           </Text>
         </View>
@@ -787,7 +787,7 @@ function SourceBoardChip({ post, colors }: { post: FeedPost; colors: ColorSet })
       ) : (
         <Building2 size={13} color={colors.orange} strokeWidth={2.3} />
       )}
-      <Text style={{ fontFamily: 'Inter-SemiBold', fontSize: 12, color: colors.orange }}>
+      <Text style={{ fontFamily: 'Inclusive Sans', fontSize: 12, color: colors.orange }}>
         {post.sourceTitle} - Board
       </Text>
     </View>
@@ -815,18 +815,18 @@ function PostMessageBlock({
       />
       <View style={{ flex: 1, minWidth: 0 }}>
         <View style={{ flexDirection: 'row', alignItems: 'center', gap: 7, flexWrap: 'wrap' }}>
-          <Text style={{ fontFamily: 'Inter-Bold', fontSize: original ? 15 : 13, color: colors.text }}>
+          <Text style={{ fontFamily: 'Inclusive Sans', fontSize: original ? 15 : 13, color: colors.text }}>
             {message.author.name}
           </Text>
           {message.author.verification === 'sevak' ? (
-            <Text style={{ fontFamily: 'Inter-Bold', fontSize: 12, color: '#C2410C' }}>SEVAK</Text>
+            <Text style={{ fontFamily: 'Inclusive Sans', fontSize: 12, color: '#C2410C' }}>SEVAK</Text>
           ) : null}
           {message.pinned ? (
             <View style={{ borderRadius: 999, backgroundColor: colors.panel, paddingHorizontal: 8, paddingVertical: 3 }}>
-              <Text style={{ fontFamily: 'Inter-SemiBold', fontSize: 11, color: colors.textMuted }}>Pinned</Text>
+              <Text style={{ fontFamily: 'Inclusive Sans', fontSize: 11, color: colors.textMuted }}>Pinned</Text>
             </View>
           ) : null}
-          <Text style={{ marginLeft: 'auto', fontFamily: 'Inter-Regular', fontSize: 12, color: colors.textSoft }}>
+          <Text style={{ marginLeft: 'auto', fontFamily: 'Inclusive Sans', fontSize: 12, color: colors.textSoft }}>
             {message.timestamp}
           </Text>
         </View>
@@ -834,7 +834,7 @@ function PostMessageBlock({
         <Text
           style={{
             marginTop: original ? 8 : 5,
-            fontFamily: 'Inter-Regular',
+            fontFamily: 'Inclusive Sans',
             fontSize: original ? 16 : 14,
             lineHeight: original ? 23 : 20,
             color: colors.textMuted,
@@ -864,7 +864,7 @@ function PostMessageBlock({
                 paddingVertical: 5,
               }}
             >
-              <Text style={{ fontFamily: 'Inter-Medium', fontSize: 12, color: colors.textSoft }}>+ React</Text>
+              <Text style={{ fontFamily: 'Inclusive Sans', fontSize: 12, color: colors.textSoft }}>+ React</Text>
             </View>
           ) : null}
         </View>
@@ -899,7 +899,7 @@ function ReactionChip({
       }}
     >
       <Text style={{ fontSize: 13 }}>{emoji}</Text>
-      <Text style={{ fontFamily: 'Inter-SemiBold', fontSize: 13, color: colors.textMuted }}>{count}</Text>
+      <Text style={{ fontFamily: 'Inclusive Sans', fontSize: 13, color: colors.textMuted }}>{count}</Text>
     </View>
   )
 }
@@ -940,7 +940,7 @@ function ThreadReplyComposer({
             editable={false}
             placeholder="Reply..."
             placeholderTextColor={colors.textSoft}
-            style={{ fontFamily: 'Inter-Regular', fontSize: 15, color: colors.text }}
+            style={{ fontFamily: 'Inclusive Sans', fontSize: 15, color: colors.text }}
           />
         </View>
         <View
@@ -986,7 +986,7 @@ function FeedHeader({
         }}
       >
         <ArrowLeft size={18} color={colors.textMuted} />
-        <Text style={{ fontFamily: 'Inter-Medium', fontSize: 15, color: colors.textMuted }}>
+        <Text style={{ fontFamily: 'Inclusive Sans', fontSize: 15, color: colors.textMuted }}>
           Back
         </Text>
       </Pressable>
@@ -1016,7 +1016,7 @@ function FeedHeader({
             placeholderTextColor={colors.textSoft}
             style={{
               flex: 1,
-              fontFamily: 'Inter-Regular',
+              fontFamily: 'Inclusive Sans',
               fontSize: 15,
               color: colors.text,
               paddingVertical: 9,
@@ -1067,18 +1067,18 @@ function NativeChatHeader({
           }}
         >
           <ArrowLeft size={21} color={colors.orange} />
-          <Text style={{ fontFamily: 'Inter-Medium', fontSize: 15, color: colors.orange }}>
+          <Text style={{ fontFamily: 'Inclusive Sans', fontSize: 15, color: colors.orange }}>
             Back
           </Text>
         </Pressable>
 
         <View style={{ flex: 1, alignItems: 'center', gap: 4 }}>
           {hideAvatar ? null : null}
-          <Text style={{ fontFamily: 'Inter-SemiBold', fontSize: 14, color: colors.text }} numberOfLines={1}>
+          <Text style={{ fontFamily: 'Inclusive Sans', fontSize: 14, color: colors.text }} numberOfLines={1}>
             {title}
           </Text>
           {subtitle ? (
-            <Text style={{ fontFamily: 'Inter-Regular', fontSize: 11, color: colors.textSoft }} numberOfLines={1}>
+            <Text style={{ fontFamily: 'Inclusive Sans', fontSize: 11, color: colors.textSoft }} numberOfLines={1}>
               {subtitle}
             </Text>
           ) : null}
@@ -1157,7 +1157,7 @@ function CreatePostSheet({
           <Pressable onPress={onClose} hitSlop={8} style={{ minWidth: 64 }}>
             <X size={22} color={colors.textMuted} />
           </Pressable>
-          <Text style={{ fontFamily: 'Inter-Bold', fontSize: 16, color: colors.text }}>
+          <Text style={{ fontFamily: 'Inclusive Sans', fontSize: 16, color: colors.text }}>
             New post
           </Text>
           <Pressable
@@ -1170,7 +1170,7 @@ function CreatePostSheet({
               opacity: canPost ? 1 : 0.4,
             }}
           >
-            <Text style={{ fontFamily: 'Inter-Bold', fontSize: 15, color: colors.orange }}>
+            <Text style={{ fontFamily: 'Inclusive Sans', fontSize: 15, color: colors.orange }}>
               Post
             </Text>
           </Pressable>
@@ -1184,7 +1184,7 @@ function CreatePostSheet({
           <View style={{ marginBottom: 14 }}>
             <Text
               style={{
-                fontFamily: 'Inter-SemiBold',
+                fontFamily: 'Inclusive Sans',
                 fontSize: 11,
                 letterSpacing: 0.8,
                 color: colors.textSoft,
@@ -1225,14 +1225,14 @@ function CreatePostSheet({
               </View>
               <View style={{ flex: 1, minWidth: 0 }}>
                 <Text
-                  style={{ fontFamily: 'Inter-SemiBold', fontSize: 14, color: colors.text }}
+                  style={{ fontFamily: 'Inclusive Sans', fontSize: 14, color: colors.text }}
                   numberOfLines={1}
                 >
                   {selectedGroup ? selectedGroup.title : 'Pick a group'}
                 </Text>
                 {selectedGroup ? (
                   <Text
-                    style={{ fontFamily: 'Inter-Regular', fontSize: 12, color: colors.textSoft }}
+                    style={{ fontFamily: 'Inclusive Sans', fontSize: 12, color: colors.textSoft }}
                     numberOfLines={1}
                   >
                     {selectedGroup.kind === 'event' ? 'Event board' : 'Center board'}
@@ -1292,7 +1292,7 @@ function CreatePostSheet({
                       <Text
                         style={{
                           flex: 1,
-                          fontFamily: active ? 'Inter-SemiBold' : 'Inter-Regular',
+                          fontFamily: active ? 'Inclusive Sans' : 'Inclusive Sans',
                           fontSize: 14,
                           color: colors.text,
                         }}
@@ -1323,7 +1323,7 @@ function CreatePostSheet({
                 placeholderTextColor={colors.textSoft}
                 style={{
                   minHeight: 160,
-                  fontFamily: 'Inter-Regular',
+                  fontFamily: 'Inclusive Sans',
                   fontSize: 16,
                   lineHeight: 23,
                   color: colors.text,
@@ -1337,7 +1337,7 @@ function CreatePostSheet({
           <Text
             style={{
               marginTop: 16,
-              fontFamily: 'Inter-Regular',
+              fontFamily: 'Inclusive Sans',
               fontSize: 12.5,
               color: colors.textSoft,
               lineHeight: 18,
@@ -1354,10 +1354,10 @@ function CreatePostSheet({
 function EmptyPanel({ title, subtitle, colors }: { title: string; subtitle: string; colors: ColorSet }) {
   return (
     <View style={{ paddingVertical: 18, paddingHorizontal: 4, gap: 5 }}>
-      <Text style={{ fontFamily: 'Inter-Bold', fontSize: 17, color: colors.text }}>
+      <Text style={{ fontFamily: 'Inclusive Sans', fontSize: 17, color: colors.text }}>
         {title}
       </Text>
-      <Text style={{ fontFamily: 'Inter-Regular', fontSize: 14, lineHeight: 20, color: colors.textMuted }}>
+      <Text style={{ fontFamily: 'Inclusive Sans', fontSize: 14, lineHeight: 20, color: colors.textMuted }}>
         {subtitle}
       </Text>
     </View>
@@ -1389,10 +1389,10 @@ function SignInCallout({ colors, onPress }: { colors: ColorSet; onPress: () => v
         <UsersRound size={20} color={colors.orange} />
       </View>
       <View style={{ flex: 1 }}>
-        <Text style={{ fontFamily: 'Inter-Bold', fontSize: 16, color: colors.text }}>
+        <Text style={{ fontFamily: 'Inclusive Sans', fontSize: 16, color: colors.text }}>
           Sign in for Feed
         </Text>
-        <Text style={{ fontFamily: 'Inter-Regular', fontSize: 13, lineHeight: 19, color: colors.textMuted }}>
+        <Text style={{ fontFamily: 'Inclusive Sans', fontSize: 13, lineHeight: 19, color: colors.textMuted }}>
           Your member feed, group boards, and announcements live here.
         </Text>
       </View>
@@ -1405,7 +1405,7 @@ function SignInCallout({ colors, onPress }: { colors: ColorSet; onPress: () => v
           paddingVertical: 10,
         }}
       >
-        <Text style={{ fontFamily: 'Inter-SemiBold', fontSize: 13, color: colors.surface }}>
+        <Text style={{ fontFamily: 'Inclusive Sans', fontSize: 13, color: colors.surface }}>
           Sign in
         </Text>
       </Pressable>

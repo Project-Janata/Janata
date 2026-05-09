@@ -48,7 +48,7 @@ export default function Badge({ label, variant }: BadgeProps) {
       <Text
         style={{
           fontSize: 11,
-          fontFamily: 'Inter-SemiBold',
+          fontFamily: 'Inclusive Sans',
           color: style.text,
           lineHeight: 14,
         }}

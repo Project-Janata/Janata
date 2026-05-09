@@ -72,7 +72,7 @@ export default function Preferences() {
         <View>
           <Text
             style={{
-              fontFamily: 'Inter-Bold',
+              fontFamily: 'Inclusive Sans',
               fontSize: isNarrowWeb ? 24 : 28,
               color: textColor,
               letterSpacing: -0.5,
@@ -80,7 +80,7 @@ export default function Preferences() {
           >
             Preferences
           </Text>
-          <Text style={{ fontFamily: 'Inter-Regular', fontSize: 15, color: mutedTextColor }}>
+          <Text style={{ fontFamily: 'Inclusive Sans', fontSize: 15, color: mutedTextColor }}>
             Manage your app preferences
           </Text>
         </View>
@@ -89,7 +89,7 @@ export default function Preferences() {
         <View>
           <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: 12 }}>
             <Eye size={20} color={iconColor} />
-            <Text style={{ fontFamily: 'Inter-SemiBold', fontSize: 17, color: textColor }}>
+            <Text style={{ fontFamily: 'Inclusive Sans', fontSize: 17, color: textColor }}>
               Appearance
             </Text>
           </View>
@@ -102,7 +102,7 @@ export default function Preferences() {
               padding: isNarrowWeb ? 20 : 28,
             }}
           >
-            <Text style={{ fontFamily: 'Inter-Regular', fontSize: 14, color: mutedTextColor, marginBottom: 12 }}>
+            <Text style={{ fontFamily: 'Inclusive Sans', fontSize: 14, color: mutedTextColor, marginBottom: 12 }}>
               Choose your preferred theme
             </Text>
             <ThemeSelector />
@@ -113,7 +113,7 @@ export default function Preferences() {
         <View>
           <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: 12 }}>
             <Shield size={20} color={iconColor} />
-            <Text style={{ fontFamily: 'Inter-SemiBold', fontSize: 17, color: textColor }}>
+            <Text style={{ fontFamily: 'Inclusive Sans', fontSize: 17, color: textColor }}>
               Privacy
             </Text>
           </View>
@@ -140,7 +140,7 @@ export default function Preferences() {
                 router.push('/privacy')
               }}
             >
-              <Text style={{ fontFamily: 'Inter-Medium', fontSize: 15, color: textColor }}>
+              <Text style={{ fontFamily: 'Inclusive Sans', fontSize: 15, color: textColor }}>
                 Privacy Policy
               </Text>
               <ExternalLink size={18} color={iconColor} />
@@ -159,7 +159,7 @@ export default function Preferences() {
                 router.push('/terms')
               }}
             >
-              <Text style={{ fontFamily: 'Inter-Medium', fontSize: 15, color: textColor }}>
+              <Text style={{ fontFamily: 'Inclusive Sans', fontSize: 15, color: textColor }}>
                 Terms of Service
               </Text>
               <ExternalLink size={18} color={iconColor} />
@@ -176,7 +176,7 @@ export default function Preferences() {
                 router.push('/cookies')
               }}
             >
-              <Text style={{ fontFamily: 'Inter-Medium', fontSize: 15, color: textColor }}>
+              <Text style={{ fontFamily: 'Inclusive Sans', fontSize: 15, color: textColor }}>
                 Cookie Policy
               </Text>
               <ExternalLink size={18} color={iconColor} />
@@ -188,7 +188,7 @@ export default function Preferences() {
         <View>
           <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: 12 }}>
             <Info size={20} color={iconColor} />
-            <Text style={{ fontFamily: 'Inter-SemiBold', fontSize: 17, color: textColor }}>
+            <Text style={{ fontFamily: 'Inclusive Sans', fontSize: 17, color: textColor }}>
               About
             </Text>
           </View>
@@ -211,10 +211,10 @@ export default function Preferences() {
                 borderBottomColor: borderColor,
               }}
             >
-              <Text style={{ fontFamily: 'Inter-Medium', fontSize: 15, color: textColor }}>
+              <Text style={{ fontFamily: 'Inclusive Sans', fontSize: 15, color: textColor }}>
                 Version
               </Text>
-              <Text style={{ fontFamily: 'Inter-Regular', fontSize: 14, color: mutedTextColor, textAlign: 'right' }}>
+              <Text style={{ fontFamily: 'Inclusive Sans', fontSize: 14, color: mutedTextColor, textAlign: 'right' }}>
                 {APP_VERSION}
               </Text>
             </View>
@@ -226,10 +226,10 @@ export default function Preferences() {
                 padding: isNarrowWeb ? 20 : 28,
               }}
             >
-              <Text style={{ fontFamily: 'Inter-Medium', fontSize: 15, color: textColor }}>
+              <Text style={{ fontFamily: 'Inclusive Sans', fontSize: 15, color: textColor }}>
                 Chinmaya Janata
               </Text>
-              <Text style={{ fontFamily: 'Inter-Regular', fontSize: 14, color: mutedTextColor, textAlign: 'right' }}>
+              <Text style={{ fontFamily: 'Inclusive Sans', fontSize: 14, color: mutedTextColor, textAlign: 'right' }}>
                 {currentYear} Chinmaya Mission
               </Text>
             </View>
@@ -251,10 +251,10 @@ export default function Preferences() {
             }}
           >
             <View style={{ gap: 4, flex: 1, marginRight: 16 }}>
-              <Text style={{ fontFamily: 'Inter-SemiBold', fontSize: 15, color: '#DC2626' }}>
+              <Text style={{ fontFamily: 'Inclusive Sans', fontSize: 15, color: '#DC2626' }}>
                 Danger Zone
               </Text>
-              <Text style={{ fontFamily: 'Inter-Regular', fontSize: 13, color: mutedTextColor }}>
+              <Text style={{ fontFamily: 'Inclusive Sans', fontSize: 13, color: mutedTextColor }}>
                 Permanently delete your account and all data
               </Text>
             </View>
@@ -313,7 +313,7 @@ export default function Preferences() {
               </View>
               <Text
                 style={{
-                  fontFamily: 'Inter-Bold',
+                  fontFamily: 'Inclusive Sans',
                   fontSize: 22,
                   color: textColor,
                   marginBottom: 8,
@@ -323,7 +323,7 @@ export default function Preferences() {
               </Text>
               <Text
                 style={{
-                  fontFamily: 'Inter-Regular',
+                  fontFamily: 'Inclusive Sans',
                   fontSize: 15,
                   color: mutedTextColor,
                   textAlign: 'center',

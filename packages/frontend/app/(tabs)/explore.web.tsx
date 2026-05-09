@@ -137,7 +137,7 @@ function AttendeeAvatars({ count, attendees }: { count: number; attendees?: Atte
               />
             ))}
       </View>
-      <Text className="text-stone-400 dark:text-stone-500 font-inter text-xs">{count} going</Text>
+      <Text className="text-stone-400 dark:text-stone-500 font-sans text-xs">{count} going</Text>
     </View>
   )
 }
@@ -167,29 +167,29 @@ function EventItem({
     >
       {/* Date pill */}
       <View className="w-[52px] h-[60px] rounded-xl items-center justify-center bg-stone-100 dark:bg-neutral-800">
-        <Text className="text-[10px] font-inter-semibold" style={{ color: '#E8862A' }}>
+        <Text className="text-[10px] font-sans" style={{ color: '#E8862A' }}>
           {month}
         </Text>
-        <Text className="text-lg font-inter-bold text-content dark:text-content-dark">{day}</Text>
+        <Text className="text-lg font-sans text-content dark:text-content-dark">{day}</Text>
       </View>
 
       {/* Content */}
       <View className="flex-1 gap-1">
         <View className="flex-row items-center gap-2">
           <Text
-            className="text-content dark:text-content-dark font-inter-semibold text-base leading-tight flex-1"
+            className="text-content dark:text-content-dark font-sans text-base leading-tight flex-1"
             numberOfLines={2}
           >
             {event.title}
           </Text>
           {event.isRegistered && <Badge label="Going" variant="going" />}
         </View>
-        <Text className="text-stone-500 dark:text-stone-400 font-inter text-sm">
+        <Text className="text-stone-500 dark:text-stone-400 font-sans text-sm">
           {event.date && isToday(event.date) ? 'Today · ' : ''}{event.time || ''}
         </Text>
         {centerName && (
           <Text
-            className="text-stone-500 dark:text-stone-400 font-inter text-sm"
+            className="text-stone-500 dark:text-stone-400 font-sans text-sm"
             numberOfLines={1}
           >
             By {centerName}
@@ -198,7 +198,7 @@ function EventItem({
         <View className="flex-row items-center gap-1.5">
           <MapPin size={12} color="#E8862A" />
           <Text
-            className="text-stone-500 dark:text-stone-400 font-inter text-sm flex-1"
+            className="text-stone-500 dark:text-stone-400 font-sans text-sm flex-1"
             numberOfLines={1}
           >
             {event.location}
@@ -247,7 +247,7 @@ function CenterItem({ center, onPress, isMyCenter }: { center: DiscoverCenter; o
       <View className="flex-1 gap-1">
         <View className="flex-row items-center gap-2">
           <Text
-            className="text-content dark:text-content-dark font-inter-semibold text-base leading-tight flex-1"
+            className="text-content dark:text-content-dark font-sans text-base leading-tight flex-1"
             numberOfLines={1}
           >
             {center.name}
@@ -255,11 +255,11 @@ function CenterItem({ center, onPress, isMyCenter }: { center: DiscoverCenter; o
           {isMyCenter && <Badge label="My Center" variant="going" />}
           {!isMyCenter && center.isMember && <Badge label="Member" variant="member" />}
         </View>
-        <Text className="text-stone-500 dark:text-stone-400 font-inter text-sm">
+        <Text className="text-stone-500 dark:text-stone-400 font-sans text-sm">
           {extractCityState(center.address) || 'Center'}{center.distanceMi != null ? ` · ${center.distanceMi} mi` : ''}
         </Text>
         {center.eventCount != null && center.eventCount > 0 && (
-          <Text className="text-primary font-inter text-xs">
+          <Text className="text-primary font-sans text-xs">
             {center.eventCount} events this week
           </Text>
         )}
@@ -795,7 +795,7 @@ function MobileDiscoverFallback() {
             >
               <Search size={16} color="#9CA3AF" />
               <TextInput
-                className="flex-1 ml-2 text-sm font-inter"
+                className="flex-1 ml-2 text-sm font-sans"
                 style={{
                   color: isDark ? '#E5E7EB' : '#1F2937',
                   paddingVertical: 10,
@@ -867,16 +867,16 @@ function MobileDiscoverFallback() {
                 style={{ backgroundColor: 'rgba(232, 134, 42, 0.06)' }}
               >
                 <Text
-                  className="text-[10px] font-inter-semibold text-stone-500 dark:text-stone-400 uppercase"
+                  className="text-[10px] font-sans text-stone-500 dark:text-stone-400 uppercase"
                   style={{ letterSpacing: 0.6 }}
                 >
                   Coming up
                 </Text>
-                <Text className="text-sm font-inter-semibold text-content dark:text-content-dark mt-1">
+                <Text className="text-sm font-sans text-content dark:text-content-dark mt-1">
                   Next event in {comingUpHint.days} days
                 </Text>
                 <Text
-                  className="text-xs font-inter text-stone-500 dark:text-stone-400 mt-0.5"
+                  className="text-xs font-sans text-stone-500 dark:text-stone-400 mt-0.5"
                   numberOfLines={1}
                 >
                   {comingUpHint.title}
@@ -908,7 +908,7 @@ function MobileDiscoverFallback() {
                         justifyContent: 'space-between',
                       }}
                     >
-                      <Text className="text-xs font-inter-semibold text-stone-500 dark:text-stone-400 uppercase" style={{ letterSpacing: 0.6 }}>
+                      <Text className="text-xs font-sans text-stone-500 dark:text-stone-400 uppercase" style={{ letterSpacing: 0.6 }}>
                         {label}
                       </Text>
                       {isCollapsed ? <ChevronDown size={14} color="#a8a29e" /> : <ChevronUp size={14} color="#a8a29e" />}
@@ -1308,7 +1308,7 @@ export default function DiscoverScreenWeb() {
                 >
                   <Search size={16} color="#9CA3AF" />
                   <TextInput
-                    className="flex-1 ml-2 text-sm font-inter text-content dark:text-content-dark outline-none"
+                    className="flex-1 ml-2 text-sm font-sans text-content dark:text-content-dark outline-none"
                     placeholder="Search events and centers..."
                     placeholderTextColor="#9CA3AF"
                     value={searchQuery}
@@ -1383,7 +1383,7 @@ export default function DiscoverScreenWeb() {
                   return (
                     <Pressable key={`section-${idx}`} onPress={() => toggleSection(label)} style={{ marginTop: idx > 0 ? 16 : 0, marginBottom: 4 }}>
                       <View className="flex-row items-center gap-2 px-1">
-                        <Text className="text-xs font-inter-semibold text-stone-400 dark:text-stone-500 uppercase" style={{ letterSpacing: 0.5 }}>
+                        <Text className="text-xs font-sans text-stone-400 dark:text-stone-500 uppercase" style={{ letterSpacing: 0.5 }}>
                           {label}
                         </Text>
                         <View className="flex-1 h-px bg-stone-200 dark:bg-neutral-700" />

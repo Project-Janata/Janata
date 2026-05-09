@@ -277,7 +277,7 @@ function ScrollCard({ card, width }: { card: CardData; width: number }) {
         )}
         <Text
           style={{
-            fontFamily: 'Inter, sans-serif',
+            fontFamily: 'Inclusive Sans, sans-serif',
             fontWeight: '600',
             fontSize: titleSize,
             color: '#1C1917',
@@ -286,7 +286,7 @@ function ScrollCard({ card, width }: { card: CardData; width: number }) {
         >
           {card.title}
         </Text>
-        <Text style={{ fontFamily: 'Inter, sans-serif', fontSize: subtitleSize, color: '#78716C' }}>
+        <Text style={{ fontFamily: 'Inclusive Sans, sans-serif', fontSize: subtitleSize, color: '#78716C' }}>
           {card.subtitle}
         </Text>
       </View>
@@ -319,7 +319,7 @@ function ScrollCard({ card, width }: { card: CardData; width: number }) {
         >
           <Text
             style={{
-              fontFamily: 'Inter, sans-serif',
+              fontFamily: 'Inclusive Sans, sans-serif',
               fontWeight: '700',
               fontSize: iconFontSize,
               color: '#C2410C',
@@ -331,7 +331,7 @@ function ScrollCard({ card, width }: { card: CardData; width: number }) {
         <View style={{ flex: 1 }}>
           <Text
             style={{
-              fontFamily: 'Inter, sans-serif',
+              fontFamily: 'Inclusive Sans, sans-serif',
               fontWeight: '600',
               fontSize: titleSize,
               color: '#1C1917',
@@ -340,7 +340,7 @@ function ScrollCard({ card, width }: { card: CardData; width: number }) {
           >
             {card.title}
           </Text>
-          <Text style={{ fontFamily: 'Inter, sans-serif', fontSize: subtitleSize, color: '#78716C' }}>
+          <Text style={{ fontFamily: 'Inclusive Sans, sans-serif', fontSize: subtitleSize, color: '#78716C' }}>
             {card.subtitle}
           </Text>
         </View>
@@ -372,7 +372,7 @@ function ScrollCard({ card, width }: { card: CardData; width: number }) {
       </Text>
       <Text
         style={{
-          fontFamily: 'Inter, sans-serif',
+          fontFamily: 'Inclusive Sans, sans-serif',
           fontWeight: '600',
           fontSize: titleSize,
           color: '#1C1917',
@@ -381,7 +381,7 @@ function ScrollCard({ card, width }: { card: CardData; width: number }) {
       >
         {card.title.replace(card.stat + ' ', '')}
       </Text>
-      <Text style={{ fontFamily: 'Inter, sans-serif', fontSize: subtitleSize, color: '#78716C' }}>
+      <Text style={{ fontFamily: 'Inclusive Sans, sans-serif', fontSize: subtitleSize, color: '#78716C' }}>
         {card.subtitle}
       </Text>
     </View>
@@ -460,7 +460,7 @@ function AvatarStack() {
                 justifyContent: 'center',
               }}
             >
-              <Text style={{ fontFamily: 'Inter, sans-serif', fontWeight: '600', fontSize: 14, color: '#FFFFFF' }}>
+              <Text style={{ fontFamily: 'Inclusive Sans, sans-serif', fontWeight: '600', fontSize: 14, color: '#FFFFFF' }}>
                 {person.name[0]}
               </Text>
             </View>
@@ -610,7 +610,7 @@ export function Hero() {
           >
             <Text
               style={{
-                fontFamily: 'Inter, sans-serif',
+                fontFamily: 'Inclusive Sans, sans-serif',
                 fontWeight: '600',
                 fontSize: 12,
                 color: '#C2410C',
@@ -621,7 +621,7 @@ export function Hero() {
           </View>
           <Text
             style={{
-              fontFamily: 'Inter, sans-serif',
+              fontFamily: 'Inclusive Sans, sans-serif',
               fontSize: 13,
               color: '#A8A29E',
             }}
@@ -646,7 +646,7 @@ export function Hero() {
 
         <Text
           style={{
-            fontFamily: 'Inter, sans-serif',
+            fontFamily: 'Inclusive Sans, sans-serif',
             fontWeight: '400',
             fontSize: isMobile ? 16 : 20,
             lineHeight: isMobile ? 26 : 32,
@@ -682,7 +682,7 @@ export function Hero() {
           >
             <Text
               style={{
-                fontFamily: 'Inter, sans-serif',
+                fontFamily: 'Inclusive Sans, sans-serif',
                 fontWeight: '500',
                 fontSize: 16,
                 color: '#FFFFFF',
@@ -697,7 +697,7 @@ export function Hero() {
         {/* Avatar stack + tagline */}
         <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12 }}>
           <AvatarStack />
-          <Text style={{ fontFamily: 'Inter, sans-serif', fontSize: 14, color: '#78716C' }}>
+          <Text style={{ fontFamily: 'Inclusive Sans, sans-serif', fontSize: 14, color: '#78716C' }}>
             By CHYKs, for CHYKs.
           </Text>
         </View>

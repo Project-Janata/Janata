@@ -201,11 +201,11 @@ export default function PasswordStrength({ password, show }: PasswordStrengthPro
       {/* Strength Bar */}
       <View className="gap-2">
         <View className="flex-row justify-between items-center">
-          <Text className="text-sm font-inter font-medium text-content dark:text-content-dark">
+          <Text className="text-sm font-sans font-medium text-content dark:text-content-dark">
             Password Strength
           </Text>
           <View className="flex-row items-center gap-2">
-            <Text className={`text-sm font-inter font-semibold ${getStrengthTextColor()}`}>
+            <Text className={`text-sm font-sans font-semibold ${getStrengthTextColor()}`}>
               {strength}
             </Text>
           </View>
@@ -222,7 +222,7 @@ export default function PasswordStrength({ password, show }: PasswordStrengthPro
 
       {/* Requirements Checklist */}
       <View className="gap-2 bg-gray-50 dark:bg-neutral-800/50 rounded-xl p-3 mb-3">
-        <Text className="text-xs font-inter font-semibold text-content dark:text-content-dark mb-1">
+        <Text className="text-xs font-sans font-semibold text-content dark:text-content-dark mb-1">
           Password Requirements:
         </Text>
         {requirements.map((req, index) => (
@@ -237,7 +237,7 @@ export default function PasswordStrength({ password, show }: PasswordStrengthPro
               </View>
             )}
             <Text
-              className={`text-xs font-inter ${
+              className={`text-xs font-sans ${
                 req.met
                   ? 'text-green-600 dark:text-green-400 font-medium'
                   : 'text-gray-500 dark:text-gray-400'

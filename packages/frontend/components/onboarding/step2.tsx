@@ -18,10 +18,10 @@ export default function Step2() {
         <View className="flex-1 flex flex-col items-center justify-center w-full">
           <View className="gap-4 w-full max-w-md flex flex-col items-center justify-center">
             <View className="gap-2 w-full flex flex-col items-center justify-center">
-              <Text className="text-4xl font-inter font-bold text-content dark:text-content-dark text-center">
+              <Text className="text-4xl font-sans font-bold text-content dark:text-content-dark text-center">
                 When's your birthday?
               </Text>
-              <Text className="text-lg font-inter text-stone-500 dark:text-stone-400 text-center">
+              <Text className="text-lg font-sans text-stone-500 dark:text-stone-400 text-center">
                 We'll use this to personalize your experience.
               </Text>
             </View>
@@ -42,7 +42,7 @@ export default function Step2() {
           </PrimaryButton>
           {returnTo && (
             <Pressable onPress={skipOnboarding} disabled={isSubmitting} style={{ alignSelf: 'center', marginTop: 12 }}>
-              <Text className="text-sm font-inter text-stone-400 dark:text-stone-500">
+              <Text className="text-sm font-sans text-stone-400 dark:text-stone-500">
                 Skip for now
               </Text>
             </Pressable>

@@ -57,7 +57,7 @@ export default function WeekCalendar({ eventDates, selectedDate, onSelectDate }:
   return (
     <View>
       <Text
-        className="text-[11px] font-inter-medium text-stone-500 dark:text-stone-400 px-4 pt-2"
+        className="text-[11px] font-sans text-stone-500 dark:text-stone-400 px-4 pt-2"
         style={{ letterSpacing: 0.3 }}
       >
         {monthLabel}
@@ -74,7 +74,7 @@ export default function WeekCalendar({ eventDates, selectedDate, onSelectDate }:
             className="items-center px-1"
             style={{ minWidth: 42 }}
           >
-            <Text className="text-[11px] font-inter text-gray-400 dark:text-gray-500">
+            <Text className="text-[11px] font-sans text-gray-400 dark:text-gray-500">
               {d.dayLetter}
             </Text>
             <View style={{ position: 'relative' }}>
@@ -88,7 +88,7 @@ export default function WeekCalendar({ eventDates, selectedDate, onSelectDate }:
                 }`}
               >
                 <Text
-                  className={`text-sm font-inter-semibold ${
+                  className={`text-sm font-sans ${
                     isSelected
                       ? 'text-white'
                       : d.isToday

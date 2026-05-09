@@ -50,7 +50,7 @@ const styles = StyleSheet.create({
     borderBottomWidth: 1,
   },
   title: {
-    fontFamily: 'Inter-Bold',
+    fontFamily: 'Inclusive Sans',
     fontSize: 15,
   },
   body: {

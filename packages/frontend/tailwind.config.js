@@ -55,13 +55,8 @@ module.exports = {
         },
       },
       fontFamily: {
-        sans: ['Inter-Regular'],
-        inter: ['Inter-Regular'],
-        'inter-bold': ['Inter-Bold'],
-        'inter-semibold': ['Inter-SemiBold'],
-        'inter-medium': ['Inter-Medium'],
-        'inter-light': ['Inter-Light'],
-        'inclusive-sans': ['"Inclusive Sans"', 'sans-serif'],
+        // ↓ Change the font name here to switch the entire app's font
+        sans: ['Inclusive Sans'],
       },
     },
   },

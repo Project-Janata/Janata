@@ -147,11 +147,11 @@ function SettingsPanel({ visible, onClose, onLogout }) {
             style={{ marginRight: 12 }}
           />
           <View className="flex-col flex-1">
-            <Text className="text-lg font-inter-semibold text-content dark:text-content-dark -mb-0.5">
+            <Text className="text-lg font-sans text-content dark:text-content-dark -mb-0.5">
               {displayName}
             </Text>
             <Text
-              className="text-sm font-inter text-contentStrong dark:text-contentStrong-dark"
+              className="text-sm font-sans text-contentStrong dark:text-contentStrong-dark"
               numberOfLines={1}
               ellipsizeMode="tail"
             >
@@ -174,8 +174,8 @@ function SettingsPanel({ visible, onClose, onLogout }) {
           }}
         >
           <User size={16} color={pathname === '/settings/profile' ? '#fff' : isDark ? '#fff' : '#374151'} className="mr-3" />
-          <Text className={`font-inter ${
-            pathname === '/settings/profile' ? 'text-white font-inter-semibold' : 'text-content dark:text-content-dark'
+          <Text className={`font-sans ${
+            pathname === '/settings/profile' ? 'text-white font-sans' : 'text-content dark:text-content-dark'
           }`}>Profile</Text>
         </Pressable>
         <Pressable
@@ -188,8 +188,8 @@ function SettingsPanel({ visible, onClose, onLogout }) {
           }}
         >
           <Settings size={16} color={pathname === '/settings/preferences' ? '#fff' : isDark ? '#fff' : '#374151'} className="mr-3" />
-          <Text className={`font-inter ${
-            pathname === '/settings/preferences' ? 'text-white font-inter-semibold' : 'text-content dark:text-content-dark'
+          <Text className={`font-sans ${
+            pathname === '/settings/preferences' ? 'text-white font-sans' : 'text-content dark:text-content-dark'
           }`}>Preferences</Text>
         </Pressable>
         {isSuperAdmin(user) && (
@@ -201,7 +201,7 @@ function SettingsPanel({ visible, onClose, onLogout }) {
             }}
           >
             <Shield size={16} color="#E8862A" className="mr-3" />
-            <Text style={{ fontFamily: 'Inter-Regular', color: '#E8862A' }}>Admin Dashboard</Text>
+            <Text style={{ fontFamily: 'Inclusive Sans', color: '#E8862A' }}>Admin Dashboard</Text>
           </Pressable>
         )}
 
@@ -210,7 +210,7 @@ function SettingsPanel({ visible, onClose, onLogout }) {
 
         {/* Appearance Slider */}
         <View className="mb-3">
-          <Text className="text-sm font-inter-medium text-content dark:text-content-dark mb-2">
+          <Text className="text-sm font-sans text-content dark:text-content-dark mb-2">
             Appearance
           </Text>
           <ThemeSelector
@@ -228,7 +228,7 @@ function SettingsPanel({ visible, onClose, onLogout }) {
           className="flex-row items-center p-2 rounded-lg hover:bg-red-50 dark:hover:bg-red-900/20"
         >
           <LogOut size={16} color={isDark ? '#ef4444' : '#dc2626'} className="mr-3" />
-          <Text className="text-red-600 dark:text-red-400 font-inter">Log Out</Text>
+          <Text className="text-red-600 dark:text-red-400 font-sans">Log Out</Text>
         </Pressable>
       </Animated.View>
     </>

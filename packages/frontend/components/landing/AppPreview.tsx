@@ -103,7 +103,7 @@ function TabPill({
       )}
       <Text
         style={{
-          fontFamily: 'Inter, sans-serif',
+          fontFamily: 'Inclusive Sans, sans-serif',
           fontWeight: '600',
           fontSize: 11,
           color: isActive ? '#C2410C' : '#A8A29E',
@@ -114,7 +114,7 @@ function TabPill({
       </Text>
       <Text
         style={{
-          fontFamily: 'Inter, sans-serif',
+          fontFamily: 'Inclusive Sans, sans-serif',
           fontWeight: isActive ? '500' : '400',
           fontSize: 14,
           color: isActive ? '#292524' : '#78716C',
@@ -171,7 +171,7 @@ function MockupSearchBar() {
           borderColor: '#9CA3AF',
         }}
       />
-      <Text style={{ fontFamily: 'Inter, sans-serif', fontSize: 12, color: '#9CA3AF' }}>
+      <Text style={{ fontFamily: 'Inclusive Sans, sans-serif', fontSize: 12, color: '#9CA3AF' }}>
         Search events and centers...
       </Text>
     </View>
@@ -203,7 +203,7 @@ function MockupFilterTabs({ active }: { active: string }) {
         >
           <Text
             style={{
-              fontFamily: 'Inter, sans-serif',
+              fontFamily: 'Inclusive Sans, sans-serif',
               fontWeight: tab === active ? '600' : '400',
               fontSize: 13,
               color: tab === active ? '#E8862A' : '#9CA3AF',
@@ -247,7 +247,7 @@ function MockupDatePill({ month, day, accent }: { month: string; day: string; ac
     >
       <Text
         style={{
-          fontFamily: 'Inter, sans-serif',
+          fontFamily: 'Inclusive Sans, sans-serif',
           fontWeight: '600',
           fontSize: 9,
           color: '#E8862A',
@@ -258,7 +258,7 @@ function MockupDatePill({ month, day, accent }: { month: string; day: string; ac
       </Text>
       <Text
         style={{
-          fontFamily: 'Inter, sans-serif',
+          fontFamily: 'Inclusive Sans, sans-serif',
           fontWeight: '700',
           fontSize: 16,
           color: '#1C1917',
@@ -290,7 +290,7 @@ function MockupAvatarDots({ count }: { count: number }) {
           />
         ))}
       </View>
-      <Text style={{ fontFamily: 'Inter, sans-serif', fontSize: 10, color: '#A8A29E' }}>
+      <Text style={{ fontFamily: 'Inclusive Sans, sans-serif', fontSize: 10, color: '#A8A29E' }}>
         {count} going
       </Text>
     </View>
@@ -332,7 +332,7 @@ function MockupEventItem({
           <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
             <Text
               style={{
-                fontFamily: 'Inter, sans-serif',
+                fontFamily: 'Inclusive Sans, sans-serif',
                 fontWeight: '600',
                 fontSize: 13,
                 color: '#1C1917',
@@ -353,7 +353,7 @@ function MockupEventItem({
               >
                 <Text
                   style={{
-                    fontFamily: 'Inter, sans-serif',
+                    fontFamily: 'Inclusive Sans, sans-serif',
                     fontWeight: '500',
                     fontSize: 9,
                     color: '#E8862A',
@@ -364,7 +364,7 @@ function MockupEventItem({
               </View>
             )}
           </View>
-          <Text style={{ fontFamily: 'Inter, sans-serif', fontSize: 11, color: '#78716C' }}>
+          <Text style={{ fontFamily: 'Inclusive Sans, sans-serif', fontSize: 11, color: '#78716C' }}>
             {time}
           </Text>
           <View style={{ flexDirection: 'row', alignItems: 'center', gap: 3, marginTop: 1 }}>
@@ -377,7 +377,7 @@ function MockupEventItem({
               }}
             />
             <Text
-              style={{ fontFamily: 'Inter, sans-serif', fontSize: 10, color: '#78716C' }}
+              style={{ fontFamily: 'Inclusive Sans, sans-serif', fontSize: 10, color: '#78716C' }}
               numberOfLines={1}
             >
               {location}
@@ -431,7 +431,7 @@ function MockupCenterItem({
           <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
             <Text
               style={{
-                fontFamily: 'Inter, sans-serif',
+                fontFamily: 'Inclusive Sans, sans-serif',
                 fontWeight: '600',
                 fontSize: 13,
                 color: '#1C1917',
@@ -451,7 +451,7 @@ function MockupCenterItem({
               >
                 <Text
                   style={{
-                    fontFamily: 'Inter, sans-serif',
+                    fontFamily: 'Inclusive Sans, sans-serif',
                     fontWeight: '500',
                     fontSize: 9,
                     color: '#E8862A',
@@ -462,13 +462,13 @@ function MockupCenterItem({
               </View>
             )}
           </View>
-          <Text style={{ fontFamily: 'Inter, sans-serif', fontSize: 11, color: '#78716C' }}>
+          <Text style={{ fontFamily: 'Inclusive Sans, sans-serif', fontSize: 11, color: '#78716C' }}>
             Center · {distance}
           </Text>
           {events > 0 && (
             <Text
               style={{
-                fontFamily: 'Inter, sans-serif',
+                fontFamily: 'Inclusive Sans, sans-serif',
                 fontSize: 10,
                 color: '#E8862A',
                 marginTop: 1,
@@ -595,7 +595,7 @@ function MockupEventDetail({ delay }: { delay?: number }) {
         <View style={{ padding: 16, gap: 10 }}>
           <Text
             style={{
-              fontFamily: 'Inter, sans-serif',
+              fontFamily: 'Inclusive Sans, sans-serif',
               fontWeight: '700',
               fontSize: 16,
               color: '#1C1917',
@@ -606,20 +606,20 @@ function MockupEventDetail({ delay }: { delay?: number }) {
           <View style={{ gap: 6 }}>
             <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
               <Text style={{ fontSize: 12 }}>📅</Text>
-              <Text style={{ fontFamily: 'Inter, sans-serif', fontSize: 12, color: '#57534E' }}>
+              <Text style={{ fontFamily: 'Inclusive Sans, sans-serif', fontSize: 12, color: '#57534E' }}>
                 Today · 10:30 AM – 12:00 PM
               </Text>
             </View>
             <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
               <Text style={{ fontSize: 12 }}>📍</Text>
-              <Text style={{ fontFamily: 'Inter, sans-serif', fontSize: 12, color: '#57534E' }}>
+              <Text style={{ fontFamily: 'Inclusive Sans, sans-serif', fontSize: 12, color: '#57534E' }}>
                 CM San Jose · 1050 Park Ave
               </Text>
             </View>
           </View>
           <Text
             style={{
-              fontFamily: 'Inter, sans-serif',
+              fontFamily: 'Inclusive Sans, sans-serif',
               fontSize: 12,
               lineHeight: 18,
               color: '#78716C',
@@ -642,7 +642,7 @@ function MockupEventDetail({ delay }: { delay?: number }) {
           >
             <Text
               style={{
-                fontFamily: 'Inter, sans-serif',
+                fontFamily: 'Inclusive Sans, sans-serif',
                 fontWeight: '600',
                 fontSize: 13,
                 color: '#FFFFFF',
@@ -692,7 +692,7 @@ function MockupAvatarPile({ count }: { count: number }) {
         >
           <Text
             style={{
-              fontFamily: 'Inter, sans-serif',
+              fontFamily: 'Inclusive Sans, sans-serif',
               fontSize: 9,
               fontWeight: '600',
               color: '#57534E',
@@ -740,7 +740,7 @@ function CoordinatorAttendeeRow({
         >
           <Text
             style={{
-              fontFamily: 'Inter, sans-serif',
+              fontFamily: 'Inclusive Sans, sans-serif',
               fontWeight: '600',
               fontSize: 11,
               color: '#FFFFFF',
@@ -752,7 +752,7 @@ function CoordinatorAttendeeRow({
         <View style={{ flex: 1 }}>
           <Text
             style={{
-              fontFamily: 'Inter, sans-serif',
+              fontFamily: 'Inclusive Sans, sans-serif',
               fontWeight: '600',
               fontSize: 12,
               color: '#1C1917',
@@ -762,7 +762,7 @@ function CoordinatorAttendeeRow({
           </Text>
           <Text
             style={{
-              fontFamily: 'Inter, sans-serif',
+              fontFamily: 'Inclusive Sans, sans-serif',
               fontSize: 10,
               color: '#A8A29E',
             }}
@@ -781,7 +781,7 @@ function CoordinatorAttendeeRow({
           >
             <Text
               style={{
-                fontFamily: 'Inter, sans-serif',
+                fontFamily: 'Inclusive Sans, sans-serif',
                 fontWeight: '600',
                 fontSize: 9,
                 color: '#15803D',
@@ -793,7 +793,7 @@ function CoordinatorAttendeeRow({
         ) : (
           <Text
             style={{
-              fontFamily: 'Inter, sans-serif',
+              fontFamily: 'Inclusive Sans, sans-serif',
               fontSize: 10,
               color: '#A8A29E',
             }}
@@ -825,7 +825,7 @@ function CoordinatorVisual() {
         >
           <Text
             style={{
-              fontFamily: 'Inter, sans-serif',
+              fontFamily: 'Inclusive Sans, sans-serif',
               fontWeight: '700',
               fontSize: 14,
               color: '#1C1917',
@@ -854,7 +854,7 @@ function CoordinatorVisual() {
             />
             <Text
               style={{
-                fontFamily: 'Inter, sans-serif',
+                fontFamily: 'Inclusive Sans, sans-serif',
                 fontWeight: '600',
                 fontSize: 10,
                 color: '#15803D',
@@ -877,7 +877,7 @@ function CoordinatorVisual() {
           >
             <Text
               style={{
-                fontFamily: 'Inter, sans-serif',
+                fontFamily: 'Inclusive Sans, sans-serif',
                 fontWeight: '700',
                 fontSize: 14,
                 color: '#1C1917',
@@ -888,7 +888,7 @@ function CoordinatorVisual() {
             <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12 }}>
               <Text
                 style={{
-                  fontFamily: 'Inter, sans-serif',
+                  fontFamily: 'Inclusive Sans, sans-serif',
                   fontSize: 11,
                   color: '#57534E',
                 }}
@@ -905,7 +905,7 @@ function CoordinatorVisual() {
               />
               <Text
                 style={{
-                  fontFamily: 'Inter, sans-serif',
+                  fontFamily: 'Inclusive Sans, sans-serif',
                   fontSize: 11,
                   color: '#57534E',
                 }}
@@ -947,7 +947,7 @@ function CoordinatorVisual() {
             </Text>
             <Text
               style={{
-                fontFamily: 'Inter, sans-serif',
+                fontFamily: 'Inclusive Sans, sans-serif',
                 fontSize: 10,
                 color: '#78716C',
               }}
@@ -977,7 +977,7 @@ function CoordinatorVisual() {
             </Text>
             <Text
               style={{
-                fontFamily: 'Inter, sans-serif',
+                fontFamily: 'Inclusive Sans, sans-serif',
                 fontSize: 10,
                 color: '#78716C',
               }}
@@ -1007,7 +1007,7 @@ function CoordinatorVisual() {
             </Text>
             <Text
               style={{
-                fontFamily: 'Inter, sans-serif',
+                fontFamily: 'Inclusive Sans, sans-serif',
                 fontSize: 10,
                 color: '#78716C',
               }}
@@ -1035,7 +1035,7 @@ function CoordinatorVisual() {
           >
             <Text
               style={{
-                fontFamily: 'Inter, sans-serif',
+                fontFamily: 'Inclusive Sans, sans-serif',
                 fontWeight: '600',
                 fontSize: 11,
                 letterSpacing: 0.4,
@@ -1196,7 +1196,7 @@ export function AppPreview() {
         <>
           <Text
             style={{
-              fontFamily: 'Inter, sans-serif',
+              fontFamily: 'Inclusive Sans, sans-serif',
               fontWeight: '600',
               fontSize: 12,
               letterSpacing: 1.5,
@@ -1237,7 +1237,7 @@ export function AppPreview() {
             <>
               <Text
                 style={{
-                  fontFamily: 'Inter, sans-serif',
+                  fontFamily: 'Inclusive Sans, sans-serif',
                   fontWeight: '600',
                   fontSize: 12,
                   letterSpacing: 1.5,
@@ -1277,7 +1277,7 @@ export function AppPreview() {
 
             <Text
               style={{
-                fontFamily: 'Inter, sans-serif',
+                fontFamily: 'Inclusive Sans, sans-serif',
                 fontWeight: '400',
                 fontSize: isMobile ? 15 : 18,
                 lineHeight: isMobile ? 24 : 28,

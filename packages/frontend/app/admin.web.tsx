@@ -31,7 +31,7 @@ export default function AdminPage() {
   if (loading) {
     return (
       <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: isDark ? '#0d0d0d' : '#FAFAF9' }}>
-        <Text style={{ fontFamily: 'Inter-Medium', fontSize: 14, color: isDark ? '#666' : '#999' }}>Loading...</Text>
+        <Text style={{ fontFamily: 'Inclusive Sans', fontSize: 14, color: isDark ? '#666' : '#999' }}>Loading...</Text>
       </View>
     )
   }

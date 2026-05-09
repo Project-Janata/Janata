@@ -247,7 +247,7 @@ export default function AuthScreen() {
                   size={20}
                   className={isDark ? 'text-white' : 'text-content'}
                 />
-                <Text className="font-inter font-medium text-content dark:text-content-dark">
+                <Text className="font-sans font-medium text-content dark:text-content-dark">
                   Back
                 </Text>
               </TouchableOpacity>
@@ -274,7 +274,7 @@ export default function AuthScreen() {
               </Text>
 
               <Text
-                className="text-base font-inter mt-2"
+                className="text-base font-sans mt-2"
                 style={{ color: '#78716C' }}
               >
                 {authStep === 'login'
@@ -289,9 +289,9 @@ export default function AuthScreen() {
 
             {/* Form */}
             {errorMessages.length > 0 && (
-              <View className="w-full font-inter bg-red-50 dark:bg-red-900/20 rounded-xl px-4 py-3 mb-4">
+              <View className="w-full font-sans bg-red-50 dark:bg-red-900/20 rounded-xl px-4 py-3 mb-4">
                 {errorMessages.map((msg, idx) => (
-                  <Text key={idx} className="text-red-500 text-sm font-inter">
+                  <Text key={idx} className="text-red-500 text-sm font-sans">
                     {msg}
                   </Text>
                 ))}
@@ -387,7 +387,7 @@ export default function AuthScreen() {
                     )
                   }
                 >
-                  <Text className="text-primary font-inter font-medium">Forgot password?</Text>
+                  <Text className="text-primary font-sans font-medium">Forgot password?</Text>
                 </Pressable>
               )}
             </View>
@@ -400,7 +400,7 @@ export default function AuthScreen() {
                   className="flex-row items-center justify-center bg-slate-100 dark:bg-slate-800 px-4 py-3 rounded-xl active:opacity-70"
                 >
                   <Code size={18} className={isDark ? 'text-white' : 'text-black'} />
-                  <Text className="ml-2 text-content dark:text-content-dark font-inter font-semibold">
+                  <Text className="ml-2 text-content dark:text-content-dark font-sans font-semibold">
                     Developer Mode
                   </Text>
                 </Pressable>
@@ -413,17 +413,17 @@ export default function AuthScreen() {
             )}
 
             {/* Footer Text */}
-            <Text className="text-content dark:text-content-dark opacity-50 text-sm font-inter mt-8 text-center px-4">
+            <Text className="text-content dark:text-content-dark opacity-50 text-sm font-sans mt-8 text-center px-4">
               By continuing, you agree to our{' '}
               <Text
-                className="text-primary font-inter-semibold"
+                className="text-primary font-sans"
                 onPress={() => router.push('/terms')}
               >
                 Terms of Service
               </Text>
               {' '}and{' '}
               <Text
-                className="text-primary font-inter-semibold"
+                className="text-primary font-sans"
                 onPress={() => router.push('/privacy')}
               >
                 Privacy Policy

@@ -98,7 +98,7 @@ function HeaderBar({
           <ChevronLeft size={20} color={colors.iconHeader} />
           <Text
             style={{
-              fontFamily: 'Inter-Regular',
+              fontFamily: 'Inclusive Sans',
               fontSize: 14,
               color: colors.iconHeader,
             }}
@@ -115,7 +115,7 @@ function HeaderBar({
       {/* Title row */}
       <Text
         style={{
-          fontFamily: 'Inter-Bold',
+          fontFamily: 'Inclusive Sans',
           fontSize: 20,
           color: colors.text,
           lineHeight: 26,
@@ -132,7 +132,7 @@ function HeaderBar({
               <Users size={13} color={colors.textSecondary} />
               <Text
                 style={{
-                  fontFamily: 'Inter-Medium',
+                  fontFamily: 'Inclusive Sans',
                   fontSize: 13,
                   color: colors.textSecondary,
                 }}
@@ -149,7 +149,7 @@ function HeaderBar({
               <BadgeCheck size={13} color="#E8862A" />
               <Text
                 style={{
-                  fontFamily: 'Inter-Medium',
+                  fontFamily: 'Inclusive Sans',
                   fontSize: 13,
                   color: '#E8862A',
                 }}
@@ -233,11 +233,11 @@ export default function CenterDetailPage() {
     return (
       <SafeAreaView style={{ flex: 1, backgroundColor: colors.panelBg }} edges={['top']}>
         <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center', paddingHorizontal: 16 }}>
-          <Text style={{ fontSize: 22, fontFamily: 'Inter-SemiBold', color: colors.text, marginBottom: 16 }}>
+          <Text style={{ fontSize: 22, fontFamily: 'Inclusive Sans', color: colors.text, marginBottom: 16 }}>
             Center not found
           </Text>
           <Pressable onPress={() => router.back()} style={{ marginTop: 8, minHeight: 44, justifyContent: 'center' }}>
-            <Text style={{ fontSize: 16, fontFamily: 'Inter-Medium', color: '#E8862A' }}>Go Back</Text>
+            <Text style={{ fontSize: 16, fontFamily: 'Inclusive Sans', color: '#E8862A' }}>Go Back</Text>
           </Pressable>
         </View>
       </SafeAreaView>
@@ -297,7 +297,7 @@ export default function CenterDetailPage() {
           {center.pointOfContact ? (
             <Text
               style={{
-                fontFamily: 'Inter-Regular',
+                fontFamily: 'Inclusive Sans',
                 fontSize: 13,
                 color: colors.textSecondary,
                 marginBottom: 16,
@@ -316,7 +316,7 @@ export default function CenterDetailPage() {
                 <View style={{ flex: 1, gap: 8 }}>
                   <Text
                     style={{
-                      fontFamily: 'Inter-Medium',
+                      fontFamily: 'Inclusive Sans',
                       fontSize: 14,
                       color: colors.text,
                       lineHeight: 20,
@@ -331,7 +331,7 @@ export default function CenterDetailPage() {
                   >
                     <Text
                       style={{
-                        fontFamily: 'Inter-SemiBold',
+                        fontFamily: 'Inclusive Sans',
                         fontSize: 14,
                         color: '#E8862A',
                       }}
@@ -352,7 +352,7 @@ export default function CenterDetailPage() {
                 <MetaIcon icon={Globe} color="#E8862A" colors={colors} />
                 <Text
                   style={{
-                    fontFamily: 'Inter-Medium',
+                    fontFamily: 'Inclusive Sans',
                     fontSize: 14,
                     color: '#E8862A',
                     lineHeight: 20,
@@ -374,7 +374,7 @@ export default function CenterDetailPage() {
                 <MetaIcon icon={Phone} color="#E8862A" colors={colors} />
                 <Text
                   style={{
-                    fontFamily: 'Inter-Medium',
+                    fontFamily: 'Inclusive Sans',
                     fontSize: 14,
                     color: colors.text,
                     lineHeight: 20,
@@ -393,7 +393,7 @@ export default function CenterDetailPage() {
                 <View style={{ flex: 1, justifyContent: 'center' }}>
                   <Text
                     style={{
-                      fontFamily: 'Inter-Medium',
+                      fontFamily: 'Inclusive Sans',
                       fontSize: 14,
                       color: colors.text,
                       lineHeight: 20,
@@ -403,7 +403,7 @@ export default function CenterDetailPage() {
                   </Text>
                   <Text
                     style={{
-                      fontFamily: 'Inter-Regular',
+                      fontFamily: 'Inclusive Sans',
                       fontSize: 13,
                       color: colors.textSecondary,
                       lineHeight: 18,
@@ -460,7 +460,7 @@ export default function CenterDetailPage() {
                         >
                           <Text
                             style={{
-                              fontFamily: 'Inter-SemiBold',
+                              fontFamily: 'Inclusive Sans',
                               fontSize: 11,
                               color: '#E8862A',
                               textTransform: 'uppercase',
@@ -471,7 +471,7 @@ export default function CenterDetailPage() {
                           </Text>
                           <Text
                             style={{
-                              fontFamily: 'Inter-SemiBold',
+                              fontFamily: 'Inclusive Sans',
                               fontSize: 22,
                               color: colors.text,
                               lineHeight: 28,
@@ -493,7 +493,7 @@ export default function CenterDetailPage() {
                         <View style={{ flex: 1 }}>
                           <Text
                             style={{
-                              fontFamily: 'Inter-SemiBold',
+                              fontFamily: 'Inclusive Sans',
                               fontSize: 14,
                               color: colors.text,
                               lineHeight: 20,
@@ -504,7 +504,7 @@ export default function CenterDetailPage() {
                           </Text>
                           <Text
                             style={{
-                              fontFamily: 'Inter-Regular',
+                              fontFamily: 'Inclusive Sans',
                               fontSize: 12,
                               color: colors.textSecondary,
                               lineHeight: 16,
@@ -520,7 +520,7 @@ export default function CenterDetailPage() {
                 </View>
               ) : (
                 <View style={{ alignItems: 'center', paddingVertical: 32 }}>
-                  <Text style={{ fontFamily: 'Inter-Regular', fontSize: 14, color: colors.textSecondary }}>
+                  <Text style={{ fontFamily: 'Inclusive Sans', fontSize: 14, color: colors.textSecondary }}>
                     No upcoming events yet
                   </Text>
                 </View>

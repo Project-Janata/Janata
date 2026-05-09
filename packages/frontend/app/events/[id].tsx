@@ -192,7 +192,7 @@ function HeaderBar({
           <ChevronLeft size={20} color={colors.iconHeader} />
           <Text
             style={{
-              fontFamily: 'Inter-Regular',
+              fontFamily: 'Inclusive Sans',
               fontSize: 14,
               color: colors.iconHeader,
             }}
@@ -263,7 +263,7 @@ function HeaderBar({
         <Text
           style={{
             flex: 1,
-            fontFamily: 'Inter-Bold',
+            fontFamily: 'Inclusive Sans',
             fontSize: 20,
             color: colors.text,
             lineHeight: 26,
@@ -313,13 +313,13 @@ function MetaSection({
             <MetaIcon icon={MapPin} color={iconColor} colors={colors} />
             <View style={{ flex: 1, gap: 2, justifyContent: 'center' }}>
               {line1 ? (
-                <Text style={{ fontFamily: 'Inter-Medium', fontSize: 14, color: colors.text }}>
+                <Text style={{ fontFamily: 'Inclusive Sans', fontSize: 14, color: colors.text }}>
                   {line1}
                 </Text>
               ) : null}
               {line2 ? (
                 <Text
-                  style={{ fontFamily: 'Inter-Regular', fontSize: 13, color: colors.textSecondary }}
+                  style={{ fontFamily: 'Inclusive Sans', fontSize: 13, color: colors.textSecondary }}
                 >
                   {line2}
                 </Text>
@@ -333,7 +333,7 @@ function MetaSection({
       {!(event.signupUrl && !event.allowJanataSignup) && (
         <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12 }}>
           <MetaIcon icon={Users} color={iconColor} colors={colors} />
-          <Text style={{ fontFamily: 'Inter-Medium', fontSize: 14, color: colors.text }}>
+          <Text style={{ fontFamily: 'Inclusive Sans', fontSize: 14, color: colors.text }}>
             {attendLabel}
           </Text>
           <AvatarStack attendees={attendees} colors={colors} />
@@ -344,7 +344,7 @@ function MetaSection({
       {event.pointOfContact ? (
         <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12 }}>
           <MetaIcon icon={User} color={iconColor} colors={colors} />
-          <Text style={{ fontFamily: 'Inter-Medium', fontSize: 14, color: colors.text }}>
+          <Text style={{ fontFamily: 'Inclusive Sans', fontSize: 14, color: colors.text }}>
             Contact: {event.pointOfContact}
           </Text>
         </View>
@@ -361,7 +361,7 @@ function AboutSection({ description, colors }: { description?: string; colors: D
     <View style={{ gap: 12 }}>
       <Text
         style={{
-          fontFamily: 'Inter-Medium',
+          fontFamily: 'Inclusive Sans',
           fontSize: 11,
           color: colors.textMuted,
           letterSpacing: 0.5,
@@ -372,7 +372,7 @@ function AboutSection({ description, colors }: { description?: string; colors: D
       </Text>
       <Text
         style={{
-          fontFamily: 'Inter-Regular',
+          fontFamily: 'Inclusive Sans',
           fontSize: 14,
           color: colors.textSecondary,
           lineHeight: 20,
@@ -399,13 +399,13 @@ function AttendedBanner({ count, colors }: { count: number; colors: DetailColors
     >
       <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
         <CheckCircle size={18} color="#059669" />
-        <Text style={{ fontFamily: 'Inter-SemiBold', fontSize: 14, color: '#059669' }}>
+        <Text style={{ fontFamily: 'Inclusive Sans', fontSize: 14, color: '#059669' }}>
           You attended this event
         </Text>
       </View>
       {count > 1 && (
         <Text
-          style={{ fontFamily: 'Inter-Regular', fontSize: 12, color: '#059669', marginLeft: 26 }}
+          style={{ fontFamily: 'Inclusive Sans', fontSize: 12, color: '#059669', marginLeft: 26 }}
         >
           Along with {count - 1} others
         </Text>
@@ -483,7 +483,7 @@ function ActionBar({
           style={{ paddingVertical: 12, alignItems: 'center', justifyContent: 'center' }}
           accessibilityLabel={`Sign up at ${hostnameOf(signupUrl)}`}
         >
-          <Text style={{ fontFamily: 'Inter-SemiBold', fontSize: 14, color: '#E8862A' }}>
+          <Text style={{ fontFamily: 'Inclusive Sans', fontSize: 14, color: '#E8862A' }}>
             Or sign up at {hostnameOf(signupUrl)}
           </Text>
         </Pressable>
@@ -500,7 +500,7 @@ function ActionBar({
         </PrimaryButton>
         <Text
           style={{
-            fontFamily: 'Inter-Regular',
+            fontFamily: 'Inclusive Sans',
             fontSize: 12,
             color: colors.textMuted,
             textAlign: 'center',
@@ -530,7 +530,7 @@ function ActionBar({
       </PrimaryButton>
       <Text
         style={{
-          fontFamily: 'Inter-Regular',
+          fontFamily: 'Inclusive Sans',
           fontSize: 12,
           color: colors.textMuted,
           textAlign: 'center',
@@ -645,7 +645,7 @@ export default function EventDetailPage() {
           <Text
             style={{
               fontSize: 22,
-              fontFamily: 'Inter-SemiBold',
+              fontFamily: 'Inclusive Sans',
               color: colors.text,
               marginBottom: 16,
             }}
@@ -656,7 +656,7 @@ export default function EventDetailPage() {
             onPress={() => router.back()}
             style={{ marginTop: 8, minHeight: 44, justifyContent: 'center' }}
           >
-            <Text style={{ fontSize: 16, fontFamily: 'Inter-Medium', color: '#E8862A' }}>
+            <Text style={{ fontSize: 16, fontFamily: 'Inclusive Sans', color: '#E8862A' }}>
               Go Back
             </Text>
           </Pressable>
@@ -713,7 +713,7 @@ export default function EventDetailPage() {
               {/* Date & time */}
               <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12 }}>
                 <MetaIcon icon={Clock} color="#E8862A" colors={colors} />
-                <Text style={{ fontFamily: 'Inter-Medium', fontSize: 14, color: colors.text }}>
+                <Text style={{ fontFamily: 'Inclusive Sans', fontSize: 14, color: colors.text }}>
                   {formatRelativeDateTime(event.date, event.time)}
                 </Text>
               </View>
@@ -727,7 +727,7 @@ export default function EventDetailPage() {
             <View style={{ paddingTop: 16, paddingHorizontal: 20 }}>
               <Text
                 style={{
-                  fontFamily: 'Inter-Medium',
+                  fontFamily: 'Inclusive Sans',
                   fontSize: 13,
                   color: colors.textSecondary,
                   marginBottom: 12,
@@ -754,14 +754,14 @@ export default function EventDetailPage() {
                     />
                     <View style={{ flex: 1, gap: 2 }}>
                       <Text
-                        style={{ fontFamily: 'Inter-Medium', fontSize: 14, color: colors.text }}
+                        style={{ fontFamily: 'Inclusive Sans', fontSize: 14, color: colors.text }}
                       >
                         {attendee.name}
                       </Text>
                       {attendee.subtitle ? (
                         <Text
                           style={{
-                            fontFamily: 'Inter-Regular',
+                            fontFamily: 'Inclusive Sans',
                             fontSize: 12,
                             color: colors.textSecondary,
                           }}
@@ -778,7 +778,7 @@ export default function EventDetailPage() {
                   <Users size={48} color={colors.textMuted} />
                   <Text
                     style={{
-                      fontFamily: 'Inter-Regular',
+                      fontFamily: 'Inclusive Sans',
                       fontSize: 14,
                       color: colors.textSecondary,
                       marginTop: 12,
@@ -887,7 +887,7 @@ export default function EventDetailPage() {
             {/* Date & time */}
             <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12 }}>
               <MetaIcon icon={Clock} color={isPast ? colors.textMuted : '#E8862A'} colors={colors} />
-              <Text style={{ fontFamily: 'Inter-Medium', fontSize: 14, color: colors.text }}>
+              <Text style={{ fontFamily: 'Inclusive Sans', fontSize: 14, color: colors.text }}>
                 {formatRelativeDateTime(event.date, event.time)}
               </Text>
             </View>
@@ -932,14 +932,14 @@ export default function EventDetailPage() {
                   />
                   <View style={{ flex: 1, gap: 2 }}>
                     <Text
-                      style={{ fontFamily: 'Inter-Medium', fontSize: 14, color: colors.text }}
+                      style={{ fontFamily: 'Inclusive Sans', fontSize: 14, color: colors.text }}
                     >
                       {attendee.name}
                     </Text>
                     {attendee.subtitle ? (
                       <Text
                         style={{
-                          fontFamily: 'Inter-Regular',
+                          fontFamily: 'Inclusive Sans',
                           fontSize: 12,
                           color: colors.textSecondary,
                         }}
@@ -956,7 +956,7 @@ export default function EventDetailPage() {
                 <Users size={48} color={colors.textMuted} />
                 <Text
                   style={{
-                    fontFamily: 'Inter-Regular',
+                    fontFamily: 'Inclusive Sans',
                     fontSize: 14,
                     color: colors.textSecondary,
                     marginTop: 12,

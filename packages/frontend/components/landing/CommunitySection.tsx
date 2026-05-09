@@ -47,7 +47,7 @@ function StepCard({ number, title, description, isMobile }: StepCardProps) {
       </Text>
       <Text
         style={{
-          fontFamily: 'Inter, sans-serif',
+          fontFamily: 'Inclusive Sans, sans-serif',
           fontWeight: '400',
           fontSize: isMobile ? 14 : 15,
           lineHeight: isMobile ? 22 : 24,
@@ -77,7 +77,7 @@ export function CommunitySection() {
       <View style={{ maxWidth: 720, marginBottom: isMobile ? 40 : 56 }}>
         <Text
           style={{
-            fontFamily: 'Inter, sans-serif',
+            fontFamily: 'Inclusive Sans, sans-serif',
             fontWeight: '600',
             fontSize: 12,
             letterSpacing: 1.5,
@@ -104,7 +104,7 @@ export function CommunitySection() {
 
         <Text
           style={{
-            fontFamily: 'Inter, sans-serif',
+            fontFamily: 'Inclusive Sans, sans-serif',
             fontWeight: '400',
             fontSize: isMobile ? 16 : 18,
             lineHeight: isMobile ? 26 : 30,
@@ -162,7 +162,7 @@ export function CommunitySection() {
         <View style={{ flex: 1, maxWidth: 420 }}>
           <Text
             style={{
-              fontFamily: 'Inter, sans-serif',
+              fontFamily: 'Inclusive Sans, sans-serif',
               fontWeight: '600',
               fontSize: 11,
               letterSpacing: 1.2,
@@ -187,7 +187,7 @@ export function CommunitySection() {
           </Text>
           <Text
             style={{
-              fontFamily: 'Inter, sans-serif',
+              fontFamily: 'Inclusive Sans, sans-serif',
               fontSize: isMobile ? 14 : 15,
               lineHeight: isMobile ? 22 : 24,
               color: '#78716C',

@@ -157,7 +157,7 @@ function BoardComposer({
           placeholderTextColor={colors.textMuted}
           style={{
             flex: 1,
-            fontFamily: 'Inter-Regular',
+            fontFamily: 'Inclusive Sans',
             fontSize: 16,
             color: colors.textSecondary,
           }}
@@ -167,7 +167,7 @@ function BoardComposer({
         <Text
           style={{
             marginTop: 10,
-            fontFamily: 'Inter-Regular',
+            fontFamily: 'Inclusive Sans',
             fontSize: 13,
             color: colors.textMuted,
             lineHeight: 19,
@@ -202,7 +202,7 @@ function EmptyBoardState({
     >
       <Text
         style={{
-          fontFamily: 'Inter-SemiBold',
+          fontFamily: 'Inclusive Sans',
           fontSize: 19,
           color: colors.text,
           textAlign: 'center',
@@ -212,7 +212,7 @@ function EmptyBoardState({
       </Text>
       <Text
         style={{
-          fontFamily: 'Inter-Regular',
+          fontFamily: 'Inclusive Sans',
           fontSize: 14,
           color: colors.textSecondary,
           lineHeight: 22,
@@ -292,7 +292,7 @@ export function BoardPostCard({
           <Text
             style={{
               flex: 1,
-              fontFamily: 'Inter-SemiBold',
+              fontFamily: 'Inclusive Sans',
               fontSize: 12,
               color: colors.textSecondary,
             }}
@@ -316,17 +316,17 @@ export function BoardPostCard({
           <View style={{ flexDirection: 'row', alignItems: 'flex-start', justifyContent: 'space-between', gap: 12 }}>
             <View style={{ flex: 1 }}>
               <View style={{ flexDirection: 'row', alignItems: 'center', gap: 7, flexWrap: 'wrap' }}>
-                <Text style={{ fontFamily: 'Inter-SemiBold', fontSize: isFeedCard ? 14 : 16, color: colors.text }}>
+                <Text style={{ fontFamily: 'Inclusive Sans', fontSize: isFeedCard ? 14 : 16, color: colors.text }}>
                   {message.author.name}
                 </Text>
                 {message.author.verification === 'sevak' ? (
-                  <Text style={{ fontFamily: 'Inter-Bold', fontSize: 12, letterSpacing: 0.4, color: '#C2410C' }}>
+                  <Text style={{ fontFamily: 'Inclusive Sans', fontSize: 12, letterSpacing: 0.4, color: '#C2410C' }}>
                     SEVAK
                   </Text>
                 ) : null}
                 {!isFeedCard && message.pinned ? <Pill label="Pinned" colors={colors} /> : null}
               </View>
-              <Text style={{ fontFamily: 'Inter-Regular', fontSize: 13, color: colors.textMuted, marginTop: 2 }}>
+              <Text style={{ fontFamily: 'Inclusive Sans', fontSize: 13, color: colors.textMuted, marginTop: 2 }}>
                 {message.timestamp}
               </Text>
             </View>
@@ -335,7 +335,7 @@ export function BoardPostCard({
 
           <Text
             style={{
-              fontFamily: 'Inter-Regular',
+              fontFamily: 'Inclusive Sans',
               fontSize: isFeedCard ? 14 : 17,
               lineHeight: isFeedCard ? 20 : 26,
               color: colors.textSecondary,
@@ -355,7 +355,7 @@ export function BoardPostCard({
                 justifyContent: 'center',
               }}
             >
-              <Text style={{ fontFamily: 'Inter-Medium', fontSize: 12, color: colors.textSecondary }}>
+              <Text style={{ fontFamily: 'Inclusive Sans', fontSize: 12, color: colors.textSecondary }}>
                 {message.attachmentLabel}
               </Text>
             </View>
@@ -381,7 +381,7 @@ export function BoardPostCard({
                 paddingVertical: 5,
               }}
             >
-              <Text style={{ fontFamily: 'Inter-Medium', fontSize: 13, color: colors.textMuted }}>+ React</Text>
+              <Text style={{ fontFamily: 'Inclusive Sans', fontSize: 13, color: colors.textMuted }}>+ React</Text>
             </View>
             <View
               style={{
@@ -392,7 +392,7 @@ export function BoardPostCard({
               }}
             >
               {isFeedCard ? <MessageCircle size={13} color={accent} strokeWidth={2.3} /> : null}
-              <Text style={{ fontFamily: 'Inter-SemiBold', fontSize: 13, color: accent }}>
+              <Text style={{ fontFamily: 'Inclusive Sans', fontSize: 13, color: accent }}>
                 {replies} {replies === 1 ? 'reply' : 'replies'}
               </Text>
             </View>
@@ -429,7 +429,7 @@ function ReactionPill({
       }}
     >
       <Text style={{ fontSize: 13 }}>{emoji}</Text>
-      <Text style={{ fontFamily: 'Inter-SemiBold', fontSize: 13, color: colors.textSecondary }}>{count}</Text>
+      <Text style={{ fontFamily: 'Inclusive Sans', fontSize: 13, color: colors.textSecondary }}>{count}</Text>
     </View>
   )
 }
@@ -446,7 +446,7 @@ function Pill({ label, colors, tone = 'neutral' }: { label: string; colors: Thre
     >
       <Text
         style={{
-          fontFamily: 'Inter-SemiBold',
+          fontFamily: 'Inclusive Sans',
           fontSize: 12,
           color: tone === 'accent' ? colors.accent ?? colors.textSecondary : colors.textSecondary,
         }}
@@ -503,14 +503,14 @@ function LockedBoardState({
       >
         <Lock size={34} color={colors.textMuted} strokeWidth={1.8} />
       </View>
-      <Text style={{ fontFamily: 'Inter-Bold', fontSize: 21, color: colors.text, textAlign: 'center' }}>
+      <Text style={{ fontFamily: 'Inclusive Sans', fontSize: 21, color: colors.text, textAlign: 'center' }}>
         {title}
       </Text>
       <Text
         style={{
           marginTop: 16,
           maxWidth: 360,
-          fontFamily: 'Inter-Regular',
+          fontFamily: 'Inclusive Sans',
           fontSize: 16,
           lineHeight: 25,
           color: colors.textSecondary,
@@ -531,7 +531,7 @@ function LockedBoardState({
             justifyContent: 'center',
           }}
         >
-          <Text style={{ fontFamily: 'Inter-Bold', fontSize: 15, color: '#FFFFFF' }}>{primaryActionLabel}</Text>
+          <Text style={{ fontFamily: 'Inclusive Sans', fontSize: 15, color: '#FFFFFF' }}>{primaryActionLabel}</Text>
         </Pressable>
         <Pressable
           onPress={onSecondaryAction}
@@ -546,7 +546,7 @@ function LockedBoardState({
             backgroundColor: colors.cardBg ?? colors.panelBg,
           }}
         >
-          <Text style={{ fontFamily: 'Inter-Bold', fontSize: 15, color: colors.textSecondary }}>{secondaryActionLabel}</Text>
+          <Text style={{ fontFamily: 'Inclusive Sans', fontSize: 15, color: colors.textSecondary }}>{secondaryActionLabel}</Text>
         </Pressable>
       </View>
     </View>

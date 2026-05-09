@@ -82,7 +82,7 @@ export default function TabHeader({
             >
               <Text
                 style={{
-                  fontFamily: 'Inter-Bold',
+                  fontFamily: 'Inclusive Sans',
                   fontSize: 16,
                   color: isDark ? '#FAFAF9' : '#1F1D1B',
                 }}
@@ -93,7 +93,7 @@ export default function TabHeader({
           ) : (
             <Text
               style={{
-                fontFamily: 'Inter-Bold',
+                fontFamily: 'Inclusive Sans',
                 fontSize: 22,
                 color: textColor,
               }}

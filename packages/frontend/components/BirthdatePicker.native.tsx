@@ -37,7 +37,7 @@ export default function BirthdatePicker({ value, onChange }: BirthdatePickerProp
         onPress={() => setShow(true)}
         className="bg-muted/50 dark:bg-muted-dark/10 py-3 px-4 rounded-lg border-2 border-transparent active:border-primary"
       >
-        <Text className="font-inter text-base text-content dark:text-content-dark">
+        <Text className="font-sans text-base text-content dark:text-content-dark">
           {formatDate(date)}
         </Text>
       </Pressable>
@@ -62,7 +62,7 @@ export default function BirthdatePicker({ value, onChange }: BirthdatePickerProp
               }}
               className="bg-primary py-3 px-4 rounded-lg mt-2"
             >
-              <Text className="font-inter text-base text-white text-center font-semibold">
+              <Text className="font-sans text-base text-white text-center font-semibold">
                 Done
               </Text>
             </Pressable>

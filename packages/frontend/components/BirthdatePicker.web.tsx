@@ -21,7 +21,7 @@ function Select({ label, value, options, onChange, className }) {
         {/* This is the "select" box */}
         <Listbox.Button
           aria-label={label}
-          className="relative w-full font-inter text-base bg-stone-100 dark:bg-stone-800 text-content dark:text-content-dark py-[14px] px-4 rounded-lg border-2 border-transparent focus:border-primary outline-none text-left"
+          className="relative w-full font-sans text-base bg-stone-100 dark:bg-stone-800 text-content dark:text-content-dark py-[14px] px-4 rounded-lg border-2 border-transparent focus:border-primary outline-none text-left"
         >
           <span className="block truncate">{selectedOption?.label}</span>
           {/* A basic arrow. Replace with an SVG icon for best results. */}
@@ -45,7 +45,7 @@ function Select({ label, value, options, onChange, className }) {
                   key={option.value}
                   value={option.value}
                   className={({ active }) =>
-                    `relative select-none py-2 px-4 font-inter ${
+                    `relative select-none py-2 px-4 font-sans ${
                       active ? 'bg-primary/10 text-primary' : 'text-content dark:text-content-dark'
                     }`
                   }

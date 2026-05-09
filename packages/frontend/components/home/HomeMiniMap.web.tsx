@@ -103,7 +103,7 @@ function MapOverlay({
             shadowOffset: { width: 0, height: 3 },
           }}
         >
-          <Text style={{ fontFamily: 'Inter-SemiBold', fontSize: 13, color: isDark ? '#FAFAFA' : '#1C1917' }}>
+          <Text style={{ fontFamily: 'Inclusive Sans', fontSize: 13, color: isDark ? '#FAFAFA' : '#1C1917' }}>
             {eventCount} events - {centerCount} centers nearby
           </Text>
         </View>
@@ -126,7 +126,7 @@ function MapOverlay({
           }}
         >
           <MapIcon size={15} color="#E8862A" />
-          <Text style={{ fontFamily: 'Inter-SemiBold', fontSize: 13, color: isDark ? '#FAFAFA' : '#1C1917' }}>
+          <Text style={{ fontFamily: 'Inclusive Sans', fontSize: 13, color: isDark ? '#FAFAFA' : '#1C1917' }}>
             Open map
           </Text>
         </View>

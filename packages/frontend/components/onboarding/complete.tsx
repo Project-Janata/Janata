@@ -61,10 +61,10 @@ export default function Complete() {
                 showContent ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-4'
               }`}
             >
-              <Text className="text-4xl font-inter font-bold text-content dark:text-content-dark text-center mb-4 tracking-tight">
+              <Text className="text-4xl font-sans font-bold text-content dark:text-content-dark text-center mb-4 tracking-tight">
                 Welcome to Janata!
               </Text>
-              <Text className="text-lg font-inter text-stone-500 dark:text-stone-400 text-center max-w-md leading-relaxed px-4">
+              <Text className="text-lg font-sans text-stone-500 dark:text-stone-400 text-center max-w-md leading-relaxed px-4">
                 Begin your spiritual journey now
               </Text>
             </View>
@@ -74,7 +74,7 @@ export default function Complete() {
         {/* Error Message */}
         {submitError && (
           <View className="px-4 mb-4">
-            <Text className="text-red-500 dark:text-red-400 font-inter text-sm text-center">
+            <Text className="text-red-500 dark:text-red-400 font-sans text-sm text-center">
               {submitError}
             </Text>
           </View>

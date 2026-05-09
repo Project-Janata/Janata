@@ -61,7 +61,7 @@ export default function FilterPickerModal<V extends string | number>({
         }}
       >
         <View style={{ flex: 1 }}>
-          <Text style={{ fontSize: 15, color: colors.text, fontFamily: 'Inter-SemiBold' }}>
+          <Text style={{ fontSize: 15, color: colors.text, fontFamily: 'Inclusive Sans' }}>
             {opt.label}
           </Text>
           {opt.sublabel && (
@@ -75,7 +75,7 @@ export default function FilterPickerModal<V extends string | number>({
             style={{
               fontSize: 13,
               color: colors.textSecondary,
-              fontFamily: 'Inter-Medium',
+              fontFamily: 'Inclusive Sans',
               marginRight: isSelected ? 10 : 0,
               minWidth: 24,
               textAlign: 'right',
@@ -115,9 +115,9 @@ export default function FilterPickerModal<V extends string | number>({
           borderBottomColor: colors.border,
         }}
       >
-        <Text style={{ fontSize: 16, fontFamily: 'Inter-Bold', color: colors.text }}>{title}</Text>
+        <Text style={{ fontSize: 16, fontFamily: 'Inclusive Sans', color: colors.text }}>{title}</Text>
         <Pressable onPress={onClose}>
-          <Text style={{ fontSize: 14, color: colors.textSecondary, fontFamily: 'Inter-Medium' }}>
+          <Text style={{ fontSize: 14, color: colors.textSecondary, fontFamily: 'Inclusive Sans' }}>
             Close
           </Text>
         </Pressable>
@@ -136,7 +136,7 @@ export default function FilterPickerModal<V extends string | number>({
             borderTopColor: colors.border,
           }}
         >
-          <Text style={{ fontSize: 14, color: '#E8862A', fontFamily: 'Inter-SemiBold' }}>
+          <Text style={{ fontSize: 14, color: '#E8862A', fontFamily: 'Inclusive Sans' }}>
             Clear selection
           </Text>
         </Pressable>

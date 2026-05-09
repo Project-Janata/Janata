@@ -43,7 +43,7 @@ export default function EventsListPage() {
       refreshControl={<RefreshControl refreshing={refreshing} onRefresh={handleRefresh} />}
     >
       <View className="px-4 pt-4 pb-8 gap-4">
-        <Text className="text-content dark:text-content-dark font-inter text-2xl font-bold">
+        <Text className="text-content dark:text-content-dark font-sans text-2xl font-bold">
           My Events
         </Text>
 
@@ -52,11 +52,11 @@ export default function EventsListPage() {
             {events.map((event) => (
               <Card key={event.id} pressable onPress={() => handleEventPress(event)} padding="sm">
                 <View className="gap-2">
-                  <Text className="font-inter text-sm text-primary font-medium">{event.time}</Text>
-                  <Text className="text-content dark:text-content-dark font-inter text-sm">
+                  <Text className="font-sans text-sm text-primary font-medium">{event.time}</Text>
+                  <Text className="text-content dark:text-content-dark font-sans text-sm">
                     {event.location}
                   </Text>
-                  <Text className="text-content dark:text-content-dark font-inter text-lg font-semibold leading-tight">
+                  <Text className="text-content dark:text-content-dark font-sans text-lg font-semibold leading-tight">
                     {event.title}
                   </Text>
                   <Text className="text-content dark:text-content-dark text-sm mt-1">
@@ -69,10 +69,10 @@ export default function EventsListPage() {
         ) : (
           <View className="items-center py-16 gap-4">
             <Calendar size={48} color="#a1a1aa" />
-            <Text className="text-lg text-contentStrong dark:text-contentStrong-dark font-inter">
+            <Text className="text-lg text-contentStrong dark:text-contentStrong-dark font-sans">
               No events yet
             </Text>
-            <Text className="text-sm text-contentStrong dark:text-contentStrong-dark font-inter text-center px-8">
+            <Text className="text-sm text-contentStrong dark:text-contentStrong-dark font-sans text-center px-8">
               Events you register for will appear here
             </Text>
           </View>

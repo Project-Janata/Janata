@@ -80,9 +80,9 @@ export function TabSegment({
             activeOpacity={0.8}
           >
             <Text
-              className={`text-center text-xs font-inter ${
+              className={`text-center text-xs font-sans ${
                 isActive
-                  ? 'text-primary font-inter-semibold'
+                  ? 'text-primary font-sans'
                   : 'text-gray-700 dark:text-white'
               }`}
             >

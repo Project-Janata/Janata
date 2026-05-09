@@ -180,7 +180,7 @@ function MobileCenterDetail({ centerId }: { centerId: string }) {
                   style={{ alignSelf: 'flex-start', paddingVertical: 4 }}
                   accessibilityLabel="Get directions"
                 >
-                  <Text style={{ color: '#E8862A', fontSize: 14, fontWeight: '600', fontFamily: 'Inter-SemiBold' }}>
+                  <Text style={{ color: '#E8862A', fontSize: 14, fontWeight: '600', fontFamily: 'Inclusive Sans' }}>
                     Get directions →
                   </Text>
                 </Pressable>

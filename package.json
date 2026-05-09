@@ -50,17 +50,18 @@
     "wrangler": "^4.0.0"
   },
   "dependencies": {
+    "@expo-google-fonts/inclusive-sans": "^0.4.1",
+    "expo": "~55.0.15",
     "expo-image-picker": "^55.0.18",
     "hono": "^4.7.0",
     "jose": "^6.0.0",
     "nativewind": "4.2.2",
     "node-addon-api": "^8.0.0",
     "node-gyp": "^11.0.0",
-    "react-native-worklets": "^0.8.1",
-    "tailwindcss": "^3.4.19",
-    "expo": "~55.0.15",
     "react": "19.2.0",
-    "react-native": "0.83.4"
+    "react-native": "0.83.4",
+    "react-native-worklets": "^0.8.1",
+    "tailwindcss": "^3.4.19"
   },
   "overrides": {
     "react": "19.2.0",

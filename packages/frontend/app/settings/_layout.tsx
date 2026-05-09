@@ -54,7 +54,7 @@ export default function SettingsLayout() {
                   >
                     <ArrowLeft size={20} color={isDark ? '#a1a1aa' : '#71717a'} />
                   </Pressable>
-                  <Text className="text-2xl font-inter font-bold text-content dark:text-content-dark">
+                  <Text className="text-2xl font-sans font-bold text-content dark:text-content-dark">
                     Settings
                   </Text>
                   <View style={{ width: 44 }} />
@@ -82,7 +82,7 @@ export default function SettingsLayout() {
                         }
                       />
                       <Text
-                        className={`font-inter font-medium text-base ${
+                        className={`font-sans font-medium text-base ${
                           isActive ? 'text-white' : 'text-content dark:text-content-dark'
                         }`}
                       >

@@ -218,7 +218,7 @@ function HeaderBar({
           <ChevronLeft size={20} color={colors.iconHeader} />
           <Text
             style={{
-              fontFamily: 'Inter-Regular',
+              fontFamily: 'Inclusive Sans',
               fontSize: 14,
               color: colors.iconHeader,
             }}
@@ -255,7 +255,7 @@ function HeaderBar({
         <Text
           style={{
             flex: 1,
-            fontFamily: 'Inter-Bold',
+            fontFamily: 'Inclusive Sans',
             fontSize: 20,
             color: colors.text,
             lineHeight: 26,
@@ -355,7 +355,7 @@ function MetaSection({
               {line1 && (
                 <Text
                   style={{
-                    fontFamily: 'Inter-Medium',
+                    fontFamily: 'Inclusive Sans',
                     fontSize: 14,
                     color: colors.text,
                   }}
@@ -366,7 +366,7 @@ function MetaSection({
               {line2 && (
                 <Text
                   style={{
-                    fontFamily: 'Inter-Regular',
+                    fontFamily: 'Inclusive Sans',
                     fontSize: 13,
                     color: colors.textSecondary,
                   }}
@@ -386,7 +386,7 @@ function MetaSection({
           <MetaIcon icon={Users} color={iconColor} colors={colors} />
           <Text
             style={{
-              fontFamily: 'Inter-Medium',
+              fontFamily: 'Inclusive Sans',
               fontSize: 14,
               color: colors.text,
             }}
@@ -403,7 +403,7 @@ function MetaSection({
           <MetaIcon icon={User} color={iconColor} colors={colors} />
           <Text
             style={{
-              fontFamily: 'Inter-Medium',
+              fontFamily: 'Inclusive Sans',
               fontSize: 14,
               color: colors.text,
             }}
@@ -423,7 +423,7 @@ function MetaSection({
           <MetaIcon icon={ExternalLink} color={iconColor} colors={colors} />
           <Text
             style={{
-              fontFamily: 'Inter-Medium',
+              fontFamily: 'Inclusive Sans',
               fontSize: 14,
               color: '#E8862A',
               flex: 1,
@@ -448,7 +448,7 @@ function AboutSection({ description, colors }: { description?: string; colors: D
     <View style={{ gap: 12 }}>
       <Text
         style={{
-          fontFamily: 'Inter-Medium',
+          fontFamily: 'Inclusive Sans',
           fontSize: 11,
           color: colors.textMuted,
           letterSpacing: 0.5,
@@ -459,7 +459,7 @@ function AboutSection({ description, colors }: { description?: string; colors: D
       </Text>
       <Text
         style={{
-          fontFamily: 'Inter-Regular',
+          fontFamily: 'Inclusive Sans',
           fontSize: 14,
           color: colors.textSecondary,
           lineHeight: 20,
@@ -490,7 +490,7 @@ function AttendedBanner({ count, colors }: { count: number; colors: DetailColors
         <CheckCircle size={18} color="#059669" />
         <Text
           style={{
-            fontFamily: 'Inter-SemiBold',
+            fontFamily: 'Inclusive Sans',
             fontSize: 14,
             color: '#059669',
           }}
@@ -501,7 +501,7 @@ function AttendedBanner({ count, colors }: { count: number; colors: DetailColors
       {count > 1 && (
         <Text
           style={{
-            fontFamily: 'Inter-Regular',
+            fontFamily: 'Inclusive Sans',
             fontSize: 12,
             color: '#059669',
             marginLeft: 26,
@@ -523,7 +523,7 @@ function PeopleTab({ attendees, colors }: { attendees: Attendee[]; colors: Detai
     <View style={{ paddingHorizontal: 24, paddingTop: 16 }}>
       <Text
         style={{
-          fontFamily: 'Inter-Medium',
+          fontFamily: 'Inclusive Sans',
           fontSize: 13,
           color: colors.textSecondary,
           marginBottom: 12,
@@ -537,7 +537,7 @@ function PeopleTab({ attendees, colors }: { attendees: Attendee[]; colors: Detai
           <Users size={32} color={colors.textMuted} />
           <Text
             style={{
-              fontFamily: 'Inter-Regular',
+              fontFamily: 'Inclusive Sans',
               fontSize: 14,
               color: colors.textSecondary,
             }}
@@ -562,7 +562,7 @@ function PeopleTab({ attendees, colors }: { attendees: Attendee[]; colors: Detai
               <View style={{ flex: 1, gap: 2 }}>
                 <Text
                   style={{
-                    fontFamily: 'Inter-Medium',
+                    fontFamily: 'Inclusive Sans',
                     fontSize: 14,
                     color: colors.text,
                   }}
@@ -571,7 +571,7 @@ function PeopleTab({ attendees, colors }: { attendees: Attendee[]; colors: Detai
                 </Text>
                 <Text
                   style={{
-                    fontFamily: 'Inter-Regular',
+                    fontFamily: 'Inclusive Sans',
                     fontSize: 12,
                     color: colors.textSecondary,
                   }}
@@ -622,7 +622,7 @@ function DefaultContent({
         <MetaIcon icon={Clock} color={isPast ? colors.textMuted : '#E8862A'} colors={colors} />
         <Text
           style={{
-            fontFamily: 'Inter-Medium',
+            fontFamily: 'Inclusive Sans',
             fontSize: 14,
             color: colors.text,
           }}
@@ -695,7 +695,7 @@ function RegisteredContent({
               <MetaIcon icon={Clock} color="#E8862A" colors={colors} />
               <Text
                 style={{
-                  fontFamily: 'Inter-Medium',
+                  fontFamily: 'Inclusive Sans',
                   fontSize: 14,
                   color: colors.text,
                 }}
@@ -810,7 +810,7 @@ function ActionBar({
         >
           <Text
             style={{
-              fontFamily: 'Inter-SemiBold',
+              fontFamily: 'Inclusive Sans',
               fontSize: 14,
               color: '#E8862A',
             }}
@@ -838,7 +838,7 @@ function ActionBar({
         </PrimaryButton>
         <Text
           style={{
-            fontFamily: 'Inter-Regular',
+            fontFamily: 'Inclusive Sans',
             fontSize: 12,
             color: colors.textMuted,
             textAlign: 'center',
@@ -890,7 +890,7 @@ function ActionBar({
       </PrimaryButton>
       <Text
         style={{
-          fontFamily: 'Inter-Regular',
+          fontFamily: 'Inclusive Sans',
           fontSize: 12,
           color: colors.textMuted,
           textAlign: 'center',
