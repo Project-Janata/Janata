@@ -1,0 +1,69 @@
+System.register(["react/jsx-runtime", "react-native", "lucide-react-native", "../Map"], function (exports_1, context_1) {
+    "use strict";
+    var jsx_runtime_1, react_native_1, lucide_react_native_1, Map_1;
+    var __moduleName = context_1 && context_1.id;
+    function HomeMiniMap({ eventCount, centerCount, points, userCenterID, isDark, onPress, }) {
+        return (_jsxs(react_native_1.View, { style: {
+                height: 156,
+                borderRadius: 18,
+                overflow: 'hidden',
+                backgroundColor: isDark ? '#26231F' : '#EDE6DA',
+            }, children: [_jsx(react_native_1.View, { style: { position: 'absolute', left: 0, right: 0, top: 0, bottom: 0 }, pointerEvents: "none", children: _jsx(Map_1.default, { points: points, userCenterID: userCenterID, showUserLocation: false, showControls: false, initialZoom: 10, onPointPress: onPress }) }), _jsx(MapOverlay, { eventCount: eventCount, centerCount: centerCount, isDark: isDark, onPress: onPress })] }));
+    }
+    exports_1("default", HomeMiniMap);
+    function MapOverlay({ eventCount, centerCount, isDark, onPress, }) {
+        return (_jsxs(_Fragment, { children: [_jsx(react_native_1.Pressable, { accessibilityLabel: "Open map", onPress: onPress, style: {
+                        position: 'absolute',
+                        left: 0,
+                        right: 0,
+                        top: 0,
+                        bottom: 0,
+                        backgroundColor: isDark ? 'rgba(0,0,0,0.08)' : 'rgba(255,255,255,0.02)',
+                    } }), _jsxs(react_native_1.View, { pointerEvents: "none", style: { position: 'absolute', left: 0, right: 0, top: 0, bottom: 0 }, children: [_jsx(react_native_1.View, { style: {
+                                position: 'absolute',
+                                left: 14,
+                                top: 14,
+                                borderRadius: 999,
+                                backgroundColor: isDark ? '#171717' : '#FFFFFF',
+                                paddingHorizontal: 12,
+                                paddingVertical: 7,
+                                shadowColor: '#000',
+                                shadowOpacity: 0.08,
+                                shadowRadius: 8,
+                                shadowOffset: { width: 0, height: 3 },
+                            }, children: _jsxs(react_native_1.Text, { style: { fontFamily: 'Inclusive Sans', fontSize: 13, color: isDark ? '#FAFAFA' : '#1C1917' }, children: [eventCount, " events - ", centerCount, " centers nearby"] }) }), _jsxs(react_native_1.View, { style: {
+                                position: 'absolute',
+                                right: 14,
+                                bottom: 14,
+                                borderRadius: 999,
+                                backgroundColor: isDark ? '#171717' : '#FFFFFF',
+                                paddingHorizontal: 13,
+                                paddingVertical: 9,
+                                flexDirection: 'row',
+                                alignItems: 'center',
+                                gap: 8,
+                                shadowColor: '#000',
+                                shadowOpacity: 0.08,
+                                shadowRadius: 8,
+                                shadowOffset: { width: 0, height: 3 },
+                            }, children: [_jsx(lucide_react_native_1.Map, { size: 15, color: "#E8862A" }), _jsx(react_native_1.Text, { style: { fontFamily: 'Inclusive Sans', fontSize: 13, color: isDark ? '#FAFAFA' : '#1C1917' }, children: "Open map" })] })] })] }));
+    }
+    return {
+        setters: [
+            function (jsx_runtime_1_1) {
+                jsx_runtime_1 = jsx_runtime_1_1;
+            },
+            function (react_native_1_1) {
+                react_native_1 = react_native_1_1;
+            },
+            function (lucide_react_native_1_1) {
+                lucide_react_native_1 = lucide_react_native_1_1;
+            },
+            function (Map_1_1) {
+                Map_1 = Map_1_1;
+            }
+        ],
+        execute: function () {
+        }
+    };
+});
