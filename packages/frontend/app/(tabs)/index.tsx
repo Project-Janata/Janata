@@ -241,7 +241,7 @@ export default function HomeScreen() {
       style={{ flex: 1, backgroundColor: pageBg }}
       contentContainerStyle={{
         paddingHorizontal: isDesktop ? 24 : 16,
-        paddingTop: Platform.OS === 'web' ? 20 : 14,
+        paddingTop: Platform.OS === 'web' ? 20 : 8,
         paddingBottom: Platform.OS === 'web' ? 40 : 112,
       }}
       showsVerticalScrollIndicator={false}

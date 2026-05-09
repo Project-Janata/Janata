@@ -387,7 +387,7 @@ export default function FeedScreen() {
   const selectedPost = feedPosts.find((post) => post.id === selectedPostId) ?? feedPosts[0]
   const mobilePostOpen = !isDesktop && !!selectedPostId
   const nativeDetailOpen = Platform.OS !== 'web' && mobilePostOpen
-  const listTopPadding = Platform.OS === 'web' ? 20 : 16
+  const listTopPadding = Platform.OS === 'web' ? 20 : 8
   const isLoading = user ? myEventsLoading || centersLoading : false
   const nativeTabBarStyle = useMemo(
     () => ({
@@ -473,8 +473,12 @@ export default function FeedScreen() {
 
   const openPost = (id: string) => {
     posthog?.capture('connect_feed_post_selected', { postId: id })
-    primeNativeDetailTransition()
-    setSelectedPostId(id)
+    if (Platform.OS === 'web' && isDesktop) {
+      primeNativeDetailTransition()
+      setSelectedPostId(id)
+    } else {
+      router.push(`/feed/${id}`)
+    }
   }
 
   return (
@@ -1213,7 +1217,7 @@ function NativeChatHeader({
   return (
     <View
       style={{
-        paddingTop: Math.max(insetsTop, 48) + 6,
+        paddingTop: insetsTop + 6,
         paddingHorizontal: 14,
         paddingBottom: 10,
         backgroundColor: colors.surface,

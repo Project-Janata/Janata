@@ -215,7 +215,7 @@ export default function ChatScreen() {
     conversations[0]
   const mobileConversationOpen = !isDesktop && !!selectedConversationId
   const nativeDetailOpen = Platform.OS !== 'web' && mobileConversationOpen
-  const listTopPadding = Platform.OS === 'web' ? 20 : Math.max(insets.top, 54) + 16
+  const listTopPadding = Platform.OS === 'web' ? 20 : 8
   const nativeTabBarStyle = useMemo(
     () => ({
       backgroundColor: isDark ? '#171717' : '#FFFFFF',
@@ -287,8 +287,12 @@ export default function ChatScreen() {
 
   const openConversation = (id: string) => {
     posthog?.capture('connect_conversation_selected', { conversationId: id })
-    primeNativeDetailTransition()
-    setSelectedConversationId(id)
+    if (Platform.OS === 'web' && isDesktop) {
+      primeNativeDetailTransition()
+      setSelectedConversationId(id)
+    } else {
+      router.push(`/chat/${id}`)
+    }
   }
 
   return (
@@ -468,7 +472,7 @@ function NativeChatHeader({
   return (
     <View
       style={{
-        paddingTop: Math.max(insetsTop, 48) + 6,
+        paddingTop: insetsTop + 6,
         paddingHorizontal: 14,
         paddingBottom: 10,
         backgroundColor: colors.surface,
