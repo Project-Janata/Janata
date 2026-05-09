@@ -1,6 +1,5 @@
-import React, { useEffect, useMemo, useRef, useState } from 'react'
+import React, { useEffect, useMemo, useRef, useState, useCallback } from 'react'
 import {
-  ActivityIndicator,
   Animated,
   Easing,
   KeyboardAvoidingView,
@@ -30,9 +29,10 @@ import { usePostHog } from 'posthog-react-native'
 import { Avatar } from '../../components/ui'
 import { useTheme, useUser } from '../../components/contexts'
 import { useHeaderAction } from '../../components/contexts/HeaderActionContext'
-import { useCenterDetail, useDiscoverData, useMyEvents } from '../../hooks/useApiData'
+import { useCenterList, useMyEvents } from '../../hooks/useApiData'
 import { extractCityState } from '../../utils/addressParsing'
 import {
+  BoardPostCard,
   ThreadPanel,
   buildCenterBoard,
   buildEventBoard,
@@ -189,17 +189,14 @@ function eventToGroup(board: EventBoard, distanceMi?: number): GroupBoard {
 
 function centerToNearbyGroup(
   center: DiscoverCenter,
-  events: EventDisplay[],
   anchor?: { latitude?: number | null; longitude?: number | null } | null
 ) {
   const distanceMi = haversineMiles(anchor, center)
-  const eventCount = events.filter((event) => event.centerId === center.id).length
   const locationLabel = extractCityState(center.address) || center.address || 'Center board'
   const distanceLabel = formatDistance(distanceMi)
   const subtitle = [
     locationLabel,
     distanceLabel ? `${distanceLabel} away` : null,
-    eventCount > 0 ? `${eventCount} upcoming` : null,
   ].filter(Boolean).join(' - ')
 
   return centerToGroup(
@@ -260,16 +257,7 @@ export default function FeedScreen() {
   const posthog = usePostHog()
   const detailTranslateX = useRef(new Animated.Value(width)).current
   const { events: myEvents, loading: myEventsLoading } = useMyEvents(user?.username)
-  const {
-    center,
-    events: centerEvents,
-    loading: centerLoading,
-  } = useCenterDetail(user?.centerID || '')
-  const {
-    allEvents,
-    allCenters,
-    loading: discoverLoading,
-  } = useDiscoverData('Centers', '', user?.id, false, false, user?.interests ?? undefined, user?.centerID)
+  const { centers: allCenters, loading: centersLoading } = useCenterList()
 
   const isDesktop = width >= 980
   const [query, setQuery] = useState('')
@@ -341,44 +329,36 @@ export default function FeedScreen() {
 
   const isVerifiedMember = user?.isVerified === true || demoVerified
   const canAccessBoards = !!user && isVerifiedMember
-  const userCenter = center || allCenters.find((item) => item.id === user?.centerID)
+  const userCenter = allCenters.find((item) => item.id === user?.centerID)
   const groups = useMemo<GroupBoard[]>(() => {
     if (user && !isVerifiedMember) return []
 
     const nextGroups: GroupBoard[] = []
 
     if (user && isVerifiedMember) {
-      const nearbyCenterGroups = allCenters.map((item) =>
-        centerToNearbyGroup(item, allEvents, userCenter)
-      )
-      nextGroups.push(...nearbyCenterGroups)
+      const sorted = userCenter
+        ? [...allCenters].sort((a, b) => {
+            const da = haversineMiles(userCenter, a) ?? Infinity
+            const db = haversineMiles(userCenter, b) ?? Infinity
+            return da - db
+          })
+        : allCenters
 
-      if (nearbyCenterGroups.length === 0 && center) {
-        nextGroups.push(
-          centerToGroup(
-            buildCenterBoard({
-              id: `center-${center.id}`,
-              centerName: center.name,
-              subtitle: `${center.memberCount || 0} members - ${centerEvents.length} upcoming events`,
-            }),
-            0
-          )
-        )
+      for (const item of sorted) {
+        nextGroups.push(centerToNearbyGroup(item, userCenter))
       }
     } else if (!user) {
       nextGroups.push(centerToGroup(centerBoards[0]))
     }
 
     const registeredEvents = sortUpcomingEvents(myEvents)
-    const registeredFromDiscover = sortUpcomingEvents(allEvents.filter((event) => event.isRegistered))
-    const eventSource = registeredFromDiscover.length > 0 ? registeredFromDiscover : registeredEvents
     const liveEventGroups = user && isVerifiedMember
-      ? eventSource.map((event) => {
+      ? registeredEvents.map((event) => {
           const eventDistance = haversineMiles(userCenter, {
             latitude: event.latitude,
             longitude: event.longitude,
           })
-          return eventToGroup(eventToBoard(event, center?.name), eventDistance)
+          return eventToGroup(eventToBoard(event), eventDistance)
         })
       : []
 
@@ -389,7 +369,7 @@ export default function FeedScreen() {
     }
 
     return sortGroupsByDistance(nextGroups)
-  }, [allCenters, allEvents, center, centerEvents.length, isVerifiedMember, myEvents, user, userCenter])
+  }, [allCenters, isVerifiedMember, myEvents, user, userCenter])
 
   const feedPosts = useMemo(() => buildFeedPosts(groups), [groups])
 
@@ -407,7 +387,7 @@ export default function FeedScreen() {
   const mobilePostOpen = !isDesktop && !!selectedPostId
   const nativeDetailOpen = Platform.OS !== 'web' && mobilePostOpen
   const listTopPadding = Platform.OS === 'web' ? 20 : 16
-  const isLoading = user ? myEventsLoading || centerLoading || discoverLoading : false
+  const isLoading = user ? myEventsLoading || centersLoading : false
   const nativeTabBarStyle = useMemo(
     () => ({
       backgroundColor: isDark ? '#171717' : '#FFFFFF',
@@ -496,14 +476,6 @@ export default function FeedScreen() {
     setSelectedPostId(id)
   }
 
-  if (isLoading) {
-    return (
-      <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center', backgroundColor: colors.page }}>
-        <ActivityIndicator size="large" color={colors.orange} />
-      </View>
-    )
-  }
-
   return (
     <View style={{ flex: 1, backgroundColor: colors.page }}>
       <ScrollView
@@ -536,19 +508,54 @@ export default function FeedScreen() {
           />
         ) : null}
 
-        <FeedWorkspace
-          posts={filteredFeedPosts}
-          selectedPost={selectedPost}
-          colors={colors}
-          threadColors={threadColors}
-          isDesktop={isDesktop}
-          canAccessBoards={canAccessBoards}
-          isSignedIn={!!user}
-          nativeDetailOpen={nativeDetailOpen}
-          mobilePostOpen={mobilePostOpen}
-          onRequestAccess={handleBoardAccessCta}
-          onSelectPost={openPost}
-        />
+        {isLoading ? (
+          <View style={{ gap: 12, paddingTop: 8 }}>
+            {Array.from({ length: 3 }).map((_, i) => (
+              <View
+                key={i}
+                style={{
+                  backgroundColor: colors.card,
+                  borderRadius: 16,
+                  padding: 16,
+                  borderWidth: 1,
+                  borderColor: colors.border,
+                  gap: 10,
+                }}
+              >
+                <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10 }}>
+                  <View
+                    style={{
+                      width: 44,
+                      height: 44,
+                      borderRadius: 14,
+                      backgroundColor: colors.panel,
+                    }}
+                  />
+                  <View style={{ flex: 1, gap: 6 }}>
+                    <View style={{ width: '50%', height: 14, borderRadius: 7, backgroundColor: colors.panel }} />
+                    <View style={{ width: '30%', height: 12, borderRadius: 6, backgroundColor: colors.panel }} />
+                  </View>
+                </View>
+                <View style={{ width: '80%', height: 12, borderRadius: 6, backgroundColor: colors.panel }} />
+                <View style={{ width: '60%', height: 12, borderRadius: 6, backgroundColor: colors.panel }} />
+              </View>
+            ))}
+          </View>
+        ) : (
+          <FeedWorkspace
+            posts={filteredFeedPosts}
+            selectedPost={selectedPost}
+            colors={colors}
+            threadColors={threadColors}
+            isDesktop={isDesktop}
+            canAccessBoards={canAccessBoards}
+            isSignedIn={!!user}
+            nativeDetailOpen={nativeDetailOpen}
+            mobilePostOpen={mobilePostOpen}
+            onRequestAccess={handleBoardAccessCta}
+            onSelectPost={openPost}
+          />
+        )}
       </ScrollView>
 
       {nativeDetailOpen ? (
@@ -675,17 +682,62 @@ function FeedList({
   colors: ThreadPanelColors
   onSelectPost: (id: string) => void
 }) {
+  const [visibleCount, setVisibleCount] = useState(25)
+  const visiblePosts = posts.slice(0, visibleCount)
+  const hasMore = visibleCount < posts.length
+
+  const loadMore = useCallback(() => {
+    if (hasMore) {
+      setVisibleCount((prev) => Math.min(prev + 25, posts.length))
+    }
+  }, [hasMore, posts.length])
+
+  useEffect(() => {
+    setVisibleCount(25)
+  }, [posts])
+
+  if (posts.length === 0) {
+    return (
+      <View style={{ paddingVertical: 40, alignItems: 'center', gap: 8 }}>
+        <Text style={{ fontFamily: 'Inclusive Sans', fontSize: 16, color: colors.text }}>
+          No posts found
+        </Text>
+        <Text style={{ fontFamily: 'Inclusive Sans', fontSize: 13, color: colors.textMuted }}>
+          Try a different search or check back after your next event.
+        </Text>
+      </View>
+    )
+  }
+
   return (
-    <ThreadPanel
-      messages={posts}
-      colors={colors}
-      emptyTitle="No posts found"
-      emptySubtitle="Try a different search or check back after your next event."
-      composerPlaceholder="Share something with your center..."
-      showComposer={false}
-      showSource
-      onMessagePress={(message) => onSelectPost(message.id)}
-    />
+    <View>
+      {visiblePosts.map((post) => (
+        <BoardPostCard
+          key={post.id}
+          message={post}
+          colors={colors}
+          showSource
+          onPress={() => onSelectPost(post.id)}
+        />
+      ))}
+      {hasMore ? (
+        <Pressable
+          onPress={loadMore}
+          style={{
+            marginHorizontal: 20,
+            marginVertical: 16,
+            paddingVertical: 12,
+            borderRadius: 12,
+            backgroundColor: colors.iconBoxBg,
+            alignItems: 'center',
+          }}
+        >
+          <Text style={{ fontFamily: 'Inclusive Sans', fontSize: 14, color: colors.accent ?? '#E8862A' }}>
+            Load more
+          </Text>
+        </Pressable>
+      ) : null}
+    </View>
   )
 }
 

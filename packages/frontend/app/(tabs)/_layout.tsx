@@ -18,6 +18,7 @@ export default function TabLayout() {
   const [settingsVisible, setSettingsVisible] = useState(false)
   const canCreate = !!user
   const posthog = usePostHog()
+  const tabBarShowLabel = Platform.OS === 'web'
 
   useEffect(() => {
     if (Platform.OS !== 'web' && !loading && !user) {
@@ -207,7 +208,8 @@ export default function TabLayout() {
           <Tabs.Screen
             name="index"
             options={{
-              tabBarShowLabel: false,
+              tabBarShowLabel: tabBarShowLabel,
+              title: 'Home',
               header: isWeb
                 ? () => <WebHeader />
                 : () => (
@@ -238,6 +240,7 @@ export default function TabLayout() {
             name="explore"
             options={{
               tabBarShowLabel: false,
+              title: 'Explore',
               headerTransparent: !isWeb,
               header: isWeb
                 ? () => <WebHeader />
@@ -248,6 +251,7 @@ export default function TabLayout() {
           <Tabs.Screen
             name="feed"
             options={{
+              tabBarShowLabel: false,
               title: 'Feed',
               header: isWeb ? () => <WebHeader /> : () => <TabHeader title="Feed" showPlus />,
               tabBarIcon: ({ color, size }) => <Newspaper size={size} color={color} />,
@@ -256,6 +260,7 @@ export default function TabLayout() {
           <Tabs.Screen
             name="chat"
             options={{
+              tabBarShowLabel: false,
               title: 'Chat',
               header: isWeb ? () => <WebHeader /> : () => <TabHeader title="Chat" showPlus />,
               tabBarIcon: ({ color, size }) => <MessageSquare size={size} color={color} />,

@@ -481,7 +481,8 @@ function MobileDiscoverFallback() {
     showPastEvents,
     showGoingOnly,
     user?.interests ?? undefined,
-    user?.centerID
+    user?.centerID,
+    { fetchAttendees: true }
   )
 
   useFocusEffect(
@@ -987,7 +988,7 @@ export default function DiscoverScreenWeb() {
   // Event form panel: null = hidden, { id?: string } = open (id present = edit, absent = create)
   const [formPanel, setFormPanel] = useState<{ id?: string } | null>(null)
   const { items, filteredPoints, loading, allEvents, allCenters, refresh, updateEventStatus } =
-    useDiscoverData(activeFilter, searchQuery, user?.id, showPastEvents, showGoingOnly, user?.interests ?? undefined, user?.centerID)
+    useDiscoverData(activeFilter, searchQuery, user?.id, showPastEvents, showGoingOnly, user?.interests ?? undefined, user?.centerID, { fetchAttendees: true })
 
   // Get user's center for map initial location
   const { center: userCenter } = useCenterDetail(user?.centerID || '')
