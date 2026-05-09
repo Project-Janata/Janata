@@ -2,7 +2,7 @@ import React, { useEffect, useState, useRef, useCallback, memo } from 'react'
 import { StyleSheet, View, Pressable, Platform } from 'react-native'
 import MapView, { Marker, Region, PROVIDER_GOOGLE } from 'react-native-maps'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
-import { ZoomIn, ZoomOut, LocateFixed } from 'lucide-react-native'
+import { Plus, Minus, Navigation } from 'lucide-react-native'
 import { getCurrentPosition } from '../utils'
 import { useTheme } from './contexts'
 
@@ -26,6 +26,7 @@ export interface MapProps {
   userCenterID?: string | null
   /** Extra bottom padding so controls stay above a bottom sheet (native only, ignored on web) */
   bottomPadding?: number
+  showControls?: boolean
 }
 
 const DEFAULT_REGION: Region = {
@@ -50,6 +51,63 @@ const PIN_COLORS = {
   event: '#2563eb',
 } as const
 
+function MapControls({
+  top,
+  buttonBg,
+  iconColor,
+  isDark,
+  onZoomIn,
+  onZoomOut,
+  onLocate,
+}: {
+  top: number
+  buttonBg: string
+  iconColor: string
+  isDark: boolean
+  onZoomIn: () => void
+  onZoomOut: () => void
+  onLocate: () => void
+}) {
+  const [pressedId, setPressedId] = useState<string | null>(null)
+
+  const makeBg = (id: string) => (pressedId === id ? (isDark ? '#3D2E1E' : '#FDE8D0') : buttonBg)
+
+  return (
+    <View style={[styles.controls, { top }]} pointerEvents="box-none">
+      <View style={styles.zoomGroup}>
+        <Pressable
+          onPress={onZoomIn}
+          onPressIn={() => setPressedId('in')}
+          onPressOut={() => setPressedId(null)}
+          style={[styles.zoomButton, { backgroundColor: makeBg('in') }]}
+          accessibilityLabel="Zoom in"
+        >
+          <Plus size={18} color={iconColor} strokeWidth={2} />
+        </Pressable>
+        <View style={{ height: 1, backgroundColor: isDark ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.08)' }} />
+        <Pressable
+          onPress={onZoomOut}
+          onPressIn={() => setPressedId('out')}
+          onPressOut={() => setPressedId(null)}
+          style={[styles.zoomButton, { backgroundColor: makeBg('out') }]}
+          accessibilityLabel="Zoom out"
+        >
+          <Minus size={18} color={iconColor} strokeWidth={2} />
+        </Pressable>
+      </View>
+      <Pressable
+        onPress={onLocate}
+        onPressIn={() => setPressedId('loc')}
+        onPressOut={() => setPressedId(null)}
+        style={[styles.locateButton, { backgroundColor: makeBg('loc'), borderColor: isDark ? '#404040' : '#D6D3D1' }]}
+        accessibilityLabel="Show my location"
+      >
+        <Navigation size={18} color={iconColor} strokeWidth={2} />
+      </Pressable>
+    </View>
+  )
+}
+
 const Map = memo<MapProps>(function Map({
   points = [],
   onPointPress,
@@ -59,6 +117,7 @@ const Map = memo<MapProps>(function Map({
   showUserLocation = true,
   userCenterID,
   bottomPadding = 0,
+  showControls = true,
 }) {
   const mapRef = useRef<MapView>(null)
 
@@ -69,7 +128,12 @@ const Map = memo<MapProps>(function Map({
       ? points.find((p) => p.id === userCenterID && p.type === 'center')
       : undefined
     if (homeCenter && isValidCoord(homeCenter.latitude, homeCenter.longitude)) {
-      return { latitude: homeCenter.latitude, longitude: homeCenter.longitude, latitudeDelta: 0.2, longitudeDelta: 0.2 }
+      return {
+        latitude: homeCenter.latitude,
+        longitude: homeCenter.longitude,
+        latitudeDelta: 0.2,
+        longitudeDelta: 0.2,
+      }
     }
     return DEFAULT_REGION
   }
@@ -103,7 +167,9 @@ const Map = memo<MapProps>(function Map({
       })
       .catch(() => {})
 
-    return () => { mounted = false }
+    return () => {
+      mounted = false
+    }
   }, [])
 
   // Fallback when GPS hasn't fired (denied, slow, or logged-out). Priorities:
@@ -209,11 +275,13 @@ const Map = memo<MapProps>(function Map({
         style={styles.map}
         provider={Platform.OS === 'android' ? PROVIDER_GOOGLE : undefined}
         initialRegion={region}
-        onRegionChangeComplete={(r) => { currentRegionRef.current = r }}
+        onRegionChangeComplete={(r) => {
+          currentRegionRef.current = r
+        }}
         showsUserLocation={showUserLocation}
-        showsMyLocationButton={true}
-        showsCompass={true}
-        showsScale={true}
+        showsMyLocationButton={showControls}
+        showsCompass={showControls}
+        showsScale={showControls}
         scrollEnabled={true}
         zoomEnabled={true}
         pitchEnabled={true}
@@ -249,29 +317,17 @@ const Map = memo<MapProps>(function Map({
       {/* Custom controls in the top-right, sitting under the profile icon.
           react-native-maps' built-in user-location button is Android-only,
           and zoom buttons aren't built in at all. */}
-      <View style={[styles.controls, { top: insets.top + 64 }]} pointerEvents="box-none">
-        <Pressable
-          onPress={() => handleZoom(0.5)}
-          style={[styles.controlButton, { backgroundColor: buttonBg }]}
-          accessibilityLabel="Zoom in"
-        >
-          <ZoomIn size={18} color={iconColor} strokeWidth={2} />
-        </Pressable>
-        <Pressable
-          onPress={() => handleZoom(2)}
-          style={[styles.controlButton, { backgroundColor: buttonBg }]}
-          accessibilityLabel="Zoom out"
-        >
-          <ZoomOut size={18} color={iconColor} strokeWidth={2} />
-        </Pressable>
-        <Pressable
-          onPress={handleLocate}
-          style={[styles.controlButton, { backgroundColor: buttonBg, marginTop: 8 }]}
-          accessibilityLabel="Show my location"
-        >
-          <LocateFixed size={18} color={iconColor} strokeWidth={2} />
-        </Pressable>
-      </View>
+      {showControls && (
+        <MapControls
+          top={insets.top + 64}
+          buttonBg={buttonBg}
+          iconColor={iconColor}
+          isDark={isDark}
+          onZoomIn={() => handleZoom(0.5)}
+          onZoomOut={() => handleZoom(2)}
+          onLocate={handleLocate}
+        />
+      )}
     </View>
   )
 })
@@ -291,19 +347,47 @@ const styles = StyleSheet.create({
   controls: {
     position: 'absolute',
     right: 12,
-    gap: 4,
+    gap: 8,
     alignItems: 'flex-end',
+  },
+  zoomGroup: {
+    borderRadius: 10,
+    overflow: 'hidden',
+    shadowColor: '#000',
+    shadowOpacity: 0.12,
+    shadowRadius: 4,
+    shadowOffset: { width: 0, height: 1 },
+    elevation: 2,
+  },
+  zoomButton: {
+    width: 32,
+    height: 32,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  locateButton: {
+    width: 32,
+    height: 32,
+    borderRadius: 10,
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderWidth: 1,
+    shadowColor: '#000',
+    shadowOpacity: 0.12,
+    shadowRadius: 4,
+    shadowOffset: { width: 0, height: 1 },
+    elevation: 2,
   },
   controlButton: {
     width: 40,
     height: 40,
-    borderRadius: 20,
+    borderRadius: 4,
     alignItems: 'center',
     justifyContent: 'center',
     shadowColor: '#000',
-    shadowOpacity: 0.15,
-    shadowRadius: 6,
-    shadowOffset: { width: 0, height: 2 },
-    elevation: 3,
+    shadowOpacity: 0.12,
+    shadowRadius: 4,
+    shadowOffset: { width: 0, height: 1 },
+    elevation: 2,
   },
 })

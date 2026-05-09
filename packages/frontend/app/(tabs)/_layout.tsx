@@ -1,25 +1,21 @@
-import { Link, Tabs, useRouter } from 'expo-router'
+import { Tabs, usePathname, useRouter } from 'expo-router'
 import { Platform, View, Text, Pressable, Image, StatusBar } from 'react-native'
 import { useState, useEffect } from 'react'
 import { useUser, useTheme } from '../../components/contexts'
-import { Plus, User } from 'lucide-react-native'
+import { HeaderActionProvider } from '../../components/contexts/HeaderActionContext'
+import { House, MessageSquare, Newspaper, Compass, Plus, User, Bell } from 'lucide-react-native'
 import SettingsPanel from '../../components/SettingsPanel'
 import Logo from '../../components/ui/Logo'
+import TabHeader from '../../components/ui/TabHeader'
 import { Avatar } from '../../components/ui'
 import { usePostHog } from 'posthog-react-native'
 
-/**
- * TabLayout Component - The main layout for the tab-based navigation.
- * @return {JSX.Element} A TabLayout component that sets up tab navigation with theming.
- */
-
 export default function TabLayout() {
   const router = useRouter()
+  const pathname = usePathname()
   const { user, loading, logout } = useUser()
   const { isDark } = useTheme()
   const [settingsVisible, setSettingsVisible] = useState(false)
-  // Beta: any signed-in user can create events. Backend enforces auth-only;
-  // post-beta this becomes a coordinator-tier gate (issue #177).
   const canCreate = !!user
   const posthog = usePostHog()
 
@@ -35,70 +31,92 @@ export default function TabLayout() {
     router.replace('/auth')
   }
 
-  // Custom header for web - just the logo
-  const HeaderTitle = () => {
-    if (Platform.OS !== 'web') {
-      return null // Use default title on mobile
+  const navItems = [
+    { label: 'Home', href: '/' },
+    { label: 'Explore', href: '/explore' },
+    { label: 'Feed', href: '/feed' },
+    { label: 'Messages', href: '/chat' },
+  ] as const
+
+  const isRouteActive = (href: (typeof navItems)[number]['href']) => {
+    if (href === '/') return pathname === '/'
+    return pathname === href || pathname.startsWith(`${href}/`)
+  }
+
+  const WebHeader = () => {
+    const webProfileImage = user?.profileImage
+    const getInitials = () => {
+      if (user?.firstName && user?.lastName)
+        return `${user.firstName[0]}${user.lastName[0]}`.toUpperCase()
+      if (user?.firstName) return user.firstName[0].toUpperCase()
+      if (user?.username) return user.username[0].toUpperCase()
+      return '?'
     }
 
     return (
-      <View className="flex-row items-center">
-        <Logo size={28} />
-      </View>
-    )
-  }
-
-  const HeaderRight = () => {
-    if (!user) {
-      if (Platform.OS !== 'web') {
-        return (
-          <Pressable className="mr-4 p-1" onPress={() => router.push('/auth')}>
-            <Avatar name="Sign In" size={36} />
+      <View
+        style={{
+          flexDirection: 'row',
+          alignItems: 'center',
+          justifyContent: 'space-between',
+          paddingHorizontal: 16,
+          height: 56,
+          backgroundColor: isDark ? '#000000' : '#FFFFFF',
+          borderBottomWidth: 1,
+          borderBottomColor: isDark ? '#262626' : '#E5E7EB',
+        }}
+      >
+        {/* Left: Logo + Nav */}
+        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 24 }}>
+          <Pressable onPress={() => router.push('/')} style={{ flexDirection: 'row', alignItems: 'center', gap: 10 }}>
+            <Logo size={28} />
           </Pressable>
-        )
-      }
-      return (
-        <Pressable
-          accessibilityLabel="Sign in or sign up"
-          onPress={() => {
-            posthog?.capture('nav_signin_icon')
-            router.push('/auth')
-          }}
-          style={{
-            width: 36,
-            height: 36,
-            borderRadius: 18,
-            borderWidth: 1,
-            borderColor: isDark ? '#404040' : '#D6D3D1',
-            alignItems: 'center',
-            justifyContent: 'center',
-            marginRight: 16,
-          }}
-        >
-          <User size={18} color={isDark ? '#FAFAFA' : '#1C1917'} />
-        </Pressable>
-      )
-    }
-    if (Platform.OS === 'web') {
-      const webProfileImage = user?.profileImage
-      const getInitials = () => {
-        if (user?.firstName && user?.lastName)
-          return `${user.firstName[0]}${user.lastName[0]}`.toUpperCase()
-        if (user?.firstName) return user.firstName[0].toUpperCase()
-        if (user?.username) return user.username[0].toUpperCase()
-        return '?'
-      }
+          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+            {navItems.map(({ label, href }) => {
+              const active = isRouteActive(href)
+              return (
+                <Pressable
+                  key={href}
+                  onPress={() => router.push(href)}
+                  style={{
+                    paddingHorizontal: 12,
+                    paddingVertical: 10,
+                    borderRadius: 999,
+                    backgroundColor: active
+                      ? isDark
+                        ? 'rgba(232,134,42,0.16)'
+                        : '#FFF7ED'
+                      : 'transparent',
+                  }}
+                >
+                  <Text
+                    style={{
+                      fontFamily: active ? 'Inter-SemiBold' : 'Inter-Medium',
+                      fontSize: 14,
+                      color: active ? '#E8862A' : isDark ? '#E7E5E4' : '#44403C',
+                    }}
+                  >
+                    {label}
+                  </Text>
+                </Pressable>
+              )
+            })}
+          </View>
+        </View>
 
-      return (
-        <View className="flex-row items-center" style={{ gap: 8 }}>
+        {/* Right: Actions + Profile */}
+        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
           {canCreate && (
             <Pressable
-              className="px-3 py-2 rounded-full flex-row items-center"
               style={{
+                paddingHorizontal: 12,
+                paddingVertical: 8,
+                borderRadius: 999,
+                flexDirection: 'row',
+                alignItems: 'center',
+                gap: 6,
                 borderWidth: 1.5,
                 borderColor: '#E8862A',
-                backgroundColor: 'transparent',
-                gap: 6,
               }}
               onPress={() => {
                 posthog?.capture('nav_create_event')
@@ -119,8 +137,7 @@ export default function TabLayout() {
             </Pressable>
           )}
           <Pressable
-            className="mr-4 rounded-full overflow-hidden"
-            style={{ width: 36, height: 36 }}
+            style={{ width: 36, height: 36, borderRadius: 18, overflow: 'hidden' }}
             onPress={() => {
               posthog?.capture('nav_menu_opened')
               setSettingsVisible(true)
@@ -139,9 +156,7 @@ export default function TabLayout() {
                   justifyContent: 'center',
                 }}
               >
-                <Text style={{ color: '#fff', fontSize: 14, fontWeight: '600' }}>
-                  {getInitials()}
-                </Text>
+                <Text style={{ color: '#fff', fontSize: 14, fontWeight: '600' }}>{getInitials()}</Text>
               </View>
             )}
           </Pressable>
@@ -151,28 +166,11 @@ export default function TabLayout() {
             onLogout={handleLogout}
           />
         </View>
-      )
-    }
-
-    // Native: tap profile → go directly to settings page (index.native.tsx)
-    const displayName =
-      user?.firstName && user?.lastName
-        ? `${user.firstName} ${user.lastName}`
-        : user?.username || ''
-    const profileImage = user?.profileImage
-
-    return (
-      <Pressable
-        className="mr-4 p-2"
-        onPress={() => {
-          posthog?.capture('nav_menu_opened')
-          router.push('/settings/preferences')
-        }}
-      >
-        <Avatar image={profileImage || undefined} name={displayName} size={36} />
-      </Pressable>
+      </View>
     )
   }
+
+  const isWeb = Platform.OS === 'web'
 
   return (
     <>
@@ -183,39 +181,83 @@ export default function TabLayout() {
           translucent
         />
       )}
-      <Tabs
-        screenOptions={{
-          tabBarStyle: { display: 'none' },
-          headerStyle: {
-            backgroundColor: Platform.OS === 'web' ? (isDark ? '#171717' : '#fff') : 'transparent',
-            borderBottomWidth: Platform.OS === 'web' ? 1 : 0,
-            borderBottomColor:
-              Platform.OS === 'web' ? (isDark ? '#262626' : '#E5E7EB') : 'transparent',
-          },
-          headerTitleStyle: {
-            fontFamily: 'Inter-Bold',
-          },
-          headerTintColor: isDark ? '#fff' : '#000',
-          headerTitle: Platform.OS === 'web' ? () => <HeaderTitle /> : undefined,
-          headerTransparent: Platform.OS !== 'web',
-          headerShadowVisible: Platform.OS === 'web',
-        }}
-      >
-        <Tabs.Screen
-          name="index"
-          options={{
-            title: '',
-            headerRight: () => <HeaderRight />,
+      <HeaderActionProvider>
+        <Tabs
+          screenOptions={{
+            tabBarStyle: isWeb
+              ? { display: 'none' }
+              : {
+                  backgroundColor: isDark ? '#171717' : '#FFFFFF',
+                  borderTopColor: isDark ? '#262626' : '#E7E5E4',
+                  height: 84,
+                  paddingTop: 8,
+                  paddingBottom: 24,
+                },
+            tabBarActiveTintColor: '#E8862A',
+            tabBarInactiveTintColor: isDark ? '#A8A29E' : '#78716C',
+            headerShown: true,
+            headerShadowVisible: false,
           }}
-        />
-        {/* Explore tab disabled: merged into unified Discover tab (B3 design) */}
-        <Tabs.Screen
-          name="explore"
-          options={{
-            href: null, // Hide from tab bar and navigation
-          }}
-        />
-      </Tabs>
+        >
+          <Tabs.Screen
+            name="index"
+            options={{
+              title: 'Home',
+              header: isWeb
+                ? () => <WebHeader />
+                : () => (
+                    <TabHeader
+                      showLogo
+                      rightContent={
+                        <Pressable
+                          onPress={() => router.push('/chat')}
+                          style={{
+                            width: 36,
+                            height: 36,
+                            borderRadius: 18,
+                            borderWidth: 1.5,
+                            borderColor: isDark ? '#404040' : '#D6D3D1',
+                            alignItems: 'center',
+                            justifyContent: 'center',
+                          }}
+                        >
+                          <Bell size={17} color={isDark ? '#FAFAF9' : '#1C1917'} />
+                        </Pressable>
+                      }
+                    />
+                  ),
+              tabBarIcon: ({ color, size }) => <House size={size} color={color} />,
+            }}
+          />
+          <Tabs.Screen
+            name="explore"
+            options={{
+              title: 'Explore',
+              headerTransparent: !isWeb,
+              header: isWeb
+                ? () => <WebHeader />
+                : () => <TabHeader title="Explore" transparent pillTitle borderAvatar />,
+              tabBarIcon: ({ color, size }) => <Compass size={size} color={color} />,
+            }}
+          />
+          <Tabs.Screen
+            name="feed"
+            options={{
+              title: 'Feed',
+              header: isWeb ? () => <WebHeader /> : () => <TabHeader title="Feed" showPlus />,
+              tabBarIcon: ({ color, size }) => <Newspaper size={size} color={color} />,
+            }}
+          />
+          <Tabs.Screen
+            name="chat"
+            options={{
+              title: 'Chat',
+              header: isWeb ? () => <WebHeader /> : () => <TabHeader title="Chat" showPlus />,
+              tabBarIcon: ({ color, size }) => <MessageSquare size={size} color={color} />,
+            }}
+          />
+        </Tabs>
+      </HeaderActionProvider>
     </>
   )
 }

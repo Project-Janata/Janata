@@ -38,6 +38,7 @@ export interface MapProps {
   userCenterID?: string | null
   /** Extra bottom padding so controls stay above a bottom sheet (native only, ignored on web) */
   bottomPadding?: number
+  showControls?: boolean
   /**
    * Programmatic fly-to (e.g. list selection). `key` must change each time you want a new animation,
    * including re-selecting the same place.
@@ -105,72 +106,49 @@ const CustomControls = memo<CustomControlsProps>(({ mapRef, isDark }) => {
 
   return (
     <>
-      {/* Zoom controls - top right on mobile, bottom right on desktop */}
+      {/* Zoom controls */}
       <div className="absolute top-2.5 md:top-auto md:bottom-[52px] right-2.5 z-[1000] pointer-events-auto">
-        <div className="flex flex-col gap-0.5">
+        <div className="flex flex-col rounded-lg overflow-hidden shadow-[0_2px_6px_rgba(0,0,0,0.2)]">
           <button
-            className={`w-9 h-9 border-none rounded-t cursor-pointer flex items-center justify-center shadow-[0_2px_6px_rgba(0,0,0,0.3)] transition-all duration-200 outline-none
+            className={`w-9 h-9 border-none cursor-pointer flex items-center justify-center transition-all duration-150 outline-none
               ${isDark ? 'bg-gray-800 text-gray-200' : 'bg-white text-gray-700'}
-              hover:bg-orange-500 hover:text-white hover:shadow-[0_4px_8px_rgba(0,0,0,0.4)]
-              active:scale-95 border-b ${isDark ? 'border-white/10' : 'border-black/[0.08]'}`}
+              active:bg-orange-500/15`}
             onClick={handleZoomIn}
             title="Zoom in"
             aria-label="Zoom in"
           >
-            <svg
-              width="18"
-              height="18"
-              viewBox="0 0 24 24"
-              fill="none"
-              stroke="currentColor"
-              strokeWidth="2"
-            >
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
               <line x1="12" y1="5" x2="12" y2="19" />
               <line x1="5" y1="12" x2="19" y2="12" />
             </svg>
           </button>
+          <div className={`h-px ${isDark ? 'bg-white/10' : 'bg-black/[0.08]'}`} />
           <button
-            className={`w-9 h-9 border-none rounded-b cursor-pointer flex items-center justify-center shadow-[0_2px_6px_rgba(0,0,0,0.3)] transition-all duration-200 outline-none
+            className={`w-9 h-9 border-none cursor-pointer flex items-center justify-center transition-all duration-150 outline-none
               ${isDark ? 'bg-gray-800 text-gray-200' : 'bg-white text-gray-700'}
-              hover:bg-orange-500 hover:text-white hover:shadow-[0_4px_8px_rgba(0,0,0,0.4)]
-              active:scale-95`}
+              active:bg-orange-500/15`}
             onClick={handleZoomOut}
             title="Zoom out"
             aria-label="Zoom out"
           >
-            <svg
-              width="18"
-              height="18"
-              viewBox="0 0 24 24"
-              fill="none"
-              stroke="currentColor"
-              strokeWidth="2"
-            >
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
               <line x1="5" y1="12" x2="19" y2="12" />
             </svg>
           </button>
         </div>
       </div>
 
-      {/* Location button - below zoom on mobile, bottom right on desktop */}
+      {/* Location button */}
       <div className="absolute top-[92px] md:top-auto md:bottom-2.5 right-2.5 z-[1000] pointer-events-auto">
         <button
-          className={`w-9 h-9 border-none rounded cursor-pointer flex items-center justify-center shadow-[0_2px_6px_rgba(0,0,0,0.3)] transition-all duration-200 outline-none
+          className={`w-9 h-9 border-none rounded-lg cursor-pointer flex items-center justify-center shadow-[0_2px_6px_rgba(0,0,0,0.2)] transition-all duration-150 outline-none
             ${isDark ? 'bg-gray-800 text-gray-200' : 'bg-white text-gray-700'}
-            hover:bg-orange-500 hover:text-white hover:shadow-[0_4px_8px_rgba(0,0,0,0.4)]
-            active:scale-95`}
+            active:bg-orange-500/15`}
           onClick={handleLocate}
           title="Show my location"
           aria-label="Show my location"
         >
-          <svg
-            width="18"
-            height="18"
-            viewBox="0 0 24 24"
-            fill="none"
-            stroke="currentColor"
-            strokeWidth="2"
-          >
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
             <polygon points="3 11 22 2 13 21 11 13 3 11" />
           </svg>
         </button>
@@ -197,6 +175,7 @@ const MapComponent = memo<MapProps>(
     userCenterID,
     flyTo,
     autoOpenPoint,
+    showControls = true,
   }) => {
     const { isDark } = useTheme()
     const mapRef = useRef<MapRef>(null)
@@ -474,7 +453,7 @@ const MapComponent = memo<MapProps>(
             }}
           />
         </Map>
-        <CustomControls mapRef={mapRef} isDark={isDark} />
+        {showControls && <CustomControls mapRef={mapRef} isDark={isDark} />}
       </div>
     )
   }

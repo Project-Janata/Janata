@@ -1,685 +1,834 @@
-// Discover tab — mobile / native layout
-import React, { useState, Suspense, useRef, useCallback, useMemo } from 'react'
-import { EmptyState } from '../../components/ui/EmptyState'
-import { DiscoverListSkeleton } from '../../components/ui/Skeleton'
+import React, { useMemo } from 'react'
 import {
-  View,
-  Text,
-  ScrollView,
-  Pressable,
   ActivityIndicator,
-  TextInput,
-  Animated,
-  PanResponder,
-  StyleSheet,
   Image,
+  Platform,
+  Pressable,
+  ScrollView,
+  Text,
+  View,
+  useWindowDimensions,
 } from 'react-native'
-import {
-  MapPin,
-  Search,
-  Building2,
-  ChevronUp,
-  ChevronDown,
-} from 'lucide-react-native'
-import { useRouter, useFocusEffect, useNavigation } from 'expo-router'
+import { useRouter } from 'expo-router'
+import { Bell, Clock3, MapPin, MessageCircle } from 'lucide-react-native'
+import Svg, {
+  Circle,
+  Defs,
+  LinearGradient as SvgLinearGradient,
+  Line,
+  Rect,
+  Stop,
+} from 'react-native-svg'
 import { usePostHog } from 'posthog-react-native'
-import { useTheme } from '../../components/contexts'
-import { Badge, UnderlineTabBar, Avatar, FilterChip } from '../../components/ui'
-import FilterPickerModal, { type FilterPickerOption } from '../../components/ui/FilterPickerModal'
-import { useUser } from '../../components/contexts/UserContext'
-import { useDiscoverData, type DiscoverFilter } from '../../hooks/useApiData'
-import type { EventDisplay, DiscoverCenter, AttendeeInfo } from '../../utils/api'
-import { extractCityState } from '../../utils/addressParsing'
+import { Avatar } from '../../components/ui'
+import { useTheme, useUser } from '../../components/contexts'
+import { useDiscoverData, useMyEvents } from '../../hooks/useApiData'
+import type { EventDisplay } from '../../utils/api'
+import {
+  centerBoards,
+  eventBoards,
+  featuredHomeEvent,
+  type BoardMessage,
+  type FeaturedHomeEvent,
+} from '../../components/connect'
 
+type FeaturedSource =
+  | { kind: 'live'; event: EventDisplay; centerName?: string }
+  | { kind: 'mock'; event: FeaturedHomeEvent }
 
-// Lazy load Map to avoid loading heavy web dependencies on mobile web
-const Map = React.lazy(() => import('../../components/Map'))
+type HomeBoardPost = BoardMessage & {
+  sourceTitle: string
+  sourceKind: 'center' | 'event'
+}
 
-const FILTERS: { label: DiscoverFilter }[] = [
-  { label: 'Events' },
-  { label: 'Centers' },
-  { label: 'Seva' },
+type WeekItem = {
+  id: string
+  month: string
+  day: string
+  title: string
+  subtitle: string
+  highlight: boolean
+  onPress?: () => void
+}
+
+const FALLBACK_WEEK_ITEMS: WeekItem[] = [
+  {
+    id: 'mock-week-1',
+    month: 'MAY',
+    day: '8',
+    title: 'Gurudev Jayanti, Annual Music',
+    subtitle: '5:00 PM · Chinmaya-Saaket',
+    highlight: false,
+  },
+  {
+    id: 'mock-week-2',
+    month: 'MAY',
+    day: '9',
+    title: 'Chinmaya Gita Samarpanam',
+    subtitle: '9:00 AM · Online',
+    highlight: true,
+  },
+  {
+    id: 'mock-week-3',
+    month: 'MAY',
+    day: '10',
+    title: "Mother's Day Celebration",
+    subtitle: '9:20 AM · Chinmaya Mission',
+    highlight: false,
+  },
 ]
 
-/**
- * Format a date string into a short display like "FEB 26"
- */
 function formatDatePill(dateStr: string): { month: string; day: string } {
-  const d = new Date(dateStr + 'T00:00:00')
-  if (isNaN(d.getTime())) return { month: '', day: '' }
-  const month = d.toLocaleDateString('en-US', { month: 'short' }).toUpperCase()
-  const day = String(d.getDate())
-  return { month, day }
+  const parsed = new Date(`${dateStr}T00:00:00`)
+  if (Number.isNaN(parsed.getTime())) return { month: '', day: '' }
+  return {
+    month: parsed.toLocaleDateString('en-US', { month: 'short' }).toUpperCase(),
+    day: String(parsed.getDate()),
+  }
 }
 
 function isToday(dateStr: string): boolean {
-  const today = new Date()
-  return dateStr === today.toISOString().split('T')[0]
+  return dateStr === new Date().toISOString().split('T')[0]
 }
 
-// ── Placeholder avatar dots for attendee count ──────────
+function daysUntil(dateStr?: string): number | null {
+  if (!dateStr) return null
+  const parsed = new Date(`${dateStr}T00:00:00`)
+  if (Number.isNaN(parsed.getTime())) return null
+  const today = new Date()
+  today.setHours(0, 0, 0, 0)
+  const diff = Math.round((parsed.getTime() - today.getTime()) / (1000 * 60 * 60 * 24))
+  return diff
+}
 
-const AVATAR_COLORS = ['#E8862A', '#78716C', '#A8A29E', '#D6D3D1']
+function countdownLabel(dateStr?: string): string | null {
+  const days = daysUntil(dateStr)
+  if (days == null) return null
+  if (days < 0) return null
+  if (days === 0) return 'Today'
+  if (days === 1) return 'Tomorrow'
+  if (days < 7) return `In ${days} days`
+  if (days < 30) return `In ${Math.round(days / 7)} weeks`
+  return `In ${days} days`
+}
 
-function AttendeeAvatars({ count, attendees }: { count: number; attendees?: AttendeeInfo[] }) {
-  if (count <= 0) return null
-  const shown = Math.min(count, 4)
+function sortUpcomingEvents(events: EventDisplay[]) {
+  const today = new Date().toISOString().split('T')[0]
+  return [...events]
+    .filter((event) => !event.date || event.date >= today)
+    .sort((a, b) => {
+      if (!a.date && !b.date) return 0
+      if (!a.date) return 1
+      if (!b.date) return -1
+      return a.date.localeCompare(b.date)
+    })
+}
+
+function liveEventToWeekItem(event: EventDisplay, onPress: () => void): WeekItem {
+  const { month, day } = event.date ? formatDatePill(event.date) : { month: '', day: '' }
+  const today = event.date ? isToday(event.date) : false
+  const subtitleParts = [today ? 'Today' : event.time || 'TBD', event.location || event.address]
+  return {
+    id: event.id,
+    month,
+    day,
+    title: event.title,
+    subtitle: subtitleParts.filter(Boolean).join(' · '),
+    highlight: today,
+    onPress,
+  }
+}
+
+export default function HomeScreen() {
+  const router = useRouter()
+  const { width } = useWindowDimensions()
+  const posthog = usePostHog()
+  const { user } = useUser()
+  const { isDark } = useTheme()
+  const { events: myEvents, loading: myEventsLoading } = useMyEvents(user?.username)
+  const {
+    allEvents,
+    allCenters,
+    loading: discoverLoading,
+  } = useDiscoverData('Events', '', user?.id, false, false, user?.interests ?? undefined, user?.centerID)
+
+  const isDesktop = width >= 860
+  const pageBg = isDark ? '#1A1A1A' : '#F5F5F4'
+  const cardBg = isDark ? '#262626' : '#FFFFFF'
+  const surfaceBg = isDark ? '#262626' : '#F5F0EB'
+  const borderColor = isDark ? '#262626' : '#ECE7DE'
+  const dividerColor = isDark ? '#262626' : '#F1ECE3'
+  const textColor = isDark ? '#FAFAFA' : '#1C1917'
+  const bodyColor = isDark ? '#D6D3D1' : '#44403C'
+  const mutedColor = isDark ? '#A8A29E' : '#78716C'
+  const faintColor = isDark ? '#737373' : '#A8A29E'
+  const accentColor = '#E8862A'
+
+  const signedUpEvents = useMemo(() => {
+    const fromDiscover = sortUpcomingEvents(allEvents.filter((event) => event.isRegistered))
+    if (fromDiscover.length > 0) return fromDiscover
+    return sortUpcomingEvents(myEvents.map((event) => ({ ...event, isRegistered: true })))
+  }, [allEvents, myEvents])
+
+  const upcomingExploreEvents = useMemo(
+    () => sortUpcomingEvents(allEvents.filter((event) => !event.isRegistered)),
+    [allEvents]
+  )
+
+  const featured = useMemo<FeaturedSource>(() => {
+    const source = signedUpEvents[0] || upcomingExploreEvents[0]
+    if (source) {
+      const centerName = allCenters.find((item) => item.id === source.centerId)?.name
+      return { kind: 'live', event: source, centerName }
+    }
+    return { kind: 'mock', event: featuredHomeEvent }
+  }, [allCenters, signedUpEvents, upcomingExploreEvents])
+
+  const weekItems = useMemo<WeekItem[]>(() => {
+    const featuredId = featured.kind === 'live' ? featured.event.id : null
+    const pool = (signedUpEvents.length > 0 ? signedUpEvents : upcomingExploreEvents).filter(
+      (event) => event.id !== featuredId
+    )
+    if (pool.length === 0) return FALLBACK_WEEK_ITEMS
+    return pool.slice(0, 4).map((event) =>
+      liveEventToWeekItem(event, () => {
+        posthog?.capture('home_event_pressed', {
+          eventId: event.id,
+          source: 'this_week',
+        })
+        router.push(`/events/${event.id}`)
+      })
+    )
+  }, [featured, posthog, router, signedUpEvents, upcomingExploreEvents])
+
+  const latestBoardPosts = useMemo<HomeBoardPost[]>(() => {
+    const eventPosts = eventBoards.flatMap((board) =>
+      board.messages.map((message) => ({
+        ...message,
+        sourceTitle: board.title,
+        sourceKind: 'event' as const,
+      }))
+    )
+    const centerPosts = centerBoards.flatMap((board) =>
+      board.messages.map((message) => ({
+        ...message,
+        sourceTitle: board.centerName,
+        sourceKind: 'center' as const,
+      }))
+    )
+    const ordered = [eventPosts[0], centerPosts[0]].filter(Boolean) as HomeBoardPost[]
+    return ordered.length > 0 ? ordered : [...eventPosts, ...centerPosts].slice(0, 2)
+  }, [])
+
+  const isLoading = discoverLoading || (user ? myEventsLoading : false)
+  const greetingName = user?.firstName || user?.username || 'friend'
+  const todayLabel = new Date().toLocaleDateString('en-US', {
+    weekday: 'long',
+    month: 'long',
+    day: 'numeric',
+  })
+
+  if (isLoading) {
+    return (
+      <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center', backgroundColor: pageBg }}>
+        <ActivityIndicator size="large" color={accentColor} />
+      </View>
+    )
+  }
 
   return (
-    <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4, marginTop: 2 }}>
-      <View style={{ flexDirection: 'row' }}>
-        {attendees && attendees.length > 0 ? (
-          attendees.slice(0, shown).map((attendee, i) => (
-            <Avatar
-              key={i}
-              image={attendee.image}
-              initials={attendee.initials}
-              name={attendee.name}
-              size={18}
-              style={{
-                marginLeft: i === 0 ? 0 : -6,
-                borderWidth: 1.5,
-                borderColor: 'white',
-              }}
-            />
-          ))
-        ) : (
-          Array.from({ length: shown }).map((_, i) => (
+    <ScrollView
+      style={{ flex: 1, backgroundColor: pageBg }}
+      contentContainerStyle={{
+        paddingHorizontal: isDesktop ? 24 : 16,
+        paddingTop: Platform.OS === 'web' ? 20 : 14,
+        paddingBottom: Platform.OS === 'web' ? 40 : 112,
+      }}
+      showsVerticalScrollIndicator={false}
+    >
+      <View style={{ width: '100%', maxWidth: 640, alignSelf: 'center', gap: 22 }}>
+        <Greeting
+          dateLabel={todayLabel}
+          name={user ? `Namaste, ${greetingName}` : 'Namaste'}
+          textColor={textColor}
+          mutedColor={mutedColor}
+        />
+
+        <Section eyebrow="UP NEXT FOR YOU" trailing="See all" mutedColor={faintColor} accentColor={accentColor} onTrailingPress={() => router.push('/' as never)}>
+          <FeaturedEventCard
+            featured={featured}
+            cardBg={cardBg}
+            borderColor={borderColor}
+            dividerColor={dividerColor}
+            textColor={textColor}
+            bodyColor={bodyColor}
+            mutedColor={mutedColor}
+            faintColor={faintColor}
+            isDark={isDark}
+            onPress={() => {
+              if (featured.kind === 'live') {
+                posthog?.capture('home_featured_event_pressed', {
+                  eventId: featured.event.id,
+                })
+                router.push(`/events/${featured.event.id}`)
+              }
+            }}
+          />
+        </Section>
+
+        {latestBoardPosts.length > 0 ? (
+          <Section
+            eyebrow="LATEST ON YOUR BOARDS"
+            trailing="Open Feed"
+            mutedColor={faintColor}
+            accentColor={accentColor}
+            onTrailingPress={() => router.push('/(tabs)/connect' as never)}
+          >
             <View
-              key={i}
               style={{
-                width: 18,
-                height: 18,
-                borderRadius: 9,
-                backgroundColor: AVATAR_COLORS[i % AVATAR_COLORS.length],
-                marginLeft: i === 0 ? 0 : -6,
-                borderWidth: 1.5,
-                borderColor: 'white',
+                borderRadius: 18,
+                borderWidth: 1,
+                borderColor,
+                backgroundColor: cardBg,
+                overflow: 'hidden',
               }}
-            />
-          ))
-        )}
+            >
+              {latestBoardPosts.map((post, index) => (
+                <BoardPeekRow
+                  key={`${post.sourceTitle}-${post.id}`}
+                  post={post}
+                  showDivider={index < latestBoardPosts.length - 1}
+                  textColor={textColor}
+                  bodyColor={bodyColor}
+                  mutedColor={mutedColor}
+                  faintColor={faintColor}
+                  dividerColor={dividerColor}
+                  accentColor={accentColor}
+                  onPress={() => {
+                    posthog?.capture('home_board_peek_pressed', {
+                      sourceTitle: post.sourceTitle,
+                    })
+                    router.push('/(tabs)/connect' as never)
+                  }}
+                />
+              ))}
+            </View>
+          </Section>
+        ) : null}
+
+        <Section
+          eyebrow={signedUpEvents.length > 0 ? 'THIS WEEK' : 'COMING UP'}
+          trailing="See all"
+          mutedColor={faintColor}
+          accentColor={accentColor}
+          onTrailingPress={() => router.push('/' as never)}
+        >
+          {weekItems.length > 0 ? (
+            <View style={{ gap: 8 }}>
+              {weekItems.map((item) => (
+                <MiniEventRow
+                  key={item.id}
+                  item={item}
+                  cardBg={cardBg}
+                  surfaceBg={surfaceBg}
+                  borderColor={borderColor}
+                  textColor={textColor}
+                  mutedColor={mutedColor}
+                  accentColor={accentColor}
+                  isDark={isDark}
+                />
+              ))}
+            </View>
+          ) : (
+            <View
+              style={{
+                borderRadius: 16,
+                borderWidth: 1,
+                borderColor,
+                backgroundColor: cardBg,
+                padding: 16,
+                gap: 4,
+              }}
+            >
+              <Text style={{ fontFamily: 'Inter-SemiBold', fontSize: 16, color: textColor }}>
+                No events yet
+              </Text>
+              <Text style={{ fontFamily: 'Inter-Regular', fontSize: 14, lineHeight: 20, color: mutedColor }}>
+                Upcoming events from Explore will appear here as they are added.
+              </Text>
+            </View>
+          )}
+        </Section>
       </View>
-      <Text className="text-stone-400 dark:text-stone-500 font-inter text-xs">
-        {count} going
+    </ScrollView>
+  )
+}
+
+function Greeting({
+  dateLabel,
+  name,
+  textColor,
+  mutedColor,
+}: {
+  dateLabel: string
+  name: string
+  textColor: string
+  mutedColor: string
+}) {
+  return (
+    <View style={{ gap: 4 }}>
+      <Text style={{ fontFamily: 'Inter-Medium', fontSize: 12.5, color: mutedColor, letterSpacing: 0.2 }}>
+        {dateLabel}
+      </Text>
+      <Text
+        style={{
+          fontFamily: 'Inter-Bold',
+          fontSize: 30,
+          lineHeight: 34,
+          letterSpacing: -0.5,
+          color: textColor,
+        }}
+        numberOfLines={1}
+      >
+        {name}
       </Text>
     </View>
   )
 }
 
-// ─── Event Item ─────────────────────────────────────────
-
-function EventItem({
-  event,
-  onPress,
-  centerName,
+function Section({
+  eyebrow,
+  trailing,
+  mutedColor,
+  accentColor,
+  onTrailingPress,
+  children,
 }: {
-  event: EventDisplay
-  onPress: () => void
-  centerName?: string
+  eyebrow: string
+  trailing?: string
+  mutedColor: string
+  accentColor: string
+  onTrailingPress?: () => void
+  children: React.ReactNode
 }) {
-  const { month, day } = event.date ? formatDatePill(event.date) : { month: '', day: '' }
-  const todayLabel = event.date ? isToday(event.date) : false
-
   return (
-    <Pressable
-      onPress={onPress}
-      className={`flex-row gap-3 p-3 rounded-2xl active:opacity-70 ${
-        event.isRegistered
-          ? 'bg-orange-50 dark:bg-orange-950/20'
-          : 'bg-white dark:bg-neutral-900'
-      }`}
-    >
-      {/* Date pill */}
-      <View className="w-12 h-14 rounded-xl items-center justify-center bg-stone-100 dark:bg-neutral-800">
-        <Text className="text-[10px] font-inter-semibold" style={{ color: '#E8862A' }}>
-          {month}
-        </Text>
-        <Text className="text-base font-inter-bold text-content dark:text-content-dark">
-          {day}
-        </Text>
-      </View>
-
-      {/* Content */}
-      <View className="flex-1 gap-0.5">
-        <View className="flex-row items-center gap-1.5">
-          <Text className="text-content dark:text-content-dark font-inter-semibold text-base leading-tight flex-1" numberOfLines={2}>
-            {event.title}
-          </Text>
-          {event.isRegistered && <Badge label="Going" variant="going" />}
-        </View>
-        <Text className="text-stone-500 dark:text-stone-400 font-inter text-sm">
-          {todayLabel ? 'Today · ' : ''}{event.time || ''}
-        </Text>
-        {centerName && (
-          <Text className="text-stone-500 dark:text-stone-400 font-inter text-xs" numberOfLines={1}>
-            By {centerName}
-          </Text>
-        )}
-        <View className="flex-row items-center gap-1 mt-0.5">
-          <MapPin size={12} color="#E8862A" />
-          <Text className="text-stone-500 dark:text-stone-400 font-inter text-xs flex-1" numberOfLines={1}>
-            {event.location}
-          </Text>
-        </View>
-        {event.attendees > 0 && <AttendeeAvatars count={event.attendees} attendees={event.attendeesList} />}
-      </View>
-
-      {/* Hero thumbnail */}
-      {event.image && (
-        <Image
-          source={{ uri: event.image }}
-          style={{ width: 72, height: 72, borderRadius: 10 }}
-          resizeMode="cover"
-        />
-      )}
-    </Pressable>
-  )
-}
-
-// ─── Center Item ────────────────────────────────────────
-
-function CenterItem({ center, onPress, isMyCenter }: { center: DiscoverCenter; onPress: () => void; isMyCenter?: boolean }) {
-  return (
-    <Pressable
-      onPress={onPress}
-      className={`flex-row gap-3 p-3 rounded-2xl active:opacity-70 ${
-        center.isMember || isMyCenter
-          ? 'bg-orange-50 dark:bg-orange-950/20'
-          : 'bg-white dark:bg-neutral-900'
-      }`}
-    >
-      {/* Icon pill */}
-      <View className="w-12 h-14 rounded-xl bg-orange-100 dark:bg-orange-900/30 items-center justify-center overflow-hidden">
-        {center.image ? (
-          <Image source={{ uri: center.image }} style={{ width: 48, height: 56 }} resizeMode="cover" />
-        ) : (
-          <Building2 size={20} color="#9A3412" />
-        )}
-      </View>
-
-      {/* Content */}
-      <View className="flex-1 gap-0.5">
-        <View className="flex-row items-center gap-1.5">
-          <Text className="text-content dark:text-content-dark font-inter-semibold text-base leading-tight flex-1" numberOfLines={1}>
-            {center.name}
-          </Text>
-          {isMyCenter && <Badge label="My Center" variant="going" />}
-          {!isMyCenter && center.isMember && <Badge label="Member" variant="member" />}
-        </View>
-        <Text className="text-stone-500 dark:text-stone-400 font-inter text-sm">
-          {extractCityState(center.address) || 'Center'}{center.distanceMi != null ? ` · ${center.distanceMi} mi` : ''}
-        </Text>
-        {center.eventCount != null && center.eventCount > 0 && (
-          <Text className="text-primary font-inter text-xs mt-0.5">
-            {center.eventCount} events this week
-          </Text>
-        )}
-      </View>
-    </Pressable>
-  )
-}
-
-// ─── Discover Screen ────────────────────────────────────
-
-export default function DiscoverScreen() {
-  const router = useRouter()
-  const { isDark } = useTheme()
-  const posthog = usePostHog()
-  const [activeFilter, setActiveFilter] = useState<DiscoverFilter>('Events')
-  const [searchQuery, setSearchQuery] = useState('')
-  const [selectedDate, setSelectedDate] = useState<string | null>(null)
-  const [showGoingOnly, setShowGoingOnly] = useState(false)
-  const [showPastEvents, setShowPastEvents] = useState(false)
-  const [selectedCenter, setSelectedCenter] = useState<string | null>(null)
-  const [showCenterModal, setShowCenterModal] = useState(false)
-    const { user } = useUser()
-    const {
-    items,
-    filteredPoints,
-    loading,
-    allEvents,
-    allCenters,
-    refresh,
-  } = useDiscoverData(activeFilter, searchQuery, user?.id, showPastEvents, showGoingOnly, user?.interests ?? undefined, user?.centerID)
-
-  useFocusEffect(
-    useCallback(() => {
-      refresh()
-    }, [refresh])
-  )
-
-  // ── Sheet snap points ──────────────────────────────────
-  // Four positions (as translateY values from the expanded state):
-  //   expanded  = 0           → 100% sheet visible (full screen, header hidden)
-  //   mid       = sheet * 0.2 → ~80% sheet visible (most content, map peeking)
-  //   collapsed = sheet * 0.6 → ~40% sheet visible (peek + a few rows)
-  //   peek      = sheet - 100 → just handle + search bar visible (100px)
-
-  const EXPANDED_TOP = 60 // px from top of container when fully expanded
-
-  const [containerHeight, setContainerHeight] = useState(0)
-  const sheetHeight = containerHeight - EXPANDED_TOP // total sheet height
-
-  const SNAP_EXPANDED = 0
-  const SNAP_MID = Math.max(0, sheetHeight * 0.2)        // ~80% sheet visible
-  const SNAP_COLLAPSED = Math.max(0, sheetHeight * 0.6)  // ~40% sheet visible
-  const SNAP_PEEK = Math.max(0, sheetHeight - 100)       // 100px sheet visible (handle + search)
-
-  const snapsRef = useRef({ expanded: SNAP_EXPANDED, mid: SNAP_MID, collapsed: SNAP_COLLAPSED, peek: SNAP_PEEK })
-  snapsRef.current = { expanded: SNAP_EXPANDED, mid: SNAP_MID, collapsed: SNAP_COLLAPSED, peek: SNAP_PEEK }
-
-  const sheetY = useRef(new Animated.Value(0)).current
-  const offsetRef = useRef(0)
-  const initializedRef = useRef(false)
-
-  // Track expansion state for scroll behavior
-  const [isSheetExpanded, setIsSheetExpanded] = useState(false)
-
-  // Hide the nav header (with the profile-pic button) when the sheet is at
-  // expanded snap so the sheet covers the full screen, including over where
-  // the profile button sits. Restore when sheet leaves expanded.
-  const navigation = useNavigation()
-  React.useEffect(() => {
-    navigation.setOptions({ headerShown: !isSheetExpanded })
-  }, [navigation, isSheetExpanded])
-
-  // Set initial sheet position to mid once we know the container height
-  React.useEffect(() => {
-    if (containerHeight > 0 && !initializedRef.current) {
-      const mid = Math.max(0, (containerHeight - EXPANDED_TOP) * 0.2)
-      sheetY.setValue(mid)
-      offsetRef.current = mid
-      initializedRef.current = true
-    }
-  }, [containerHeight, sheetY])
-
-  const panResponder = useRef(
-    PanResponder.create({
-      onStartShouldSetPanResponder: () => false,
-      onMoveShouldSetPanResponder: (_, gs) => Math.abs(gs.dy) > 8,
-      onPanResponderGrant: () => {},
-      onPanResponderMove: (_, gs) => {
-        const max = snapsRef.current.peek
-        const next = Math.max(0, Math.min(max, offsetRef.current + gs.dy))
-        sheetY.setValue(next)
-      },
-      onPanResponderRelease: (_, gs) => {
-        const { expanded, mid, collapsed, peek } = snapsRef.current
-        const current = Math.max(0, Math.min(peek, offsetRef.current + gs.dy))
-
-        // Find nearest snap, biased by velocity
-        let snapTo: number
-        if (gs.vy > 1) {
-          // Fast swipe down — jump one stop down from current
-          if (offsetRef.current <= expanded + 10) snapTo = mid
-          else if (offsetRef.current <= mid + 10) snapTo = collapsed
-          else snapTo = peek
-        } else if (gs.vy < -1) {
-          // Fast swipe up — jump one stop up from current
-          if (offsetRef.current >= peek - 10) snapTo = collapsed
-          else if (offsetRef.current >= collapsed - 10) snapTo = mid
-          else snapTo = expanded
-        } else {
-          // Position-based: snap to nearest of 4
-          const dExp = Math.abs(current - expanded)
-          const dMid = Math.abs(current - mid)
-          const dCol = Math.abs(current - collapsed)
-          const dPeek = Math.abs(current - peek)
-          const minD = Math.min(dExp, dMid, dCol, dPeek)
-          snapTo =
-            minD === dExp ? expanded : minD === dMid ? mid : minD === dCol ? collapsed : peek
-        }
-
-        offsetRef.current = snapTo
-        setIsSheetExpanded(snapTo === expanded)
-        Animated.spring(sheetY, {
-          toValue: snapTo,
-          useNativeDriver: false,
-          damping: 28,
-          stiffness: 220,
-          mass: 0.8,
-        }).start()
-      },
-    })
-  ).current
-
-  // ── Data ──────────────────────────────────────────────
-  const displayItems = React.useMemo(() => {
-    let result = items
-    if (selectedDate) {
-      result = result.filter(
-        (item) => item.type === 'event' && (item.data as EventDisplay).date === selectedDate
-      )
-    }
-    if (selectedCenter) {
-      result = result.filter((item) => {
-        if (item.type !== 'event') return true
-        return (item.data as EventDisplay).centerId === selectedCenter
-      })
-    }
-    return result
-  }, [items, selectedDate, selectedCenter])
-
-  // Filter chip helpers — counts over upcoming events
-  const todayStr = new Date().toISOString().split('T')[0]
-  const eventsForCounts = useMemo(
-    () => (showPastEvents ? allEvents : allEvents.filter((e) => !e.date || e.date >= todayStr)),
-    [allEvents, showPastEvents, todayStr]
-  )
-  const centerOptions = useMemo<FilterPickerOption<string>[]>(() => {
-    const counts: Record<string, number> = {}
-    for (const e of eventsForCounts) {
-      if (e.centerId) counts[e.centerId] = (counts[e.centerId] ?? 0) + 1
-    }
-    return [...allCenters]
-      .map((c) => ({ value: c.id, label: c.name, sublabel: c.address, count: counts[c.id] ?? 0 }))
-      .filter((o) => (o.count ?? 0) > 0)
-      .sort((a, b) => {
-        if (user?.centerID && a.value === user.centerID) return -1
-        if (user?.centerID && b.value === user.centerID) return 1
-        return a.label.localeCompare(b.label)
-      })
-  }, [allCenters, eventsForCounts, user?.centerID])
-  const centerChipLabel = selectedCenter
-    ? centerOptions.find((o) => o.value === selectedCenter)?.label ?? 'Center'
-    : 'Center'
-
-  const [collapsedSections, setCollapsedSections] = useState<Set<string>>(new Set())
-  const toggleSection = useCallback((label: string) => {
-    setCollapsedSections((prev) => {
-      const next = new Set(prev)
-      if (next.has(label)) next.delete(label)
-      else next.add(label)
-      return next
-    })
-  }, [])
-
-  // Default Centers list to fully collapsed on first visit (90+ centers,
-  // an all-expanded view is overwhelming).
-  const collapsedInitFor = useRef<DiscoverFilter | null>(null)
-  React.useEffect(() => {
-    if (activeFilter !== 'Centers') {
-      collapsedInitFor.current = null
-      return
-    }
-    if (collapsedInitFor.current === 'Centers') return
-    if (items.length === 0) return
-    const labels = new Set<string>()
-    let isFirst = true
-    for (const item of items) {
-      if (item.type === 'section') {
-        if (!isFirst) labels.add(item.data.label)
-        isFirst = false
-      }
-    }
-    setCollapsedSections(labels)
-    collapsedInitFor.current = 'Centers'
-  }, [activeFilter, items])
-
-  const stickyHeaderIndices = useMemo(
-    () =>
-      displayItems.reduce<number[]>((acc, item, idx) => {
-        if (item.type === 'section') acc.push(idx)
-        return acc
-      }, []),
-    [displayItems]
-  )
-
-  const handleFilterPress = (f: DiscoverFilter) => {
-    posthog?.capture('discover_filter_changed', { filter: f })
-    setActiveFilter(f)
-    setSelectedDate(null)
-  }
-
-  const handlePointPress = (point: { id: string; type: 'center' | 'event' }) => {
-    posthog?.capture('map_point_pressed', { type: point.type, id: point.id })
-    if (point.type === 'center') {
-      router.push(`/center/${point.id}`)
-    } else {
-      router.push(`/events/${point.id}`)
-    }
-  }
-
-  return (
-    <View
-      style={styles.container}
-      onLayout={(e) => setContainerHeight(e.nativeEvent.layout.height)}
-    >
-      {/* Map — full bleed behind the sheet */}
-      <View style={StyleSheet.absoluteFill}>
-        <Suspense
-          fallback={
-            <View className="flex-1 justify-center items-center bg-stone-100 dark:bg-neutral-800">
-              <ActivityIndicator size="large" color="#9A3412" />
-            </View>
-          }
+    <View style={{ gap: 10 }}>
+      <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: 4 }}>
+        <Text
+          style={{
+            fontFamily: 'Inter-Bold',
+            fontSize: 11,
+            letterSpacing: 0.9,
+            color: mutedColor,
+          }}
         >
-          <Map points={filteredPoints} onPointPress={handlePointPress} userCenterID={user?.centerID} bottomPadding={90} />
-        </Suspense>
+          {eyebrow}
+        </Text>
+        {trailing ? (
+          <Pressable onPress={onTrailingPress} hitSlop={8}>
+            <Text style={{ fontFamily: 'Inter-SemiBold', fontSize: 13, color: accentColor }}>
+              {trailing}
+            </Text>
+          </Pressable>
+        ) : null}
       </View>
-
-      {/* Bottom Sheet — hidden until we measure the container */}
-      {containerHeight > 0 && (
-      <Animated.View
-        style={[
-          styles.sheet,
-          { top: EXPANDED_TOP, transform: [{ translateY: sheetY }] },
-        ]}
-      >
-        <View
-          style={[
-            styles.sheetInner,
-            {
-              backgroundColor: isDark ? '#171717' : '#fff',
-              borderTopColor: isDark ? '#262626' : '#E5E7EB',
-            },
-          ]}
-        >
-          {/* ─── Draggable Header Zone ─── */}
-          <View {...panResponder.panHandlers}>
-            {/* Drag Handle */}
-            <View style={styles.handleRow}>
-              <View
-                style={[
-                  styles.handle,
-                  { backgroundColor: isDark ? '#525252' : '#D1D5DB' },
-                ]}
-              />
-            </View>
-
-            {/* Search Input */}
-            <View
-              className="flex-row items-center mx-4 mb-3 px-3 rounded-xl"
-              style={{
-                minHeight: 44,
-                backgroundColor: isDark ? '#262626' : '#F3F4F6',
-              }}
-            >
-              <Search size={16} color="#9CA3AF" />
-              <TextInput
-                className="flex-1 ml-2 text-sm font-inter"
-                style={{ color: isDark ? '#E5E7EB' : '#1F2937', paddingVertical: 8 }}
-                placeholder="Search events and centers..."
-                placeholderTextColor="#9CA3AF"
-                value={searchQuery}
-                onChangeText={setSearchQuery}
-                onEndEditing={() => {
-                  if (searchQuery.trim()) {
-                    posthog?.capture('discover_search', { query: searchQuery.trim() })
-                  }
-                }}
-              />
-            </View>
-
-            {/* Filter tabs — underline style */}
-            <View style={{ marginBottom: 4 }}>
-              <UnderlineTabBar
-                tabs={FILTERS.map((f) => f.label)}
-                activeTab={selectedDate ? '' : activeFilter}
-                onTabChange={(tab) => handleFilterPress(tab as DiscoverFilter)}
-                counts={{ Events: allEvents.length, Centers: allCenters.length }}
-              />
-            </View>
-
-            {/* Filter chips — Today / Center / Going (max 4) */}
-            {activeFilter === 'Events' && (
-              <View className="flex-row flex-wrap items-center px-4 py-2 gap-2">
-                <FilterChip
-                  label="Today"
-                  variant="outline"
-                  active={selectedDate === todayStr}
-                  onPress={() => {
-                    setSelectedDate((prev) => {
-                      const next = prev === todayStr ? null : todayStr
-                      if (next) posthog?.capture('discover_date_selected', { date: next })
-                      return next
-                    })
-                  }}
-                />
-                <FilterChip
-                  label={centerChipLabel}
-                  variant="outline"
-                  active={selectedCenter !== null}
-                  onPress={() => setShowCenterModal(true)}
-                />
-                {user && (
-                  <FilterChip
-                    label="Going"
-                    variant="outline"
-                    active={showGoingOnly}
-                    onPress={() => setShowGoingOnly((prev) => !prev)}
-                  />
-                )}
-              </View>
-            )}
-          </View>
-
-          {/* Loading skeleton */}
-          {loading && (
-            <View style={{ paddingHorizontal: 16 }}>
-              <DiscoverListSkeleton count={4} />
-            </View>
-          )}
-
-          {/* Unified List */}
-          <ScrollView
-            style={{ flex: 1 }}
-            contentContainerStyle={{ paddingHorizontal: 4, paddingTop: 12, paddingBottom: 40, gap: 4 }}
-            showsVerticalScrollIndicator={false}
-            scrollEnabled={true}
-            stickyHeaderIndices={stickyHeaderIndices}
-          >
-            {!loading && activeFilter === 'Seva' && (
-              <EmptyState message="Seva — coming soon" subtitle="Service opportunities will be listed here." />
-            )}
-            {!loading && activeFilter !== 'Seva' && displayItems.length === 0 && (
-              <EmptyState variant={selectedDate ? 'date' : searchQuery ? 'search' : 'events'} />
-            )}
-            {activeFilter !== 'Seva' && displayItems.map((item, idx) => {
-              if (item.type === 'section') {
-                const label = item.data.label
-                const isCollapsed = collapsedSections.has(label)
-                return (
-                  <Pressable
-                    key={`section-${idx}`}
-                    onPress={() => toggleSection(label)}
-                    className={`bg-white dark:bg-neutral-900 ${idx > 0 ? 'border-t border-stone-200 dark:border-neutral-800' : ''}`}
-                  >
-                    <View
-                      style={{
-                        paddingHorizontal: 12,
-                        paddingVertical: 14,
-                        flexDirection: 'row',
-                        alignItems: 'center',
-                        justifyContent: 'space-between',
-                      }}
-                    >
-                      <Text className="text-xs font-inter-semibold text-stone-500 dark:text-stone-400 uppercase" style={{ letterSpacing: 0.6 }}>
-                        {label}
-                      </Text>
-                      {isCollapsed ? <ChevronDown size={16} color="#a8a29e" /> : <ChevronUp size={16} color="#a8a29e" />}
-                    </View>
-                  </Pressable>
-                )
-              }
-              if (item.type === 'event') {
-                return (
-                  <EventItem
-                    key={`event-${item.data.id}`}
-                    event={item.data as EventDisplay}
-                    centerName={allCenters.find((c) => c.id === (item.data as EventDisplay).centerId)?.name}
-                    onPress={() => {
-                      posthog?.capture('event_list_item_pressed', { eventId: item.data.id, source: 'discover' })
-                      router.push(`/events/${item.data.id}`)
-                    }}
-                  />
-                )
-              }
-              const sectionLabel = displayItems.slice(0, idx).reverse().find((i) => i.type === 'section')?.data?.label
-              if (sectionLabel && collapsedSections.has(sectionLabel)) return null
-              return (
-                <CenterItem
-                  key={`center-${item.data.id}`}
-                  center={item.data as DiscoverCenter}
-                  isMyCenter={!!user?.centerID && item.data.id === user.centerID}
-                  onPress={() => {
-                    posthog?.capture('center_list_item_pressed', { centerId: item.data.id, source: 'discover' })
-                    router.push(`/center/${item.data.id}`)
-                  }}
-                />
-              )
-            })}
-          </ScrollView>
-        </View>
-      </Animated.View>
-      )}
-
-      <FilterPickerModal
-        visible={showCenterModal}
-        title="Center"
-        options={centerOptions}
-        selected={selectedCenter}
-        onSelect={setSelectedCenter}
-        onClear={() => setSelectedCenter(null)}
-        onClose={() => setShowCenterModal(false)}
-      />
+      {children}
     </View>
   )
 }
 
-const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-  },
-  sheet: {
-    position: 'absolute',
-    left: 0,
-    right: 0,
-    bottom: 0,
-    // top is set dynamically via style prop
-  },
-  sheetInner: {
-    flex: 1,
-    borderTopLeftRadius: 24,
-    borderTopRightRadius: 24,
-    borderTopWidth: 1,
-    overflow: 'hidden',
-    // Shadow for visibility over the map
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: -3 },
-    shadowOpacity: 0.1,
-    shadowRadius: 8,
-    elevation: 16,
-  },
-  handleRow: {
-    alignItems: 'center',
-    paddingTop: 10,
-    paddingBottom: 8,
-  },
-  handle: {
-    width: 36,
-    height: 5,
-    borderRadius: 2.5,
-  },
-})
+function FeaturedEventCard({
+  featured,
+  cardBg,
+  borderColor,
+  dividerColor,
+  textColor,
+  bodyColor,
+  mutedColor,
+  faintColor,
+  isDark,
+  onPress,
+}: {
+  featured: FeaturedSource
+  cardBg: string
+  borderColor: string
+  dividerColor: string
+  textColor: string
+  bodyColor: string
+  mutedColor: string
+  faintColor: string
+  isDark: boolean
+  onPress: () => void
+}) {
+  const event = featured.kind === 'live' ? featured.event : null
+  const mock = featured.kind === 'mock' ? featured.event : null
+  const title = event?.title ?? mock!.title
+  const dateLabel = event
+    ? event.date
+      ? new Date(`${event.date}T00:00:00`).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })
+      : 'TBD'
+    : mock!.dateLabel
+  const timeLabel = event?.time || mock?.timeLabel || 'TBD'
+  const locationLabel = event ? event.location || event.address || 'Location TBA' : mock!.locationLabel
+  const goingPill = event ? event.isRegistered : mock!.going
+  const countdown = event ? countdownLabel(event.date) : mock?.countdownLabel ?? null
+  const attendeesGoingLabel = event
+    ? event.attendees > 0
+      ? `${event.attendees} going`
+      : null
+    : mock!.attendeesGoingLabel
+  const attendeesList = event?.attendeesList?.slice(0, 4)
+  const fallbackAttendees = mock?.attendees ?? []
+  const heroImage = event?.image
+  const isLive = featured.kind === 'live'
+
+  return (
+    <Pressable
+      onPress={onPress}
+      disabled={!isLive}
+      style={{
+        borderRadius: 22,
+        borderWidth: 1,
+        borderColor,
+        backgroundColor: cardBg,
+        overflow: 'hidden',
+      }}
+    >
+      <View style={{ height: 124, position: 'relative' }}>
+        {heroImage ? (
+          <Image source={{ uri: heroImage }} style={{ width: '100%', height: '100%' }} resizeMode="cover" />
+        ) : (
+          <GradientHero isDark={isDark} />
+        )}
+        <View style={{ position: 'absolute', top: 12, left: 12, flexDirection: 'row', gap: 6 }}>
+          {countdown ? <InkPill label={countdown} /> : null}
+          {goingPill ? <GoingPill label="You're going" /> : null}
+        </View>
+      </View>
+
+      <View style={{ paddingHorizontal: 16, paddingTop: 14, paddingBottom: 14 }}>
+        <Text
+          style={{
+            fontFamily: 'Inter-Bold',
+            fontSize: 18,
+            lineHeight: 23,
+            letterSpacing: -0.2,
+            color: textColor,
+          }}
+          numberOfLines={2}
+        >
+          {title}
+        </Text>
+
+        <View style={{ flexDirection: 'column', gap: 4, marginTop: 8 }}>
+          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+            <Clock3 size={13} color={faintColor} />
+            <Text style={{ fontFamily: 'Inter-Regular', fontSize: 13, color: bodyColor }} numberOfLines={1}>
+              {dateLabel} · {timeLabel}
+            </Text>
+          </View>
+          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+            <MapPin size={13} color={faintColor} />
+            <Text
+              style={{ fontFamily: 'Inter-Regular', fontSize: 13, color: bodyColor }}
+              numberOfLines={1}
+            >
+              {locationLabel}
+            </Text>
+          </View>
+        </View>
+
+        {attendeesGoingLabel || fallbackAttendees.length > 0 ? (
+          <View
+            style={{
+              marginTop: 12,
+              paddingTop: 12,
+              borderTopWidth: 1,
+              borderTopColor: dividerColor,
+              flexDirection: 'row',
+              alignItems: 'center',
+              gap: 10,
+            }}
+          >
+            <AttendeeStack
+              attendees={attendeesList}
+              fallback={fallbackAttendees}
+            />
+            <Text style={{ fontFamily: 'Inter-Regular', fontSize: 12.5, color: mutedColor, lineHeight: 17 }} numberOfLines={1}>
+              {attendeesGoingLabel}
+            </Text>
+          </View>
+        ) : null}
+      </View>
+    </Pressable>
+  )
+}
+
+function GradientHero({ isDark }: { isDark: boolean }) {
+  return (
+    <View style={{ flex: 1 }}>
+      <Svg width="100%" height="100%" viewBox="0 0 300 124" preserveAspectRatio="none">
+        <Defs>
+          <SvgLinearGradient id="featGrad" x1="0" y1="0" x2="1" y2="1">
+            <Stop offset="0" stopColor={isDark ? '#7C2D12' : '#FFF1E5'} />
+            <Stop offset="0.6" stopColor={isDark ? '#C2410C' : '#FED7AA'} />
+            <Stop offset="1" stopColor={isDark ? '#9A3412' : '#FB923C'} />
+          </SvgLinearGradient>
+        </Defs>
+        <Rect x="0" y="0" width="300" height="124" fill="url(#featGrad)" />
+        <Circle cx="248" cy="62" r="14" stroke="#7C2D12" strokeOpacity="0.18" strokeWidth="0.8" fill="none" />
+        <Circle cx="248" cy="62" r="26" stroke="#7C2D12" strokeOpacity="0.16" strokeWidth="0.8" fill="none" />
+        <Circle cx="248" cy="62" r="38" stroke="#7C2D12" strokeOpacity="0.14" strokeWidth="0.8" fill="none" />
+        <Circle cx="248" cy="62" r="50" stroke="#7C2D12" strokeOpacity="0.12" strokeWidth="0.8" fill="none" />
+        <Circle cx="248" cy="62" r="62" stroke="#7C2D12" strokeOpacity="0.10" strokeWidth="0.8" fill="none" />
+        {[0, 30, 60, 90, 120, 150, 180, 210, 240, 270, 300, 330].map((deg) => {
+          const rad = (deg * Math.PI) / 180
+          const x2 = 248 + 70 * Math.cos(rad)
+          const y2 = 62 + 70 * Math.sin(rad)
+          return (
+            <Line
+              key={deg}
+              x1="248"
+              y1="62"
+              x2={x2}
+              y2={y2}
+              stroke="#7C2D12"
+              strokeOpacity="0.11"
+              strokeWidth="0.8"
+            />
+          )
+        })}
+      </Svg>
+    </View>
+  )
+}
+
+function InkPill({ label }: { label: string }) {
+  return (
+    <View
+      style={{
+        backgroundColor: '#1C1917',
+        borderRadius: 999,
+        paddingHorizontal: 9,
+        paddingVertical: 4,
+      }}
+    >
+      <Text style={{ fontFamily: 'Inter-SemiBold', fontSize: 11, color: '#FAFAF7', letterSpacing: 0.2 }}>
+        {label}
+      </Text>
+    </View>
+  )
+}
+
+function GoingPill({ label }: { label: string }) {
+  return (
+    <View
+      style={{
+        backgroundColor: '#DCFCE7',
+        borderRadius: 999,
+        paddingHorizontal: 9,
+        paddingVertical: 4,
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: 5,
+      }}
+    >
+      <View style={{ width: 6, height: 6, borderRadius: 3, backgroundColor: '#15803D' }} />
+      <Text style={{ fontFamily: 'Inter-SemiBold', fontSize: 11, color: '#15803D', letterSpacing: 0.2 }}>
+        {label}
+      </Text>
+    </View>
+  )
+}
+
+function AttendeeStack({
+  attendees,
+  fallback,
+}: {
+  attendees?: EventDisplay['attendeesList']
+  fallback: { name: string; initials: string; accentColor?: string }[]
+}) {
+  const max = 4
+  const items = attendees && attendees.length > 0
+    ? attendees.slice(0, max).map((a) => ({ name: a.name, initials: a.initials, image: a.image }))
+    : fallback.slice(0, max).map((p) => ({ name: p.name, initials: p.initials, accentColor: p.accentColor }))
+
+  return (
+    <View style={{ flexDirection: 'row' }}>
+      {items.map((item, index) => (
+        <View
+          key={`${item.name}-${index}`}
+          style={{
+            marginLeft: index === 0 ? 0 : -7,
+            borderWidth: 2,
+            borderColor: '#FFFFFF',
+            borderRadius: 14,
+          }}
+        >
+          <Avatar
+            name={item.name}
+            initials={item.initials}
+            image={(item as any).image}
+            backgroundColor={(item as any).accentColor}
+            size={22}
+          />
+        </View>
+      ))}
+    </View>
+  )
+}
+
+function BoardPeekRow({
+  post,
+  showDivider,
+  textColor,
+  bodyColor,
+  mutedColor,
+  faintColor,
+  dividerColor,
+  accentColor,
+  onPress,
+}: {
+  post: HomeBoardPost
+  showDivider: boolean
+  textColor: string
+  bodyColor: string
+  mutedColor: string
+  faintColor: string
+  dividerColor: string
+  accentColor: string
+  onPress: () => void
+}) {
+  return (
+    <Pressable
+      onPress={onPress}
+      style={{
+        flexDirection: 'row',
+        gap: 10,
+        paddingHorizontal: 14,
+        paddingVertical: 12,
+        borderBottomWidth: showDivider ? 1 : 0,
+        borderBottomColor: dividerColor,
+      }}
+    >
+      <Avatar
+        name={post.author.name}
+        initials={post.author.initials}
+        size={32}
+        backgroundColor={post.author.accentColor}
+      />
+      <View style={{ flex: 1, minWidth: 0, gap: 4 }}>
+        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, flexWrap: 'wrap' }}>
+          <Text
+            style={{ fontFamily: 'Inter-Bold', fontSize: 13, color: textColor }}
+            numberOfLines={1}
+          >
+            {post.author.name}
+          </Text>
+          {post.author.verification === 'sevak' ? (
+            <Text style={{ fontFamily: 'Inter-Bold', fontSize: 10.5, color: '#C2410C', letterSpacing: 0.4 }}>
+              SEVAK
+            </Text>
+          ) : null}
+          <Text
+            style={{ fontFamily: 'Inter-Regular', fontSize: 11, color: mutedColor }}
+            numberOfLines={1}
+          >
+            · in {post.sourceTitle}
+          </Text>
+          <Text style={{ marginLeft: 'auto', fontFamily: 'Inter-Regular', fontSize: 11, color: faintColor }}>
+            {post.timestamp}
+          </Text>
+        </View>
+        <Text
+          style={{
+            fontFamily: 'Inter-Regular',
+            fontSize: 13,
+            lineHeight: 18,
+            color: bodyColor,
+          }}
+          numberOfLines={2}
+        >
+          {post.body}
+        </Text>
+        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4, marginTop: 2 }}>
+          <MessageCircle size={12} color={accentColor} strokeWidth={2.3} />
+          <Text style={{ fontFamily: 'Inter-SemiBold', fontSize: 12, color: accentColor }}>
+            {post.replyCount ?? 1} {(post.replyCount ?? 1) === 1 ? 'reply' : 'replies'}
+          </Text>
+        </View>
+      </View>
+    </Pressable>
+  )
+}
+
+function MiniEventRow({
+  item,
+  cardBg,
+  surfaceBg,
+  borderColor,
+  textColor,
+  mutedColor,
+  accentColor,
+  isDark,
+}: {
+  item: WeekItem
+  cardBg: string
+  surfaceBg: string
+  borderColor: string
+  textColor: string
+  mutedColor: string
+  accentColor: string
+  isDark: boolean
+}) {
+  const highlightBg = isDark ? 'rgba(124,45,18,0.28)' : '#FFF7ED'
+  const highlightBorder = isDark ? '#7C2D12' : '#FFE0C2'
+  const pillBg = item.highlight ? (isDark ? '#1F1F1F' : '#FFFFFF') : surfaceBg
+
+  return (
+    <Pressable
+      onPress={item.onPress}
+      style={{
+        flexDirection: 'row',
+        gap: 12,
+        padding: 12,
+        borderRadius: 14,
+        borderWidth: 1,
+        borderColor: item.highlight ? highlightBorder : borderColor,
+        backgroundColor: item.highlight ? highlightBg : cardBg,
+      }}
+    >
+      <View
+        style={{
+          width: 44,
+          height: 50,
+          borderRadius: 10,
+          backgroundColor: pillBg,
+          alignItems: 'center',
+          justifyContent: 'center',
+        }}
+      >
+        <Text style={{ fontFamily: 'Inter-Bold', fontSize: 9.5, color: accentColor, letterSpacing: 0.6 }}>
+          {item.month}
+        </Text>
+        <Text style={{ fontFamily: 'Inter-Bold', fontSize: 18, lineHeight: 20, color: textColor }}>
+          {item.day}
+        </Text>
+      </View>
+      <View style={{ flex: 1, minWidth: 0, justifyContent: 'center', gap: 2 }}>
+        <Text
+          style={{ fontFamily: 'Inter-SemiBold', fontSize: 14, color: textColor }}
+          numberOfLines={1}
+        >
+          {item.title}
+        </Text>
+        <Text
+          style={{ fontFamily: 'Inter-Regular', fontSize: 12, color: mutedColor }}
+          numberOfLines={1}
+        >
+          {item.subtitle}
+        </Text>
+      </View>
+    </Pressable>
+  )
+}

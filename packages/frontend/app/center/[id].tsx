@@ -1,4 +1,4 @@
-import React, { useEffect } from 'react'
+import React, { useEffect, useState } from 'react'
 import { DetailSkeleton } from '../../components/ui/Skeleton'
 import {
   View,
@@ -15,9 +15,11 @@ import { useLocalSearchParams, useRouter } from 'expo-router'
 import { ChevronLeft, Share2, MapPin, Globe, Phone, User, Navigation, BadgeCheck, Users } from 'lucide-react-native'
 import { usePostHog } from 'posthog-react-native'
 import { useCenterDetail } from '../../hooks/useApiData'
-import { Badge } from '../../components/ui'
+import { Badge, UnderlineTabBar } from '../../components/ui'
 import type { EventDisplay } from '../../utils/api'
 import { useDetailColors, type DetailColors } from '../../hooks/useDetailColors'
+import { buildCenterBoard, ThreadPanel } from '../../components/connect'
+import { useUser } from '../../components/contexts'
 
 // ── Helpers ─────────────────────────────────────────────────────────────
 
@@ -169,8 +171,10 @@ export default function CenterDetailPage() {
   const id = Array.isArray(rawId) ? rawId[0] : rawId
   const router = useRouter()
   const posthog = usePostHog()
+  const { user } = useUser()
   const { center, events, loading } = useCenterDetail(id as string)
   const colors = useDetailColors()
+  const [activeTab, setActiveTab] = useState('About')
 
   useEffect(() => {
     if (!loading && center) {
@@ -244,6 +248,12 @@ export default function CenterDetailPage() {
   const displayWebsite = (center.website ?? '')
     .replace(/^https?:\/\//, '')
     .replace(/\/$/, '')
+  const board = buildCenterBoard({
+    id: center.id,
+    centerName: center.name,
+    subtitle: `Ask about rides, seva, and announcements for ${center.name}.`,
+  })
+  const canPostToThread = !!user?.isVerified
 
   return (
     <SafeAreaView style={{ flex: 1, backgroundColor: colors.panelBg }} edges={['top']}>
@@ -270,8 +280,19 @@ export default function CenterDetailPage() {
           />
         ) : null}
 
+        <View style={{ paddingTop: 8 }}>
+          <UnderlineTabBar
+            tabs={['About', 'Thread', 'Events']}
+            activeTab={activeTab}
+            onTabChange={setActiveTab}
+            counts={{ Thread: board.messages.length, Events: events.length }}
+          />
+        </View>
+
         {/* Content area */}
         <View style={{ paddingHorizontal: 20, paddingTop: 20, paddingBottom: 32 }}>
+          {activeTab === 'About' && (
+            <>
           {/* Point of contact subtitle */}
           {center.pointOfContact ? (
             <Text
@@ -395,112 +416,116 @@ export default function CenterDetailPage() {
               </View>
             ) : null}
           </View>
+            </>
+          )}
 
-          {/* Upcoming Events */}
-          {events.length > 0 && (
-            <View style={{ marginTop: 24 }}>
-              <Text
-                style={{
-                  fontFamily: 'Inter-Medium',
-                  fontSize: 11,
-                  color: colors.textMuted,
-                  letterSpacing: 0.5,
-                  textTransform: 'uppercase',
-                  marginBottom: 12,
-                }}
-              >
-                Upcoming Events
-              </Text>
+          {activeTab === 'Thread' && (
+            <ThreadPanel
+              messages={board.messages}
+              colors={colors}
+              emptyTitle="Be the first to post"
+              emptySubtitle={`Ask about rides, what to bring, or anything else for ${center.name}.`}
+              composerPlaceholder="Write to the board..."
+              composerState={canPostToThread ? 'open' : 'locked'}
+            />
+          )}
 
-              <View style={{ gap: 8 }}>
-                {events.map((event) => {
-                  const { month, day } = formatDateCallout(event.date)
-                  return (
-                    <Pressable
-                      key={event.id}
-                      onPress={() => handleEventPress(event)}
-                      style={{
-                        flexDirection: 'row',
-                        alignItems: 'center',
-                        backgroundColor: colors.cardBg,
-                        borderRadius: 8,
-                        paddingVertical: 12,
-                        paddingHorizontal: 14,
-                        minHeight: 44,
-                      }}
-                    >
-                      {/* Date callout */}
-                      <View
+          {activeTab === 'Events' && (
+            <>
+              {events.length > 0 ? (
+                <View style={{ gap: 8 }}>
+                  {events.map((event) => {
+                    const { month, day } = formatDateCallout(event.date)
+                    return (
+                      <Pressable
+                        key={event.id}
+                        onPress={() => handleEventPress(event)}
                         style={{
-                          width: 52,
+                          flexDirection: 'row',
                           alignItems: 'center',
-                          justifyContent: 'center',
-                          flexShrink: 0,
+                          backgroundColor: colors.cardBg,
+                          borderRadius: 8,
+                          paddingVertical: 12,
+                          paddingHorizontal: 14,
+                          minHeight: 44,
                         }}
                       >
-                        <Text
+                        <View
                           style={{
-                            fontFamily: 'Inter-SemiBold',
-                            fontSize: 11,
-                            color: '#E8862A',
-                            textTransform: 'uppercase',
-                            lineHeight: 14,
+                            width: 52,
+                            alignItems: 'center',
+                            justifyContent: 'center',
+                            flexShrink: 0,
                           }}
                         >
-                          {month}
-                        </Text>
-                        <Text
-                          style={{
-                            fontFamily: 'Inter-SemiBold',
-                            fontSize: 22,
-                            color: colors.text,
-                            lineHeight: 28,
-                          }}
-                        >
-                          {day}
-                        </Text>
-                      </View>
+                          <Text
+                            style={{
+                              fontFamily: 'Inter-SemiBold',
+                              fontSize: 11,
+                              color: '#E8862A',
+                              textTransform: 'uppercase',
+                              lineHeight: 14,
+                            }}
+                          >
+                            {month}
+                          </Text>
+                          <Text
+                            style={{
+                              fontFamily: 'Inter-SemiBold',
+                              fontSize: 22,
+                              color: colors.text,
+                              lineHeight: 28,
+                            }}
+                          >
+                            {day}
+                          </Text>
+                        </View>
 
-                      {/* Vertical divider */}
-                      <View
-                        style={{
-                          width: 1,
-                          backgroundColor: colors.border,
-                          alignSelf: 'stretch',
-                          marginHorizontal: 12,
-                        }}
-                      />
+                        <View
+                          style={{
+                            width: 1,
+                            backgroundColor: colors.border,
+                            alignSelf: 'stretch',
+                            marginHorizontal: 12,
+                          }}
+                        />
 
-                      {/* Event info */}
-                      <View style={{ flex: 1 }}>
-                        <Text
-                          style={{
-                            fontFamily: 'Inter-SemiBold',
-                            fontSize: 14,
-                            color: colors.text,
-                            lineHeight: 20,
-                          }}
-                          numberOfLines={2}
-                        >
-                          {event.title}
-                        </Text>
-                        <Text
-                          style={{
-                            fontFamily: 'Inter-Regular',
-                            fontSize: 12,
-                            color: colors.textSecondary,
-                            lineHeight: 16,
-                            marginTop: 2,
-                          }}
-                        >
-                          {event.time}{event.attendees > 0 ? ` \u00B7 ${event.attendees} attending` : ''}
-                        </Text>
-                      </View>
-                    </Pressable>
-                  )
-                })}
-              </View>
-            </View>
+                        <View style={{ flex: 1 }}>
+                          <Text
+                            style={{
+                              fontFamily: 'Inter-SemiBold',
+                              fontSize: 14,
+                              color: colors.text,
+                              lineHeight: 20,
+                            }}
+                            numberOfLines={2}
+                          >
+                            {event.title}
+                          </Text>
+                          <Text
+                            style={{
+                              fontFamily: 'Inter-Regular',
+                              fontSize: 12,
+                              color: colors.textSecondary,
+                              lineHeight: 16,
+                              marginTop: 2,
+                            }}
+                          >
+                            {event.time}{event.attendees > 0 ? ` \u00B7 ${event.attendees} attending` : ''}
+                          </Text>
+                        </View>
+                      </Pressable>
+                    )
+                  })}
+                </View>
+              ) : (
+                <View style={{ alignItems: 'center', paddingVertical: 32 }}>
+                  <Text style={{ fontFamily: 'Inter-Regular', fontSize: 14, color: colors.textSecondary }}>
+                    No upcoming events yet
+                  </Text>
+                </View>
+              )}
+            </>
           )}
         </View>
       </ScrollView>

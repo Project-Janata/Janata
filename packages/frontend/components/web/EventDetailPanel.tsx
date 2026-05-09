@@ -8,6 +8,8 @@ import Avatar from '../ui/Avatar'
 import PrimaryButton from '../ui/buttons/PrimaryButton'
 import DestructiveButton from '../ui/buttons/DestructiveButton'
 import { useDetailColors, type DetailColors } from '../../hooks/useDetailColors'
+import { buildEventBoard, ThreadPanel } from '../../components/connect'
+import { useUser } from '../../components/contexts'
 
 // ---------------------------------------------------------------------------
 // Date helpers
@@ -68,6 +70,14 @@ function formatRelativeDateTime(dateStr: string, timeStr: string): string {
 
   if (relative === 'Now') return `Now · ${absolute}`
   return `${relative} · ${absolute}`
+}
+
+function formatEventDateLabel(dateStr: string): string {
+  const d = new Date(`${dateStr}T00:00:00`)
+  if (isNaN(d.getTime())) return dateStr.toUpperCase()
+  const weekday = d.toLocaleDateString('en-US', { weekday: 'short' }).toUpperCase()
+  const month = d.toLocaleDateString('en-US', { month: 'short' }).toUpperCase()
+  return `${weekday}, ${month} ${d.getDate()}`
 }
 
 // ---------------------------------------------------------------------------
@@ -640,20 +650,30 @@ function RegisteredContent({
   event,
   attendees,
   colors,
+  canPostToThread,
 }: {
   event: EventDetailPanelProps['event']
   attendees: Attendee[]
   colors: DetailColors
+  canPostToThread: boolean
 }) {
   const [activeTab, setActiveTab] = useState('Details')
+  const eventBoard = buildEventBoard({
+    id: event.id,
+    title: event.title,
+    dateLabel: formatEventDateLabel(event.date),
+    centerLabel: event.location,
+    attendeesLabel: `${event.attendees} going`,
+  })
 
   return (
     <View style={{ flex: 1 }}>
       <View style={{ paddingTop: 8 }}>
         <UnderlineTabBar
-          tabs={['Details', 'People']}
+          tabs={['Details', 'Thread', 'People']}
           activeTab={activeTab}
           onTabChange={setActiveTab}
+          counts={{ Thread: eventBoard.messages.length }}
         />
       </View>
 
@@ -689,6 +709,17 @@ function RegisteredContent({
               <AboutSection description={event.description} colors={colors} />
             )}
           </View>
+        )}
+
+        {activeTab === 'Thread' && (
+          <ThreadPanel
+            messages={eventBoard.messages}
+            colors={colors}
+            emptyTitle="Be the first to post"
+            emptySubtitle={`Ask about carpooling, what to bring, or anything else for the ${event.attendees} people going.`}
+            composerPlaceholder="Write to the group..."
+            composerState={canPostToThread ? 'open' : 'locked'}
+          />
         )}
 
         {activeTab === 'People' && <PeopleTab attendees={attendees} colors={colors} />}
@@ -888,7 +919,9 @@ export default function EventDetailPanel({
   onDelete,
 }: EventDetailPanelProps) {
   const colors = useDetailColors()
+  const { user } = useUser()
   const isRegistered = event.isRegistered && !isPast
+  const canPostToThread = !!user?.isVerified
 
   return (
     <View
@@ -920,6 +953,7 @@ export default function EventDetailPanel({
           event={event}
           attendees={attendees}
           colors={colors}
+          canPostToThread={canPostToThread}
         />
       ) : (
         <DefaultContent
