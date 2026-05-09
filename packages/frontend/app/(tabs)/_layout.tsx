@@ -68,7 +68,10 @@ export default function TabLayout() {
       >
         {/* Left: Logo + Nav */}
         <View style={{ flexDirection: 'row', alignItems: 'center', gap: 24 }}>
-          <Pressable onPress={() => router.push('/')} style={{ flexDirection: 'row', alignItems: 'center', gap: 10 }}>
+          <Pressable
+            onPress={() => router.push('/')}
+            style={{ flexDirection: 'row', alignItems: 'center', gap: 10 }}
+          >
             <Logo size={28} />
           </Pressable>
           <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
@@ -156,7 +159,9 @@ export default function TabLayout() {
                   justifyContent: 'center',
                 }}
               >
-                <Text style={{ color: '#fff', fontSize: 14, fontWeight: '600' }}>{getInitials()}</Text>
+                <Text style={{ color: '#fff', fontSize: 14, fontWeight: '600' }}>
+                  {getInitials()}
+                </Text>
               </View>
             )}
           </Pressable>
@@ -202,7 +207,7 @@ export default function TabLayout() {
           <Tabs.Screen
             name="index"
             options={{
-              title: 'Home',
+              tabBarShowLabel: false,
               header: isWeb
                 ? () => <WebHeader />
                 : () => (
@@ -232,7 +237,7 @@ export default function TabLayout() {
           <Tabs.Screen
             name="explore"
             options={{
-              title: 'Explore',
+              tabBarShowLabel: false,
               headerTransparent: !isWeb,
               header: isWeb
                 ? () => <WebHeader />
