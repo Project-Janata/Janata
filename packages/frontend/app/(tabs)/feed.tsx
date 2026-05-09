@@ -19,6 +19,7 @@ import {
   Building2,
   CalendarDays,
   ChevronDown,
+  MessageCircle,
   Plus,
   Search,
   Send,
@@ -32,7 +33,6 @@ import { useHeaderAction } from '../../components/contexts/HeaderActionContext'
 import { useCenterList, useMyEvents } from '../../hooks/useApiData'
 import { extractCityState } from '../../utils/addressParsing'
 import {
-  BoardPostCard,
   ThreadPanel,
   buildCenterBoard,
   buildEventBoard,
@@ -258,6 +258,7 @@ export default function FeedScreen() {
   const detailTranslateX = useRef(new Animated.Value(width)).current
   const { events: myEvents, loading: myEventsLoading } = useMyEvents(user?.username)
   const { centers: allCenters, loading: centersLoading } = useCenterList()
+  const loadMoreRef = useRef<(() => void) | null>(null)
 
   const isDesktop = width >= 980
   const [query, setQuery] = useState('')
@@ -486,9 +487,16 @@ export default function FeedScreen() {
           paddingHorizontal: isDesktop ? 24 : 16,
           paddingTop: listTopPadding,
           paddingBottom: Platform.OS === 'web' ? 40 : 112,
-          gap: 12,
         }}
         showsVerticalScrollIndicator={false}
+        onScroll={(e) => {
+          const { layoutMeasurement, contentOffset, contentSize } = e.nativeEvent
+          const paddingToBottom = 400
+          if (layoutMeasurement.height + contentOffset.y >= contentSize.height - paddingToBottom) {
+            loadMoreRef.current?.()
+          }
+        }}
+        scrollEventThrottle={400}
       >
         <FeedHeader
           query={query}
@@ -653,7 +661,7 @@ function FeedWorkspace({
     return (
       <View style={{ flexDirection: 'row', gap: 18, alignItems: 'flex-start' }}>
         <View style={{ flex: 1.05, minWidth: 0 }}>
-          <FeedList posts={posts} colors={threadColors} onSelectPost={onSelectPost} />
+          <FeedList posts={posts} colors={threadColors} feedColors={colors} onSelectPost={onSelectPost} />
         </View>
         <View style={{ flex: 0.95, minWidth: 0 }}>
           {selectedPost ? (
@@ -670,17 +678,129 @@ function FeedWorkspace({
     return <PostThread post={selectedPost} colors={colors} />
   }
 
-  return <FeedList posts={posts} colors={threadColors} onSelectPost={onSelectPost} />
+  return <FeedList posts={posts} colors={threadColors} feedColors={colors} onSelectPost={onSelectPost} />
+}
+
+function FeedPostCard({
+  post,
+  colors,
+  onPress,
+}: {
+  post: FeedPost
+  colors: ColorSet
+  onPress?: () => void
+}) {
+  const reactions = post.reactions ?? [{ emoji: '🙏', count: 2 }]
+  const replies = post.replyCount ?? 2
+
+  return (
+    <Pressable
+      onPress={onPress}
+      style={{
+        paddingVertical: 14,
+        borderBottomWidth: 1,
+        borderBottomColor: colors.border,
+      }}
+    >
+      <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, marginBottom: 8 }}>
+        <View
+          style={{
+            width: 18,
+            height: 18,
+            borderRadius: 5,
+            backgroundColor: post.sourceKind === 'event' ? colors.orangeSoft : colors.panel,
+            alignItems: 'center',
+            justifyContent: 'center',
+          }}
+        >
+          {post.sourceKind === 'event' ? (
+            <CalendarDays size={10} color={colors.orange} strokeWidth={2.4} />
+          ) : (
+            <Building2 size={10} color={colors.textMuted} strokeWidth={2.3} />
+          )}
+        </View>
+        <Text style={{ fontFamily: 'Inclusive Sans', fontSize: 12, color: colors.textMuted }} numberOfLines={1}>
+          {post.sourceTitle}
+        </Text>
+        <Text style={{ fontFamily: 'Inclusive Sans', fontSize: 12, color: colors.textSoft }}>
+          · {post.timestamp}
+        </Text>
+      </View>
+
+      <View style={{ flexDirection: 'row', gap: 12 }}>
+        <Avatar
+          name={post.author.name}
+          initials={post.author.initials}
+          size={38}
+          backgroundColor={post.author.accentColor}
+        />
+        <View style={{ flex: 1, gap: 6 }}>
+          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+            <Text style={{ fontFamily: 'Inclusive Sans', fontSize: 14, color: colors.text }}>
+              {post.author.name}
+            </Text>
+            {post.author.verification === 'sevak' ? (
+              <View style={{ backgroundColor: colors.orangeSoft, paddingHorizontal: 6, paddingVertical: 1, borderRadius: 4 }}>
+                <Text style={{ fontFamily: 'Inclusive Sans', fontSize: 10, color: colors.orange }}>SEVAK</Text>
+              </View>
+            ) : null}
+          </View>
+
+          <Text style={{ fontFamily: 'Inclusive Sans', fontSize: 14, lineHeight: 20, color: colors.text }}>
+            {post.body}
+          </Text>
+
+          {post.attachmentLabel ? (
+            <View
+              style={{
+                marginTop: 4,
+                height: 64,
+                borderRadius: 12,
+                backgroundColor: colors.panel,
+                alignItems: 'center',
+                justifyContent: 'center',
+              }}
+            >
+              <Text style={{ fontFamily: 'Inclusive Sans', fontSize: 11, color: colors.textMuted }}>
+                {post.attachmentLabel}
+              </Text>
+            </View>
+          ) : null}
+
+          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 16, marginTop: 6 }}>
+            {reactions.map((reaction, i) => (
+              <View key={i} style={{ flexDirection: 'row', alignItems: 'center', gap: 4 }}>
+                <Text style={{ fontSize: 13 }}>{reaction.emoji}</Text>
+                <Text style={{ fontFamily: 'Inclusive Sans', fontSize: 12, color: colors.textMuted }}>
+                  {reaction.count}
+                </Text>
+              </View>
+            ))}
+            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4 }}>
+              <MessageCircle size={13} color={colors.textMuted} />
+              <Text style={{ fontFamily: 'Inclusive Sans', fontSize: 12, color: colors.textMuted }}>
+                {replies}
+              </Text>
+            </View>
+          </View>
+        </View>
+      </View>
+    </Pressable>
+  )
 }
 
 function FeedList({
   posts,
   colors,
+  feedColors,
   onSelectPost,
+  loadMoreRef,
 }: {
   posts: FeedPost[]
   colors: ThreadPanelColors
+  feedColors: ColorSet
   onSelectPost: (id: string) => void
+  loadMoreRef?: React.MutableRefObject<(() => void) | null>
 }) {
   const [visibleCount, setVisibleCount] = useState(25)
   const visiblePosts = posts.slice(0, visibleCount)
@@ -695,6 +815,12 @@ function FeedList({
   useEffect(() => {
     setVisibleCount(25)
   }, [posts])
+
+  useEffect(() => {
+    if (loadMoreRef) {
+      loadMoreRef.current = loadMore
+    }
+  }, [loadMore, loadMoreRef])
 
   if (posts.length === 0) {
     return (
@@ -712,30 +838,19 @@ function FeedList({
   return (
     <View>
       {visiblePosts.map((post) => (
-        <BoardPostCard
+        <FeedPostCard
           key={post.id}
-          message={post}
-          colors={colors}
-          showSource
+          post={post}
+          colors={feedColors}
           onPress={() => onSelectPost(post.id)}
         />
       ))}
       {hasMore ? (
-        <Pressable
-          onPress={loadMore}
-          style={{
-            marginHorizontal: 20,
-            marginVertical: 16,
-            paddingVertical: 12,
-            borderRadius: 12,
-            backgroundColor: colors.iconBoxBg,
-            alignItems: 'center',
-          }}
-        >
-          <Text style={{ fontFamily: 'Inclusive Sans', fontSize: 14, color: colors.accent ?? '#E8862A' }}>
-            Load more
+        <View style={{ paddingVertical: 20, alignItems: 'center' }}>
+          <Text style={{ fontFamily: 'Inclusive Sans', fontSize: 13, color: colors.textMuted }}>
+            Loading more...
           </Text>
-        </Pressable>
+        </View>
       ) : null}
     </View>
   )
@@ -1046,14 +1161,14 @@ function FeedHeader({
   }
 
   return (
-    <View style={{ gap: 10 }}>
+    <View style={{ gap: 10, marginBottom: 4 }}>
       <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, marginTop: 4 }}>
         <View
           style={{
             flex: 1,
             minHeight: 42,
             borderRadius: 14,
-            backgroundColor: colors.panel,
+            backgroundColor: colors.page === '#1A1A1A' ? '#262626' : '#E7E5E4',
             paddingHorizontal: 12,
             flexDirection: 'row',
             alignItems: 'center',

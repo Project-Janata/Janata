@@ -255,7 +255,7 @@ export function BoardPostCard({
       disabled={!onPress}
       onPress={onPress}
       style={{
-        marginHorizontal: isFeedCard ? 20 : 0,
+        marginHorizontal: isFeedCard ? 0 : 0,
         marginBottom: isFeedCard ? 12 : 0,
         paddingHorizontal: isFeedCard ? 14 : 20,
         paddingVertical: isFeedCard ? 14 : 18,
