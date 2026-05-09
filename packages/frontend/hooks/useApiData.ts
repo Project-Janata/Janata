@@ -31,7 +31,7 @@ export type { EventDisplay } from '../utils/api'
 
 // ── Simple cache (module-level, persists across mounts) ──────────────
 
-const CACHE_TTL = 60_000 // 60 seconds
+const CACHE_TTL = 15_000 // 15 seconds
 
 type CacheEntry<T> = { data: T; ts: number }
 
@@ -568,33 +568,29 @@ export function useCenterList() {
   const [isLive, setIsLive] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
-  useEffect(() => {
-    let mounted = true
-    cachedFetch('centers', fetchCenters)
-      .then((apiCenters) => {
-        if (!mounted) return
-        const discoverCenters = centersToDiscoverCenters(apiCenters)
-        if (discoverCenters.length > 0) {
-          setCenters(discoverCenters)
-          setIsLive(true)
-        }
-      })
-      .catch((err: any) => {
-        if (mounted) {
-          const message = err?.message || 'Failed to load centers'
-          setError(message)
-          if (__DEV__) console.warn('[useCenterList]', message)
-        }
-      })
-      .finally(() => {
-        if (mounted) setLoading(false)
-      })
-    return () => {
-      mounted = false
+  const load = useCallback(async () => {
+    try {
+      setError(null)
+      const apiCenters = await cachedFetch('centers', fetchCenters)
+      const discoverCenters = centersToDiscoverCenters(apiCenters)
+      if (discoverCenters.length > 0) {
+        setCenters(discoverCenters)
+        setIsLive(true)
+      }
+    } catch (err: any) {
+      const message = err?.message || 'Failed to load centers'
+      setError(message)
+      if (__DEV__) console.warn('[useCenterList]', message)
+    } finally {
+      setLoading(false)
     }
   }, [])
 
-  return { centers, loading, isLive, error }
+  useEffect(() => {
+    load()
+  }, [load])
+
+  return { centers, loading, isLive, error, refetch: load }
 }
 
 // Maps event category IDs to user interest strings

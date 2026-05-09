@@ -1,4 +1,4 @@
-import React, { useMemo } from 'react'
+import React, { useCallback, useMemo } from 'react'
 import {
   ActivityIndicator,
   Image,
@@ -9,7 +9,7 @@ import {
   View,
   useWindowDimensions,
 } from 'react-native'
-import { useRouter } from 'expo-router'
+import { useFocusEffect, useRouter } from 'expo-router'
 import { Bell, Clock3, MapPin, MessageCircle } from 'lucide-react-native'
 import Svg, {
   Circle,
@@ -145,12 +145,20 @@ export default function HomeScreen() {
   const posthog = usePostHog()
   const { user } = useUser()
   const { isDark } = useTheme()
-  const { events: myEvents, loading: myEventsLoading } = useMyEvents(user?.username)
+  const { events: myEvents, loading: myEventsLoading, refetch: refetchMyEvents } = useMyEvents(user?.username)
   const {
     allEvents,
     allCenters,
     loading: discoverLoading,
+    refresh: refreshDiscover,
   } = useDiscoverData('Events', '', user?.id, false, false, user?.interests ?? undefined, user?.centerID)
+
+  useFocusEffect(
+    useCallback(() => {
+      refetchMyEvents()
+      refreshDiscover()
+    }, [refetchMyEvents, refreshDiscover])
+  )
 
   const isDesktop = width >= 860
   const pageBg = isDark ? '#1A1A1A' : '#F5F5F4'

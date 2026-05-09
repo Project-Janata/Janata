@@ -12,7 +12,7 @@ import {
   View,
   useWindowDimensions,
 } from 'react-native'
-import { useNavigation, useRouter } from 'expo-router'
+import { useFocusEffect, useNavigation, useRouter } from 'expo-router'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
 import {
   ArrowLeft,
@@ -256,8 +256,8 @@ export default function FeedScreen() {
   const insets = useSafeAreaInsets()
   const posthog = usePostHog()
   const detailTranslateX = useRef(new Animated.Value(width)).current
-  const { events: myEvents, loading: myEventsLoading } = useMyEvents(user?.username)
-  const { centers: allCenters, loading: centersLoading } = useCenterList()
+  const { events: myEvents, loading: myEventsLoading, refetch: refetchMyEvents } = useMyEvents(user?.username)
+  const { centers: allCenters, loading: centersLoading, refetch: refetchCenters } = useCenterList()
   const loadMoreRef = useRef<(() => void) | null>(null)
 
   const isDesktop = width >= 980
@@ -266,6 +266,13 @@ export default function FeedScreen() {
   const [demoVerified, setDemoVerified] = useState(false)
   const [createPostOpen, setCreatePostOpen] = useState(false)
   const { setCreateHandler } = useHeaderAction()
+
+  useFocusEffect(
+    useCallback(() => {
+      refetchMyEvents()
+      refetchCenters()
+    }, [refetchMyEvents, refetchCenters])
+  )
 
   useEffect(() => {
     setCreateHandler(() => setCreatePostOpen(true))
