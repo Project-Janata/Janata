@@ -34,7 +34,7 @@ const OnboardingHeader = () => {
           />
         </View>
         {currentStep <= totalSteps && (
-          <Text className="text-center text-sm font-inter text-stone-500 dark:text-stone-400 mt-2">
+          <Text className="text-center text-sm font-sans text-stone-500 dark:text-stone-400 mt-2">
             Step {currentStep} of {totalSteps}
           </Text>
         )}

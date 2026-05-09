@@ -100,7 +100,7 @@ function AttendeeAvatars({ count, attendees }: { count: number; attendees?: Atte
           ))
         )}
       </View>
-      <Text className="text-stone-400 dark:text-stone-500 font-inter text-xs">
+      <Text className="text-stone-400 dark:text-stone-500 font-sans text-xs">
         {count} going
       </Text>
     </View>
@@ -132,10 +132,10 @@ function EventItem({
     >
       {/* Date pill */}
       <View className="w-12 h-14 rounded-xl items-center justify-center bg-stone-100 dark:bg-neutral-800">
-        <Text className="text-[10px] font-inter-semibold" style={{ color: '#E8862A' }}>
+        <Text className="text-[10px] font-sans" style={{ color: '#E8862A' }}>
           {month}
         </Text>
-        <Text className="text-base font-inter-bold text-content dark:text-content-dark">
+        <Text className="text-base font-sans text-content dark:text-content-dark">
           {day}
         </Text>
       </View>
@@ -143,22 +143,22 @@ function EventItem({
       {/* Content */}
       <View className="flex-1 gap-0.5">
         <View className="flex-row items-center gap-1.5">
-          <Text className="text-content dark:text-content-dark font-inter-semibold text-base leading-tight flex-1" numberOfLines={2}>
+          <Text className="text-content dark:text-content-dark font-sans text-base leading-tight flex-1" numberOfLines={2}>
             {event.title}
           </Text>
           {event.isRegistered && <Badge label="Going" variant="going" />}
         </View>
-        <Text className="text-stone-500 dark:text-stone-400 font-inter text-sm">
+        <Text className="text-stone-500 dark:text-stone-400 font-sans text-sm">
           {todayLabel ? 'Today · ' : ''}{event.time || ''}
         </Text>
         {centerName && (
-          <Text className="text-stone-500 dark:text-stone-400 font-inter text-xs" numberOfLines={1}>
+          <Text className="text-stone-500 dark:text-stone-400 font-sans text-xs" numberOfLines={1}>
             By {centerName}
           </Text>
         )}
         <View className="flex-row items-center gap-1 mt-0.5">
           <MapPin size={12} color="#E8862A" />
-          <Text className="text-stone-500 dark:text-stone-400 font-inter text-xs flex-1" numberOfLines={1}>
+          <Text className="text-stone-500 dark:text-stone-400 font-sans text-xs flex-1" numberOfLines={1}>
             {event.location}
           </Text>
         </View>
@@ -201,17 +201,17 @@ function CenterItem({ center, onPress, isMyCenter }: { center: DiscoverCenter; o
       {/* Content */}
       <View className="flex-1 gap-0.5">
         <View className="flex-row items-center gap-1.5">
-          <Text className="text-content dark:text-content-dark font-inter-semibold text-base leading-tight flex-1" numberOfLines={1}>
+          <Text className="text-content dark:text-content-dark font-sans text-base leading-tight flex-1" numberOfLines={1}>
             {center.name}
           </Text>
           {isMyCenter && <Badge label="My Center" variant="going" />}
           {!isMyCenter && center.isMember && <Badge label="Member" variant="member" />}
         </View>
-        <Text className="text-stone-500 dark:text-stone-400 font-inter text-sm">
+        <Text className="text-stone-500 dark:text-stone-400 font-sans text-sm">
           {extractCityState(center.address) || 'Center'}{center.distanceMi != null ? ` · ${center.distanceMi} mi` : ''}
         </Text>
         {center.eventCount != null && center.eventCount > 0 && (
-          <Text className="text-primary font-inter text-xs mt-0.5">
+          <Text className="text-primary font-sans text-xs mt-0.5">
             {center.eventCount} events this week
           </Text>
         )}
@@ -241,7 +241,7 @@ export default function DiscoverScreen() {
     allEvents,
     allCenters,
     refresh,
-  } = useDiscoverData(activeFilter, searchQuery, user?.id, showPastEvents, showGoingOnly, user?.interests ?? undefined, user?.centerID)
+  } = useDiscoverData(activeFilter, searchQuery, user?.id, showPastEvents, showGoingOnly, user?.interests ?? undefined, user?.centerID, { fetchAttendees: true })
 
   useFocusEffect(
     useCallback(() => {
@@ -498,7 +498,7 @@ export default function DiscoverScreen() {
             >
               <Search size={16} color="#9CA3AF" />
               <TextInput
-                className="flex-1 ml-2 text-sm font-inter"
+                className="flex-1 ml-2 text-sm font-sans"
                 style={{ color: isDark ? '#E5E7EB' : '#1F2937', paddingVertical: 8 }}
                 placeholder="Search events and centers..."
                 placeholderTextColor="#9CA3AF"
@@ -595,7 +595,7 @@ export default function DiscoverScreen() {
                         justifyContent: 'space-between',
                       }}
                     >
-                      <Text className="text-xs font-inter-semibold text-stone-500 dark:text-stone-400 uppercase" style={{ letterSpacing: 0.6 }}>
+                      <Text className="text-xs font-sans text-stone-500 dark:text-stone-400 uppercase" style={{ letterSpacing: 0.6 }}>
                         {label}
                       </Text>
                       {isCollapsed ? <ChevronDown size={16} color="#a8a29e" /> : <ChevronUp size={16} color="#a8a29e" />}

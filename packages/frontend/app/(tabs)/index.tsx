@@ -1,4 +1,4 @@
-import React, { useMemo } from 'react'
+import React, { useCallback, useMemo } from 'react'
 import {
   ActivityIndicator,
   Image,
@@ -9,7 +9,7 @@ import {
   View,
   useWindowDimensions,
 } from 'react-native'
-import { useRouter } from 'expo-router'
+import { useFocusEffect, useRouter } from 'expo-router'
 import { Bell, Clock3, MapPin, MessageCircle } from 'lucide-react-native'
 import Svg, {
   Circle,
@@ -145,12 +145,20 @@ export default function HomeScreen() {
   const posthog = usePostHog()
   const { user } = useUser()
   const { isDark } = useTheme()
-  const { events: myEvents, loading: myEventsLoading } = useMyEvents(user?.username)
+  const { events: myEvents, loading: myEventsLoading, refetch: refetchMyEvents } = useMyEvents(user?.username)
   const {
     allEvents,
     allCenters,
     loading: discoverLoading,
+    refresh: refreshDiscover,
   } = useDiscoverData('Events', '', user?.id, false, false, user?.interests ?? undefined, user?.centerID)
+
+  useFocusEffect(
+    useCallback(() => {
+      refetchMyEvents()
+      refreshDiscover()
+    }, [refetchMyEvents, refreshDiscover])
+  )
 
   const isDesktop = width >= 860
   const pageBg = isDark ? '#1A1A1A' : '#F5F5F4'
@@ -241,7 +249,7 @@ export default function HomeScreen() {
       style={{ flex: 1, backgroundColor: pageBg }}
       contentContainerStyle={{
         paddingHorizontal: isDesktop ? 24 : 16,
-        paddingTop: Platform.OS === 'web' ? 20 : 14,
+        paddingTop: Platform.OS === 'web' ? 20 : 8,
         paddingBottom: Platform.OS === 'web' ? 40 : 112,
       }}
       showsVerticalScrollIndicator={false}
@@ -350,10 +358,10 @@ export default function HomeScreen() {
                 gap: 4,
               }}
             >
-              <Text style={{ fontFamily: 'Inter-SemiBold', fontSize: 16, color: textColor }}>
+              <Text style={{ fontFamily: 'Inclusive Sans', fontSize: 16, color: textColor }}>
                 No events yet
               </Text>
-              <Text style={{ fontFamily: 'Inter-Regular', fontSize: 14, lineHeight: 20, color: mutedColor }}>
+              <Text style={{ fontFamily: 'Inclusive Sans', fontSize: 14, lineHeight: 20, color: mutedColor }}>
                 Upcoming events from Explore will appear here as they are added.
               </Text>
             </View>
@@ -377,12 +385,12 @@ function Greeting({
 }) {
   return (
     <View style={{ gap: 4 }}>
-      <Text style={{ fontFamily: 'Inter-Medium', fontSize: 12.5, color: mutedColor, letterSpacing: 0.2 }}>
+      <Text style={{ fontFamily: 'Inclusive Sans', fontSize: 12.5, color: mutedColor, letterSpacing: 0.2 }}>
         {dateLabel}
       </Text>
       <Text
         style={{
-          fontFamily: 'Inter-Bold',
+          fontFamily: 'Inclusive Sans',
           fontSize: 30,
           lineHeight: 34,
           letterSpacing: -0.5,
@@ -416,7 +424,7 @@ function Section({
       <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: 4 }}>
         <Text
           style={{
-            fontFamily: 'Inter-Bold',
+            fontFamily: 'Inclusive Sans',
             fontSize: 11,
             letterSpacing: 0.9,
             color: mutedColor,
@@ -426,7 +434,7 @@ function Section({
         </Text>
         {trailing ? (
           <Pressable onPress={onTrailingPress} hitSlop={8}>
-            <Text style={{ fontFamily: 'Inter-SemiBold', fontSize: 13, color: accentColor }}>
+            <Text style={{ fontFamily: 'Inclusive Sans', fontSize: 13, color: accentColor }}>
               {trailing}
             </Text>
           </Pressable>
@@ -509,7 +517,7 @@ function FeaturedEventCard({
       <View style={{ paddingHorizontal: 16, paddingTop: 14, paddingBottom: 14 }}>
         <Text
           style={{
-            fontFamily: 'Inter-Bold',
+            fontFamily: 'Inclusive Sans',
             fontSize: 18,
             lineHeight: 23,
             letterSpacing: -0.2,
@@ -523,14 +531,14 @@ function FeaturedEventCard({
         <View style={{ flexDirection: 'column', gap: 4, marginTop: 8 }}>
           <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
             <Clock3 size={13} color={faintColor} />
-            <Text style={{ fontFamily: 'Inter-Regular', fontSize: 13, color: bodyColor }} numberOfLines={1}>
+            <Text style={{ fontFamily: 'Inclusive Sans', fontSize: 13, color: bodyColor }} numberOfLines={1}>
               {dateLabel} · {timeLabel}
             </Text>
           </View>
           <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
             <MapPin size={13} color={faintColor} />
             <Text
-              style={{ fontFamily: 'Inter-Regular', fontSize: 13, color: bodyColor }}
+              style={{ fontFamily: 'Inclusive Sans', fontSize: 13, color: bodyColor }}
               numberOfLines={1}
             >
               {locationLabel}
@@ -554,7 +562,7 @@ function FeaturedEventCard({
               attendees={attendeesList}
               fallback={fallbackAttendees}
             />
-            <Text style={{ fontFamily: 'Inter-Regular', fontSize: 12.5, color: mutedColor, lineHeight: 17 }} numberOfLines={1}>
+            <Text style={{ fontFamily: 'Inclusive Sans', fontSize: 12.5, color: mutedColor, lineHeight: 17 }} numberOfLines={1}>
               {attendeesGoingLabel}
             </Text>
           </View>
@@ -613,7 +621,7 @@ function InkPill({ label }: { label: string }) {
         paddingVertical: 4,
       }}
     >
-      <Text style={{ fontFamily: 'Inter-SemiBold', fontSize: 11, color: '#FAFAF7', letterSpacing: 0.2 }}>
+      <Text style={{ fontFamily: 'Inclusive Sans', fontSize: 11, color: '#FAFAF7', letterSpacing: 0.2 }}>
         {label}
       </Text>
     </View>
@@ -634,7 +642,7 @@ function GoingPill({ label }: { label: string }) {
       }}
     >
       <View style={{ width: 6, height: 6, borderRadius: 3, backgroundColor: '#15803D' }} />
-      <Text style={{ fontFamily: 'Inter-SemiBold', fontSize: 11, color: '#15803D', letterSpacing: 0.2 }}>
+      <Text style={{ fontFamily: 'Inclusive Sans', fontSize: 11, color: '#15803D', letterSpacing: 0.2 }}>
         {label}
       </Text>
     </View>
@@ -720,29 +728,29 @@ function BoardPeekRow({
       <View style={{ flex: 1, minWidth: 0, gap: 4 }}>
         <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, flexWrap: 'wrap' }}>
           <Text
-            style={{ fontFamily: 'Inter-Bold', fontSize: 13, color: textColor }}
+            style={{ fontFamily: 'Inclusive Sans', fontSize: 13, color: textColor }}
             numberOfLines={1}
           >
             {post.author.name}
           </Text>
           {post.author.verification === 'sevak' ? (
-            <Text style={{ fontFamily: 'Inter-Bold', fontSize: 10.5, color: '#C2410C', letterSpacing: 0.4 }}>
+            <Text style={{ fontFamily: 'Inclusive Sans', fontSize: 10.5, color: '#C2410C', letterSpacing: 0.4 }}>
               SEVAK
             </Text>
           ) : null}
           <Text
-            style={{ fontFamily: 'Inter-Regular', fontSize: 11, color: mutedColor }}
+            style={{ fontFamily: 'Inclusive Sans', fontSize: 11, color: mutedColor }}
             numberOfLines={1}
           >
             · in {post.sourceTitle}
           </Text>
-          <Text style={{ marginLeft: 'auto', fontFamily: 'Inter-Regular', fontSize: 11, color: faintColor }}>
+          <Text style={{ marginLeft: 'auto', fontFamily: 'Inclusive Sans', fontSize: 11, color: faintColor }}>
             {post.timestamp}
           </Text>
         </View>
         <Text
           style={{
-            fontFamily: 'Inter-Regular',
+            fontFamily: 'Inclusive Sans',
             fontSize: 13,
             lineHeight: 18,
             color: bodyColor,
@@ -753,7 +761,7 @@ function BoardPeekRow({
         </Text>
         <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4, marginTop: 2 }}>
           <MessageCircle size={12} color={accentColor} strokeWidth={2.3} />
-          <Text style={{ fontFamily: 'Inter-SemiBold', fontSize: 12, color: accentColor }}>
+          <Text style={{ fontFamily: 'Inclusive Sans', fontSize: 12, color: accentColor }}>
             {post.replyCount ?? 1} {(post.replyCount ?? 1) === 1 ? 'reply' : 'replies'}
           </Text>
         </View>
@@ -808,22 +816,22 @@ function MiniEventRow({
           justifyContent: 'center',
         }}
       >
-        <Text style={{ fontFamily: 'Inter-Bold', fontSize: 9.5, color: accentColor, letterSpacing: 0.6 }}>
+        <Text style={{ fontFamily: 'Inclusive Sans', fontSize: 9.5, color: accentColor, letterSpacing: 0.6 }}>
           {item.month}
         </Text>
-        <Text style={{ fontFamily: 'Inter-Bold', fontSize: 18, lineHeight: 20, color: textColor }}>
+        <Text style={{ fontFamily: 'Inclusive Sans', fontSize: 18, lineHeight: 20, color: textColor }}>
           {item.day}
         </Text>
       </View>
       <View style={{ flex: 1, minWidth: 0, justifyContent: 'center', gap: 2 }}>
         <Text
-          style={{ fontFamily: 'Inter-SemiBold', fontSize: 14, color: textColor }}
+          style={{ fontFamily: 'Inclusive Sans', fontSize: 14, color: textColor }}
           numberOfLines={1}
         >
           {item.title}
         </Text>
         <Text
-          style={{ fontFamily: 'Inter-Regular', fontSize: 12, color: mutedColor }}
+          style={{ fontFamily: 'Inclusive Sans', fontSize: 12, color: mutedColor }}
           numberOfLines={1}
         >
           {item.subtitle}

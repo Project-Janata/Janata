@@ -4,12 +4,19 @@ import { ActivityIndicator, Animated, LogBox, Platform, View } from 'react-nativ
 
 // Suppress non-fatal WorkletsTurboModule error in Expo Go (reanimated v4 compat)
 LogBox.ignoreLogs(['Exception in HostFunction: <unknown>'])
-import { useFonts } from 'expo-font'
+import {
+  InclusiveSans_300Light,
+  InclusiveSans_400Regular,
+  InclusiveSans_500Medium,
+  InclusiveSans_600SemiBold,
+  InclusiveSans_700Bold,
+} from '@expo-google-fonts/inclusive-sans'
 import {
   DarkTheme,
   DefaultTheme,
   ThemeProvider as NavigationThemeProvider,
 } from '@react-navigation/native'
+import { useFonts } from 'expo-font'
 import { SplashScreen, Stack, usePathname, useRouter } from 'expo-router'
 import { PostHogProvider } from 'posthog-react-native'
 import {
@@ -34,11 +41,11 @@ const posthogEnabled = posthogKey && posthogKey.trim().length > 0
 
 export default function RootLayout() {
   const [fontsLoaded] = useFonts({
-    'Inter-Regular': require('../assets/fonts/Inter-Regular.ttf'),
-    'Inter-Bold': require('../assets/fonts/Inter-Bold.ttf'),
-    'Inter-SemiBold': require('../assets/fonts/Inter-SemiBold.ttf'),
-    'Inter-Medium': require('../assets/fonts/Inter-Medium.ttf'),
-    'Inter-Light': require('../assets/fonts/Inter-Light.ttf'),
+    'Inclusive Sans': InclusiveSans_400Regular,
+    'Inclusive Sans Bold': InclusiveSans_700Bold,
+    'Inclusive Sans SemiBold': InclusiveSans_600SemiBold,
+    'Inclusive Sans Medium': InclusiveSans_500Medium,
+    'Inclusive Sans Light': InclusiveSans_300Light,
   })
 
   useEffect(() => {

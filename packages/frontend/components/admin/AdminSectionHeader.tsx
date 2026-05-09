@@ -22,7 +22,7 @@ export default function AdminSectionHeader({ label, actionLabel, onAction, color
     >
       <Text
         style={{
-          fontFamily: 'Inter-SemiBold',
+          fontFamily: 'Inclusive Sans',
           fontSize: 11,
           textTransform: 'uppercase',
           letterSpacing: 0.5,
@@ -35,7 +35,7 @@ export default function AdminSectionHeader({ label, actionLabel, onAction, color
         <Pressable onPress={onAction}>
           <Text
             style={{
-              fontFamily: 'Inter-SemiBold',
+              fontFamily: 'Inclusive Sans',
               fontSize: 11,
               color: '#E8862A',
             }}

@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback, useMemo } from 'react'
+import { useState, useEffect, useCallback, useMemo, useRef } from 'react'
 import { API_BASE_URL } from '../src/config/api'
 import {
   fetchCenters,
@@ -28,6 +28,51 @@ import { extractCountryAndState } from '../utils/addressParsing'
 
 export type { DiscoverFilter }
 export type { EventDisplay } from '../utils/api'
+
+// ── Simple cache (module-level, persists across mounts) ──────────────
+
+const CACHE_TTL = 15_000 // 15 seconds
+
+type CacheEntry<T> = { data: T; ts: number }
+
+const cache = new Map<string, CacheEntry<any>>()
+const inflight = new Map<string, Promise<any>>()
+
+function cacheGet<T>(key: string): T | null {
+  const entry = cache.get(key)
+  if (!entry) return null
+  if (Date.now() - entry.ts > CACHE_TTL) {
+    cache.delete(key)
+    return null
+  }
+  return entry.data as T
+}
+
+function cacheSet<T>(key: string, data: T) {
+  cache.set(key, { data, ts: Date.now() })
+}
+
+async function cachedFetch<T>(key: string, fetcher: () => Promise<T>): Promise<T> {
+  const cached = cacheGet<T>(key)
+  if (cached !== null) return cached
+
+  const existing = inflight.get(key) as Promise<T> | undefined
+  if (existing) return existing
+
+  const promise = fetcher().then(
+    (data) => {
+      cacheSet(key, data)
+      inflight.delete(key)
+      return data
+    },
+    (err) => {
+      inflight.delete(key)
+      throw err
+    }
+  )
+  inflight.set(key, promise)
+  return promise
+}
 
 // ── Sample data (empty since we fetch from API) ────────────
 
@@ -475,7 +520,7 @@ export function useCenterDetail(centerId: string) {
 
 export function useMyEvents(username: string | undefined) {
   const [events, setEvents] = useState<EventDisplay[]>([])
-  const [loading, setLoading] = useState(true)
+  const [loading, setLoading] = useState(!!username)
   const [isLive, setIsLive] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
@@ -484,11 +529,11 @@ export function useMyEvents(username: string | undefined) {
       setLoading(false)
       return
     }
-    setLoading(true)
+    const key = `myEvents:${username}`
 
     try {
       setError(null)
-      const apiEvents = await getUserEvents(username)
+      const apiEvents = await cachedFetch(key, () => getUserEvents(username))
 
       if (apiEvents.length > 0) {
         setEvents(
@@ -523,36 +568,29 @@ export function useCenterList() {
   const [isLive, setIsLive] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
-  useEffect(() => {
-    let mounted = true
-    const load = async () => {
-      try {
-        setError(null)
-        const apiCenters = await fetchCenters()
-        if (!mounted) return
-
-        const discoverCenters = centersToDiscoverCenters(apiCenters)
-        if (discoverCenters.length > 0) {
-          setCenters(discoverCenters)
-          setIsLive(true)
-        }
-      } catch (err: any) {
-        if (mounted) {
-          const message = err?.message || 'Failed to load centers'
-          setError(message)
-          if (__DEV__) console.warn('[useCenterList]', message)
-        }
-      } finally {
-        if (mounted) setLoading(false)
+  const load = useCallback(async () => {
+    try {
+      setError(null)
+      const apiCenters = await cachedFetch('centers', fetchCenters)
+      const discoverCenters = centersToDiscoverCenters(apiCenters)
+      if (discoverCenters.length > 0) {
+        setCenters(discoverCenters)
+        setIsLive(true)
       }
-    }
-    load()
-    return () => {
-      mounted = false
+    } catch (err: any) {
+      const message = err?.message || 'Failed to load centers'
+      setError(message)
+      if (__DEV__) console.warn('[useCenterList]', message)
+    } finally {
+      setLoading(false)
     }
   }, [])
 
-  return { centers, loading, isLive, error }
+  useEffect(() => {
+    load()
+  }, [load])
+
+  return { centers, loading, isLive, error, refetch: load }
 }
 
 // Maps event category IDs to user interest strings
@@ -632,7 +670,21 @@ function groupCenterItems(centers: DiscoverCenter[], userCenterID?: string | nul
   return result
 }
 
-export function useDiscoverData(filter: DiscoverFilter, searchQuery: string, userId?: string, showPastEvents = false, showGoingOnly = false, userInterests?: string[], userCenterID?: string | null) {
+type UseDiscoverOptions = {
+  fetchAttendees?: boolean
+}
+
+export function useDiscoverData(
+  filter: DiscoverFilter,
+  searchQuery: string,
+  userId?: string,
+  showPastEvents = false,
+  showGoingOnly = false,
+  userInterests?: string[],
+  userCenterID?: string | null,
+  options?: UseDiscoverOptions,
+) {
+  const fetchAttendees = options?.fetchAttendees ?? false
   const [allEvents, setAllEvents] = useState<EventDisplay[]>([])
   const [allCenters, setAllCenters] = useState<DiscoverCenter[]>([])
   const [loading, setLoading] = useState(true)
@@ -642,41 +694,48 @@ export function useDiscoverData(filter: DiscoverFilter, searchQuery: string, use
   const refresh = useCallback(async () => {
     // Note: We don't set loading(true) here to avoid jarring UI flickers on focus
     try {
-      const apiCenters = await fetchCenters()
+      const apiCenters = await cachedFetch('centers', fetchCenters)
       const discoverCenters = centersToDiscoverCenters(apiCenters)
       if (discoverCenters.length > 0) {
         setAllCenters(discoverCenters)
       }
 
-      const allApiEvents = await fetchAllEvents()
+      const allApiEvents = await cachedFetch('allEvents', fetchAllEvents)
 
-      const eventsWithAttendees = await Promise.all(
-        allApiEvents.map(async (e) => {
-          const users = await fetchEventUsers(e.eventID)
-          const attendeesList = users.map((u) => ({
-            name: u.firstName ? `${u.firstName} ${u.lastName || ''}`.trim() : u.username,
-            image: u.profileImage || undefined,
-            initials: u.firstName
-              ? `${u.firstName[0]}${u.lastName?.[0] || ''}`.toUpperCase()
-              : u.username.slice(0, 2).toUpperCase(),
-          }))
-          const userIsRegistered = userId ? users.some((u) => u.id === userId) : false
-          return {
-            ...e,
-            attendeesList: attendeesList.slice(0, 4),
-            isRegistered: userIsRegistered,
-            peopleAttending: users.length,
-          }
+      let fetchedEvents: EventDisplay[]
+
+      if (fetchAttendees) {
+        const eventsWithAttendees = await Promise.all(
+          allApiEvents.map(async (e) => {
+            const users = await fetchEventUsers(e.eventID)
+            const attendeesList = users.map((u) => ({
+              name: u.firstName ? `${u.firstName} ${u.lastName || ''}`.trim() : u.username,
+              image: u.profileImage || undefined,
+              initials: u.firstName
+                ? `${u.firstName[0]}${u.lastName?.[0] || ''}`.toUpperCase()
+                : u.username.slice(0, 2).toUpperCase(),
+            }))
+            const userIsRegistered = userId ? users.some((u) => u.id === userId) : false
+            return {
+              ...e,
+              attendeesList: attendeesList.slice(0, 4),
+              isRegistered: userIsRegistered,
+              peopleAttending: users.length,
+            }
+          })
+        )
+
+        fetchedEvents = eventsWithAttendees.map((e) => {
+          const display = apiEventToDisplay(e)
+          display.attendeesList = e.attendeesList
+          display.isRegistered = e.isRegistered
+          display.attendees = e.peopleAttending
+          return display
         })
-      )
+      } else {
+        fetchedEvents = allApiEvents.map((e) => apiEventToDisplay(e))
+      }
 
-      const fetchedEvents = eventsWithAttendees.map((e) => {
-        const display = apiEventToDisplay(e)
-        display.attendeesList = e.attendeesList
-        display.isRegistered = e.isRegistered
-        display.attendees = e.peopleAttending
-        return display
-      })
       if (fetchedEvents.length > 0) {
         setAllEvents(fetchedEvents)
         setIsLive(true)
@@ -687,7 +746,7 @@ export function useDiscoverData(filter: DiscoverFilter, searchQuery: string, use
     } finally {
       setLoading(false)
     }
-  }, [userId])
+  }, [userId, fetchAttendees])
 
   useEffect(() => {
     refresh()

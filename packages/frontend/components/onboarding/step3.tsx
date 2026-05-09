@@ -157,10 +157,10 @@ export default function Step3() {
           <View className="w-full">
             {/* Header */}
             <View className="mb-8">
-              <Text className="text-4xl font-inter font-bold text-content dark:text-content-dark text-center mb-3">
+              <Text className="text-4xl font-sans font-bold text-content dark:text-content-dark text-center mb-3">
                 Choose your center
               </Text>
-              <Text className="text-lg font-inter text-stone-500 dark:text-stone-400 text-center">
+              <Text className="text-lg font-sans text-stone-500 dark:text-stone-400 text-center">
                 Enter your city or town to see nearby centers.
               </Text>
             </View>
@@ -168,7 +168,7 @@ export default function Step3() {
             {/* Search Input */}
             <View className="w-full max-w-md self-center relative">
               <TextInput
-                className={`w-full text-content dark:text-content-dark font-inter rounded-xl px-4 py-4 text-base bg-stone-100 dark:bg-stone-800 border-2 outline-none ${
+                className={`w-full text-content dark:text-content-dark font-sans rounded-xl px-4 py-4 text-base bg-stone-100 dark:bg-stone-800 border-2 outline-none ${
                   focusedField ? 'border-primary' : 'border-transparent'
                 } placeholder:text-gray-400 dark:placeholder:text-gray-500`}
                 placeholder="City or town name"
@@ -216,7 +216,7 @@ export default function Step3() {
                           <View className="flex-1">
                             <View className="flex-row items-center gap-2 mb-1">
                               <Text
-                                className={`text-base font-inter font-semibold ${
+                                className={`text-base font-sans font-semibold ${
                                   selectedCenter?.id === center.id
                                     ? 'text-primary'
                                     : 'text-content dark:text-content-dark'
@@ -226,13 +226,13 @@ export default function Step3() {
                               </Text>
                               {index === 0 && (
                                 <View className="bg-primary rounded-full px-2 py-1">
-                                  <Text className="text-white text-xs font-inter font-bold">
+                                  <Text className="text-white text-xs font-sans font-bold">
                                     NEAREST
                                   </Text>
                                 </View>
                               )}
                             </View>
-                            <Text className="text-sm font-inter text-stone-500 dark:text-stone-400">
+                            <Text className="text-sm font-sans text-stone-500 dark:text-stone-400">
                               {center.distance.toFixed(1)} miles away
                             </Text>
                           </View>
@@ -250,7 +250,7 @@ export default function Step3() {
             {/* Error Message */}
             {error && (
               <View className="w-full max-w-md self-center mt-4 bg-red-50 dark:bg-red-900/20 rounded-xl p-4">
-                <Text className="text-red-600 dark:text-red-400 font-inter text-center">
+                <Text className="text-red-600 dark:text-red-400 font-sans text-center">
                   {error}
                 </Text>
               </View>
@@ -269,7 +269,7 @@ export default function Step3() {
           </PrimaryButton>
           {returnTo && (
             <Pressable onPress={skipOnboarding} disabled={isSubmitting} style={{ alignSelf: 'center', marginTop: 12 }}>
-              <Text className="text-sm font-inter text-stone-400 dark:text-stone-500">
+              <Text className="text-sm font-sans text-stone-400 dark:text-stone-500">
                 Skip for now
               </Text>
             </Pressable>

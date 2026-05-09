@@ -39,7 +39,7 @@ export default function DevPanel({ visible, onClose }) {
       style={{ minWidth: 220 }}
     >
       <View className="flex-row justify-between items-center mb-2">
-        <Text className="font-inter font-bold text-lg text-content dark:text-content-dark">
+        <Text className="font-sans font-bold text-lg text-content dark:text-content-dark">
           Dev Panel
         </Text>
         <Pressable
@@ -53,13 +53,13 @@ export default function DevPanel({ visible, onClose }) {
         className="bg-primary rounded-lg px-4 py-2 active:opacity-80"
         onPress={handleGoToHome}
       >
-        <Text className="text-white font-inter font-medium">Go to Home</Text>
+        <Text className="text-white font-sans font-medium">Go to Home</Text>
       </Pressable>
       <Pressable
         className="bg-primary rounded-lg px-4 py-2 active:opacity-80"
         onPress={handleGoToOnboarding}
       >
-        <Text className="text-white font-inter font-medium">Go to Onboarding</Text>
+        <Text className="text-white font-sans font-medium">Go to Onboarding</Text>
       </Pressable>
     </View>
   )

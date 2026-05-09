@@ -65,7 +65,7 @@ function FormInput({
       multiline={multiline}
       textAlignVertical={multiline ? 'top' : undefined}
       style={{
-        fontFamily: 'Inter-Regular',
+        fontFamily: 'Inclusive Sans',
         fontSize: 14,
         color: colors.text,
         paddingHorizontal: 12,
@@ -99,7 +99,7 @@ function FieldLabel({
     <View style={{ marginBottom: 6, gap: 2 }}>
       <Text
         style={{
-          fontFamily: 'Inter-Medium',
+          fontFamily: 'Inclusive Sans',
           fontSize: 11,
           color: colors.textMuted,
           letterSpacing: 0.5,
@@ -110,7 +110,7 @@ function FieldLabel({
         {required ? <Text style={{ color: '#E8862A' }}> *</Text> : null}
       </Text>
       {hint ? (
-        <Text style={{ fontFamily: 'Inter-Regular', fontSize: 11, color: colors.textMuted }}>
+        <Text style={{ fontFamily: 'Inclusive Sans', fontSize: 11, color: colors.textMuted }}>
           {hint}
         </Text>
       ) : null}
@@ -144,7 +144,7 @@ function NativeDateTimeInput({
       onChange={(e) => onChange(e.target.value)}
       min={min}
       style={{
-        fontFamily: 'Inter, -apple-system, sans-serif',
+        fontFamily: 'Inclusive Sans, -apple-system, sans-serif',
         fontSize: 14,
         color: colors.text,
         padding: '10px 12px',
@@ -331,7 +331,7 @@ export default function EventFormPanel({ eventId, onClose, onSaved }: EventFormP
 
   const errorText = (key: string) =>
     errors[key] ? (
-      <Text style={{ fontFamily: 'Inter-Regular', fontSize: 11, color: '#DC2626', marginTop: 4 }}>
+      <Text style={{ fontFamily: 'Inclusive Sans', fontSize: 11, color: '#DC2626', marginTop: 4 }}>
         {errors[key]}
       </Text>
     ) : null
@@ -393,7 +393,7 @@ export default function EventFormPanel({ eventId, onClose, onSaved }: EventFormP
             <ChevronLeft size={20} color={colors.iconHeader} />
             <Text
               style={{
-                fontFamily: 'Inter-Regular',
+                fontFamily: 'Inclusive Sans',
                 fontSize: 14,
                 color: colors.iconHeader,
               }}
@@ -406,7 +406,7 @@ export default function EventFormPanel({ eventId, onClose, onSaved }: EventFormP
         {/* Title */}
         <Text
           style={{
-            fontFamily: 'Inter-Bold',
+            fontFamily: 'Inclusive Sans',
             fontSize: 20,
             color: colors.text,
             lineHeight: 26,
@@ -416,7 +416,7 @@ export default function EventFormPanel({ eventId, onClose, onSaved }: EventFormP
         </Text>
         <Text
           style={{
-            fontFamily: 'Inter-Regular',
+            fontFamily: 'Inclusive Sans',
             fontSize: 13,
             color: colors.textSecondary,
           }}
@@ -442,7 +442,7 @@ export default function EventFormPanel({ eventId, onClose, onSaved }: EventFormP
               backgroundColor: 'rgba(220,38,38,0.08)',
             }}
           >
-            <Text style={{ fontFamily: 'Inter-Medium', fontSize: 12, color: '#DC2626' }}>
+            <Text style={{ fontFamily: 'Inclusive Sans', fontSize: 12, color: '#DC2626' }}>
               {errors.submit}
             </Text>
           </View>
@@ -521,7 +521,7 @@ export default function EventFormPanel({ eventId, onClose, onSaved }: EventFormP
           >
             <Text
               style={{
-                fontFamily: 'Inter-Regular',
+                fontFamily: 'Inclusive Sans',
                 fontSize: 14,
                 color: centerName ? colors.text : colors.textMuted,
               }}
@@ -564,7 +564,7 @@ export default function EventFormPanel({ eventId, onClose, onSaved }: EventFormP
                   >
                     <Text
                       style={{
-                        fontFamily: center.centerID === centerID ? 'Inter-Medium' : 'Inter-Regular',
+                        fontFamily: center.centerID === centerID ? 'Inclusive Sans' : 'Inclusive Sans',
                         fontSize: 13,
                         color: center.centerID === centerID ? '#E8862A' : colors.text,
                       }}
@@ -574,7 +574,7 @@ export default function EventFormPanel({ eventId, onClose, onSaved }: EventFormP
                     {center.address ? (
                       <Text
                         style={{
-                          fontFamily: 'Inter-Regular',
+                          fontFamily: 'Inclusive Sans',
                           fontSize: 11,
                           color: colors.textSecondary,
                           marginTop: 1,
@@ -669,10 +669,10 @@ export default function EventFormPanel({ eventId, onClose, onSaved }: EventFormP
               }}
             >
               <View style={{ flex: 1 }}>
-                <Text style={{ fontFamily: 'Inter-Medium', fontSize: 13, color: colors.text }}>
+                <Text style={{ fontFamily: 'Inclusive Sans', fontSize: 13, color: colors.text }}>
                   Also accept Janata RSVPs
                 </Text>
-                <Text style={{ fontFamily: 'Inter-Regular', fontSize: 11, color: colors.textMuted, marginTop: 2 }}>
+                <Text style={{ fontFamily: 'Inclusive Sans', fontSize: 11, color: colors.textMuted, marginTop: 2 }}>
                   When off, the only signup option is the link above.
                 </Text>
               </View>
@@ -702,7 +702,7 @@ export default function EventFormPanel({ eventId, onClose, onSaved }: EventFormP
             />
             <Text
               style={{
-                fontFamily: 'Inter-Medium',
+                fontFamily: 'Inclusive Sans',
                 fontSize: 11,
                 color: colors.textMuted,
                 letterSpacing: 0.4,
@@ -712,7 +712,7 @@ export default function EventFormPanel({ eventId, onClose, onSaved }: EventFormP
               Advanced location
             </Text>
             {(errors.latitude || errors.longitude) ? (
-              <Text style={{ fontFamily: 'Inter-Regular', fontSize: 11, color: '#DC2626' }}>
+              <Text style={{ fontFamily: 'Inclusive Sans', fontSize: 11, color: '#DC2626' }}>
                 · check coordinates
               </Text>
             ) : null}
@@ -765,7 +765,7 @@ export default function EventFormPanel({ eventId, onClose, onSaved }: EventFormP
                 >
                   <Text
                     style={{
-                      fontFamily: selected ? 'Inter-SemiBold' : 'Inter-Regular',
+                      fontFamily: selected ? 'Inclusive Sans' : 'Inclusive Sans',
                       fontSize: 12,
                       color: selected ? '#FFFFFF' : colors.textSecondary,
                     }}

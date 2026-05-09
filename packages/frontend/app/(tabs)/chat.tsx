@@ -137,7 +137,7 @@ function matchesQuery(value: string, query: string) {
   return value.toLowerCase().includes(query.toLowerCase().trim())
 }
 
-export default function MessagesScreen() {
+export default function ChatScreen() {
   const router = useRouter()
   const navigation = useNavigation()
   const { user } = useUser()
@@ -215,7 +215,7 @@ export default function MessagesScreen() {
     conversations[0]
   const mobileConversationOpen = !isDesktop && !!selectedConversationId
   const nativeDetailOpen = Platform.OS !== 'web' && mobileConversationOpen
-  const listTopPadding = Platform.OS === 'web' ? 20 : 16
+  const listTopPadding = Platform.OS === 'web' ? 20 : 8
   const nativeTabBarStyle = useMemo(
     () => ({
       backgroundColor: isDark ? '#171717' : '#FFFFFF',
@@ -287,8 +287,12 @@ export default function MessagesScreen() {
 
   const openConversation = (id: string) => {
     posthog?.capture('connect_conversation_selected', { conversationId: id })
-    primeNativeDetailTransition()
-    setSelectedConversationId(id)
+    if (Platform.OS === 'web' && isDesktop) {
+      primeNativeDetailTransition()
+      setSelectedConversationId(id)
+    } else {
+      router.push(`/chat/${id}`)
+    }
   }
 
   return (
@@ -468,7 +472,7 @@ function NativeChatHeader({
   return (
     <View
       style={{
-        paddingTop: Math.max(insetsTop, 48) + 6,
+        paddingTop: insetsTop + 6,
         paddingHorizontal: 14,
         paddingBottom: 10,
         backgroundColor: colors.surface,
@@ -489,7 +493,7 @@ function NativeChatHeader({
           }}
         >
           <ArrowLeft size={21} color={colors.orange} />
-          <Text style={{ fontFamily: 'Inter-Medium', fontSize: 15, color: colors.orange }}>
+          <Text style={{ fontFamily: 'Inclusive Sans', fontSize: 15, color: colors.orange }}>
             Back
           </Text>
         </Pressable>
@@ -508,14 +512,14 @@ function NativeChatHeader({
             />
           )}
           <Text
-            style={{ fontFamily: 'Inter-SemiBold', fontSize: 14, color: colors.text }}
+            style={{ fontFamily: 'Inclusive Sans', fontSize: 14, color: colors.text }}
             numberOfLines={1}
           >
             {title}
           </Text>
           {subtitle ? (
             <Text
-              style={{ fontFamily: 'Inter-Regular', fontSize: 11, color: colors.textSoft }}
+              style={{ fontFamily: 'Inclusive Sans', fontSize: 11, color: colors.textSoft }}
               numberOfLines={1}
             >
               {subtitle}
@@ -555,7 +559,7 @@ function ConnectHeader({
         }}
       >
         <ArrowLeft size={18} color={colors.textMuted} />
-        <Text style={{ fontFamily: 'Inter-Medium', fontSize: 15, color: colors.textMuted }}>
+        <Text style={{ fontFamily: 'Inclusive Sans', fontSize: 15, color: colors.textMuted }}>
           Back
         </Text>
       </Pressable>
@@ -585,7 +589,7 @@ function ConnectHeader({
             placeholderTextColor={colors.textSoft}
             style={{
               flex: 1,
-              fontFamily: 'Inter-Regular',
+              fontFamily: 'Inclusive Sans',
               fontSize: 15,
               color: colors.text,
               paddingVertical: 9,
@@ -659,14 +663,14 @@ function ConversationList({
                   }}
                 >
                   <Text
-                    style={{ fontFamily: 'Inter-SemiBold', fontSize: 15, color: colors.text }}
+                    style={{ fontFamily: 'Inclusive Sans', fontSize: 15, color: colors.text }}
                     numberOfLines={1}
                   >
                     {conversation.title}
                   </Text>
                   {conversation.type === 'group' && conversation.groupMembers ? (
                     <Text
-                      style={{ fontFamily: 'Inter-Regular', fontSize: 11, color: colors.textSoft }}
+                      style={{ fontFamily: 'Inclusive Sans', fontSize: 11, color: colors.textSoft }}
                     >
                       - {conversation.groupMembers.length}
                     </Text>
@@ -674,7 +678,7 @@ function ConversationList({
                 </View>
                 <Text
                   style={{
-                    fontFamily: 'Inter-Regular',
+                    fontFamily: 'Inclusive Sans',
                     fontSize: 12,
                     color: conversation.unread ? colors.orange : colors.textSoft,
                   }}
@@ -683,13 +687,13 @@ function ConversationList({
                 </Text>
               </View>
               <Text
-                style={{ fontFamily: 'Inter-Regular', fontSize: 12, color: colors.textSoft }}
+                style={{ fontFamily: 'Inclusive Sans', fontSize: 12, color: colors.textSoft }}
                 numberOfLines={1}
               >
                 {conversation.subtitle}
               </Text>
               <Text
-                style={{ fontFamily: 'Inter-Regular', fontSize: 13, color: colors.textMuted }}
+                style={{ fontFamily: 'Inclusive Sans', fontSize: 13, color: colors.textMuted }}
                 numberOfLines={1}
               >
                 {conversation.preview}
@@ -772,10 +776,10 @@ function ConversationThread({
             />
           )}
           <View style={{ flex: 1 }}>
-            <Text style={{ fontFamily: 'Inter-Bold', fontSize: 18, color: colors.text }}>
+            <Text style={{ fontFamily: 'Inclusive Sans', fontSize: 18, color: colors.text }}>
               {conversation.title}
             </Text>
-            <Text style={{ fontFamily: 'Inter-Regular', fontSize: 13, color: colors.textMuted }}>
+            <Text style={{ fontFamily: 'Inclusive Sans', fontSize: 13, color: colors.textMuted }}>
               {conversation.subtitle}
             </Text>
           </View>
@@ -849,7 +853,7 @@ function MessageBubble({
           style={{
             alignSelf: isYou ? 'flex-end' : 'flex-start',
             paddingHorizontal: 8,
-            fontFamily: 'Inter-Regular',
+            fontFamily: 'Inclusive Sans',
             fontSize: 11,
             color: colors.textSoft,
           }}
@@ -876,7 +880,7 @@ function MessageBubble({
       >
         <Text
           style={{
-            fontFamily: 'Inter-Regular',
+            fontFamily: 'Inclusive Sans',
             fontSize: 15,
             lineHeight: 21,
             color: colors.text,
@@ -940,7 +944,7 @@ function ChatComposer({
             editable={false}
             placeholder={placeholder}
             placeholderTextColor={colors.textSoft}
-            style={{ fontFamily: 'Inter-Regular', fontSize: 15, color: colors.text }}
+            style={{ fontFamily: 'Inclusive Sans', fontSize: 15, color: colors.text }}
           />
         </View>
         <View
@@ -985,14 +989,14 @@ function RequestsBanner({ colors }: { colors: ColorSet }) {
       <RequestAvatarStack people={stackPeople} colors={colors} />
       <View style={{ flex: 1, minWidth: 0, gap: 2 }}>
         <Text
-          style={{ fontFamily: 'Inter-Bold', fontSize: 14, color: colors.text }}
+          style={{ fontFamily: 'Inclusive Sans', fontSize: 14, color: colors.text }}
           numberOfLines={1}
         >
           {connectionRequests.length} message{' '}
           {connectionRequests.length === 1 ? 'request' : 'requests'}
         </Text>
         <Text
-          style={{ fontFamily: 'Inter-Regular', fontSize: 12.5, color: colors.textMuted }}
+          style={{ fontFamily: 'Inclusive Sans', fontSize: 12.5, color: colors.textMuted }}
           numberOfLines={1}
         >
           {subtitle}
@@ -1069,7 +1073,7 @@ function GroupConversationAvatar({
         >
           <Text
             style={{
-              fontFamily: 'Inter-Bold',
+              fontFamily: 'Inclusive Sans',
               fontSize: Math.max(9, half * 0.42),
               color: '#FFFFFF',
             }}
@@ -1122,10 +1126,10 @@ function EmptyPanel({
 }) {
   return (
     <View style={{ paddingVertical: 18, paddingHorizontal: 4, gap: 5 }}>
-      <Text style={{ fontFamily: 'Inter-Bold', fontSize: 17, color: colors.text }}>{title}</Text>
+      <Text style={{ fontFamily: 'Inclusive Sans', fontSize: 17, color: colors.text }}>{title}</Text>
       <Text
         style={{
-          fontFamily: 'Inter-Regular',
+          fontFamily: 'Inclusive Sans',
           fontSize: 14,
           lineHeight: 20,
           color: colors.textMuted,
@@ -1162,12 +1166,12 @@ function SignInCallout({ colors, onPress }: { colors: ColorSet; onPress: () => v
         <UsersRound size={20} color={colors.orange} />
       </View>
       <View style={{ flex: 1 }}>
-        <Text style={{ fontFamily: 'Inter-Bold', fontSize: 16, color: colors.text }}>
+        <Text style={{ fontFamily: 'Inclusive Sans', fontSize: 16, color: colors.text }}>
           Sign in for Connect
         </Text>
         <Text
           style={{
-            fontFamily: 'Inter-Regular',
+            fontFamily: 'Inclusive Sans',
             fontSize: 13,
             lineHeight: 19,
             color: colors.textMuted,
@@ -1185,7 +1189,7 @@ function SignInCallout({ colors, onPress }: { colors: ColorSet; onPress: () => v
           paddingVertical: 10,
         }}
       >
-        <Text style={{ fontFamily: 'Inter-SemiBold', fontSize: 13, color: colors.surface }}>
+        <Text style={{ fontFamily: 'Inclusive Sans', fontSize: 13, color: colors.surface }}>
           Sign in
         </Text>
       </Pressable>

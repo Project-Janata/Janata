@@ -15,50 +15,50 @@
   will-change: auto;
 }
 
-/* Set Inter as default font for the entire app */
+/* Set Inclusive Sans as default font for the entire app */
 body {
-  font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  font-family: 'Inclusive Sans', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
 }
 
 /* For React Native Web, target all text elements */
 div, p, span, a, button, input, textarea, select {
-  font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  font-family: 'Inclusive Sans', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
 }
 
-/* Inter font faces for web - served from public/fonts/ */
+/* Inclusive Sans font faces for web - served from public/fonts/ */
 @font-face {
-  font-family: 'Inter';
-  src: url('/fonts/Inter-Regular.ttf') format('truetype');
+  font-family: 'Inclusive Sans';
+  src: url('/fonts/InclusiveSans-Regular.ttf') format('truetype');
   font-weight: 400;
   font-style: normal;
 }
 
 @font-face {
-  font-family: 'Inter';
-  src: url('/fonts/Inter-Bold.ttf') format('truetype');
+  font-family: 'Inclusive Sans';
+  src: url('/fonts/InclusiveSans-Bold.ttf') format('truetype');
   font-weight: 700;
   font-style: normal;
 }
 
 @font-face {
-  font-family: 'Inter';
-  src: url('/fonts/Inter-SemiBold.ttf') format('truetype');
+  font-family: 'Inclusive Sans';
+  src: url('/fonts/InclusiveSans-SemiBold.ttf') format('truetype');
   font-weight: 600;
   font-style: normal;
 }
 
 @font-face {
-  font-family: 'Inter';
-  src: url('/fonts/Inter-Medium.ttf') format('truetype');
+  font-family: 'Inclusive Sans';
+  src: url('/fonts/InclusiveSans-Medium.ttf') format('truetype');
   font-weight: 500;
   font-style: normal;
 }
 
 @font-face {
-  font-family: 'Inter';
-  src: url('/fonts/Inter-Light.ttf') format('truetype');
+  font-family: 'Inclusive Sans';
+  src: url('/fonts/InclusiveSans-Light.ttf') format('truetype');
   font-weight: 300;
   font-style: normal;
 }

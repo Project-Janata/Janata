@@ -11,7 +11,7 @@ export default function StepOne() {
 
   const FieldError = ({ message }: { message?: string }) => {
     if (!message) return null
-    return <Text className="text-red-500 text-sm mt-1 ml-1 font-inter">{message}</Text>
+    return <Text className="text-red-500 text-sm mt-1 ml-1 font-sans">{message}</Text>
   }
 
   const errorMessages = Object.values(errors).filter(Boolean)
@@ -47,10 +47,10 @@ export default function StepOne() {
         <View className="flex-1 justify-center items-center">
           <View className="gap-4 w-full">
             <View className="gap-2">
-              <Text className="text-4xl font-inter font-bold text-content dark:text-content-dark text-center">
+              <Text className="text-4xl font-sans font-bold text-content dark:text-content-dark text-center">
                 Welcome to Janata!
               </Text>
-              <Text className="text-lg font-inter text-stone-500 dark:text-stone-400 text-center">
+              <Text className="text-lg font-sans text-stone-500 dark:text-stone-400 text-center">
                 Enter your name to get started with your journey.
               </Text>
             </View>
@@ -58,16 +58,16 @@ export default function StepOne() {
             {/* Input Fields */}
             <View className="gap-3 mt-8 w-full items-center">
               {errorMessages.length > 0 && (
-                <View className=" font-inter bg-red-50 dark:bg-red-900/20 rounded-xl px-4 py-3 mb-4">
+                <View className=" font-sans bg-red-50 dark:bg-red-900/20 rounded-xl px-4 py-3 mb-4">
                   {errorMessages.map((msg, idx) => (
-                    <Text key={idx} className="text-red-500 text-sm font-inter">
+                    <Text key={idx} className="text-red-500 text-sm font-sans">
                       {msg}
                     </Text>
                   ))}
                 </View>
               )}
               <TextInput
-                className={`text-content dark:text-content-dark w-full max-w-md font-inter rounded-xl px-4 py-4 text-base bg-stone-100 dark:bg-stone-800 border-2 outline-none ${
+                className={`text-content dark:text-content-dark w-full max-w-md font-sans rounded-xl px-4 py-4 text-base bg-stone-100 dark:bg-stone-800 border-2 outline-none ${
                   focusedField === 'first' ? 'border-primary' : 'border-transparent'
                 } placeholder:text-gray-400 dark:placeholder:text-gray-500`}
                 placeholder="First Name"
@@ -81,7 +81,7 @@ export default function StepOne() {
                 autoCorrect={false}
               />
               <TextInput
-                className={`text-content dark:text-content-dark w-full max-w-md font-inter rounded-xl px-4 py-4 text-base bg-stone-100 dark:bg-stone-800 border-2 outline-none ${
+                className={`text-content dark:text-content-dark w-full max-w-md font-sans rounded-xl px-4 py-4 text-base bg-stone-100 dark:bg-stone-800 border-2 outline-none ${
                   focusedField === 'last' ? 'border-primary' : 'border-transparent'
                 } placeholder:text-gray-400 dark:placeholder:text-gray-500`}
                 placeholder="Last Name"

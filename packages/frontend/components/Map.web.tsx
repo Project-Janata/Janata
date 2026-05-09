@@ -107,7 +107,7 @@ const CustomControls = memo<CustomControlsProps>(({ mapRef, isDark }) => {
   return (
     <>
       {/* Zoom controls */}
-      <div className="absolute top-2.5 md:top-auto md:bottom-[52px] right-2.5 z-[1000] pointer-events-auto">
+      <div className="absolute top-2.5 md:top-auto md:bottom-[52px] right-4 z-[1000] pointer-events-auto">
         <div className="flex flex-col rounded-lg overflow-hidden shadow-[0_2px_6px_rgba(0,0,0,0.2)]">
           <button
             className={`w-9 h-9 border-none cursor-pointer flex items-center justify-center transition-all duration-150 outline-none
@@ -139,7 +139,7 @@ const CustomControls = memo<CustomControlsProps>(({ mapRef, isDark }) => {
       </div>
 
       {/* Location button */}
-      <div className="absolute top-[92px] md:top-auto md:bottom-2.5 right-2.5 z-[1000] pointer-events-auto">
+      <div className="absolute top-[92px] md:top-auto md:bottom-2.5 right-4 z-[1000] pointer-events-auto">
         <button
           className={`w-9 h-9 border-none rounded-lg cursor-pointer flex items-center justify-center shadow-[0_2px_6px_rgba(0,0,0,0.2)] transition-all duration-150 outline-none
             ${isDark ? 'bg-gray-800 text-gray-200' : 'bg-white text-gray-700'}

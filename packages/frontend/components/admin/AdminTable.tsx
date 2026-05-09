@@ -108,7 +108,7 @@ const styles = StyleSheet.create({
     borderBottomWidth: 1,
   },
   headerText: {
-    fontFamily: 'Inter-SemiBold',
+    fontFamily: 'Inclusive Sans',
     fontSize: 11,
     textTransform: 'uppercase',
     letterSpacing: 0.5,

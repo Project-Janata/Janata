@@ -38,7 +38,7 @@ function AskCard({
       <View style={{ gap: 14 }}>
         <Text
           style={{
-            fontFamily: 'Inter, sans-serif',
+            fontFamily: 'Inclusive Sans, sans-serif',
             fontWeight: '600',
             fontSize: 11,
             letterSpacing: 1.5,
@@ -61,7 +61,7 @@ function AskCard({
         </Text>
         <Text
           style={{
-            fontFamily: 'Inter, sans-serif',
+            fontFamily: 'Inclusive Sans, sans-serif',
             fontSize: isMobile ? 14 : 15,
             lineHeight: isMobile ? 22 : 24,
             color: '#57534E',
@@ -82,7 +82,7 @@ function AskCard({
       >
         <Text
           style={{
-            fontFamily: 'Inter, sans-serif',
+            fontFamily: 'Inclusive Sans, sans-serif',
             fontWeight: '600',
             fontSize: 14,
             color: '#C2410C',
@@ -92,7 +92,7 @@ function AskCard({
         </Text>
         <Text
           style={{
-            fontFamily: 'Inter, sans-serif',
+            fontFamily: 'Inclusive Sans, sans-serif',
             fontWeight: '600',
             fontSize: 14,
             color: '#C2410C',
@@ -152,7 +152,7 @@ export function FinalCTA() {
         <View style={{ alignItems: 'center', marginBottom: isMobile ? 36 : 48 }}>
           <Text
             style={{
-              fontFamily: 'Inter, sans-serif',
+              fontFamily: 'Inclusive Sans, sans-serif',
               fontWeight: '600',
               fontSize: 12,
               letterSpacing: 1.5,
@@ -179,7 +179,7 @@ export function FinalCTA() {
           </Text>
           <Text
             style={{
-              fontFamily: 'Inter, sans-serif',
+              fontFamily: 'Inclusive Sans, sans-serif',
               fontWeight: '400',
               fontSize: isMobile ? 16 : 18,
               lineHeight: isMobile ? 24 : 28,
@@ -239,7 +239,7 @@ export function FinalCTA() {
         >
           <Text
             style={{
-              fontFamily: 'Inter, sans-serif',
+              fontFamily: 'Inclusive Sans, sans-serif',
               fontSize: 14,
               color: '#78716C',
             }}
@@ -259,7 +259,7 @@ export function FinalCTA() {
           >
             <Text
               style={{
-                fontFamily: 'Inter, sans-serif',
+                fontFamily: 'Inclusive Sans, sans-serif',
                 fontWeight: '500',
                 fontSize: 15,
                 color: '#FFFFFF',
@@ -270,7 +270,7 @@ export function FinalCTA() {
           </Pressable>
           <Text
             style={{
-              fontFamily: 'Inter, sans-serif',
+              fontFamily: 'Inclusive Sans, sans-serif',
               fontSize: 12,
               color: '#A8A29E',
             }}

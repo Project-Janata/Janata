@@ -44,7 +44,7 @@ export function EmptyState({ variant = 'search', message, subtitle }: EmptyState
           fontSize: 15,
           fontWeight: '600',
           color: '#78716c',
-          fontFamily: 'Inter-SemiBold',
+          fontFamily: 'Inclusive Sans',
           textAlign: 'center',
         }}
       >
@@ -55,7 +55,7 @@ export function EmptyState({ variant = 'search', message, subtitle }: EmptyState
           marginTop: 6,
           fontSize: 13,
           color: '#a8a29e',
-          fontFamily: 'Inter-Regular',
+          fontFamily: 'Inclusive Sans',
           textAlign: 'center',
         }}
       >

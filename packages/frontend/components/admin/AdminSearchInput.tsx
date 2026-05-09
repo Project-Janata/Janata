@@ -49,7 +49,7 @@ const styles = StyleSheet.create({
   },
   input: {
     flex: 1,
-    fontFamily: 'Inter-Regular',
+    fontFamily: 'Inclusive Sans',
     fontSize: 13,
     padding: 0,
   },

@@ -24,16 +24,16 @@ export function EventCard({ event, onPress, variant = 'compact' }: EventCardProp
     return (
       <Card pressable onPress={() => onPress(event)} padding="md" hoverBorderColor="primary">
         <View className="gap-3">
-          <Text className="font-inter text-sm text-primary font-bold uppercase tracking-wide">
+          <Text className="font-sans text-sm text-primary font-bold uppercase tracking-wide">
             {event.time}
           </Text>
           <View className="flex-row items-center gap-2">
             <MapPin size={16} color="#a1a1aa" />
-            <Text className="text-content dark:text-content-dark font-inter text-sm">
+            <Text className="text-content dark:text-content-dark font-sans text-sm">
               {event.location}
             </Text>
           </View>
-          <Text className="text-content dark:text-content-dark font-inter text-xl font-bold leading-tight mt-1">
+          <Text className="text-content dark:text-content-dark font-sans text-xl font-bold leading-tight mt-1">
             {event.title}
           </Text>
           <Text className="text-content dark:text-content-dark text-base font-medium mt-2">
@@ -44,13 +44,13 @@ export function EventCard({ event, onPress, variant = 'compact' }: EventCardProp
         <View className="flex-row items-center gap-8 pt-4">
           <View className="flex-row items-center gap-2">
             <ThumbsUp size={18} color="#a1a1aa" />
-            <Text className="text-content dark:text-content-dark font-inter text-sm font-medium">
+            <Text className="text-content dark:text-content-dark font-sans text-sm font-medium">
               {event.likes}
             </Text>
           </View>
           <View className="flex-row items-center gap-2">
             <MessageCircle size={18} color="#a1a1aa" />
-            <Text className="text-content dark:text-content-dark font-inter text-sm font-medium">
+            <Text className="text-content dark:text-content-dark font-sans text-sm font-medium">
               {event.comments}
             </Text>
           </View>
@@ -62,11 +62,11 @@ export function EventCard({ event, onPress, variant = 'compact' }: EventCardProp
   return (
     <Card pressable onPress={() => onPress(event)} padding="sm">
       <View className="gap-2">
-        <Text className="font-inter text-sm text-primary font-medium">{event.time}</Text>
-        <Text className="text-content dark:text-content-dark font-inter text-sm">
+        <Text className="font-sans text-sm text-primary font-medium">{event.time}</Text>
+        <Text className="text-content dark:text-content-dark font-sans text-sm">
           {event.location}
         </Text>
-        <Text className="text-content dark:text-content-dark font-inter text-lg font-semibold leading-tight">
+        <Text className="text-content dark:text-content-dark font-sans text-lg font-semibold leading-tight">
           {event.title}
         </Text>
         <Text className="text-content dark:text-content-dark text-sm mt-1">
@@ -77,13 +77,13 @@ export function EventCard({ event, onPress, variant = 'compact' }: EventCardProp
       <View className="flex-row justify-end gap-4 pt-2">
         <View className="flex-row items-center gap-1">
           <ThumbsUp size={16} color="#a1a1aa" />
-          <Text className="text-content dark:text-content-dark font-inter text-sm">
+          <Text className="text-content dark:text-content-dark font-sans text-sm">
             {event.likes}
           </Text>
         </View>
         <View className="flex-row items-center gap-1">
           <MessageCircle size={16} color="#a1a1aa" />
-          <Text className="text-content dark:text-content-dark font-inter text-sm">
+          <Text className="text-content dark:text-content-dark font-sans text-sm">
             {event.comments}
           </Text>
         </View>

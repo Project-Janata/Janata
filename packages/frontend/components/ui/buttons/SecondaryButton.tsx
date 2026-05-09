@@ -24,7 +24,7 @@ export default function SecondaryButton({ children, onPress, disabled, loading, 
       {loading ? (
         <ActivityIndicator size="small" color="#78716C" />
       ) : (
-        <Text className="font-inter text-content dark:text-content-dark text-base leading-5 text-center">
+        <Text className="font-sans text-content dark:text-content-dark text-base leading-5 text-center">
           {children}
         </Text>
       )}

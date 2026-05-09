@@ -44,7 +44,7 @@ export default function PrimaryButton({
           </svg>
         </span>
       ) : (
-        <span className="text-white font-inter text-base leading-4 text-center block">
+        <span className="text-white font-sans text-base leading-4 text-center block">
           {children}
         </span>
       )}

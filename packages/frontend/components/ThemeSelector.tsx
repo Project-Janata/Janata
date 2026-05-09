@@ -45,7 +45,7 @@ export default function ThemeSelector({ style, className }: { style?: any; class
               style={{
                 color: textColor,
                 fontSize: 12,
-                fontFamily: 'Inter',
+                fontFamily: 'Inclusive Sans',
                 fontWeight: isSelected ? '600' : '400',
               }}
             >

@@ -319,7 +319,7 @@ const Map = memo<MapProps>(function Map({
           and zoom buttons aren't built in at all. */}
       {showControls && (
         <MapControls
-          top={insets.top + 64}
+          top={insets.top + 56 + 6}
           buttonBg={buttonBg}
           iconColor={iconColor}
           isDark={isDark}
@@ -346,7 +346,7 @@ const styles = StyleSheet.create({
   },
   controls: {
     position: 'absolute',
-    right: 12,
+    right: 16,
     gap: 8,
     alignItems: 'flex-end',
   },

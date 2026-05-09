@@ -31,7 +31,7 @@ export default function FilterChip({
     >
       {icon && <View>{icon}</View>}
       <Text
-        className={`text-sm font-inter-semibold ${
+        className={`text-sm font-sans ${
           active
             ? isOutline
               ? 'text-primary'

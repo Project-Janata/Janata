@@ -250,7 +250,7 @@ export default function AuthScreen() {
     borderRadius: 8,
     padding: '0 16px',
     fontSize: 16,
-    fontFamily: 'Inter, sans-serif',
+    fontFamily: 'Inclusive Sans, sans-serif',
     color: '#1C1917',
     backgroundColor: '#FAFAF7',
     outline: 'none',
@@ -349,7 +349,7 @@ export default function AuthScreen() {
               padding: '8px 4px',
               margin: '-8px -4px',
               fontSize: 14,
-              fontFamily: 'Inter, sans-serif',
+              fontFamily: 'Inclusive Sans, sans-serif',
               color: '#78716C',
               minHeight: 44,
               display: 'flex',
@@ -367,7 +367,7 @@ export default function AuthScreen() {
               padding: '8px 4px',
               margin: '-8px -4px',
               fontSize: 14,
-              fontFamily: 'Inter, sans-serif',
+              fontFamily: 'Inclusive Sans, sans-serif',
               fontWeight: '500',
               color: '#C2410C',
               minHeight: 44,
@@ -396,7 +396,7 @@ export default function AuthScreen() {
               style={{
                 color: '#78716C',
                 fontSize: 14,
-                fontFamily: 'Inter, sans-serif',
+                fontFamily: 'Inclusive Sans, sans-serif',
                 cursor: 'pointer',
                 background: 'none',
                 border: 'none',
@@ -439,7 +439,7 @@ export default function AuthScreen() {
           {/* Subtitle */}
           <p
             style={{
-              fontFamily: 'Inter, sans-serif',
+              fontFamily: 'Inclusive Sans, sans-serif',
               fontSize: 16,
               color: '#78716C',
               marginBottom: 32,
@@ -465,7 +465,7 @@ export default function AuthScreen() {
                   style={{
                     color: '#EF4444',
                     fontSize: 14,
-                    fontFamily: 'Inter, sans-serif',
+                    fontFamily: 'Inclusive Sans, sans-serif',
                     margin: 0,
                   }}
                 >
@@ -568,7 +568,7 @@ export default function AuthScreen() {
                 border: 'none',
                 borderRadius: 8,
                 fontSize: 16,
-                fontFamily: 'Inter, sans-serif',
+                fontFamily: 'Inclusive Sans, sans-serif',
                 fontWeight: '500',
                 cursor: isButtonDisabled ? 'not-allowed' : 'pointer',
                 marginTop: 8,
@@ -589,7 +589,7 @@ export default function AuthScreen() {
                 color: '#78716C',
                 textAlign: 'center',
                 marginTop: 16,
-                fontFamily: 'Inter, sans-serif',
+                fontFamily: 'Inclusive Sans, sans-serif',
               }}
             >
               Don't have an account?{' '}
@@ -661,7 +661,7 @@ export default function AuthScreen() {
                 color: '#78716C',
                 textAlign: 'center',
                 marginTop: 16,
-                fontFamily: 'Inter, sans-serif',
+                fontFamily: 'Inclusive Sans, sans-serif',
               }}
             >
               <span
@@ -708,7 +708,7 @@ export default function AuthScreen() {
                 marginTop: 24,
                 width: '100%',
                 fontSize: 14,
-                fontFamily: 'Inter, sans-serif',
+                fontFamily: 'Inclusive Sans, sans-serif',
                 color: '#57534E',
               }}
             >
@@ -729,7 +729,7 @@ export default function AuthScreen() {
               color: '#A8A29E',
               textAlign: 'center',
               marginTop: isMobile ? 24 : 32,
-              fontFamily: 'Inter, sans-serif',
+              fontFamily: 'Inclusive Sans, sans-serif',
               paddingBottom: isMobile ? 16 : 0,
             }}
           >

@@ -99,7 +99,7 @@ export default function UsersTab() {
               style={{ marginRight: 8 }}
             />
             <Text
-              style={{ fontFamily: 'Inter-Medium', fontSize: 13, color: colors.text }}
+              style={{ fontFamily: 'Inclusive Sans', fontSize: 13, color: colors.text }}
               numberOfLines={1}
             >
               {user.firstName} {user.lastName}
@@ -113,7 +113,7 @@ export default function UsersTab() {
         flex: 2,
         render: (user: UserData) => (
           <Text
-            style={{ fontFamily: 'Inter-Regular', fontSize: 13, color: colors.textMuted }}
+            style={{ fontFamily: 'Inclusive Sans', fontSize: 13, color: colors.textMuted }}
             numberOfLines={1}
           >
             {user.email || user.username}
@@ -128,7 +128,7 @@ export default function UsersTab() {
           const badge = getRoleBadgeType(user)
           if (!badge) {
             return (
-              <Text style={{ fontFamily: 'Inter-Regular', fontSize: 13, color: colors.textMuted }}>
+              <Text style={{ fontFamily: 'Inclusive Sans', fontSize: 13, color: colors.textMuted }}>
                 {'\u2014'}
               </Text>
             )
@@ -144,7 +144,7 @@ export default function UsersTab() {
                 alignSelf: 'flex-start',
               }}
             >
-              <Text style={{ fontFamily: 'Inter-SemiBold', fontSize: 10, color: rc.text }}>
+              <Text style={{ fontFamily: 'Inclusive Sans', fontSize: 10, color: rc.text }}>
                 {rc.label}
               </Text>
             </View>
@@ -264,11 +264,11 @@ export default function UsersTab() {
   if (error && users.length === 0) {
     return (
       <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center', padding: 40 }}>
-        <Text style={{ fontFamily: 'Inter-Medium', fontSize: 14, color: '#DC2626', textAlign: 'center' }}>
+        <Text style={{ fontFamily: 'Inclusive Sans', fontSize: 14, color: '#DC2626', textAlign: 'center' }}>
           {error}
         </Text>
         <Pressable onPress={() => loadUsers()} style={{ marginTop: 12, paddingHorizontal: 16, paddingVertical: 8, backgroundColor: '#E8862A', borderRadius: 8 }}>
-          <Text style={{ fontFamily: 'Inter-SemiBold', fontSize: 13, color: '#fff' }}>Retry</Text>
+          <Text style={{ fontFamily: 'Inclusive Sans', fontSize: 13, color: '#fff' }}>Retry</Text>
         </Pressable>
       </View>
     )
@@ -327,21 +327,21 @@ const styles = StyleSheet.create({
     paddingHorizontal: 16,
     paddingVertical: 12,
   },
-  title: { fontFamily: 'Inter-Bold', fontSize: 16 },
+  title: { fontFamily: 'Inclusive Sans', fontSize: 16 },
   searchWrap: { width: 240 },
 })
 
 const detailStyles = StyleSheet.create({
   userHeader: { alignItems: 'center', marginBottom: 8 },
-  userName: { fontFamily: 'Inter-Bold', fontSize: 16, marginTop: 8 },
-  userEmail: { fontFamily: 'Inter-Regular', fontSize: 13, marginTop: 2 },
+  userName: { fontFamily: 'Inclusive Sans', fontSize: 16, marginTop: 8 },
+  userEmail: { fontFamily: 'Inclusive Sans', fontSize: 13, marginTop: 2 },
   actions: { flexDirection: 'row', gap: 8, marginTop: 16 },
   actionBtn: { flex: 1, paddingVertical: 10, borderRadius: 8, alignItems: 'center' },
-  actionBtnText: { fontFamily: 'Inter-SemiBold', fontSize: 13 },
+  actionBtnText: { fontFamily: 'Inclusive Sans', fontSize: 13 },
 })
 
 const infoStyles = StyleSheet.create({
   row: { flexDirection: 'row', alignItems: 'center', marginBottom: 10 },
   iconBox: { width: 28, height: 28, borderRadius: 6, alignItems: 'center', justifyContent: 'center', marginRight: 10 },
-  text: { fontFamily: 'Inter-Regular', fontSize: 13, flex: 1 },
+  text: { fontFamily: 'Inclusive Sans', fontSize: 13, flex: 1 },
 })

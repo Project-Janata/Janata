@@ -85,7 +85,7 @@ export default function EventsTab() {
       header: 'Title',
       flex: 2,
       render: (item) => (
-        <Text style={{ fontFamily: 'Inter-Medium', fontSize: 13, color: colors.text }} numberOfLines={1}>
+        <Text style={{ fontFamily: 'Inclusive Sans', fontSize: 13, color: colors.text }} numberOfLines={1}>
           {item.title || 'Untitled'}
         </Text>
       ),
@@ -95,7 +95,7 @@ export default function EventsTab() {
       header: 'Date',
       flex: 1,
       render: (item) => (
-        <Text style={{ fontFamily: 'Inter-Regular', fontSize: 13, color: colors.textSecondary }}>
+        <Text style={{ fontFamily: 'Inclusive Sans', fontSize: 13, color: colors.textSecondary }}>
           {formatDate(item.date)}
         </Text>
       ),
@@ -105,7 +105,7 @@ export default function EventsTab() {
       header: 'Attendees',
       flex: 1,
       render: (item) => (
-        <Text style={{ fontFamily: 'Inter-Regular', fontSize: 13, color: colors.textSecondary }}>
+        <Text style={{ fontFamily: 'Inclusive Sans', fontSize: 13, color: colors.textSecondary }}>
           {item.peopleAttending}
         </Text>
       ),
@@ -123,11 +123,11 @@ export default function EventsTab() {
   if (error && events.length === 0) {
     return (
       <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center', padding: 40 }}>
-        <Text style={{ fontFamily: 'Inter-Medium', fontSize: 14, color: '#DC2626', textAlign: 'center' }}>
+        <Text style={{ fontFamily: 'Inclusive Sans', fontSize: 14, color: '#DC2626', textAlign: 'center' }}>
           {error}
         </Text>
         <Pressable onPress={() => loadEvents()} style={{ marginTop: 12, paddingHorizontal: 16, paddingVertical: 8, backgroundColor: '#E8862A', borderRadius: 8 }}>
-          <Text style={{ fontFamily: 'Inter-SemiBold', fontSize: 13, color: '#fff' }}>Retry</Text>
+          <Text style={{ fontFamily: 'Inclusive Sans', fontSize: 13, color: '#fff' }}>Retry</Text>
         </Pressable>
       </View>
     )
@@ -137,7 +137,7 @@ export default function EventsTab() {
     <View style={{ flex: 1, flexDirection: 'row' }}>
       <View style={{ flex: 1, padding: 20 }}>
         <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
-          <Text style={{ fontFamily: 'Inter-Bold', fontSize: 18, color: colors.text }}>
+          <Text style={{ fontFamily: 'Inclusive Sans', fontSize: 18, color: colors.text }}>
             Events ({total})
           </Text>
           <View style={{ width: 240 }}>
@@ -180,7 +180,7 @@ export default function EventsTab() {
               onPress={() => setDeleteTarget(selected)}
               style={{ backgroundColor: colors.iconBoxBg, paddingHorizontal: 14, paddingVertical: 8, borderRadius: 8, alignSelf: 'flex-start' }}
             >
-              <Text style={{ fontFamily: 'Inter-SemiBold', fontSize: 12, color: isDark ? '#F87171' : '#DC2626' }}>
+              <Text style={{ fontFamily: 'Inclusive Sans', fontSize: 12, color: isDark ? '#F87171' : '#DC2626' }}>
                 Delete
               </Text>
             </Pressable>

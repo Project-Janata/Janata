@@ -29,7 +29,7 @@ export default function AdminUserRow({ name, image, actionLabel, onAction, color
         <Avatar name={name} image={image ?? undefined} size={24} />
         <Text
           style={{
-            fontFamily: 'Inter-Regular',
+            fontFamily: 'Inclusive Sans',
             fontSize: 12,
             color: colors.text,
           }}
@@ -41,7 +41,7 @@ export default function AdminUserRow({ name, image, actionLabel, onAction, color
         <Pressable onPress={onAction}>
           <Text
             style={{
-              fontFamily: 'Inter-SemiBold',
+              fontFamily: 'Inclusive Sans',
               fontSize: 11,
               color: isDark ? '#F87171' : '#DC2626',
             }}

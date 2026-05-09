@@ -74,10 +74,10 @@ export default function AuthPromptModal({ visible, onClose, returnTo, eventTitle
             shadowOffset: { width: 0, height: 8 },
           }}
         >
-          <Text style={{ fontSize: 20, fontFamily: 'Inter-Bold', color: colors.text, textAlign: 'center' }}>
+          <Text style={{ fontSize: 20, fontFamily: 'Inclusive Sans', color: colors.text, textAlign: 'center' }}>
             Sign up to attend
           </Text>
-          <Text style={{ fontSize: 15, fontFamily: 'Inter-Regular', color: colors.textSecondary, textAlign: 'center', lineHeight: 22 }}>
+          <Text style={{ fontSize: 15, fontFamily: 'Inclusive Sans', color: colors.textSecondary, textAlign: 'center', lineHeight: 22 }}>
             {eventTitle
               ? `Create a free account to register for ${eventTitle}`
               : 'Create a free account to register for events'}
@@ -91,7 +91,7 @@ export default function AuthPromptModal({ visible, onClose, returnTo, eventTitle
             </SecondaryButton>
           </View>
           <Pressable onPress={onClose} style={{ alignSelf: 'center', paddingTop: 4 }}>
-            <Text style={{ fontSize: 14, fontFamily: 'Inter-Medium', color: colors.textMuted }}>
+            <Text style={{ fontSize: 14, fontFamily: 'Inclusive Sans', color: colors.textMuted }}>
               Maybe later
             </Text>
           </Pressable>
@@ -118,10 +118,10 @@ export default function AuthPromptModal({ visible, onClose, returnTo, eventTitle
             gap: 16,
           }}
         >
-          <Text style={{ fontSize: 20, fontFamily: 'Inter-Bold', color: colors.text, textAlign: 'center' }}>
+          <Text style={{ fontSize: 20, fontFamily: 'Inclusive Sans', color: colors.text, textAlign: 'center' }}>
             Sign up to attend
           </Text>
-          <Text style={{ fontSize: 15, fontFamily: 'Inter-Regular', color: colors.textSecondary, textAlign: 'center', lineHeight: 22 }}>
+          <Text style={{ fontSize: 15, fontFamily: 'Inclusive Sans', color: colors.textSecondary, textAlign: 'center', lineHeight: 22 }}>
             {eventTitle
               ? `Create a free account to register for ${eventTitle}`
               : 'Create a free account to register for events'}
@@ -135,7 +135,7 @@ export default function AuthPromptModal({ visible, onClose, returnTo, eventTitle
             </SecondaryButton>
           </View>
           <Pressable onPress={onClose} style={{ alignSelf: 'center', paddingTop: 4 }}>
-            <Text style={{ fontSize: 14, fontFamily: 'Inter-Medium', color: colors.textMuted }}>
+            <Text style={{ fontSize: 14, fontFamily: 'Inclusive Sans', color: colors.textMuted }}>
               Maybe later
             </Text>
           </Pressable>

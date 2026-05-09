@@ -35,13 +35,13 @@ export default function UnderlineTabBar({ tabs, activeTab, onTabChange, counts }
             <Text
               style={{
                 fontSize: 14,
-                fontFamily: 'Inter-Medium',
+                fontFamily: 'Inclusive Sans',
                 color: labelColor,
               }}
             >
               {tab}
               {count != null && (
-                <Text style={{ fontFamily: 'Inter-Regular', color: countColor }}>
+                <Text style={{ fontFamily: 'Inclusive Sans', color: countColor }}>
                   {'  '}{count}
                 </Text>
               )}

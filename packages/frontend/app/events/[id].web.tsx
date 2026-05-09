@@ -275,7 +275,7 @@ function MobileEventDetail({ eventId }: { eventId: string }) {
                 style={{ paddingVertical: 12, alignItems: 'center' }}
                 accessibilityLabel={`Sign up at ${hostnameOf(event.signupUrl)}`}
               >
-                <Text style={{ fontFamily: 'Inter-SemiBold', fontSize: 14, color: '#E8862A' }}>
+                <Text style={{ fontFamily: 'Inclusive Sans', fontSize: 14, color: '#E8862A' }}>
                   Or sign up at {hostnameOf(event.signupUrl)}
                 </Text>
               </Pressable>
@@ -287,7 +287,7 @@ function MobileEventDetail({ eventId }: { eventId: string }) {
               </PrimaryButton>
               <Text
                 style={{
-                  fontFamily: 'Inter-Regular',
+                  fontFamily: 'Inclusive Sans',
                   fontSize: 12,
                   color: colors.textSecondary,
                   textAlign: 'center',

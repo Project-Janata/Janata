@@ -58,7 +58,7 @@ function PersonaCard({
         </View>
         <Text
           style={{
-            fontFamily: 'Inter, sans-serif',
+            fontFamily: 'Inclusive Sans, sans-serif',
             fontWeight: '600',
             fontSize: 11,
             letterSpacing: 1.5,
@@ -85,7 +85,7 @@ function PersonaCard({
 
       <Text
         style={{
-          fontFamily: 'Inter, sans-serif',
+          fontFamily: 'Inclusive Sans, sans-serif',
           fontWeight: '400',
           fontSize: isMobile ? 15 : 16,
           lineHeight: isMobile ? 24 : 26,
@@ -138,7 +138,7 @@ export function ProblemSection() {
       <View style={{ maxWidth: 760, marginBottom: isMobile ? 40 : 56 }}>
         <Text
           style={{
-            fontFamily: 'Inter, sans-serif',
+            fontFamily: 'Inclusive Sans, sans-serif',
             fontWeight: '600',
             fontSize: 12,
             letterSpacing: 1.5,
@@ -165,7 +165,7 @@ export function ProblemSection() {
 
         <Text
           style={{
-            fontFamily: 'Inter, sans-serif',
+            fontFamily: 'Inclusive Sans, sans-serif',
             fontWeight: '400',
             fontSize: isMobile ? 16 : 18,
             lineHeight: isMobile ? 26 : 30,

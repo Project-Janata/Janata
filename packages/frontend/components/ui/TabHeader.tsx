@@ -3,6 +3,7 @@ import { View, Text, Pressable, Platform } from 'react-native'
 import { useRouter } from 'expo-router'
 import { Plus, User } from 'lucide-react-native'
 import { usePostHog } from 'posthog-react-native'
+import { useSafeAreaInsets } from 'react-native-safe-area-context'
 import { useUser, useTheme } from '../contexts'
 import { useHeaderAction } from '../contexts/HeaderActionContext'
 import Avatar from './Avatar'
@@ -34,6 +35,7 @@ export default function TabHeader({
   const { isDark } = useTheme()
   const posthog = usePostHog()
   const { triggerCreate } = useHeaderAction()
+  const insets = useSafeAreaInsets()
 
   const bgColor = transparent ? 'transparent' : isDark ? '#000000' : '#FFFFFF'
   const textColor = transparent ? '#FFFFFF' : isDark ? '#FAFAF9' : '#1F1D1B'
@@ -60,7 +62,7 @@ export default function TabHeader({
         flexDirection: 'row',
         alignItems: 'center',
         justifyContent: 'space-between',
-        paddingTop: Platform.OS === 'ios' ? 56 : 44,
+        paddingTop: Math.max(insets.top, 8),
         paddingBottom: 12,
         paddingHorizontal: 16,
         backgroundColor: bgColor,
@@ -82,7 +84,7 @@ export default function TabHeader({
             >
               <Text
                 style={{
-                  fontFamily: 'Inter-Bold',
+                  fontFamily: 'Inclusive Sans',
                   fontSize: 16,
                   color: isDark ? '#FAFAF9' : '#1F1D1B',
                 }}
@@ -93,7 +95,7 @@ export default function TabHeader({
           ) : (
             <Text
               style={{
-                fontFamily: 'Inter-Bold',
+                fontFamily: 'Inclusive Sans',
                 fontSize: 22,
                 color: textColor,
               }}

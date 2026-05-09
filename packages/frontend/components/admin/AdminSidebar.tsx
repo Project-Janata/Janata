@@ -65,7 +65,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: 12,
   },
   header: {
-    fontFamily: 'Inter-Bold',
+    fontFamily: 'Inclusive Sans',
     fontSize: 15,
     color: '#E8862A',
     marginBottom: 20,
@@ -83,7 +83,7 @@ const styles = StyleSheet.create({
     backgroundColor: 'rgba(232,134,42,0.12)',
   },
   tabLabel: {
-    fontFamily: 'Inter-Medium',
+    fontFamily: 'Inclusive Sans',
     fontSize: 14,
     marginLeft: 10,
   },

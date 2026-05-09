@@ -374,7 +374,7 @@ export default function Profile() {
   const chipBg = isDark ? '#262626' : '#F3F0ED'
 
   const inputStyle = {
-    fontFamily: 'Inter-Regular' as const,
+    fontFamily: 'Inclusive Sans' as const,
     fontSize: 15,
     color: textColor,
     paddingHorizontal: 16,
@@ -391,7 +391,7 @@ export default function Profile() {
   }
 
   const labelStyle = {
-    fontFamily: 'Inter-SemiBold' as const,
+    fontFamily: 'Inclusive Sans' as const,
     fontSize: 12,
     color: labelColor,
     letterSpacing: 1,
@@ -478,7 +478,7 @@ export default function Profile() {
                 }}
                 placeholderTextColor="#9ca3af"
                 style={{
-                  fontFamily: 'Inter-SemiBold',
+                  fontFamily: 'Inclusive Sans',
                   fontSize: 22,
                   color: textColor,
                   letterSpacing: -0.5,
@@ -491,7 +491,7 @@ export default function Profile() {
             ) : (
               <Text
                 style={{
-                  fontFamily: 'Inter-SemiBold',
+                  fontFamily: 'Inclusive Sans',
                   fontSize: 22,
                   color: textColor,
                   letterSpacing: -0.5,
@@ -501,7 +501,7 @@ export default function Profile() {
                 {profileData.name || '—'}
               </Text>
             )}
-            <Text style={{ fontFamily: 'Inter-Regular', fontSize: 14, color: mutedTextColor }}>
+            <Text style={{ fontFamily: 'Inclusive Sans', fontSize: 14, color: mutedTextColor }}>
               {user?.email ||
                 (user?.username ? `@${user.username}` : '') ||
                 '—'}
@@ -509,7 +509,7 @@ export default function Profile() {
             {isEditing && user?.email && user.email !== user.username && (
               <Text
                 style={{
-                  fontFamily: 'Inter-Regular',
+                  fontFamily: 'Inclusive Sans',
                   fontSize: 13,
                   color: mutedTextColor,
                   marginTop: 4,
@@ -538,7 +538,7 @@ export default function Profile() {
             ) : (
               <Text
                 style={{
-                  fontFamily: 'Inter-Regular',
+                  fontFamily: 'Inclusive Sans',
                   fontSize: 15,
                   color: mutedTextColor,
                   lineHeight: 22,
@@ -550,7 +550,7 @@ export default function Profile() {
             {errors.bio && (
               <Text
                 style={{
-                  fontFamily: 'Inter-Regular',
+                  fontFamily: 'Inclusive Sans',
                   fontSize: 13,
                   color: '#DC2626',
                   marginTop: 6,
@@ -572,7 +572,7 @@ export default function Profile() {
             ) : (
               <Text
                 style={{
-                  fontFamily: 'Inter-Medium',
+                  fontFamily: 'Inclusive Sans',
                   fontSize: 16,
                   color: textColor,
                   lineHeight: 24,
@@ -584,7 +584,7 @@ export default function Profile() {
             {errors.birthday && (
               <Text
                 style={{
-                  fontFamily: 'Inter-Regular',
+                  fontFamily: 'Inclusive Sans',
                   fontSize: 13,
                   color: '#DC2626',
                   marginTop: 6,
@@ -675,7 +675,7 @@ export default function Profile() {
                       >
                         <Text
                           style={{
-                            fontFamily: 'Inter-Regular',
+                            fontFamily: 'Inclusive Sans',
                             fontSize: 14,
                             color:
                               profileData.centerID === center.centerID ? '#C2410C' : textColor,
@@ -693,7 +693,7 @@ export default function Profile() {
                 <MapPin size={18} color={mutedTextColor} style={{ marginTop: 2 }} />
                 <Text
                   style={{
-                    fontFamily: 'Inter-Regular',
+                    fontFamily: 'Inclusive Sans',
                     fontSize: 15,
                     color: mutedTextColor,
                     flex: 1,
@@ -711,7 +711,7 @@ export default function Profile() {
           <View>
             <Text
               style={{
-                fontFamily: 'Inter-SemiBold',
+                fontFamily: 'Inclusive Sans',
                 fontSize: 12,
                 color: labelColor,
                 letterSpacing: 1,
@@ -741,7 +741,7 @@ export default function Profile() {
                   >
                     <Text
                       style={{
-                        fontFamily: 'Inter-SemiBold',
+                        fontFamily: 'Inclusive Sans',
                         fontSize: 14,
                         color: selected ? '#FFFFFF' : mutedTextColor,
                       }}
@@ -755,7 +755,7 @@ export default function Profile() {
             {errors.interests && (
               <Text
                 style={{
-                  fontFamily: 'Inter-Regular',
+                  fontFamily: 'Inclusive Sans',
                   fontSize: 13,
                   color: '#DC2626',
                   marginTop: 8,
@@ -770,7 +770,7 @@ export default function Profile() {
           {(errors.form || errors.profileImage) && (
             <Text
               style={{
-                fontFamily: 'Inter-Regular',
+                fontFamily: 'Inclusive Sans',
                 fontSize: 13,
                 color: '#DC2626',
                 marginTop: 8,
@@ -796,7 +796,7 @@ export default function Profile() {
               }}
             >
               <Pencil size={16} color={isDark ? '#1C1917' : '#FFFFFF'} />
-              <Text style={{ fontFamily: 'Inter-SemiBold', fontSize: 15, color: isDark ? '#1C1917' : '#FFFFFF' }}>
+              <Text style={{ fontFamily: 'Inclusive Sans', fontSize: 15, color: isDark ? '#1C1917' : '#FFFFFF' }}>
                 Edit Profile
               </Text>
             </Pressable>
@@ -816,7 +816,7 @@ export default function Profile() {
                   justifyContent: 'center',
                 }}
               >
-                <Text style={{ fontFamily: 'Inter-SemiBold', fontSize: 15, color: textColor }}>
+                <Text style={{ fontFamily: 'Inclusive Sans', fontSize: 15, color: textColor }}>
                   Cancel
                 </Text>
               </Pressable>
@@ -836,7 +836,7 @@ export default function Profile() {
                 {isSaving ? (
                   <ActivityIndicator size="small" color="#fff" />
                 ) : (
-                  <Text style={{ fontFamily: 'Inter-SemiBold', fontSize: 15, color: '#FFFFFF' }}>
+                  <Text style={{ fontFamily: 'Inclusive Sans', fontSize: 15, color: '#FFFFFF' }}>
                     Save Changes
                   </Text>
                 )}
@@ -877,7 +877,7 @@ export default function Profile() {
           <View style={{ gap: 4 }}>
             <Text
               style={{
-                fontFamily: 'Inter-Bold',
+                fontFamily: 'Inclusive Sans',
                 fontSize: isNarrowWeb ? 24 : 28,
                 color: textColor,
                 letterSpacing: -0.5,
@@ -885,7 +885,7 @@ export default function Profile() {
             >
               Profile
             </Text>
-            <Text style={{ fontFamily: 'Inter-Regular', fontSize: 15, color: mutedTextColor }}>
+            <Text style={{ fontFamily: 'Inclusive Sans', fontSize: 15, color: mutedTextColor }}>
               Manage your public profile information
             </Text>
           </View>
@@ -912,7 +912,7 @@ export default function Profile() {
                 <Pencil size={16} color={isEditing ? '#FFFFFF' : isDark ? '#1C1917' : '#FFFFFF'} />
                 <Text
                   style={{
-                    fontFamily: 'Inter-SemiBold',
+                    fontFamily: 'Inclusive Sans',
                     fontSize: 14,
                     color: isEditing ? '#FFFFFF' : isDark ? '#1C1917' : '#FFFFFF',
                   }}
@@ -997,7 +997,7 @@ export default function Profile() {
                   }}
                   placeholderTextColor="#9ca3af"
                   style={{
-                    fontFamily: 'Inter-SemiBold',
+                    fontFamily: 'Inclusive Sans',
                     fontSize: isNarrowWeb ? 22 : 24,
                     color: textColor,
                     letterSpacing: -0.3,
@@ -1010,7 +1010,7 @@ export default function Profile() {
             ) : (
               <Text
                 style={{
-                  fontFamily: 'Inter-SemiBold',
+                  fontFamily: 'Inclusive Sans',
                   fontSize: isNarrowWeb ? 22 : 24,
                   color: textColor,
                   letterSpacing: -0.3,
@@ -1019,13 +1019,13 @@ export default function Profile() {
                 {profileData.name || '—'}
               </Text>
             )}
-            <Text style={{ fontFamily: 'Inter-Regular', fontSize: 14, color: mutedTextColor }}>
+            <Text style={{ fontFamily: 'Inclusive Sans', fontSize: 14, color: mutedTextColor }}>
               {user?.email ||
                 (user?.username ? `@${user.username}` : '') ||
                 '—'}
             </Text>
             {isEditing && user?.email && user.email !== user.username && (
-              <Text style={{ fontFamily: 'Inter-Regular', fontSize: 13, color: mutedTextColor }}>
+              <Text style={{ fontFamily: 'Inclusive Sans', fontSize: 13, color: mutedTextColor }}>
                 @{user.username}
               </Text>
             )}
@@ -1056,7 +1056,7 @@ export default function Profile() {
                   borderColor,
                 }}
               >
-                <Text style={{ fontFamily: 'Inter-Medium', fontSize: 15, color: textColor }}>
+                <Text style={{ fontFamily: 'Inclusive Sans', fontSize: 15, color: textColor }}>
                   {formatBirthday(profileData.birthday) || '—'}
                 </Text>
               </View>
@@ -1064,7 +1064,7 @@ export default function Profile() {
             {errors.birthday && (
               <Text
                 style={{
-                  fontFamily: 'Inter-Regular',
+                  fontFamily: 'Inclusive Sans',
                   fontSize: 13,
                   color: '#DC2626',
                   marginTop: 6,
@@ -1104,7 +1104,7 @@ export default function Profile() {
             >
               <Text
                 style={{
-                  fontFamily: 'Inter-Regular',
+                  fontFamily: 'Inclusive Sans',
                   fontSize: 15,
                   color: mutedTextColor,
                   lineHeight: 24,
@@ -1116,7 +1116,7 @@ export default function Profile() {
           )}
           {errors.bio && (
             <Text
-              style={{ fontFamily: 'Inter-Regular', fontSize: 13, color: '#DC2626', marginTop: 6 }}
+              style={{ fontFamily: 'Inclusive Sans', fontSize: 13, color: '#DC2626', marginTop: 6 }}
             >
               {errors.bio}
             </Text>
@@ -1205,7 +1205,7 @@ export default function Profile() {
                       >
                         <Text
                           style={{
-                            fontFamily: 'Inter-Regular',
+                            fontFamily: 'Inclusive Sans',
                             fontSize: 14,
                             color:
                               profileData.centerID === center.centerID ? '#C2410C' : textColor,
@@ -1236,7 +1236,7 @@ export default function Profile() {
               <MapPin size={18} color={mutedTextColor} style={{ marginTop: 2 }} />
               <Text
                 style={{
-                  fontFamily: 'Inter-Regular',
+                  fontFamily: 'Inclusive Sans',
                   fontSize: 15,
                   color: mutedTextColor,
                   flex: 1,
@@ -1255,7 +1255,7 @@ export default function Profile() {
         <View>
           <Text
             style={{
-              fontFamily: 'Inter-SemiBold',
+              fontFamily: 'Inclusive Sans',
               fontSize: 12,
               color: labelColor,
               letterSpacing: 1,
@@ -1285,7 +1285,7 @@ export default function Profile() {
                 >
                   <Text
                     style={{
-                      fontFamily: 'Inter-SemiBold',
+                      fontFamily: 'Inclusive Sans',
                       fontSize: 14,
                       color: selected ? '#FFFFFF' : mutedTextColor,
                     }}
@@ -1298,7 +1298,7 @@ export default function Profile() {
           </View>
           {errors.interests && (
             <Text
-              style={{ fontFamily: 'Inter-Regular', fontSize: 13, color: '#DC2626', marginTop: 8 }}
+              style={{ fontFamily: 'Inclusive Sans', fontSize: 13, color: '#DC2626', marginTop: 8 }}
             >
               {errors.interests}
             </Text>
@@ -1308,7 +1308,7 @@ export default function Profile() {
         {/* Form-level errors */}
         {(errors.form || errors.profileImage) && (
           <Text
-            style={{ fontFamily: 'Inter-Regular', fontSize: 13, color: '#DC2626', marginTop: 8 }}
+            style={{ fontFamily: 'Inclusive Sans', fontSize: 13, color: '#DC2626', marginTop: 8 }}
           >
             {errors.form || errors.profileImage}
           </Text>
@@ -1329,7 +1329,7 @@ export default function Profile() {
               justifyContent: 'center',
             }}
           >
-            <Text style={{ fontFamily: 'Inter-SemiBold', fontSize: 14, color: textColor }}>
+            <Text style={{ fontFamily: 'Inclusive Sans', fontSize: 14, color: textColor }}>
               Cancel
             </Text>
           </Pressable>

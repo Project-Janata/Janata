@@ -58,7 +58,7 @@ function FieldRow({
     <View style={{ gap: 6 }}>
       <Text
         style={{
-          fontFamily: 'Inter-Medium',
+          fontFamily: 'Inclusive Sans',
           fontSize: 11,
           color: colors.textMuted,
           letterSpacing: 0.5,
@@ -69,13 +69,13 @@ function FieldRow({
         {required ? <Text style={{ color: '#E8862A' }}> *</Text> : null}
       </Text>
       {hint && !error ? (
-        <Text style={{ fontFamily: 'Inter-Regular', fontSize: 12, color: colors.textMuted }}>
+        <Text style={{ fontFamily: 'Inclusive Sans', fontSize: 12, color: colors.textMuted }}>
           {hint}
         </Text>
       ) : null}
       {children}
       {error ? (
-        <Text style={{ fontFamily: 'Inter-Regular', fontSize: 12, color: '#DC2626' }}>
+        <Text style={{ fontFamily: 'Inclusive Sans', fontSize: 12, color: '#DC2626' }}>
           {error}
         </Text>
       ) : null}
@@ -107,7 +107,7 @@ function NativeDateTimeInput({
       onChange={(e) => onChange(e.target.value)}
       min={min}
       style={{
-        fontFamily: 'Inter, -apple-system, sans-serif',
+        fontFamily: 'Inclusive Sans, -apple-system, sans-serif',
         fontSize: 15,
         color: colors.text,
         padding: '12px 14px',
@@ -300,7 +300,7 @@ export default function EventFormPage() {
   }
 
   const inputStyle = (hasError?: boolean) => ({
-    fontFamily: 'Inter-Regular' as const,
+    fontFamily: 'Inclusive Sans' as const,
     fontSize: 15,
     color: colors.text,
     paddingHorizontal: 14,
@@ -347,14 +347,14 @@ export default function EventFormPage() {
             style={{ flexDirection: 'row', alignItems: 'center', gap: 4, marginBottom: 8 }}
           >
             <ChevronLeft size={18} color={colors.iconHeader} />
-            <Text style={{ fontFamily: 'Inter-Regular', fontSize: 14, color: colors.iconHeader }}>
+            <Text style={{ fontFamily: 'Inclusive Sans', fontSize: 14, color: colors.iconHeader }}>
               Back
             </Text>
           </Pressable>
-          <Text style={{ fontFamily: 'Inter-Bold', fontSize: isNarrow ? 22 : 28, color: colors.text, letterSpacing: -0.5 }}>
+          <Text style={{ fontFamily: 'Inclusive Sans', fontSize: isNarrow ? 22 : 28, color: colors.text, letterSpacing: -0.5 }}>
             {isEdit ? 'Edit Event' : 'Create Event'}
           </Text>
-          <Text style={{ fontFamily: 'Inter-Regular', fontSize: 14, color: colors.textMuted, marginTop: 2 }}>
+          <Text style={{ fontFamily: 'Inclusive Sans', fontSize: 14, color: colors.textMuted, marginTop: 2 }}>
             {isEdit
               ? 'Update event details below'
               : 'Fill in the details to create a new event. Fields marked * are required.'}
@@ -384,7 +384,7 @@ export default function EventFormPage() {
               backgroundColor: 'rgba(220,38,38,0.08)',
             }}
           >
-            <Text style={{ fontFamily: 'Inter-Medium', fontSize: 13, color: '#DC2626' }}>
+            <Text style={{ fontFamily: 'Inclusive Sans', fontSize: 13, color: '#DC2626' }}>
               {errors.submit}
             </Text>
           </View>
@@ -459,7 +459,7 @@ export default function EventFormPage() {
           >
             <Text
               style={{
-                fontFamily: 'Inter-Regular',
+                fontFamily: 'Inclusive Sans',
                 fontSize: 15,
                 color: centerName ? colors.text : colors.textMuted,
               }}
@@ -500,7 +500,7 @@ export default function EventFormPage() {
                   >
                     <Text
                       style={{
-                        fontFamily: center.centerID === centerID ? 'Inter-Medium' : 'Inter-Regular',
+                        fontFamily: center.centerID === centerID ? 'Inclusive Sans' : 'Inclusive Sans',
                         fontSize: 14,
                         color: center.centerID === centerID ? '#E8862A' : colors.text,
                       }}
@@ -510,7 +510,7 @@ export default function EventFormPage() {
                     {center.address ? (
                       <Text
                         style={{
-                          fontFamily: 'Inter-Regular',
+                          fontFamily: 'Inclusive Sans',
                           fontSize: 12,
                           color: colors.textSecondary,
                           marginTop: 2,
@@ -523,7 +523,7 @@ export default function EventFormPage() {
                 ))}
                 {centers.length === 0 && (
                   <View style={{ paddingHorizontal: 14, paddingVertical: 16, alignItems: 'center' }}>
-                    <Text style={{ fontFamily: 'Inter-Regular', fontSize: 13, color: colors.textMuted }}>
+                    <Text style={{ fontFamily: 'Inclusive Sans', fontSize: 13, color: colors.textMuted }}>
                       No centers available
                     </Text>
                   </View>
@@ -612,12 +612,12 @@ export default function EventFormPage() {
               }}
             >
               <View style={{ flex: 1 }}>
-                <Text style={{ fontFamily: 'Inter-Medium', fontSize: 14, color: colors.text }}>
+                <Text style={{ fontFamily: 'Inclusive Sans', fontSize: 14, color: colors.text }}>
                   Also accept Janata RSVPs
                 </Text>
                 <Text
                   style={{
-                    fontFamily: 'Inter-Regular',
+                    fontFamily: 'Inclusive Sans',
                     fontSize: 12,
                     color: colors.textMuted,
                     marginTop: 2,
@@ -658,7 +658,7 @@ export default function EventFormPage() {
                 >
                   <Text
                     style={{
-                      fontFamily: selected ? 'Inter-SemiBold' : 'Inter-Regular',
+                      fontFamily: selected ? 'Inclusive Sans' : 'Inclusive Sans',
                       fontSize: 13,
                       color: selected ? '#FFFFFF' : colors.textSecondary,
                     }}
@@ -685,7 +685,7 @@ export default function EventFormPage() {
             />
             <Text
               style={{
-                fontFamily: 'Inter-Medium',
+                fontFamily: 'Inclusive Sans',
                 fontSize: 12,
                 color: colors.textMuted,
                 letterSpacing: 0.4,
@@ -695,7 +695,7 @@ export default function EventFormPage() {
               Advanced location
             </Text>
             {(errors.latitude || errors.longitude) ? (
-              <Text style={{ fontFamily: 'Inter-Regular', fontSize: 12, color: '#DC2626' }}>
+              <Text style={{ fontFamily: 'Inclusive Sans', fontSize: 12, color: '#DC2626' }}>
                 · check coordinates
               </Text>
             ) : null}

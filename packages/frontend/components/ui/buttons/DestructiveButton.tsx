@@ -24,7 +24,7 @@ export default function DestructiveButton({ children, onPress, disabled, loading
       {loading ? (
         <ActivityIndicator size="small" color="#FFFFFF" />
       ) : (
-        <Text className="text-backgroundStrong font-inter text-bold text-gray-100 leading-4 text-center">
+        <Text className="text-backgroundStrong font-sans text-bold text-gray-100 leading-4 text-center">
           {children}
         </Text>
       )}

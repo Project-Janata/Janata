@@ -101,7 +101,7 @@ export default function CenterDetailPanel({
             <ChevronLeft size={20} color={colors.iconHeader} />
             <Text
               style={{
-                fontFamily: 'Inter-Regular',
+                fontFamily: 'Inclusive Sans',
                 fontSize: 14,
                 color: colors.iconHeader,
               }}
@@ -115,7 +115,7 @@ export default function CenterDetailPanel({
         {/* Title row */}
         <Text
           style={{
-            fontFamily: 'Inter-Bold',
+            fontFamily: 'Inclusive Sans',
             fontSize: 20,
             color: colors.text,
             lineHeight: 26,
@@ -132,7 +132,7 @@ export default function CenterDetailPanel({
                 <Users size={13} color={colors.textSecondary} />
                 <Text
                   style={{
-                    fontFamily: 'Inter-Medium',
+                    fontFamily: 'Inclusive Sans',
                     fontSize: 13,
                     color: colors.textSecondary,
                   }}
@@ -149,7 +149,7 @@ export default function CenterDetailPanel({
                 <BadgeCheck size={13} color="#E8862A" />
                 <Text
                   style={{
-                    fontFamily: 'Inter-Medium',
+                    fontFamily: 'Inclusive Sans',
                     fontSize: 13,
                     color: '#E8862A',
                   }}
@@ -188,7 +188,7 @@ export default function CenterDetailPanel({
           {center.pointOfContact ? (
             <Text
               style={{
-                fontFamily: 'Inter-Regular',
+                fontFamily: 'Inclusive Sans',
                 fontSize: 13,
                 color: colors.textSecondary,
                 marginBottom: 16,
@@ -219,7 +219,7 @@ export default function CenterDetailPanel({
                 <View style={{ flex: 1, gap: 8 }}>
                   <Text
                     style={{
-                      fontFamily: 'Inter-Medium',
+                      fontFamily: 'Inclusive Sans',
                       fontSize: 14,
                       color: colors.text,
                       lineHeight: 20,
@@ -234,7 +234,7 @@ export default function CenterDetailPanel({
                   >
                     <Text
                       style={{
-                        fontFamily: 'Inter-SemiBold',
+                        fontFamily: 'Inclusive Sans',
                         fontSize: 14,
                         color: '#E8862A',
                       }}
@@ -267,7 +267,7 @@ export default function CenterDetailPanel({
                 </View>
                 <Text
                   style={{
-                    fontFamily: 'Inter-Medium',
+                    fontFamily: 'Inclusive Sans',
                     fontSize: 14,
                     color: '#E8862A',
                     lineHeight: 20,
@@ -301,7 +301,7 @@ export default function CenterDetailPanel({
                 </View>
                 <Text
                   style={{
-                    fontFamily: 'Inter-Medium',
+                    fontFamily: 'Inclusive Sans',
                     fontSize: 14,
                     color: colors.text,
                     lineHeight: 20,
@@ -332,7 +332,7 @@ export default function CenterDetailPanel({
                 <View style={{ flex: 1, justifyContent: 'center' }}>
                   <Text
                     style={{
-                      fontFamily: 'Inter-Medium',
+                      fontFamily: 'Inclusive Sans',
                       fontSize: 14,
                       color: colors.text,
                       lineHeight: 20,
@@ -342,7 +342,7 @@ export default function CenterDetailPanel({
                   </Text>
                   <Text
                     style={{
-                      fontFamily: 'Inter-Regular',
+                      fontFamily: 'Inclusive Sans',
                       fontSize: 13,
                       color: colors.textSecondary,
                       lineHeight: 18,
@@ -399,7 +399,7 @@ export default function CenterDetailPanel({
                         >
                           <Text
                             style={{
-                              fontFamily: 'Inter-SemiBold',
+                              fontFamily: 'Inclusive Sans',
                               fontSize: 11,
                               color: '#E8862A',
                               textTransform: 'uppercase',
@@ -410,7 +410,7 @@ export default function CenterDetailPanel({
                           </Text>
                           <Text
                             style={{
-                              fontFamily: 'Inter-SemiBold',
+                              fontFamily: 'Inclusive Sans',
                               fontSize: 22,
                               color: colors.text,
                               lineHeight: 28,
@@ -430,7 +430,7 @@ export default function CenterDetailPanel({
                         <View style={{ flex: 1 }}>
                           <Text
                             style={{
-                              fontFamily: 'Inter-SemiBold',
+                              fontFamily: 'Inclusive Sans',
                               fontSize: 14,
                               color: colors.text,
                               lineHeight: 20,
@@ -441,7 +441,7 @@ export default function CenterDetailPanel({
                           </Text>
                           <Text
                             style={{
-                              fontFamily: 'Inter-Regular',
+                              fontFamily: 'Inclusive Sans',
                               fontSize: 12,
                               color: colors.textSecondary,
                               lineHeight: 16,
@@ -457,7 +457,7 @@ export default function CenterDetailPanel({
                 </View>
               ) : (
                 <View style={{ alignItems: 'center', paddingVertical: 32 }}>
-                  <Text style={{ fontFamily: 'Inter-Regular', fontSize: 14, color: colors.textSecondary }}>
+                  <Text style={{ fontFamily: 'Inclusive Sans', fontSize: 14, color: colors.textSecondary }}>
                     No upcoming events yet
                   </Text>
                 </View>

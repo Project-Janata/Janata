@@ -141,12 +141,12 @@ export default function WebAvatarCropper({
               fontSize: 15,
               cursor: 'pointer',
               padding: 0,
-              fontFamily: 'Inter, sans-serif',
+              fontFamily: 'Inclusive Sans, sans-serif',
             }}
           >
             Cancel
           </button>
-          <span style={{ color: '#fff', fontSize: 16, fontWeight: 600, fontFamily: 'Inter, sans-serif' }}>
+          <span style={{ color: '#fff', fontSize: 16, fontWeight: 600, fontFamily: 'Inclusive Sans, sans-serif' }}>
             Adjust profile photo
           </span>
           <div style={{ display: 'flex', gap: 16 }}>
@@ -160,7 +160,7 @@ export default function WebAvatarCropper({
                   fontSize: 14,
                   cursor: 'pointer',
                   padding: 0,
-                  fontFamily: 'Inter, sans-serif',
+                  fontFamily: 'Inclusive Sans, sans-serif',
                 }}
               >
                 Change
@@ -177,7 +177,7 @@ export default function WebAvatarCropper({
                 fontWeight: 600,
                 cursor: isSaving ? 'not-allowed' : 'pointer',
                 padding: 0,
-                fontFamily: 'Inter, sans-serif',
+                fontFamily: 'Inclusive Sans, sans-serif',
               }}
             >
               {isSaving ? 'Saving...' : 'Done'}
@@ -202,7 +202,7 @@ export default function WebAvatarCropper({
 
         {/* Zoom slider */}
         <div style={{ width: '100%', marginTop: 20, display: 'flex', alignItems: 'center', gap: 12 }}>
-          <span style={{ color: '#9ca3af', fontSize: 12, fontFamily: 'Inter, sans-serif' }}>Zoom</span>
+          <span style={{ color: '#9ca3af', fontSize: 12, fontFamily: 'Inclusive Sans, sans-serif' }}>Zoom</span>
           <input
             type="range"
             min={1}
@@ -221,7 +221,7 @@ export default function WebAvatarCropper({
             color: '#9ca3af',
             fontSize: 13,
             textAlign: 'center',
-            fontFamily: 'Inter, sans-serif',
+            fontFamily: 'Inclusive Sans, sans-serif',
           }}
         >
           Drag to reposition · Scroll to zoom

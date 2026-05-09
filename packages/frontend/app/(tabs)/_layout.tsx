@@ -18,6 +18,7 @@ export default function TabLayout() {
   const [settingsVisible, setSettingsVisible] = useState(false)
   const canCreate = !!user
   const posthog = usePostHog()
+  const tabBarShowLabel = Platform.OS === 'web'
 
   useEffect(() => {
     if (Platform.OS !== 'web' && !loading && !user) {
@@ -68,7 +69,10 @@ export default function TabLayout() {
       >
         {/* Left: Logo + Nav */}
         <View style={{ flexDirection: 'row', alignItems: 'center', gap: 24 }}>
-          <Pressable onPress={() => router.push('/')} style={{ flexDirection: 'row', alignItems: 'center', gap: 10 }}>
+          <Pressable
+            onPress={() => router.push('/')}
+            style={{ flexDirection: 'row', alignItems: 'center', gap: 10 }}
+          >
             <Logo size={28} />
           </Pressable>
           <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
@@ -91,7 +95,7 @@ export default function TabLayout() {
                 >
                   <Text
                     style={{
-                      fontFamily: active ? 'Inter-SemiBold' : 'Inter-Medium',
+                      fontFamily: active ? 'Inclusive Sans' : 'Inclusive Sans',
                       fontSize: 14,
                       color: active ? '#E8862A' : isDark ? '#E7E5E4' : '#44403C',
                     }}
@@ -131,7 +135,7 @@ export default function TabLayout() {
               }}
             >
               <Plus size={16} color="#E8862A" />
-              <Text style={{ fontFamily: 'Inter-SemiBold', fontSize: 13, color: '#E8862A' }}>
+              <Text style={{ fontFamily: 'Inclusive Sans', fontSize: 13, color: '#E8862A' }}>
                 Create Event
               </Text>
             </Pressable>
@@ -156,7 +160,9 @@ export default function TabLayout() {
                   justifyContent: 'center',
                 }}
               >
-                <Text style={{ color: '#fff', fontSize: 14, fontWeight: '600' }}>{getInitials()}</Text>
+                <Text style={{ color: '#fff', fontSize: 14, fontWeight: '600' }}>
+                  {getInitials()}
+                </Text>
               </View>
             )}
           </Pressable>
@@ -202,6 +208,7 @@ export default function TabLayout() {
           <Tabs.Screen
             name="index"
             options={{
+              tabBarShowLabel: tabBarShowLabel,
               title: 'Home',
               header: isWeb
                 ? () => <WebHeader />
@@ -232,6 +239,7 @@ export default function TabLayout() {
           <Tabs.Screen
             name="explore"
             options={{
+              tabBarShowLabel: false,
               title: 'Explore',
               headerTransparent: !isWeb,
               header: isWeb
@@ -243,6 +251,7 @@ export default function TabLayout() {
           <Tabs.Screen
             name="feed"
             options={{
+              tabBarShowLabel: false,
               title: 'Feed',
               header: isWeb ? () => <WebHeader /> : () => <TabHeader title="Feed" showPlus />,
               tabBarIcon: ({ color, size }) => <Newspaper size={size} color={color} />,
@@ -251,6 +260,7 @@ export default function TabLayout() {
           <Tabs.Screen
             name="chat"
             options={{
+              tabBarShowLabel: false,
               title: 'Chat',
               header: isWeb ? () => <WebHeader /> : () => <TabHeader title="Chat" showPlus />,
               tabBarIcon: ({ color, size }) => <MessageSquare size={size} color={color} />,

@@ -37,7 +37,7 @@ export default function PrimaryButton({
       {loading ? (
         <ActivityIndicator size="small" color="#FFFFFF" />
       ) : (
-        <Text className="text-white font-inter text-base leading-5 text-center">{children}</Text>
+        <Text className="text-white font-sans text-base leading-5 text-center">{children}</Text>
       )}
     </Pressable>
   )

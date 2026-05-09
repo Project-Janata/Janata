@@ -39,10 +39,10 @@ export default function Step4() {
           <View className="w-full">
             {/* Header */}
             <View className="mb-8">
-              <Text className="text-4xl font-inter font-bold text-content dark:text-content-dark text-center mb-3">
+              <Text className="text-4xl font-sans font-bold text-content dark:text-content-dark text-center mb-3">
                 What are your interests?
               </Text>
-              <Text className="text-lg font-inter text-stone-500 dark:text-stone-400 text-center">
+              <Text className="text-lg font-sans text-stone-500 dark:text-stone-400 text-center">
                 Select topics that interest you to personalize your experience.
               </Text>
             </View>
@@ -62,7 +62,7 @@ export default function Step4() {
                     }`}
                   >
                     <Text
-                      className={`font-inter font-semibold text-base ${
+                      className={`font-sans font-semibold text-base ${
                         isSelected ? 'text-white' : 'text-stone-600 dark:text-stone-300'
                       }`}
                     >
@@ -76,7 +76,7 @@ export default function Step4() {
             {/* Error Message */}
             {error && (
               <View className="w-full max-w-md self-center mt-4 bg-red-50 dark:bg-red-900/20 rounded-xl p-4">
-                <Text className="text-red-600 dark:text-red-400 font-inter text-center">
+                <Text className="text-red-600 dark:text-red-400 font-sans text-center">
                   {error}
                 </Text>
               </View>
@@ -95,7 +95,7 @@ export default function Step4() {
           </PrimaryButton>
           {returnTo && (
             <Pressable onPress={skipOnboarding} disabled={isSubmitting} style={{ alignSelf: 'center', marginTop: 12 }}>
-              <Text className="text-sm font-inter text-stone-400 dark:text-stone-500">
+              <Text className="text-sm font-sans text-stone-400 dark:text-stone-500">
                 Skip for now
               </Text>
             </Pressable>
