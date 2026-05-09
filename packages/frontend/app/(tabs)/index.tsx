@@ -252,8 +252,6 @@ export default function HomeScreen() {
           name={user ? `Namaste, ${greetingName}` : 'Namaste'}
           textColor={textColor}
           mutedColor={mutedColor}
-          isDark={isDark}
-          onBellPress={() => router.push('/(tabs)/connect' as never)}
         />
 
         <Section eyebrow="UP NEXT FOR YOU" trailing="See all" mutedColor={faintColor} accentColor={accentColor} onTrailingPress={() => router.push('/' as never)}>
@@ -371,64 +369,29 @@ function Greeting({
   name,
   textColor,
   mutedColor,
-  isDark,
-  onBellPress,
 }: {
   dateLabel: string
   name: string
   textColor: string
   mutedColor: string
-  isDark: boolean
-  onBellPress: () => void
 }) {
   return (
-    <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12 }}>
-      <View style={{ flex: 1, gap: 4 }}>
-        <Text style={{ fontFamily: 'Inter-Medium', fontSize: 12.5, color: mutedColor, letterSpacing: 0.2 }}>
-          {dateLabel}
-        </Text>
-        <Text
-          style={{
-            fontFamily: 'Inter-Bold',
-            fontSize: 30,
-            lineHeight: 34,
-            letterSpacing: -0.5,
-            color: textColor,
-          }}
-          numberOfLines={1}
-        >
-          {name}
-        </Text>
-      </View>
-      <Pressable
-        onPress={onBellPress}
-        hitSlop={8}
+    <View style={{ gap: 4 }}>
+      <Text style={{ fontFamily: 'Inter-Medium', fontSize: 12.5, color: mutedColor, letterSpacing: 0.2 }}>
+        {dateLabel}
+      </Text>
+      <Text
         style={{
-          width: 40,
-          height: 40,
-          borderRadius: 20,
-          alignItems: 'center',
-          justifyContent: 'center',
-          backgroundColor: isDark ? '#1F1F1F' : '#FFFFFF',
-          borderWidth: 1,
-          borderColor: isDark ? '#262626' : '#ECE7DE',
+          fontFamily: 'Inter-Bold',
+          fontSize: 30,
+          lineHeight: 34,
+          letterSpacing: -0.5,
+          color: textColor,
         }}
+        numberOfLines={1}
       >
-        <Bell size={18} color={isDark ? '#D6D3D1' : '#44403C'} />
-        <View
-          style={{
-            position: 'absolute',
-            top: 9,
-            right: 11,
-            width: 8,
-            height: 8,
-            borderRadius: 4,
-            backgroundColor: '#E8862A',
-            borderWidth: 1.5,
-            borderColor: isDark ? '#1F1F1F' : '#FFFFFF',
-          }}
-        />
-      </Pressable>
+        {name}
+      </Text>
     </View>
   )
 }
