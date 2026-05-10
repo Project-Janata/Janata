@@ -2,7 +2,6 @@ import React, { useState, useEffect, useRef } from 'react'
 import {
   ScrollView,
   View,
-  Text,
   TextInput,
   Pressable,
   Image,
@@ -11,10 +10,11 @@ import {
   useWindowDimensions,
 } from 'react-native'
 import { Camera, Pencil, MapPin } from 'lucide-react-native'
-import { useUser, useTheme } from '../../components/contexts'
-import BirthdatePicker from '../../components/BirthdatePicker'
-import WebAvatarCropper from '../../components/AvatarCropper.web'
-import { fetchCenters, CenterData } from '../../utils/api'
+import { useUser, useTheme } from '../components/contexts'
+import { Text } from '../components/ui'
+import BirthdatePicker from '../components/BirthdatePicker'
+import WebAvatarCropper from '../components/AvatarCropper.web'
+import { fetchCenters, CenterData } from '../utils/api'
 
 type ProfileData = {
   name: string
@@ -367,10 +367,10 @@ export default function Profile() {
   }
 
   const labelColor = isDark ? '#78716C' : '#A8A29E'
-  const textColor = isDark ? '#F5F5F5' : '#1C1917'
+  const textColor = isDark ? '#FAFAFA' : '#1C1917'
   const mutedTextColor = isDark ? '#A8A29E' : '#78716C'
-  const borderColor = isDark ? '#262626' : '#E5E7EB'
-  const cardBg = isDark ? '#171717' : '#FFFFFF'
+  const borderColor = isDark ? '#262626' : '#ECE7DE'
+  const cardBg = isDark ? '#262626' : '#FFFFFF'
   const chipBg = isDark ? '#262626' : '#F3F0ED'
 
   const inputStyle = {
@@ -877,15 +877,15 @@ export default function Profile() {
           <View style={{ gap: 4 }}>
             <Text
               style={{
-                fontFamily: 'Inclusive Sans',
-                fontSize: isNarrowWeb ? 24 : 28,
+                fontSize: isNarrowWeb ? 28 : 34,
+                fontWeight: '600',
                 color: textColor,
                 letterSpacing: -0.5,
               }}
             >
               Profile
             </Text>
-            <Text style={{ fontFamily: 'Inclusive Sans', fontSize: 15, color: mutedTextColor }}>
+            <Text style={{ fontSize: 15, color: mutedTextColor, marginTop: 4 }}>
               Manage your public profile information
             </Text>
           </View>

@@ -9,9 +9,9 @@ const optionWidth = 70
 export default function ThemeSelector({ style, className }: { style?: any; className?: string }) {
   const { preference: themePreference, setPreference: setThemePreference, isDark } = useTheme()
 
-  // Single source of truth — never mix themePreference + isDark for colors
-  const fg = isDark ? '#fff' : '#374151'
-  const selectedBg = isDark ? '#3f3f46' : '#e5e7eb'
+  const textColor = isDark ? '#FAFAFA' : '#1C1917'
+  const mutedColor = isDark ? '#737373' : '#A8A29E'
+  const accentColor = '#C2410C'
 
   const getLabel = (option: (typeof themeOptions)[number]) => {
     if (option === 'system') return 'Auto'
@@ -20,31 +20,38 @@ export default function ThemeSelector({ style, className }: { style?: any; class
 
   return (
     <View
-      className={`relative flex-row bg-gray-100 dark:bg-neutral-800 rounded-lg p-1 ${className || ''}`}
-      style={{ width: optionWidth * themeOptions.length + 8, ...(style || {}) }}
+      className={className || ''}
+      style={{ flexDirection: 'row', gap: 8, ...(style || {}) }}
     >
       {themeOptions.map((option) => {
         const isSelected = themePreference === option
-        const iconColor = isSelected ? '#f97316' : fg
-        const textColor = isSelected ? '#f97316' : fg
+        const iconColor = isSelected ? accentColor : mutedColor
+        const labelColor = isSelected ? textColor : mutedColor
 
         return (
           <Pressable
             key={option}
             onPress={() => setThemePreference(option)}
-            className="flex-row items-center justify-center gap-1 py-2 px-3 rounded-md"
             style={{
-              width: optionWidth,
-              backgroundColor: isSelected ? selectedBg : 'transparent',
+              flex: 1,
+              flexDirection: 'row',
+              alignItems: 'center',
+              justifyContent: 'center',
+              gap: 6,
+              paddingVertical: 12,
+              paddingHorizontal: 12,
+              borderRadius: 10,
+              borderWidth: 1.5,
+              borderColor: isSelected ? accentColor : 'transparent',
             }}
           >
-            {option === 'light' && <Sun size={14} color={iconColor} />}
-            {option === 'dark' && <Moon size={14} color={iconColor} />}
-            {option === 'system' && <Monitor size={14} color={iconColor} />}
+            {option === 'light' && <Sun size={16} color={iconColor} />}
+            {option === 'dark' && <Moon size={16} color={iconColor} />}
+            {option === 'system' && <Monitor size={16} color={iconColor} />}
             <Text
               style={{
-                color: textColor,
-                fontSize: 12,
+                color: labelColor,
+                fontSize: 13,
                 fontFamily: 'Inclusive Sans',
                 fontWeight: isSelected ? '600' : '400',
               }}

@@ -4,6 +4,17 @@
 @tailwind components;
 @tailwind utilities;
 
+/* Smooth theme transitions */
+html.theme-transitioning,
+html.theme-transitioning *,
+html.theme-transitioning *::before,
+html.theme-transitioning *::after {
+  transition: background-color 300ms ease-in-out,
+              border-color 300ms ease-in-out,
+              color 300ms ease-in-out !important;
+  transition-delay: 0ms !important;
+}
+
 @theme {
   --font-sans: 'Inclusive Sans', ui-sans-serif, system-ui, sans-serif;
   --font-serif: ui-serif, Georgia, Cambria, serif;

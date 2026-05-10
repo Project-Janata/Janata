@@ -37,8 +37,8 @@ export default function TabHeader({
   const { triggerCreate } = useHeaderAction()
   const insets = useSafeAreaInsets()
 
-  const bgColor = transparent ? 'transparent' : isDark ? '#000000' : '#FFFFFF'
-  const textColor = transparent ? '#FFFFFF' : isDark ? '#FAFAF9' : '#1F1D1B'
+  const bgColor = transparent ? 'transparent' : isDark ? '#262626' : '#FFFFFF'
+  const textColor = transparent ? '#FFFFFF' : isDark ? '#FAFAFA' : '#1C1917'
 
   const displayName =
     user?.firstName && user?.lastName ? `${user.firstName} ${user.lastName}` : user?.username || ''
@@ -84,7 +84,7 @@ export default function TabHeader({
                 style={{
                   fontFamily: 'Inclusive Sans',
                   fontSize: 16,
-                  color: isDark ? '#FAFAF9' : '#1F1D1B',
+                  color: isDark ? '#FAFAFA' : '#1C1917',
                 }}
               >
                 {title}
@@ -122,7 +122,7 @@ export default function TabHeader({
           >
             <Plus
               size={18}
-              color={transparent ? '#FFFFFF' : isDark ? '#FAFAF9' : '#1C1917'}
+              color={transparent ? '#FFFFFF' : isDark ? '#FAFAFA' : '#1C1917'}
               strokeWidth={2}
             />
           </Pressable>

@@ -14,28 +14,25 @@ export function Section({
   title,
   children,
   containerStyle,
-  titleColor = '#78716C',
-  borderColor = '#E5E7EB',
+  titleColor = '#A8A29E',
+  borderColor,
 }: SectionProps) {
   return (
-    <View style={[{ marginBottom: 24 }, containerStyle]}>
+    <View style={[{ marginBottom: 22, gap: 10 }, containerStyle]}>
       {title && (
         <Text
           style={{
-            fontSize: 13,
-            fontWeight: '600',
+            fontSize: 11,
+            fontWeight: '400',
             color: titleColor,
-            textTransform: 'uppercase',
-            paddingHorizontal: 16,
-            paddingBottom: 8,
+            letterSpacing: 0.9,
+            paddingHorizontal: 4,
           }}
         >
           {title}
         </Text>
       )}
-      <View style={{ borderTopWidth: 1, borderBottomWidth: 1, borderColor }}>
-        {children}
-      </View>
+      {children}
     </View>
   )
 }

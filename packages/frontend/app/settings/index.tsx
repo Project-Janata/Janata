@@ -30,10 +30,12 @@ export default function PreferencesNative() {
   const [showDeleteModal, setShowDeleteModal] = useState(false)
   const currentYear = new Date().getFullYear()
 
-  const textColor = isDark ? '#F5F5F5' : '#1C1917'
+  const textColor = isDark ? '#FAFAFA' : '#1C1917'
   const mutedTextColor = isDark ? '#A8A29E' : '#78716C'
-  const borderColor = isDark ? '#262626' : '#E5E7EB'
-  const cardBg = isDark ? '#171717' : '#FFFFFF'
+  const faintColor = isDark ? '#737373' : '#A8A29E'
+  const borderColor = isDark ? '#262626' : '#ECE7DE'
+  const cardBg = isDark ? '#262626' : '#FFFFFF'
+  const pageBg = isDark ? '#1A1A1A' : '#F5F5F4'
 
   const handleLogout = async () => {
     posthog?.capture('nav_logout')
@@ -139,113 +141,154 @@ export default function PreferencesNative() {
   )
 
   return (
-    <SafeAreaView
-      style={{ flex: 1, backgroundColor: isDark ? '#000' : '#fff' }}
-      edges={['top', 'bottom']}
-    >
-      <StatusBar barStyle={isDark ? 'light-content' : 'dark-content'} />
+    <View style={{ flex: 1 }}>
+      <SafeAreaView
+        style={{ backgroundColor: cardBg }}
+        edges={['top']}
+      >
+        <StatusBar barStyle={isDark ? 'light-content' : 'dark-content'} />
 
-      {/* Header */}
-      <View
-        style={{
-          flexDirection: 'row',
-          alignItems: 'center',
-          justifyContent: 'space-between',
-          paddingHorizontal: 8,
-          paddingVertical: 8,
-          borderBottomWidth: 1,
-          borderColor,
-          backgroundColor: isDark ? '#000' : '#fff',
+        {/* Header */}
+        <View
+          style={{
+            paddingHorizontal: 20,
+            paddingTop: 8,
+            paddingBottom: 16,
+            backgroundColor: cardBg,
+            borderBottomWidth: 1,
+            borderBottomColor: borderColor,
+          }}
+        >
+          <Pressable
+            onPress={() => router.back()}
+            style={{
+              alignSelf: 'flex-start',
+              padding: 8,
+              marginLeft: -8,
+              marginBottom: 8,
+            }}
+          >
+            <ArrowLeft size={28} color={textColor} />
+          </Pressable>
+          <Text style={{ fontSize: 30, color: textColor, letterSpacing: -0.5 }}>
+            Preferences
+          </Text>
+        </View>
+      </SafeAreaView>
+
+      <ScrollView
+        style={{ flex: 1, backgroundColor: pageBg }}
+        contentContainerStyle={{
+          paddingHorizontal: 16,
+          paddingTop: 20,
+          paddingBottom: 40,
         }}
       >
-        <Pressable onPress={() => router.back()} style={{ padding: 8 }}>
-          <ArrowLeft size={24} color={textColor} />
-        </Pressable>
-        <Text style={{ fontSize: 17, fontWeight: '600', color: textColor }}>Preferences</Text>
-        <View style={{ width: 40 }} />
-      </View>
-
-      <ScrollView style={{ flex: 1 }} contentContainerStyle={{ paddingTop: 8 }}>
         {/* Appearance */}
-        <Section title="Appearance" titleColor={mutedTextColor} borderColor={borderColor}>
-          <View style={{ paddingVertical: 14, paddingHorizontal: 16, backgroundColor: cardBg }}>
-            <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 12 }}>
-              <Text style={{ fontSize: 16, color: textColor, flex: 1 }}>Theme</Text>
+        <Section title="APPEARANCE" titleColor={faintColor}>
+          <View style={{
+            borderTopWidth: 1,
+            borderBottomWidth: 1,
+            borderColor,
+            marginHorizontal: -16,
+          }}>
+            <View style={{ paddingVertical: 14, paddingHorizontal: 16, backgroundColor: cardBg }}>
+              <ThemeSelector />
             </View>
-            <ThemeSelector />
           </View>
         </Section>
 
         {/* Regulatory */}
-        <Section title="Regulatory" titleColor={mutedTextColor} borderColor={borderColor}>
-          <MenuRow
-            onPress={() => {
-              posthog?.capture('privacy_policy_viewed')
-              router.push('/privacy')
-            }}
-          >
-            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12 }}>
-              <Shield size={20} color={textColor} />
-              <Text style={{ fontSize: 16, color: textColor }}>Privacy Policy</Text>
-            </View>
-          </MenuRow>
-          <MenuRow
-            onPress={() => {
-              posthog?.capture('terms_viewed')
-              router.push('/terms')
-            }}
-          >
-            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12 }}>
-              <FileText size={20} color={textColor} />
-              <Text style={{ fontSize: 16, color: textColor }}>Terms of Service</Text>
-            </View>
-          </MenuRow>
-          <MenuRow
-            onPress={() => {
-              posthog?.capture('cookie_policy_viewed')
-              router.push('/cookies')
-            }}
-          >
-            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12 }}>
-              <Info size={20} color={textColor} />
-              <Text style={{ fontSize: 16, color: textColor }}>Cookie Policy</Text>
-            </View>
-          </MenuRow>
+        <Section title="REGULATORY" titleColor={faintColor}>
+          <View style={{
+            borderTopWidth: 1,
+            borderBottomWidth: 1,
+            borderColor,
+            marginHorizontal: -16,
+          }}>
+            <MenuRow
+              onPress={() => {
+                posthog?.capture('privacy_policy_viewed')
+                router.push('/privacy')
+              }}
+            >
+              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12 }}>
+                <Shield size={20} color={textColor} />
+                <Text style={{ fontSize: 15, color: textColor }}>Privacy Policy</Text>
+              </View>
+            </MenuRow>
+            <MenuRow
+              onPress={() => {
+                posthog?.capture('terms_viewed')
+                router.push('/terms')
+              }}
+            >
+              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12 }}>
+                <FileText size={20} color={textColor} />
+                <Text style={{ fontSize: 15, color: textColor }}>Terms of Service</Text>
+              </View>
+            </MenuRow>
+            <MenuRow
+              onPress={() => {
+                posthog?.capture('cookie_policy_viewed')
+                router.push('/cookies')
+              }}
+            >
+              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12 }}>
+                <Info size={20} color={textColor} />
+                <Text style={{ fontSize: 15, color: textColor }}>Cookie Policy</Text>
+              </View>
+            </MenuRow>
+          </View>
         </Section>
 
         {/* About */}
-        <Section title="About" titleColor={mutedTextColor} borderColor={borderColor}>
-          <AboutInfoRow icon={Info} label="Version" value={APP_VERSION} />
-          <AboutInfoRow
-            icon={Info}
-            label="Chinmaya Janata"
-            value={`© ${currentYear}\nChinmaya Mission`}
-            isLast
-          />
+        <Section title="ABOUT" titleColor={faintColor}>
+          <View style={{
+            borderTopWidth: 1,
+            borderBottomWidth: 1,
+            borderColor,
+            marginHorizontal: -16,
+          }}>
+            <AboutInfoRow icon={Info} label="Version" value={APP_VERSION} />
+            <AboutInfoRow
+              icon={Info}
+              label="Chinmaya Janata"
+              value={`© ${currentYear}\nChinmaya Mission`}
+              isLast
+            />
+          </View>
         </Section>
 
         {/* Account Actions */}
-        <Section borderColor={borderColor}>
-          <MenuRow onPress={handleLogout} showArrow={false}>
-            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12 }}>
-              <LogOut size={20} color="#ef4444" />
-              <Text style={{ fontSize: 16, color: '#ef4444', fontWeight: '600' }}>Log Out</Text>
-            </View>
-          </MenuRow>
-          <MenuRow
-            onPress={() => {
-              posthog?.capture('delete_account_started')
-              setShowDeleteModal(true)
-            }}
-            showArrow={false}
-          >
-            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12 }}>
-              <AlertTriangle size={20} color="#dc2626" />
-              <Text style={{ fontSize: 16, color: '#dc2626', fontWeight: '600' }}>
-                Delete Account
-              </Text>
-            </View>
-          </MenuRow>
+        <Section title="ACCOUNT" titleColor={faintColor}>
+          <View style={{
+            borderTopWidth: 1,
+            borderBottomWidth: 1,
+            borderColor,
+            marginHorizontal: -16,
+          }}>
+            <MenuRow onPress={handleLogout} showArrow={false}>
+              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12 }}>
+                <LogOut size={20} color="#ef4444" />
+                <Text style={{ fontSize: 15, color: '#ef4444', fontWeight: '600' }}>Log Out</Text>
+              </View>
+            </MenuRow>
+            <MenuRow
+              onPress={() => {
+                posthog?.capture('delete_account_started')
+                setShowDeleteModal(true)
+              }}
+              showArrow={false}
+            >
+              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12 }}>
+                <AlertTriangle size={20} color="#dc2626" />
+                <Text style={{ fontSize: 15, color: '#dc2626', fontWeight: '600' }}>
+                  Delete Account
+                </Text>
+              </View>
+            </MenuRow>
+          </View>
         </Section>
 
         <View style={{ height: 40 }} />
@@ -346,6 +389,6 @@ export default function PreferencesNative() {
           </View>
         </View>
       </Modal>
-    </SafeAreaView>
+    </View>
   )
 }

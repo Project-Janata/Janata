@@ -2,7 +2,6 @@ import React, { useState, useEffect, useRef } from 'react'
 import {
   ScrollView,
   View,
-  Text,
   TextInput,
   Pressable,
   Image,
@@ -15,6 +14,7 @@ import { SafeAreaView } from 'react-native-safe-area-context'
 import { Camera, Pencil, MapPin, ArrowLeft, Settings } from 'lucide-react-native'
 import { useRouter, usePathname } from 'expo-router'
 import { useUser, useTheme } from '../components/contexts'
+import { Text } from '../components/ui'
 import BirthdatePicker from '../components/BirthdatePicker'
 import { fetchCenters, CenterData } from '../utils/api'
 
@@ -337,10 +337,10 @@ export default function ProfileNative() {
   }
 
   const labelColor = isDark ? '#78716C' : '#A8A29E'
-  const textColor = isDark ? '#F5F5F5' : '#1C1917'
+  const textColor = isDark ? '#FAFAFA' : '#1C1917'
   const mutedTextColor = isDark ? '#A8A29E' : '#78716C'
-  const borderColor = isDark ? '#262626' : '#E5E7EB'
-  const cardBg = isDark ? '#171717' : '#FFFFFF'
+  const borderColor = isDark ? '#262626' : '#ECE7DE'
+  const cardBg = isDark ? '#262626' : '#FFFFFF'
   const chipBg = isDark ? '#262626' : '#F3F0ED'
 
   const labelStyle = {
@@ -370,44 +370,47 @@ export default function ProfileNative() {
   }
 
   return (
-    <SafeAreaView
-      style={{ flex: 1, backgroundColor: isDark ? '#171717' : '#FAFAF7' }}
-      edges={['top', 'bottom']}
-    >
-      {/* Header */}
-      <View
-        style={{
-          flexDirection: 'row',
-          alignItems: 'center',
-          justifyContent: 'space-between',
-          paddingHorizontal: 8,
-          paddingVertical: 8,
-          borderBottomWidth: 1,
-          borderColor,
-          backgroundColor: isDark ? '#171717' : '#FAFAF7',
-        }}
+    <View style={{ flex: 1 }}>
+      <SafeAreaView
+        style={{ backgroundColor: cardBg }}
+        edges={['top']}
       >
-        <Pressable onPress={() => router.back()} style={{ padding: 8 }}>
-          <ArrowLeft size={24} color={textColor} />
-        </Pressable>
-        <Pressable
-          onPress={() => router.push('/settings' as never)}
-          disabled={isSaving}
-          style={{ padding: 8, minWidth: 40, alignItems: 'center' }}
+        {/* Header */}
+        <View
+          style={{
+            flexDirection: 'row',
+            alignItems: 'center',
+            justifyContent: 'space-between',
+            paddingHorizontal: 8,
+            paddingVertical: 8,
+            borderBottomWidth: 1,
+            borderColor,
+            backgroundColor: cardBg,
+          }}
         >
-          {/* {isSaving ? (
-            <ActivityIndicator size="small" color="#C2410C" />
-          ) : isEditing ? (
-            <Text style={{ fontFamily: 'Inclusive Sans', fontSize: 15, color: '#C2410C' }}>
-              Save
-            </Text>
-          ) : ( */}
-          <Settings size={20} color="#C2410C" />
-          {/* )} */}
-        </Pressable>
-      </View>
+          <Pressable onPress={() => router.back()} style={{ padding: 8 }}>
+            <ArrowLeft size={24} color={textColor} />
+          </Pressable>
+          <Text style={{ fontSize: 17, fontWeight: '600', color: textColor }}>Profile</Text>
+          <Pressable
+            onPress={() => router.push('/settings' as never)}
+            disabled={isSaving}
+            style={{ padding: 8, minWidth: 40, alignItems: 'center' }}
+          >
+            {/* {isSaving ? (
+              <ActivityIndicator size="small" color="#C2410C" />
+            ) : isEditing ? (
+              <Text style={{ fontFamily: 'Inclusive Sans', fontSize: 15, color: '#C2410C' }}>
+                Save
+              </Text>
+            ) : ( */}
+            <Settings size={20} color="#C2410C" />
+            {/* )} */}
+          </Pressable>
+        </View>
+      </SafeAreaView>
 
-      <ScrollView style={{ flex: 1, backgroundColor: isDark ? '#171717' : '#FAFAF7' }}>
+      <ScrollView style={{ flex: 1, backgroundColor: isDark ? '#1A1A1A' : '#F5F5F4' }}>
         <View
           style={{
             flexDirection: 'row',
@@ -780,6 +783,6 @@ export default function ProfileNative() {
 
         <View style={{ height: 40 }} />
       </ScrollView>
-    </SafeAreaView>
+    </View>
   )
 }

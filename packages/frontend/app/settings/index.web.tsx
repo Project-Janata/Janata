@@ -29,11 +29,13 @@ export default function Preferences() {
   const posthog = usePostHog()
   const currentYear = new Date().getFullYear()
 
-  const textColor = isDark ? '#F5F5F5' : '#1C1917'
+  const textColor = isDark ? '#FAFAFA' : '#1C1917'
   const mutedTextColor = isDark ? '#A8A29E' : '#78716C'
-  const cardBg = isDark ? '#171717' : '#FFFFFF'
-  const borderColor = isDark ? '#262626' : '#E5E7EB'
-  const iconColor = isDark ? '#a1a1aa' : '#71717a'
+  const faintColor = isDark ? '#737373' : '#A8A29E'
+  const borderColor = isDark ? '#262626' : '#ECE7DE'
+  const cardBg = isDark ? '#262626' : '#FFFFFF'
+  const pageBg = isDark ? '#1A1A1A' : '#F5F5F4'
+  const iconColor = isDark ? '#A8A29E' : '#78716C'
   const { width: viewportWidth } = useWindowDimensions()
   const isNarrowWeb = Platform.OS === 'web' && viewportWidth < 768
   const webPaddingH = isNarrowWeb ? 16 : viewportWidth < 1024 ? 32 : 60
@@ -56,7 +58,7 @@ export default function Preferences() {
   }
 
   return (
-    <ScrollView style={{ flex: 1, backgroundColor: isDark ? '#171717' : '#FAFAF7' }}>
+    <ScrollView style={{ flex: 1, backgroundColor: pageBg }}>
       <View
         style={{
           maxWidth: 900,
@@ -71,15 +73,14 @@ export default function Preferences() {
         <View>
           <Text
             style={{
-              fontFamily: 'Inclusive Sans',
-              fontSize: isNarrowWeb ? 24 : 28,
+              fontSize: 30,
               color: textColor,
               letterSpacing: -0.5,
             }}
           >
             Preferences
           </Text>
-          <Text style={{ fontFamily: 'Inclusive Sans', fontSize: 15, color: mutedTextColor }}>
+          <Text style={{ fontSize: 15, color: mutedTextColor, marginTop: 4 }}>
             Manage your app preferences
           </Text>
         </View>
@@ -88,9 +89,7 @@ export default function Preferences() {
         <View>
           <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: 12 }}>
             <Eye size={20} color={iconColor} />
-            <Text style={{ fontFamily: 'Inclusive Sans', fontSize: 17, color: textColor }}>
-              Appearance
-            </Text>
+            <Text style={{ fontSize: 17, fontWeight: '600', color: textColor }}>Appearance</Text>
           </View>
           <View
             style={{
@@ -101,9 +100,6 @@ export default function Preferences() {
               padding: isNarrowWeb ? 20 : 28,
             }}
           >
-            <Text style={{ fontFamily: 'Inclusive Sans', fontSize: 14, color: mutedTextColor, marginBottom: 12 }}>
-              Choose your preferred theme
-            </Text>
             <ThemeSelector />
           </View>
         </View>
@@ -112,9 +108,7 @@ export default function Preferences() {
         <View>
           <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: 12 }}>
             <Shield size={20} color={iconColor} />
-            <Text style={{ fontFamily: 'Inclusive Sans', fontSize: 17, color: textColor }}>
-              Privacy
-            </Text>
+            <Text style={{ fontSize: 17, fontWeight: '600', color: textColor }}>Privacy</Text>
           </View>
           <View
             style={{
@@ -139,9 +133,7 @@ export default function Preferences() {
                 router.push('/privacy')
               }}
             >
-              <Text style={{ fontFamily: 'Inclusive Sans', fontSize: 15, color: textColor }}>
-                Privacy Policy
-              </Text>
+              <Text style={{ fontSize: 15, color: textColor }}>Privacy Policy</Text>
               <ExternalLink size={18} color={iconColor} />
             </Pressable>
             <Pressable
@@ -158,9 +150,7 @@ export default function Preferences() {
                 router.push('/terms')
               }}
             >
-              <Text style={{ fontFamily: 'Inclusive Sans', fontSize: 15, color: textColor }}>
-                Terms of Service
-              </Text>
+              <Text style={{ fontSize: 15, color: textColor }}>Terms of Service</Text>
               <ExternalLink size={18} color={iconColor} />
             </Pressable>
             <Pressable
@@ -175,9 +165,7 @@ export default function Preferences() {
                 router.push('/cookies')
               }}
             >
-              <Text style={{ fontFamily: 'Inclusive Sans', fontSize: 15, color: textColor }}>
-                Cookie Policy
-              </Text>
+              <Text style={{ fontSize: 15, color: textColor }}>Cookie Policy</Text>
               <ExternalLink size={18} color={iconColor} />
             </Pressable>
           </View>
@@ -187,9 +175,7 @@ export default function Preferences() {
         <View>
           <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: 12 }}>
             <Info size={20} color={iconColor} />
-            <Text style={{ fontFamily: 'Inclusive Sans', fontSize: 17, color: textColor }}>
-              About
-            </Text>
+            <Text style={{ fontSize: 17, fontWeight: '600', color: textColor }}>About</Text>
           </View>
           <View
             style={{
@@ -210,10 +196,8 @@ export default function Preferences() {
                 borderBottomColor: borderColor,
               }}
             >
-              <Text style={{ fontFamily: 'Inclusive Sans', fontSize: 15, color: textColor }}>
-                Version
-              </Text>
-              <Text style={{ fontFamily: 'Inclusive Sans', fontSize: 14, color: mutedTextColor, textAlign: 'right' }}>
+              <Text style={{ fontSize: 15, color: textColor }}>Version</Text>
+              <Text style={{ fontSize: 14, color: mutedTextColor, textAlign: 'right' }}>
                 {APP_VERSION}
               </Text>
             </View>
@@ -225,10 +209,8 @@ export default function Preferences() {
                 padding: isNarrowWeb ? 20 : 28,
               }}
             >
-              <Text style={{ fontFamily: 'Inclusive Sans', fontSize: 15, color: textColor }}>
-                Chinmaya Janata
-              </Text>
-              <Text style={{ fontFamily: 'Inclusive Sans', fontSize: 14, color: mutedTextColor, textAlign: 'right' }}>
+              <Text style={{ fontSize: 15, color: textColor }}>Chinmaya Janata</Text>
+              <Text style={{ fontSize: 14, color: mutedTextColor, textAlign: 'right' }}>
                 {currentYear} Chinmaya Mission
               </Text>
             </View>
@@ -250,10 +232,10 @@ export default function Preferences() {
             }}
           >
             <View style={{ gap: 4, flex: 1, marginRight: 16 }}>
-              <Text style={{ fontFamily: 'Inclusive Sans', fontSize: 15, color: '#DC2626' }}>
+              <Text style={{ fontSize: 15, fontWeight: '600', color: '#DC2626' }}>
                 Danger Zone
               </Text>
-              <Text style={{ fontFamily: 'Inclusive Sans', fontSize: 13, color: mutedTextColor }}>
+              <Text style={{ fontSize: 13, color: mutedTextColor }}>
                 Permanently delete your account and all data
               </Text>
             </View>
@@ -312,8 +294,8 @@ export default function Preferences() {
               </View>
               <Text
                 style={{
-                  fontFamily: 'Inclusive Sans',
                   fontSize: 22,
+                  fontWeight: '700',
                   color: textColor,
                   marginBottom: 8,
                 }}
@@ -322,7 +304,6 @@ export default function Preferences() {
               </Text>
               <Text
                 style={{
-                  fontFamily: 'Inclusive Sans',
                   fontSize: 15,
                   color: mutedTextColor,
                   textAlign: 'center',
