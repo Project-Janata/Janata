@@ -715,6 +715,41 @@ app.post('/getUserEvents', authMiddleware, async (c) => {
 })
 
 // ═══════════════════════════════════════════════════════════════════════
+// PROFILE ROUTES
+// ═══════════════════════════════════════════════════════════════════════
+
+app.get('/profile/:username/events', authMiddleware, async (c) => {
+  const { username } = c.req.param()
+  const targetUser = await db.getUserByUsername(c.env.DB, username)
+  if (!targetUser) return c.json({ message: 'User not found' }, 404)
+  const events = await db.getUserEvents(c.env.DB, targetUser.id)
+  return c.json({ events: events.map(eventRowToApi) })
+})
+
+app.get('/profile/:username/posts', authMiddleware, async (c) => {
+  const { username } = c.req.param()
+  const targetUser = await db.getUserByUsername(c.env.DB, username)
+  if (!targetUser) return c.json({ message: 'User not found' }, 404)
+  const posts = await db.getUserCreatedEvents(c.env.DB, targetUser.id)
+  return c.json({ posts: posts.map(eventRowToApi) })
+})
+
+app.get('/profile/:username/groups', authMiddleware, async (c) => {
+  const { username } = c.req.param()
+  const targetUser = await db.getUserByUsername(c.env.DB, username)
+  if (!targetUser) return c.json({ message: 'User not found' }, 404)
+  const groups = targetUser.center_id
+    ? [centerRowToApi(await db.getCenterById(c.env.DB, targetUser.center_id) as any)]
+    : []
+  return c.json({ groups: groups.filter(Boolean) })
+})
+
+app.get('/profile/:username/messages', authMiddleware, async (_c) => {
+  // Messaging not yet implemented — reserved for future use
+  return _c.json({ messages: [], total: 0 })
+})
+
+// ═══════════════════════════════════════════════════════════════════════
 // EVENT ROUTES
 // ═══════════════════════════════════════════════════════════════════════
 

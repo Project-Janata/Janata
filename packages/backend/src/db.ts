@@ -535,6 +535,19 @@ export async function getUserEvents(
   return result.results ?? []
 }
 
+export async function getUserCreatedEvents(
+  db: D1Database,
+  userId: string,
+): Promise<EventRow[]> {
+  const result = await db
+    .prepare(
+      `SELECT * FROM events WHERE created_by = ?1 ORDER BY created_at DESC`,
+    )
+    .bind(userId)
+    .all<EventRow>()
+  return result.results ?? []
+}
+
 // ═══════════════════════════════════════════════════════════════════════
 // EVENT ENDORSERS
 // ═══════════════════════════════════════════════════════════════════════

@@ -4,8 +4,14 @@ import { SafeAreaView } from 'react-native-safe-area-context'
 import { MapPin, Settings, ChevronLeft, BadgeCheck } from 'lucide-react-native'
 import { Badge, useRouter } from 'expo-router'
 import { useUser, useTheme } from '../components/contexts'
-import { Text } from '../components/ui'
-import { fetchCenters, fetchCenter, CenterData } from '../utils/api'
+import { Section, Text } from '../components/ui'
+import {
+  fetchCenters,
+  fetchUserEvents,
+  fetchUserGroups,
+  fetchUserPosts,
+  CenterData,
+} from '../utils/api'
 import EditProfileSheet from '../components/EditProfileSheet'
 
 export default function ProfileNative() {
@@ -14,12 +20,26 @@ export default function ProfileNative() {
   const { isDark } = useTheme()
   const [allCenters, setAllCenters] = useState<CenterData[]>([])
   const [showEditSheet, setShowEditSheet] = useState(false)
+  const [postCount, setPostCount] = useState(0)
+  const [eventCount, setEventCount] = useState(0)
+  const [groupCount, setGroupCount] = useState(0)
 
   useEffect(() => {
     refreshUser()
     fetchCenters()
       .then(setAllCenters)
       .catch(() => {})
+    if (user?.username) {
+      fetchUserPosts(user.username)
+        .then((p) => setPostCount(p.length))
+        .catch(() => {})
+      fetchUserEvents(user.username)
+        .then((e) => setEventCount(e.length))
+        .catch(() => {})
+      fetchUserGroups(user.username)
+        .then((g) => setGroupCount(g.length))
+        .catch(() => {})
+    }
   }, [])
 
   const getDisplayName = () => {
@@ -66,10 +86,6 @@ export default function ProfileNative() {
     if (!user?.createdAt) return null
     const date = new Date(user.createdAt)
     return date.toLocaleDateString(undefined, { year: 'numeric' })
-  }
-
-  const getUserEventsCount = () => {
-    return user?. || 0
   }
 
   const handleShare = async () => {
@@ -223,7 +239,7 @@ export default function ProfileNative() {
           {user?.bio ? (
             <Text
               style={{
-                fontFamily: 'Inclusive Sans',
+                fontFamily: 'Inter',
                 fontSize: 15,
                 color: textColor,
                 lineHeight: 22,
@@ -234,12 +250,68 @@ export default function ProfileNative() {
           ) : null}
         </View>
 
+        {/* Profile Stats */}
+        <View
+          style={{
+            marginTop: 16,
+            marginHorizontal: 20,
+            borderWidth: 1,
+            borderColor,
+            borderRadius: 12,
+            flexDirection: 'row',
+            backgroundColor: cardBg,
+            overflow: 'hidden',
+          }}
+        >
+          {[
+            { label: 'Events', value: eventCount },
+            { label: 'Groups', value: groupCount },
+            { label: 'Posts', value: postCount },
+          ].map((stat, i, arr) => (
+            <View
+              key={stat.label}
+              style={{
+                flex: 1,
+                alignItems: 'center',
+                paddingVertical: 14,
+                paddingHorizontal: 4,
+                borderRightWidth: i < arr.length - 1 ? 1 : 0,
+                borderColor,
+              }}
+            >
+              <Text
+                style={{
+                  fontFamily: 'Inclusive Sans',
+                  fontSize: 20,
+                  color: textColor,
+                  fontWeight: '500',
+                }}
+              >
+                {stat.value}
+              </Text>
+              <Text
+                numberOfLines={1}
+                adjustsFontSizeToFit
+                style={{
+                  fontFamily: 'Inclusive Sans',
+                  fontSize: 11,
+                  color: mutedTextColor,
+                  marginTop: 2,
+                  letterSpacing: 0.4,
+                  textTransform: 'uppercase',
+                }}
+              >
+                {stat.label}
+              </Text>
+            </View>
+          ))}
+        </View>
+
         {/* Edit / Share buttons */}
         <View
           style={{
             paddingHorizontal: 20,
             paddingTop: 16,
-            paddingBottom: 20,
             flexDirection: 'row',
             gap: 8,
           }}
@@ -258,12 +330,7 @@ export default function ProfileNative() {
             }}
           >
             <Text
-              style={{
-                fontFamily: 'Inclusive Sans',
-                fontSize: 14,
-                color: textColor,
-                fontWeight: '700',
-              }}
+              style={{ fontFamily: 'Inter', fontSize: 14, color: textColor, fontWeight: '700' }}
             >
               Edit Profile
             </Text>
@@ -282,78 +349,30 @@ export default function ProfileNative() {
             }}
           >
             <Text
-              style={{
-                fontFamily: 'Inclusive Sans',
-                fontSize: 14,
-                color: textColor,
-                fontWeight: '700',
-              }}
+              style={{ fontFamily: 'Inter', fontSize: 14, color: textColor, fontWeight: '700' }}
             >
               Share
             </Text>
           </Pressable>
         </View>
 
-        {/* Profile Stats */}
-        <View style={{ paddingHorizontal: 20, paddingTop: 16 }}>
-          <View style={{ flexDirection: 'row', justifyContent: 'space-between' }}>
-            <View style={{ alignItems: 'center' }}>
-              <Text
-                style={{
-                  fontFamily: 'Inclusive Sans',
-                  fontSize: 16,
-                  color: textColor,
-                  fontWeight: '700',
-                }}
-              >
-                {user?.postCount || 0}
-              </Text>
-              <Text style={{ fontFamily: 'Inclusive Sans', fontSize: 12, color: mutedTextColor }}>
-                Posts
-              </Text>
-            </View>
-            <View style={{ alignItems: 'center' }}>
-              <Text
-                style={{
-                  fontFamily: 'Inclusive Sans',
-                  fontSize: 16,
-                  color: textColor,
-                  fontWeight: '700',
-                }}
-              >
-                {user?.followerCount || 0}
-              </Text>
-              <Text style={{ fontFamily: 'Inclusive Sans', fontSize: 12, color: mutedTextColor }}>
-                Followers
-              </Text>
-            </View>
-            <View style={{ alignItems: 'center' }}>
-              <Text
-                style={{
-                  fontFamily: 'Inclusive Sans',
-                  fontSize: 16,
-                  color: textColor,
-                  fontWeight: '700',
-                }}
-              >
-                {user?.followingCount || 0}
-              </Text>
-              <Text style={{ fontFamily: 'Inclusive Sans', fontSize: 12, color: mutedTextColor }}>
-                Following
-              </Text>
-            </View>
-          </View>
-        </View>
-
         {/* Interests */}
         {interests.length > 0 ? (
-          <View style={{ paddingHorizontal: 20, flexDirection: 'row', flexWrap: 'wrap', gap: 8 }}>
+          <View
+            style={{
+              paddingHorizontal: 20,
+              marginTop: 16,
+              flexDirection: 'row',
+              flexWrap: 'wrap',
+              gap: 8,
+            }}
+          >
             {interests.map((interest) => (
               <View
                 key={interest}
                 style={{
-                  paddingHorizontal: 16,
-                  paddingVertical: 8,
+                  paddingHorizontal: 14,
+                  paddingVertical: 7,
                   borderRadius: 100,
                   backgroundColor: chipBg,
                 }}
@@ -365,6 +384,11 @@ export default function ProfileNative() {
             ))}
           </View>
         ) : null}
+
+        {/* Communities */}
+        <View style={{ paddingHorizontal: 20, marginTop: 24 }}>
+          <Section title="Your Communities" titleColor={mutedTextColor} />
+        </View>
 
         <View style={{ height: 40 }} />
       </ScrollView>
