@@ -2,7 +2,6 @@ import React, { useState } from 'react'
 import {
   ScrollView,
   View,
-  Text,
   Pressable,
   Linking,
   Modal,
@@ -14,7 +13,7 @@ import { SafeAreaView } from 'react-native-safe-area-context'
 import { Eye, Shield, Info, ExternalLink, AlertTriangle } from 'lucide-react-native'
 import { useUser, useTheme } from '../../components/contexts'
 import { useRouter } from 'expo-router'
-import { DestructiveButton, SecondaryButton } from '../../components/ui'
+import { DestructiveButton, SecondaryButton, Text } from '../../components/ui'
 import ThemeSelector from '../../components/ThemeSelector'
 import { usePostHog } from 'posthog-react-native'
 import Constants from 'expo-constants'

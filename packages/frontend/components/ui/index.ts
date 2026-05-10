@@ -23,6 +23,8 @@ import Avatar from './Avatar'
 import AuthPromptModal from './AuthPromptModal'
 import CopyLinkButton from './CopyLinkButton'
 import TabHeader from './TabHeader'
+import { Text } from './Text'
+import { Section } from './Section'
 
 export {
   PrimaryButton,
@@ -41,4 +43,6 @@ export {
   AuthPromptModal,
   CopyLinkButton,
   TabHeader,
+  Text,
+  Section,
 }

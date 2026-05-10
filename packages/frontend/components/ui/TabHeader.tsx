@@ -41,9 +41,7 @@ export default function TabHeader({
   const textColor = transparent ? '#FFFFFF' : isDark ? '#FAFAF9' : '#1F1D1B'
 
   const displayName =
-    user?.firstName && user?.lastName
-      ? `${user.firstName} ${user.lastName}`
-      : user?.username || ''
+    user?.firstName && user?.lastName ? `${user.firstName} ${user.lastName}` : user?.username || ''
 
   const profileImage = user?.profileImage
 
@@ -52,7 +50,7 @@ export default function TabHeader({
     if (Platform.OS === 'web') {
       // web handled by rightContent
     } else {
-      router.push('/settings/preferences')
+      router.push('/profile' as never)
     }
   }
 
@@ -117,11 +115,7 @@ export default function TabHeader({
               height: 36,
               borderRadius: 18,
               borderWidth: 1.5,
-              borderColor: transparent
-                ? 'rgba(255,255,255,0.4)'
-                : isDark
-                  ? '#404040'
-                  : '#D6D3D1',
+              borderColor: transparent ? 'rgba(255,255,255,0.4)' : isDark ? '#404040' : '#D6D3D1',
               alignItems: 'center',
               justifyContent: 'center',
             }}
@@ -147,11 +141,7 @@ export default function TabHeader({
                 : undefined
             }
           >
-            <Avatar
-              image={profileImage || undefined}
-              name={displayName}
-              size={36}
-            />
+            <Avatar image={profileImage || undefined} name={displayName} size={36} />
           </Pressable>
         ) : (
           <Pressable
@@ -161,19 +151,12 @@ export default function TabHeader({
               height: 36,
               borderRadius: 18,
               borderWidth: 1,
-              borderColor: transparent
-                ? 'rgba(255,255,255,0.4)'
-                : isDark
-                  ? '#404040'
-                  : '#D6D3D1',
+              borderColor: transparent ? 'rgba(255,255,255,0.4)' : isDark ? '#404040' : '#D6D3D1',
               alignItems: 'center',
               justifyContent: 'center',
             }}
           >
-            <User
-              size={18}
-              color={transparent ? '#FFFFFF' : isDark ? '#FAFAFA' : '#1C1917'}
-            />
+            <User size={18} color={transparent ? '#FFFFFF' : isDark ? '#FAFAFA' : '#1C1917'} />
           </Pressable>
         )}
       </View>

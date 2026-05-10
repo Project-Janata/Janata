@@ -4,11 +4,10 @@ import { SafeAreaView } from 'react-native-safe-area-context'
 import { useRouter, usePathname, Slot, Stack } from 'expo-router'
 import { ArrowLeft, User, Settings as SettingsIcon } from 'lucide-react-native'
 import { useTheme } from '../../components/contexts'
-import Logo from '../../components/ui/Logo'
 
 const SETTINGS_TABS = [
   { id: 'profile', label: 'Profile', icon: User, path: '/settings/profile' },
-  { id: 'preferences', label: 'Preferences', icon: SettingsIcon, path: '/settings/preferences' },
+  { id: 'index', label: 'Preferences', icon: SettingsIcon, path: '/settings' },
 ]
 
 export default function SettingsLayout() {
@@ -31,7 +30,7 @@ export default function SettingsLayout() {
   if (Platform.OS !== 'web') {
     return (
       <Stack screenOptions={{ headerShown: false, animation: 'slide_from_right' }}>
-        <Stack.Screen name="preferences" />
+        <Stack.Screen name="index" />
         <Stack.Screen name="profile" />
       </Stack>
     )
@@ -41,26 +40,25 @@ export default function SettingsLayout() {
   return (
     <>
       <Stack.Screen options={{ headerShown: false }} />
-      <SafeAreaView className="flex-1 bg-white dark:bg-neutral-900" edges={['bottom']}>
-        <View className="flex-1 flex-row">
+      <SafeAreaView style={{ flex: 1, backgroundColor: isDark ? '#171717' : '#FFFFFF' }} edges={['bottom']}>
+        <View style={{ flex: 1, flexDirection: 'row' }}>
           {showSidebar && (
-            <View className="w-64 border-r border-stone-200 dark:border-stone-700 bg-stone-50 dark:bg-stone-900">
-              <View className="p-6 border-b border-stone-200 dark:border-stone-700">
-                <View className="flex-row items-center justify-between mb-2">
+            <View style={{ width: 256, borderRightWidth: 1, borderRightColor: isDark ? '#44403C' : '#E7E5E4', backgroundColor: isDark ? '#1C1917' : '#FAFAF9' }}>
+              <View style={{ padding: 24, borderBottomWidth: 1, borderBottomColor: isDark ? '#44403C' : '#E7E5E4' }}>
+                <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 8 }}>
                   <Pressable
                     onPress={handleClose}
-                    className="p-1"
                     style={{ minWidth: 44, minHeight: 44, justifyContent: 'center', alignItems: 'center' }}
                   >
                     <ArrowLeft size={20} color={isDark ? '#a1a1aa' : '#71717a'} />
                   </Pressable>
-                  <Text className="text-2xl font-sans font-bold text-content dark:text-content-dark">
+                  <Text style={{ fontFamily: 'Inclusive Sans', fontSize: 24, fontWeight: '700', color: isDark ? '#FAFAF9' : '#1C1917' }}>
                     Settings
                   </Text>
                   <View style={{ width: 44 }} />
                 </View>
               </View>
-              <ScrollView className="flex-1 p-3">
+              <ScrollView style={{ flex: 1, padding: 12 }}>
                 {SETTINGS_TABS.map((tab) => {
                   const isActive = pathname === tab.path || pathname.startsWith(tab.path + '/')
                   const Icon = tab.icon
@@ -68,23 +66,29 @@ export default function SettingsLayout() {
                     <Pressable
                       key={tab.id}
                       onPress={() => handleTabPress(tab.path)}
-                      className={`flex-row items-center gap-3 px-4 py-3 rounded-xl mb-1 ${
-                        isActive
-                          ? 'bg-primary shadow-sm'
-                          : 'bg-transparent hover:bg-stone-100 dark:hover:bg-stone-800'
-                      }`}
-                      style={{ minHeight: 44 }}
+                      style={{
+                        flexDirection: 'row',
+                        alignItems: 'center',
+                        gap: 12,
+                        paddingHorizontal: 16,
+                        paddingVertical: 12,
+                        borderRadius: 12,
+                        marginBottom: 4,
+                        minHeight: 44,
+                        backgroundColor: isActive ? '#E8862A' : 'transparent',
+                      }}
                     >
                       <Icon
                         size={20}
-                        className={
-                          isActive ? 'text-white' : 'text-stone-500 dark:text-stone-400'
-                        }
+                        color={isActive ? '#FFFFFF' : isDark ? '#A8A29E' : '#78716C'}
                       />
                       <Text
-                        className={`font-sans font-medium text-base ${
-                          isActive ? 'text-white' : 'text-content dark:text-content-dark'
-                        }`}
+                        style={{
+                          fontFamily: 'Inclusive Sans',
+                          fontWeight: '500',
+                          fontSize: 16,
+                          color: isActive ? '#FFFFFF' : isDark ? '#FAFAF9' : '#1C1917',
+                        }}
                       >
                         {tab.label}
                       </Text>
@@ -94,7 +98,7 @@ export default function SettingsLayout() {
               </ScrollView>
             </View>
           )}
-          <View className="flex-1">
+          <View style={{ flex: 1 }}>
             <Slot />
           </View>
         </View>

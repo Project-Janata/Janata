@@ -1,5 +1,5 @@
 import React, { useState } from 'react'
-import { View, Text, Pressable, ScrollView, StatusBar, Modal, Alert } from 'react-native'
+import { View, Pressable, ScrollView, StatusBar, Modal, Alert } from 'react-native'
 import { SafeAreaView } from 'react-native-safe-area-context'
 import { useRouter } from 'expo-router'
 import {
@@ -13,7 +13,7 @@ import {
   AlertTriangle,
 } from 'lucide-react-native'
 import { useUser, useTheme } from '../../components/contexts'
-import { Avatar } from '../../components/ui'
+import { Avatar, Text, Section } from '../../components/ui'
 import ThemeSelector from '../../components/ThemeSelector'
 import { usePostHog } from 'posthog-react-native'
 import Constants from 'expo-constants'
@@ -138,26 +138,6 @@ export default function PreferencesNative() {
     </View>
   )
 
-  const Section = ({ title, children }: { title?: string; children: React.ReactNode }) => (
-    <View style={{ marginBottom: 24 }}>
-      {title && (
-        <Text
-          style={{
-            fontSize: 13,
-            fontWeight: '600',
-            color: mutedTextColor,
-            textTransform: 'uppercase',
-            paddingHorizontal: 16,
-            paddingBottom: 8,
-          }}
-        >
-          {title}
-        </Text>
-      )}
-      <View style={{ borderTopWidth: 1, borderBottomWidth: 1, borderColor }}>{children}</View>
-    </View>
-  )
-
   return (
     <SafeAreaView
       style={{ flex: 1, backgroundColor: isDark ? '#000' : '#fff' }}
@@ -186,33 +166,8 @@ export default function PreferencesNative() {
       </View>
 
       <ScrollView style={{ flex: 1 }} contentContainerStyle={{ paddingTop: 8 }}>
-        {/* Profile Card */}
-        <View style={{ paddingHorizontal: 16, paddingVertical: 16, marginBottom: 16 }}>
-          <View style={{ flexDirection: 'row', alignItems: 'center' }}>
-            <Avatar image={user?.profileImage || undefined} name={displayName} size={56} />
-            <View style={{ marginLeft: 12, flex: 1 }}>
-              <Text style={{ fontSize: 17, fontWeight: '600', color: textColor }}>
-                {displayName}
-              </Text>
-              {user?.username && (
-                <Text style={{ fontSize: 14, color: mutedTextColor }}>@{user.username}</Text>
-              )}
-            </View>
-          </View>
-        </View>
-
-        {/* Account Section */}
-        <Section title="Account">
-          <MenuRow onPress={() => router.push('/settings/profile')} showArrow>
-            <View style={{ flexDirection: 'row', alignItems: 'center' }}>
-              <User size={20} color={textColor} style={{ marginRight: 12 }} />
-              <Text style={{ fontSize: 16, color: textColor }}>Edit Profile</Text>
-            </View>
-          </MenuRow>
-        </Section>
-
         {/* Appearance */}
-        <Section title="Appearance">
+        <Section title="Appearance" titleColor={mutedTextColor} borderColor={borderColor}>
           <View style={{ paddingVertical: 14, paddingHorizontal: 16, backgroundColor: cardBg }}>
             <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 12 }}>
               <Text style={{ fontSize: 16, color: textColor, flex: 1 }}>Theme</Text>
@@ -222,15 +177,15 @@ export default function PreferencesNative() {
         </Section>
 
         {/* Regulatory */}
-        <Section title="Regulatory">
+        <Section title="Regulatory" titleColor={mutedTextColor} borderColor={borderColor}>
           <MenuRow
             onPress={() => {
               posthog?.capture('privacy_policy_viewed')
               router.push('/privacy')
             }}
           >
-            <View style={{ flexDirection: 'row', alignItems: 'center' }}>
-              <Shield size={20} color={textColor} style={{ marginRight: 12 }} />
+            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12 }}>
+              <Shield size={20} color={textColor} />
               <Text style={{ fontSize: 16, color: textColor }}>Privacy Policy</Text>
             </View>
           </MenuRow>
@@ -240,8 +195,8 @@ export default function PreferencesNative() {
               router.push('/terms')
             }}
           >
-            <View style={{ flexDirection: 'row', alignItems: 'center' }}>
-              <FileText size={20} color={textColor} style={{ marginRight: 12 }} />
+            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12 }}>
+              <FileText size={20} color={textColor} />
               <Text style={{ fontSize: 16, color: textColor }}>Terms of Service</Text>
             </View>
           </MenuRow>
@@ -251,15 +206,15 @@ export default function PreferencesNative() {
               router.push('/cookies')
             }}
           >
-            <View style={{ flexDirection: 'row', alignItems: 'center' }}>
-              <Info size={20} color={textColor} style={{ marginRight: 12 }} />
+            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12 }}>
+              <Info size={20} color={textColor} />
               <Text style={{ fontSize: 16, color: textColor }}>Cookie Policy</Text>
             </View>
           </MenuRow>
         </Section>
 
         {/* About */}
-        <Section title="About">
+        <Section title="About" titleColor={mutedTextColor} borderColor={borderColor}>
           <AboutInfoRow icon={Info} label="Version" value={APP_VERSION} />
           <AboutInfoRow
             icon={Info}
@@ -270,10 +225,10 @@ export default function PreferencesNative() {
         </Section>
 
         {/* Account Actions */}
-        <Section>
+        <Section borderColor={borderColor}>
           <MenuRow onPress={handleLogout} showArrow={false}>
-            <View style={{ flexDirection: 'row', alignItems: 'center' }}>
-              <LogOut size={20} color="#ef4444" style={{ marginRight: 12 }} />
+            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12 }}>
+              <LogOut size={20} color="#ef4444" />
               <Text style={{ fontSize: 16, color: '#ef4444', fontWeight: '600' }}>Log Out</Text>
             </View>
           </MenuRow>
@@ -284,8 +239,8 @@ export default function PreferencesNative() {
             }}
             showArrow={false}
           >
-            <View style={{ flexDirection: 'row', alignItems: 'center' }}>
-              <AlertTriangle size={20} color="#dc2626" style={{ marginRight: 12 }} />
+            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12 }}>
+              <AlertTriangle size={20} color="#dc2626" />
               <Text style={{ fontSize: 16, color: '#dc2626', fontWeight: '600' }}>
                 Delete Account
               </Text>

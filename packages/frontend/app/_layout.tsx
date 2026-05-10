@@ -1,6 +1,6 @@
 import '@expo/metro-runtime'
 import { useEffect, useRef } from 'react'
-import { ActivityIndicator, Animated, LogBox, Platform, View } from 'react-native'
+import { ActivityIndicator, Animated, LogBox, Platform, Text, View } from 'react-native'
 
 // Suppress non-fatal WorkletsTurboModule error in Expo Go (reanimated v4 compat)
 LogBox.ignoreLogs(['Exception in HostFunction: <unknown>'])
@@ -50,6 +50,13 @@ export default function RootLayout() {
 
   useEffect(() => {
     if (fontsLoaded) {
+      // Set default font family for all Text components
+      const TextAny = Text as any
+      const defaultProps = TextAny.defaultProps || {}
+      TextAny.defaultProps = {
+        ...defaultProps,
+        style: [{ fontFamily: 'Inclusive Sans' }, defaultProps.style],
+      }
       SplashScreen.hideAsync().catch(() => {})
     }
   }, [fontsLoaded])

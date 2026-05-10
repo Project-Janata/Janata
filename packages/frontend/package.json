@@ -24,6 +24,7 @@
   },
   "homepage": "https://github.com/Project-Janatha/Project-Janatha#readme",
   "dependencies": {
+    "@expo-google-fonts/inclusive-sans": "^0.4.1",
     "@headlessui/react": "^2.2.9",
     "@react-native-async-storage/async-storage": "2.2.0",
     "@react-native-community/datetimepicker": "8.6.0",

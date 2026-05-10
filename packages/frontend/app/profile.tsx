@@ -14,9 +14,9 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context'
 import { Camera, Pencil, MapPin, ArrowLeft, Settings } from 'lucide-react-native'
 import { useRouter, usePathname } from 'expo-router'
-import { useUser, useTheme } from '../../components/contexts'
-import BirthdatePicker from '../../components/BirthdatePicker'
-import { fetchCenters, CenterData } from '../../utils/api'
+import { useUser, useTheme } from '../components/contexts'
+import BirthdatePicker from '../components/BirthdatePicker'
+import { fetchCenters, CenterData } from '../utils/api'
 
 let ImagePicker: typeof import('expo-image-picker') | null = null
 try {
@@ -390,7 +390,6 @@ export default function ProfileNative() {
         <Pressable onPress={() => router.back()} style={{ padding: 8 }}>
           <ArrowLeft size={24} color={textColor} />
         </Pressable>
-        <Text style={{ fontSize: 17, fontWeight: '600', color: textColor }}>Profile</Text>
         <Pressable
           onPress={() => router.push('/settings' as never)}
           disabled={isSaving}
