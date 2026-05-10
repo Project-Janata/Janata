@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react'
 import { ScrollView, View, Pressable, Image, Share } from 'react-native'
 import { SafeAreaView } from 'react-native-safe-area-context'
-import { MapPin, Settings, ChevronLeft, BadgeCheck } from 'lucide-react-native'
+import { Settings, ChevronLeft, BadgeCheck, Building2 } from 'lucide-react-native'
 import { Badge, useRouter } from 'expo-router'
 import { useUser, useTheme } from '../components/contexts'
 import { Section, Text } from '../components/ui'
@@ -23,6 +23,7 @@ export default function ProfileNative() {
   const [postCount, setPostCount] = useState(0)
   const [eventCount, setEventCount] = useState(0)
   const [groupCount, setGroupCount] = useState(0)
+  const [userGroups, setUserGroups] = useState<CenterData[]>([])
 
   useEffect(() => {
     refreshUser()
@@ -37,7 +38,7 @@ export default function ProfileNative() {
         .then((e) => setEventCount(e.length))
         .catch(() => {})
       fetchUserGroups(user.username)
-        .then((g) => setGroupCount(g.length))
+        .then((g) => { setUserGroups(g); setGroupCount(g.length) })
         .catch(() => {})
     }
   }, [])
@@ -388,25 +389,55 @@ export default function ProfileNative() {
         {/* Communities */}
         <View style={{ paddingHorizontal: 20, marginTop: 24 }}>
           <Section title="COMMUNITIES" titleColor={mutedTextColor}>
-            <View style={{ borderTopWidth: 1, borderBottomWidth: 1, borderColor, marginHorizontal: -20 }}>
-              {centerName ? (
-                <View
-                  style={{
-                    paddingVertical: 14,
-                    paddingHorizontal: 20,
-                    backgroundColor: cardBg,
-                    flexDirection: 'row',
-                    alignItems: 'center',
-                    gap: 12,
-                  }}
-                >
-                  <MapPin size={18} color={mutedTextColor} />
-                  <Text style={{ fontFamily: 'Inclusive Sans', fontSize: 15, color: textColor }}>
-                    {centerName}
-                  </Text>
-                </View>
+            <View
+              style={{
+                marginTop: 16,
+                borderWidth: 1,
+                borderColor,
+                borderRadius: 12,
+                backgroundColor: cardBg,
+                overflow: 'hidden',
+              }}
+            >
+              {userGroups.length > 0 ? (
+                userGroups.map((group) => (
+                  <View
+                    key={group.centerID}
+                    style={{
+                      paddingVertical: 14,
+                      paddingHorizontal: 20,
+                      backgroundColor: cardBg,
+                      flexDirection: 'row',
+                      alignItems: 'center',
+                      gap: 12,
+                    }}
+                  >
+                    <View
+                      style={{
+                        width: 32,
+                        height: 32,
+                        borderRadius: 6,
+                        backgroundColor: '#C2410C20',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                      }}
+                    >
+                      <Building2 size={16} color="#C2410C" />
+                    </View>
+                    <View style={{ flex: 1 }}>
+                      <Text style={{ fontFamily: 'Inclusive Sans', fontSize: 15, color: textColor }}>
+                        {group.name}
+                      </Text>
+                      <Text style={{ fontFamily: 'Inclusive Sans', fontSize: 13, color: mutedTextColor }}>
+                        My center • {group.memberCount ?? 0} members
+                      </Text>
+                    </View>
+                  </View>
+                ))
               ) : (
-                <View style={{ paddingVertical: 14, paddingHorizontal: 20, backgroundColor: cardBg }}>
+                <View
+                  style={{ paddingVertical: 14, paddingHorizontal: 20, backgroundColor: cardBg }}
+                >
                   <Text style={{ fontFamily: 'Inclusive Sans', fontSize: 15, color: mutedTextColor }}>
                     No center selected
                   </Text>
