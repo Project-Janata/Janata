@@ -387,7 +387,33 @@ export default function ProfileNative() {
 
         {/* Communities */}
         <View style={{ paddingHorizontal: 20, marginTop: 24 }}>
-          <Section title="Your Communities" titleColor={mutedTextColor} />
+          <Section title="COMMUNITIES" titleColor={mutedTextColor}>
+            <View style={{ borderTopWidth: 1, borderBottomWidth: 1, borderColor, marginHorizontal: -20 }}>
+              {centerName ? (
+                <View
+                  style={{
+                    paddingVertical: 14,
+                    paddingHorizontal: 20,
+                    backgroundColor: cardBg,
+                    flexDirection: 'row',
+                    alignItems: 'center',
+                    gap: 12,
+                  }}
+                >
+                  <MapPin size={18} color={mutedTextColor} />
+                  <Text style={{ fontFamily: 'Inclusive Sans', fontSize: 15, color: textColor }}>
+                    {centerName}
+                  </Text>
+                </View>
+              ) : (
+                <View style={{ paddingVertical: 14, paddingHorizontal: 20, backgroundColor: cardBg }}>
+                  <Text style={{ fontFamily: 'Inclusive Sans', fontSize: 15, color: mutedTextColor }}>
+                    No center selected
+                  </Text>
+                </View>
+              )}
+            </View>
+          </Section>
         </View>
 
         <View style={{ height: 40 }} />
