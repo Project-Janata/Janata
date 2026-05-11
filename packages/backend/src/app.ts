@@ -398,12 +398,14 @@ app.put('/auth/update-profile', authMiddleware, async (c) => {
     bio?: string
     phoneNumber?: string
     interests?: string[]
+    dateOfBirth?: string
   }>()
 
   const updates: Partial<UserRow> = {}
   if (body.firstName !== undefined) updates.first_name = body.firstName
   if (body.lastName !== undefined) updates.last_name = body.lastName
   if (body.email !== undefined) updates.email = body.email
+  if (body.dateOfBirth !== undefined) updates.date_of_birth = body.dateOfBirth
   // Coerce empty string to null (allowed by FK), reject non-existent center IDs naturally
   if (body.centerID !== undefined) updates.center_id = body.centerID || null
   if (body.profileComplete !== undefined) updates.profile_complete = body.profileComplete ? 1 : 0

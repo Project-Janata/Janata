@@ -63,9 +63,13 @@ export default function ProfileNative() {
     const age = user?.dateOfBirth
       ? Math.floor((Date.now() - new Date(user.dateOfBirth).getTime()) / 31557600000)
       : null
-    if (age !== null) {
+    if (age !== null && (user?.verificationLevel ?? 0) < 108) {
       if (age >= 18 && age <= 35) return 'CHYK'
       if (age > 35) return 'Sevak'
+    } else {
+      if (user?.verificationLevel ?? 0 >= 108) return 'Brahmachari'
+      if (user?.verificationLevel ?? 0 >= 1008) return 'Swami'
+      if (user?.verificationLevel ?? 0 >= 1000008) return 'Global Head'
     }
   }
 

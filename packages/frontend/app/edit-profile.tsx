@@ -10,7 +10,8 @@ import {
   KeyboardAvoidingView,
   Platform,
 } from 'react-native'
-import { useRouter } from 'expo-router'
+import { useRouter, useFocusEffect } from 'expo-router'
+import { useCallback } from 'react'
 let ImagePicker: typeof import('expo-image-picker') | null = null
 try {
   ImagePicker = require('expo-image-picker')
@@ -20,11 +21,12 @@ let ImageManipulator: typeof import('expo-image-manipulator') | null = null
 try {
   ImageManipulator = require('expo-image-manipulator')
 } catch {}
-import { Camera, Check } from 'lucide-react-native'
+import { Camera, ChevronRight } from 'lucide-react-native'
 import { useUser, useTheme } from '../components/contexts'
 import { Text, Section, StackHeader } from '../components/ui'
 import BirthdatePicker from '../components/BirthdatePicker'
 import { fetchCenters, CenterData } from '../utils/api'
+import { centerPickerStore } from '../utils/centerPickerStore'
 
 const INTEREST_OPTIONS = [
   'Satsangs',
@@ -50,8 +52,13 @@ export default function EditProfileScreen() {
   const [imageChanged, setImageChanged] = useState(false)
 
   const [allCenters, setAllCenters] = useState<CenterData[]>([])
-  const [centerSearch, setCenterSearch] = useState('')
-  const [showCenterResults, setShowCenterResults] = useState(false)
+
+  useFocusEffect(useCallback(() => {
+    if (centerPickerStore.result !== null) {
+      setCenterID(centerPickerStore.result)
+      centerPickerStore.result = null
+    }
+  }, []))
 
   const [isSaving, setIsSaving] = useState(false)
   const [errors, setErrors] = useState<Record<string, string>>({})
@@ -64,14 +71,12 @@ export default function EditProfileScreen() {
           : user.firstName || user.username || ''
       setName(displayName)
       setBio(user.bio || '')
-      setBirthday(user.dateOfBirth ? new Date(user.dateOfBirth + 'T00:00:00') : null)
+      setBirthday(user.dateOfBirth ? new Date(user.dateOfBirth.split('T')[0] + 'T00:00:00') : null)
       setCenterID(user.centerID || null)
       setInterests(user.interests || [])
       setProfileImage(user.profileImage || null)
       setProfileImageBase64(null)
       setImageChanged(false)
-      setCenterSearch('')
-      setShowCenterResults(false)
       setErrors({})
     }
   }, [])
@@ -81,13 +86,6 @@ export default function EditProfileScreen() {
       .then(setAllCenters)
       .catch(() => {})
   }, [])
-
-  const filteredCenters =
-    centerSearch.length >= 2
-      ? allCenters
-          .filter((c) => c.name.toLowerCase().includes(centerSearch.toLowerCase()))
-          .slice(0, 6)
-      : []
 
   const selectedCenterName = allCenters.find((c) => c.centerID === centerID)?.name
 
@@ -325,67 +323,18 @@ export default function EditProfileScreen() {
                 <Text style={fieldLabelStyle}>BIRTHDAY</Text>
                 <BirthdatePicker value={birthday ?? undefined} onChange={setBirthday} />
               </View>
-              <View style={rowStyle}>
+              <Pressable
+                style={rowStyle}
+                onPress={() => router.push({ pathname: '/center-picker', params: { currentCenterID: centerID || '' } })}
+              >
                 <Text style={fieldLabelStyle}>CENTER</Text>
-                <TextInput
-                  value={centerSearch || selectedCenterName || ''}
-                  onChangeText={(text) => {
-                    setCenterSearch(text)
-                    setShowCenterResults(true)
-                    if (text === '') setCenterID(null)
-                  }}
-                  onFocus={() => {
-                    if (filteredCenters.length > 0) setShowCenterResults(true)
-                  }}
-                  onBlur={() => setTimeout(() => setShowCenterResults(false), 150)}
-                  placeholder="Search centers"
-                  placeholderTextColor={faintColor}
-                  style={inputStyle}
-                />
-                {showCenterResults && filteredCenters.length > 0 && (
-                  <View
-                    style={{
-                      backgroundColor: cardBg,
-                      borderRadius: 12,
-                      borderWidth: 1,
-                      borderColor,
-                      marginTop: 8,
-                      overflow: 'hidden',
-                    }}
-                  >
-                    {filteredCenters.map((center, i) => (
-                      <Pressable
-                        key={center.centerID}
-                        onPress={() => {
-                          setCenterID(center.centerID)
-                          setCenterSearch('')
-                          setShowCenterResults(false)
-                        }}
-                        style={{
-                          flexDirection: 'row',
-                          alignItems: 'center',
-                          justifyContent: 'space-between',
-                          paddingHorizontal: 16,
-                          paddingVertical: 12,
-                          borderBottomWidth: i < filteredCenters.length - 1 ? 1 : 0,
-                          borderBottomColor: borderColor,
-                          backgroundColor: centerID === center.centerID ? '#C2410C10' : 'transparent',
-                        }}
-                      >
-                        <Text
-                          style={{
-                            fontSize: 14,
-                            color: centerID === center.centerID ? '#C2410C' : textColor,
-                          }}
-                        >
-                          {center.name}
-                        </Text>
-                        {centerID === center.centerID && <Check size={16} color="#C2410C" />}
-                      </Pressable>
-                    ))}
-                  </View>
-                )}
-              </View>
+                <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingTop: 6 }}>
+                  <Text style={{ fontSize: 15, color: selectedCenterName ? textColor : faintColor, flex: 1 }}>
+                    {selectedCenterName || 'Select a center'}
+                  </Text>
+                  <ChevronRight size={18} color={faintColor} />
+                </View>
+              </Pressable>
             </View>
           </Section>
 
