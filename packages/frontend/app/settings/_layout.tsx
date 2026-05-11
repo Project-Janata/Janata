@@ -52,7 +52,7 @@ export default function SettingsLayout() {
                   >
                     <ArrowLeft size={20} color={isDark ? '#a1a1aa' : '#71717a'} />
                   </Pressable>
-                  <Text style={{ fontFamily: 'Inclusive Sans', fontSize: 24, fontWeight: '700', color: isDark ? '#FAFAF9' : '#1C1917' }}>
+                  <Text style={{ fontFamily: 'Inclusive Sans', fontSize: 24, color: isDark ? '#FAFAF9' : '#1C1917' }}>
                     Settings
                   </Text>
                   <View style={{ width: 44 }} />
@@ -84,8 +84,6 @@ export default function SettingsLayout() {
                       />
                       <Text
                         style={{
-                          fontFamily: 'Inclusive Sans',
-                          fontWeight: '500',
                           fontSize: 16,
                           color: isActive ? '#FFFFFF' : isDark ? '#FAFAF9' : '#1C1917',
                         }}

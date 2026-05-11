@@ -1,27 +1,35 @@
-import { TextInput } from 'react-native'
-import { useState } from 'react'
+import React, { useState } from 'react'
+import { TextInput, type TextInputProps } from 'react-native'
+import { useColors } from '../../hooks/useColors'
 
-export default function AuthInput({ secureTextEntry, onChangeText, ...props }) {
-  const [hasText, setHasText] = useState(false)
-
-  const handleChangeText = (text) => {
-    setHasText(text.length > 0)
-    onChangeText?.(text)
-  }
+export default function AuthInput({ secureTextEntry, onChangeText, style, ...props }: TextInputProps) {
+  const c = useColors()
+  const [focused, setFocused] = useState(false)
 
   return (
     <TextInput
-      className={`w-full font-sans rounded-lg px-4 py-3 min-h-[48px] bg-stone-100 dark:bg-stone-800 focus:border-primary focus:outline-none placeholder:text-gray-400 dark:placeholder:text-gray-400 ${
-        hasText ? 'text-content dark:text-content-dark' : ''
-      }`}
-      placeholderTextColor="#9ca3af"
       secureTextEntry={secureTextEntry}
-      onChangeText={handleChangeText}
-      style={{
-        fontSize: 16,
-        fontFamily: 'Inclusive Sans',
-        letterSpacing: secureTextEntry ? 0.125 : 0,
-      }}
+      onChangeText={onChangeText}
+      onFocus={() => setFocused(true)}
+      onBlur={() => setFocused(false)}
+      placeholderTextColor={c.textFaint}
+      style={[
+        {
+          width: '100%',
+          fontSize: 16,
+          letterSpacing: secureTextEntry ? 0.125 : 0,
+          borderRadius: 12,
+          paddingHorizontal: 16,
+          paddingVertical: 12,
+          minHeight: 48,
+          backgroundColor: c.surface,
+          color: c.text,
+          borderWidth: 1.5,
+          borderColor: focused ? c.accent : 'transparent',
+          outlineStyle: 'none',
+        } as object,
+        style,
+      ]}
       {...props}
     />
   )

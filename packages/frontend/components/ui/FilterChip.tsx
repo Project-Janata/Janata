@@ -1,5 +1,6 @@
 import React from 'react'
 import { Pressable, Text, View } from 'react-native'
+import { useColors } from '../../hooks/useColors'
 
 type FilterChipProps = {
   label: string
@@ -9,36 +10,35 @@ type FilterChipProps = {
   variant?: 'filled' | 'outline'
 }
 
-export default function FilterChip({
-  label,
-  icon,
-  active,
-  onPress,
-  variant = 'filled',
-}: FilterChipProps) {
+export default function FilterChip({ label, icon, active, onPress, variant = 'filled' }: FilterChipProps) {
+  const c = useColors()
   const isOutline = variant === 'outline'
+
+  const bg = active
+    ? isOutline ? c.accentSoft : c.accent
+    : c.card
+  const borderColor = active ? c.accent : c.border
+  const textColor = active
+    ? isOutline ? c.accent : '#FFFFFF'
+    : c.textMuted
 
   return (
     <Pressable
       onPress={onPress}
-      className={`flex-row items-center gap-1.5 px-3 py-1.5 rounded-full border active:opacity-70 ${
-        active
-          ? isOutline
-            ? 'border-primary bg-primary/10'
-            : 'bg-primary border-primary'
-          : 'bg-white dark:bg-neutral-800 border-gray-200 dark:border-neutral-700'
-      }`}
+      style={{
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: 6,
+        paddingHorizontal: 12,
+        paddingVertical: 6,
+        borderRadius: 999,
+        borderWidth: 1,
+        borderColor,
+        backgroundColor: bg,
+      }}
     >
       {icon && <View>{icon}</View>}
-      <Text
-        className={`text-sm font-sans ${
-          active
-            ? isOutline
-              ? 'text-primary'
-              : 'text-white'
-            : 'text-gray-500 dark:text-gray-400'
-        }`}
-      >
+      <Text style={{ fontWeight: '500', fontSize: 13, lineHeight: 18, color: textColor }}>
         {label}
       </Text>
     </Pressable>

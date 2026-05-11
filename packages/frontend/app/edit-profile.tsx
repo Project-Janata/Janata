@@ -186,7 +186,6 @@ export default function EditProfileScreen() {
   const pageBg = isDark ? '#1A1A1A' : '#F5F5F4'
 
   const inputStyle = {
-    fontFamily: 'Inclusive Sans' as const,
     fontSize: 15,
     color: textColor,
     backgroundColor: 'transparent' as const,
@@ -194,7 +193,6 @@ export default function EditProfileScreen() {
   }
 
   const fieldLabelStyle = {
-    fontFamily: 'Inclusive Sans' as const,
     fontSize: 11,
     color: faintColor,
     letterSpacing: 0.9,

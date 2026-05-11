@@ -30,7 +30,9 @@ import {
 } from 'lucide-react-native'
 import { usePostHog } from 'posthog-react-native'
 import { Avatar } from '../../components/ui'
-import { useTheme, useUser } from '../../components/contexts'
+import { useUser } from '../../components/contexts'
+import { useColors } from '../../hooks/useColors'
+import type { AppColors } from '../../tokens'
 import { useCenterDetail, useDiscoverData, useMyEvents } from '../../hooks/useApiData'
 import { extractCityState } from '../../utils/addressParsing'
 import {
@@ -51,7 +53,6 @@ import {
   type InboxThread,
   type PersonSummary,
   type ThreadPanelColors,
-  type ColorSet,
   type GroupKind,
 } from '../../components/connect'
 import type { DiscoverCenter, EventDisplay } from '../../utils/api'
@@ -125,7 +126,7 @@ export default function ChatScreen() {
   const router = useRouter()
   const navigation = useNavigation()
   const { user } = useUser()
-  const { isDark } = useTheme()
+  const colors = useColors()
   const { width } = useWindowDimensions()
   const insets = useSafeAreaInsets()
   const posthog = usePostHog()
@@ -134,46 +135,6 @@ export default function ChatScreen() {
   const isDesktop = width >= 980
   const [query, setQuery] = useState('')
   const [selectedConversationId, setSelectedConversationId] = useState('')
-
-  const colors = useMemo<ColorSet>(
-    () =>
-      isDark
-        ? {
-            page: '#1A1A1A',
-            surface: '#171717',
-            panel: '#1F1F1F',
-            rail: '#171717',
-            card: '#171717',
-            cardActive: '#271F18',
-            border: '#2B2B2B',
-            borderStrong: '#3A332D',
-            text: '#FAFAF9',
-            textMuted: '#C0BAB2',
-            textSoft: '#8B847C',
-            orange: '#F97316',
-            orangeSoft: 'rgba(249,115,22,0.15)',
-            green: '#10B981',
-            greenSoft: 'rgba(16,185,129,0.14)',
-          }
-        : {
-            page: '#F5F5F4',
-            surface: '#FFFFFF',
-            panel: '#F7F4EF',
-            rail: '#FFFFFF',
-            card: '#FFFFFF',
-            cardActive: '#FFF7ED',
-            border: '#E7E0D8',
-            borderStrong: '#F2C79C',
-            text: '#1F1D1B',
-            textMuted: '#625B54',
-            textSoft: '#A79F97',
-            orange: '#E8862A',
-            orangeSoft: '#FFF3E4',
-            green: '#059669',
-            greenSoft: '#ECFDF5',
-          },
-    [isDark]
-  )
 
   const canAccessBoards = !!user
   const conversations = useMemo(() => {
@@ -200,16 +161,13 @@ export default function ChatScreen() {
   const mobileConversationOpen = !isDesktop && !!selectedConversationId
   const nativeDetailOpen = Platform.OS !== 'web' && mobileConversationOpen
   const listTopPadding = Platform.OS === 'web' ? 20 : 8
-  const nativeTabBarStyle = useMemo(
-    () => ({
-      backgroundColor: isDark ? '#171717' : '#FFFFFF',
-      borderTopColor: isDark ? '#262626' : '#E7E5E4',
-      height: 84,
-      paddingTop: 8,
-      paddingBottom: 18,
-    }),
-    [isDark]
-  )
+  const nativeTabBarStyle = {
+    backgroundColor: colors.surface,
+    borderTopColor: colors.border,
+    height: 84,
+    paddingTop: 8,
+    paddingBottom: 18,
+  }
 
   useEffect(() => {
     if (Platform.OS === 'web') return
@@ -280,7 +238,7 @@ export default function ChatScreen() {
   }
 
   return (
-    <View style={{ flex: 1, backgroundColor: colors.page }}>
+    <View style={{ flex: 1, backgroundColor: colors.bg }}>
       <ScrollView
         contentContainerStyle={{
           width: '100%',
@@ -381,7 +339,7 @@ function MessagesWorkspace({
 }: {
   conversations: Conversation[]
   selectedConversation?: Conversation
-  colors: ColorSet
+  colors: AppColors
   isDesktop: boolean
   nativeDetailOpen: boolean
   mobileConversationOpen: boolean
@@ -443,7 +401,7 @@ function NativeChatHeader({
   hideAvatar,
   onBack,
 }: {
-  colors: ColorSet
+  colors: AppColors
   insetsTop: number
   title: string
   subtitle?: string
@@ -478,8 +436,8 @@ function NativeChatHeader({
             gap: 5,
           }}
         >
-          <ArrowLeft size={21} color={colors.orange} />
-          <Text style={{ fontFamily: 'Inclusive Sans', fontSize: 15, color: colors.orange }}>
+          <ArrowLeft size={21} color={colors.accent} />
+          <Text style={{ fontFamily: 'Inclusive Sans', fontSize: 15, color: colors.accent }}>
             Back
           </Text>
         </Pressable>
@@ -505,7 +463,7 @@ function NativeChatHeader({
           </Text>
           {subtitle ? (
             <Text
-              style={{ fontFamily: 'Inclusive Sans', fontSize: 11, color: colors.textSoft }}
+              style={{ fontFamily: 'Inclusive Sans', fontSize: 11, color: colors.textFaint }}
               numberOfLines={1}
             >
               {subtitle}
@@ -527,7 +485,7 @@ function ConnectHeader({
   onChangeQuery,
 }: {
   query: string
-  colors: ColorSet
+  colors: AppColors
   mobileInDetail: boolean
   onBack: () => void
   onChangeQuery: (query: string) => void
@@ -567,12 +525,12 @@ function ConnectHeader({
             gap: 10,
           }}
         >
-          <Search size={17} color={colors.textSoft} />
+          <Search size={17} color={colors.textFaint} />
           <TextInput
             value={query}
             onChangeText={onChangeQuery}
             placeholder="Search messages"
-            placeholderTextColor={colors.textSoft}
+            placeholderTextColor={colors.textFaint}
             style={{
               flex: 1,
               fontFamily: 'Inclusive Sans',
@@ -595,7 +553,7 @@ function ConversationList({
 }: {
   conversations: Conversation[]
   selectedConversationId?: string
-  colors: ColorSet
+  colors: AppColors
   onSelectConversation: (id: string) => void
 }) {
   return (
@@ -656,7 +614,7 @@ function ConversationList({
                   </Text>
                   {conversation.type === 'group' && conversation.groupMembers ? (
                     <Text
-                      style={{ fontFamily: 'Inclusive Sans', fontSize: 11, color: colors.textSoft }}
+                      style={{ fontFamily: 'Inclusive Sans', fontSize: 11, color: colors.textFaint }}
                     >
                       - {conversation.groupMembers.length}
                     </Text>
@@ -666,14 +624,14 @@ function ConversationList({
                   style={{
                     fontFamily: 'Inclusive Sans',
                     fontSize: 12,
-                    color: conversation.unread ? colors.orange : colors.textSoft,
+                    color: conversation.unread ? colors.accent : colors.textFaint,
                   }}
                 >
                   {conversation.lastActiveLabel}
                 </Text>
               </View>
               <Text
-                style={{ fontFamily: 'Inclusive Sans', fontSize: 12, color: colors.textSoft }}
+                style={{ fontFamily: 'Inclusive Sans', fontSize: 12, color: colors.textFaint }}
                 numberOfLines={1}
               >
                 {conversation.subtitle}
@@ -687,7 +645,7 @@ function ConversationList({
             </View>
             {conversation.unread ? (
               <View
-                style={{ width: 8, height: 8, borderRadius: 4, backgroundColor: colors.orange }}
+                style={{ width: 8, height: 8, borderRadius: 4, backgroundColor: colors.accent }}
               />
             ) : null}
           </View>
@@ -704,7 +662,7 @@ function ConversationThread({
   bottomInset = 0,
 }: {
   conversation: Conversation
-  colors: ColorSet
+  colors: AppColors
   fullScreen?: boolean
   bottomInset?: number
 }) {
@@ -728,7 +686,7 @@ function ConversationThread({
     <View
       style={{
         flex: fullScreen ? 1 : undefined,
-        backgroundColor: fullScreen ? colors.page : 'transparent',
+        backgroundColor: fullScreen ? colors.bg : 'transparent',
         borderWidth: 0,
         borderColor: 'transparent',
         borderRadius: fullScreen ? 0 : 22,
@@ -824,13 +782,13 @@ function MessageBubble({
   message: ChatMessage
   previousSender?: 'them' | 'you'
   nextSender?: 'them' | 'you'
-  colors: ColorSet
+  colors: AppColors
   showAuthor?: boolean
 }) {
   const isYou = message.sender === 'you'
   const isFirstInRun = previousSender !== message.sender
   const isLastInRun = nextSender !== message.sender
-  const incomingBubble = colors.surface === '#171717' ? '#262626' : '#F5F0EB'
+  const incomingBubble = colors.card
 
   return (
     <View style={{ gap: 4, marginTop: isFirstInRun ? 8 : 0 }}>
@@ -841,7 +799,7 @@ function MessageBubble({
             paddingHorizontal: 8,
             fontFamily: 'Inclusive Sans',
             fontSize: 11,
-            color: colors.textSoft,
+            color: colors.textFaint,
           }}
         >
           {showAuthor && !isYou && message.authorName
@@ -855,7 +813,7 @@ function MessageBubble({
           maxWidth: '78%',
           paddingHorizontal: 14,
           paddingVertical: 10,
-          backgroundColor: isYou ? colors.orangeSoft : incomingBubble,
+          backgroundColor: isYou ? colors.accentSoft : incomingBubble,
           borderWidth: 1,
           borderColor: isYou ? colors.borderStrong : colors.border,
           borderTopLeftRadius: 20,
@@ -885,7 +843,7 @@ function ChatComposer({
   placeholder,
   compact = false,
 }: {
-  colors: ColorSet
+  colors: AppColors
   bottomInset: number
   placeholder: string
   compact?: boolean
@@ -909,7 +867,7 @@ function ChatComposer({
             borderRadius: 17,
             alignItems: 'center',
             justifyContent: 'center',
-            backgroundColor: colors.page,
+            backgroundColor: colors.bg,
             borderWidth: 1,
             borderColor: colors.border,
           }}
@@ -929,7 +887,7 @@ function ChatComposer({
           <TextInput
             editable={false}
             placeholder={placeholder}
-            placeholderTextColor={colors.textSoft}
+            placeholderTextColor={colors.textFaint}
             style={{ fontFamily: 'Inclusive Sans', fontSize: 15, color: colors.text }}
           />
         </View>
@@ -938,7 +896,7 @@ function ChatComposer({
             width: 34,
             height: 34,
             borderRadius: 17,
-            backgroundColor: colors.orange,
+            backgroundColor: colors.accent,
             alignItems: 'center',
             justifyContent: 'center',
           }}
@@ -950,7 +908,7 @@ function ChatComposer({
   )
 }
 
-function RequestsBanner({ colors }: { colors: ColorSet }) {
+function RequestsBanner({ colors }: { colors: AppColors }) {
   if (connectionRequests.length === 0) return null
   const previewNames = connectionRequests
     .slice(0, 2)
@@ -988,12 +946,12 @@ function RequestsBanner({ colors }: { colors: ColorSet }) {
           {subtitle}
         </Text>
       </View>
-      <ChevronRight size={18} color={colors.textSoft} />
+      <ChevronRight size={18} color={colors.textFaint} />
     </Pressable>
   )
 }
 
-function RequestAvatarStack({ people, colors }: { people: PersonSummary[]; colors: ColorSet }) {
+function RequestAvatarStack({ people, colors }: { people: PersonSummary[]; colors: AppColors }) {
   return (
     <View style={{ flexDirection: 'row' }}>
       {people.map((person, index) => (
@@ -1025,7 +983,7 @@ function GroupConversationAvatar({
 }: {
   members: PersonSummary[]
   size?: number
-  colors: ColorSet
+  colors: AppColors
 }) {
   const fallbackMember: PersonSummary = { id: 'group', name: 'Group', initials: 'G' }
   const shown = members.length > 0 ? members.slice(0, 4) : [fallbackMember]
@@ -1052,7 +1010,7 @@ function GroupConversationAvatar({
             top: Math.floor(index / 2) * half,
             width: half,
             height: half,
-            backgroundColor: member.accentColor || colors.orange,
+            backgroundColor: member.accentColor || colors.accent,
             alignItems: 'center',
             justifyContent: 'center',
           }}
@@ -1078,7 +1036,7 @@ function GroupIcon({
   active,
 }: {
   kind: GroupKind
-  colors: ColorSet
+  colors: AppColors
   active?: boolean
 }) {
   return (
@@ -1087,15 +1045,15 @@ function GroupIcon({
         width: 42,
         height: 42,
         borderRadius: 15,
-        backgroundColor: active ? colors.orange : colors.orangeSoft,
+        backgroundColor: active ? colors.accent : colors.accentSoft,
         alignItems: 'center',
         justifyContent: 'center',
       }}
     >
       {kind === 'center' ? (
-        <Building2 size={19} color={active ? '#FFFFFF' : colors.orange} />
+        <Building2 size={19} color={active ? '#FFFFFF' : colors.accent} />
       ) : (
-        <CalendarDays size={19} color={active ? '#FFFFFF' : colors.orange} />
+        <CalendarDays size={19} color={active ? '#FFFFFF' : colors.accent} />
       )}
     </View>
   )

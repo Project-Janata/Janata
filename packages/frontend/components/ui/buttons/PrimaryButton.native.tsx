@@ -1,43 +1,40 @@
 import React from 'react'
-import { Pressable, Text, ActivityIndicator } from 'react-native'
+import { ActivityIndicator, Pressable, Text } from 'react-native'
 
 interface PrimaryButtonProps {
   children: React.ReactNode
   onPress?: () => void
   disabled?: boolean
   loading?: boolean
-  style?: any
-  className?: string
+  style?: object
 }
 
-export default function PrimaryButton({
-  children,
-  onPress,
-  disabled,
-  loading,
-  style,
-  ...props
-}: PrimaryButtonProps) {
+export default function PrimaryButton({ children, onPress, disabled, loading, style }: PrimaryButtonProps) {
   const isDisabled = disabled || loading
-
-  const handlePress = () => {
-    if (!isDisabled && onPress) {
-      onPress()
-    }
-  }
 
   return (
     <Pressable
-      onPress={handlePress}
+      onPress={!isDisabled ? onPress : undefined}
       disabled={isDisabled}
-      className="bg-primary px-4 py-3 rounded-full active:bg-primary-press disabled:opacity-50"
-      style={style}
-      {...props}
+      style={({ pressed }) => [
+        {
+          backgroundColor: pressed ? '#D97520' : '#E8862A',
+          paddingHorizontal: 16,
+          paddingVertical: 14,
+          borderRadius: 999,
+          alignItems: 'center',
+          justifyContent: 'center',
+          opacity: isDisabled ? 0.5 : 1,
+        },
+        style,
+      ]}
     >
       {loading ? (
         <ActivityIndicator size="small" color="#FFFFFF" />
       ) : (
-        <Text className="text-white font-sans text-base leading-5 text-center">{children}</Text>
+        <Text style={{ fontWeight: '500', fontSize: 15, lineHeight: 20, color: '#FFFFFF', textAlign: 'center' }}>
+          {children}
+        </Text>
       )}
     </Pressable>
   )

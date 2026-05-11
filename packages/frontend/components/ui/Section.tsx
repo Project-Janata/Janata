@@ -1,6 +1,6 @@
 import React from 'react'
-import { View, ViewStyle } from 'react-native'
-import { Text } from './Text'
+import { View, Text, type ViewStyle } from 'react-native'
+import { useColors } from '../../hooks/useColors'
 
 interface SectionProps {
   title?: string
@@ -10,26 +10,14 @@ interface SectionProps {
   borderColor?: string
 }
 
-export function Section({
-  title,
-  children,
-  containerStyle,
-  titleColor = '#A8A29E',
-  borderColor,
-}: SectionProps) {
+export function Section({ title, children, containerStyle, titleColor, borderColor: _borderColor }: SectionProps) {
+  const c = useColors()
+  const labelColor = titleColor ?? c.textFaint
   return (
     <View style={[{ marginBottom: 22, gap: 10 }, containerStyle]}>
       {title && (
-        <Text
-          style={{
-            fontSize: 11,
-            fontWeight: '400',
-            color: titleColor,
-            letterSpacing: 0.9,
-            paddingHorizontal: 4,
-          }}
-        >
-          {title}
+        <Text style={{ fontSize: 11, letterSpacing: 0.9, color: labelColor, paddingHorizontal: 4 }}>
+          {title.toUpperCase()}
         </Text>
       )}
       {children}

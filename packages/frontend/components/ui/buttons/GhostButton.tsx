@@ -1,24 +1,37 @@
-import { Pressable, Text } from 'react-native'
 import React from 'react'
+import { Pressable, Text } from 'react-native'
+import { useColors } from '../../../hooks/useColors'
 
 interface GhostButtonProps {
   children: React.ReactNode
   onPress?: () => void
   disabled?: boolean
-  style?: any
-  [key: string]: any
+  style?: object
 }
 
-export default function GhostButton({ children, onPress, disabled, style, ...props }: GhostButtonProps) {
+export default function GhostButton({ children, onPress, disabled, style }: GhostButtonProps) {
+  const c = useColors()
+
   return (
     <Pressable
       onPress={!disabled ? onPress : undefined}
       disabled={disabled}
-      className="bg-transparent px-4 py-3 rounded-full active:bg-gray-200 dark:active:bg-gray-700 disabled:opacity-50"
-      style={style}
-      {...props}
+      style={({ pressed }) => [
+        {
+          backgroundColor: pressed ? c.surface : 'transparent',
+          paddingHorizontal: 16,
+          paddingVertical: 14,
+          borderRadius: 999,
+          alignItems: 'center',
+          justifyContent: 'center',
+          opacity: disabled ? 0.5 : 1,
+        },
+        style,
+      ]}
     >
-      <Text className="text-content dark:text-content-dark text-base leading-4 text-center">{children}</Text>
+      <Text style={{ fontWeight: '500', fontSize: 15, lineHeight: 20, color: c.text, textAlign: 'center' }}>
+        {children}
+      </Text>
     </Pressable>
   )
 }

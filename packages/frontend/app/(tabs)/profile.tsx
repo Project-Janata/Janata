@@ -214,7 +214,6 @@ export default function ProfileNative() {
           {user?.bio ? (
             <Text
               style={{
-                fontFamily: 'Inter',
                 fontSize: 15,
                 color: textColor,
                 lineHeight: 22,
@@ -305,7 +304,7 @@ export default function ProfileNative() {
             }}
           >
             <Text
-              style={{ fontFamily: 'Inter', fontSize: 14, color: textColor, fontWeight: '700' }}
+              style={{ fontSize: 14, color: textColor, fontWeight: '700' }}
             >
               Edit Profile
             </Text>
@@ -324,7 +323,7 @@ export default function ProfileNative() {
             }}
           >
             <Text
-              style={{ fontFamily: 'Inter', fontSize: 14, color: textColor, fontWeight: '700' }}
+              style={{ fontSize: 14, color: textColor, fontWeight: '700' }}
             >
               Share
             </Text>
