@@ -14,7 +14,7 @@ import { Eye, Shield, Info, ExternalLink, AlertTriangle } from 'lucide-react-nat
 import { useUser, useTheme } from '../../components/contexts'
 import { useRouter } from 'expo-router'
 import { DestructiveButton, SecondaryButton, Text } from '../../components/ui'
-import ThemeSelector from '../../components/ThemeSelector'
+import ThemeSelector from '../../components/settings/ThemeSelector'
 import { usePostHog } from 'posthog-react-native'
 import Constants from 'expo-constants'
 

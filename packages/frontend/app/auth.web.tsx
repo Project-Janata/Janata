@@ -2,7 +2,7 @@ import React, { useState, useCallback, useEffect } from 'react'
 import { useRouter } from 'expo-router'
 import { useUser } from '../components/contexts'
 import { validateEmail, validatePassword } from '../utils'
-import PasswordStrength from '../components/PasswordStrength'
+import PasswordStrength from '../components/auth/PasswordStrength'
 import { ImageCarousel } from '../components/auth/ImageCarousel'
 // eslint-disable-next-line @typescript-eslint/no-var-requires
 const swamiChinmayanandaJpg = require('../assets/images/landing/Swami Chinmayananda.jpg')

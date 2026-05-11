@@ -12,8 +12,8 @@
 import React, { useState, useCallback, memo, useRef, useMemo, useEffect } from 'react'
 import Map, { Marker, MapRef, AttributionControl } from 'react-map-gl/maplibre'
 import 'maplibre-gl/dist/maplibre-gl.css'
-import { useTheme } from './contexts'
-import { getLocationAccess, getCurrentPosition } from '../utils/locationServices'
+import { useTheme } from '../contexts'
+import { getLocationAccess, getCurrentPosition } from '../../utils/locationServices'
 
 // Type definitions
 export interface MapPoint {

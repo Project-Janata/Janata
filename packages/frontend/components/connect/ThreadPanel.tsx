@@ -2,7 +2,7 @@ import React from 'react'
 import { Pressable, ScrollView, Text, TextInput, View } from 'react-native'
 import { Building2, CalendarDays, Lock, MessageCircle, MoreHorizontal } from 'lucide-react-native'
 import { Avatar } from '../ui'
-import type { BoardMessage } from './mockData'
+import type { BoardMessage } from './__mocks__/mockData'
 
 export type ComposerState = 'open' | 'locked'
 

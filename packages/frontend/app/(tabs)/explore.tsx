@@ -33,7 +33,7 @@ import { extractCityState } from '../../utils/addressParsing'
 
 
 // Lazy load Map to avoid loading heavy web dependencies on mobile web
-const Map = React.lazy(() => import('../../components/Map'))
+const Map = React.lazy(() => import('../../components/map/Map'))
 
 const FILTERS: { label: DiscoverFilter }[] = [
   { label: 'Events' },

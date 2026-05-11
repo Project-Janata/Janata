@@ -17,7 +17,7 @@ vi.mock('../auth/authClient', () => ({
 }))
 
 // tokenStorage is already mocked in setup.ts, but we import for overriding
-import { getStoredToken, setStoredToken, removeStoredToken } from '../../components/utils/tokenStorage'
+import { getStoredToken, setStoredToken, removeStoredToken } from '../storage/tokenStorage'
 import { authClient } from '../auth/authClient'
 import { authService } from '../auth/authService'
 

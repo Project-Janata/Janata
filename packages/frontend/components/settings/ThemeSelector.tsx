@@ -1,7 +1,7 @@
 import React from 'react'
 import { View, Text, Pressable } from 'react-native'
 import { Sun, Moon, Monitor } from 'lucide-react-native'
-import { useTheme } from './contexts'
+import { useTheme } from '../contexts'
 
 const themeOptions = ['light', 'dark', 'system'] as const
 const optionWidth = 70

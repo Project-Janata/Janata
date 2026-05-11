@@ -24,7 +24,7 @@ try {
 import { Camera, ChevronRight } from 'lucide-react-native'
 import { useUser, useTheme } from '../components/contexts'
 import { Text, Section, StackHeader } from '../components/ui'
-import BirthdatePicker from '../components/BirthdatePicker'
+import BirthdatePicker from '../components/profile/BirthdatePicker'
 import { fetchCenters, CenterData } from '../utils/api'
 import { centerPickerStore } from '../utils/centerPickerStore'
 

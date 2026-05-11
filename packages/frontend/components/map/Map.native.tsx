@@ -3,8 +3,8 @@ import { StyleSheet, View, Pressable, Platform } from 'react-native'
 import MapView, { Marker, Region, PROVIDER_GOOGLE } from 'react-native-maps'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
 import { Plus, Minus, Navigation } from 'lucide-react-native'
-import { getCurrentPosition } from '../utils'
-import { useTheme } from './contexts'
+import { getCurrentPosition } from '../../utils'
+import { useTheme } from '../contexts'
 
 export interface MapPoint {
   id: string

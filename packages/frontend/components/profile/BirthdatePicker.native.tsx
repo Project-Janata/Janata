@@ -1,7 +1,7 @@
 import React, { useState } from 'react'
 import { View, Text, Pressable, Platform } from 'react-native'
 import DateTimePicker from '@react-native-community/datetimepicker'
-import { useTheme } from './contexts'
+import { useTheme } from '../contexts'
 
 interface BirthdatePickerProps {
   value?: Date

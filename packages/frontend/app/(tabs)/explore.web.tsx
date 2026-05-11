@@ -26,17 +26,17 @@ import { useRouter, useLocalSearchParams, useFocusEffect } from 'expo-router'
 import { useTheme, useUser } from '../../components/contexts'
 import { FilterChip, Badge, UnderlineTabBar, Avatar } from '../../components/ui'
 import FilterPickerModal, { type FilterPickerOption } from '../../components/ui/FilterPickerModal'
-const Map = lazy(() => import('../../components/Map'))
-import MapPopover from '../../components/MapPopover'
+const Map = lazy(() => import('../../components/map/Map'))
+import MapPopover from '../../components/map/MapPopover'
 import {
   useDiscoverData,
   useEventDetail,
   useCenterDetail,
   type DiscoverFilter,
 } from '../../hooks/useApiData'
-import EventDetailPanel from '../../components/web/EventDetailPanel'
-import EventFormPanel from '../../components/web/EventFormPanel'
-import CenterDetailPanel from '../../components/web/CenterDetailPanel'
+import EventDetailPanel from '../../components/events/EventDetailPanel.web'
+import EventFormPanel from '../../components/events/EventFormPanel.web'
+import CenterDetailPanel from '../../components/center/CenterDetailPanel.web'
 import { useDetailColors } from '../../hooks/useDetailColors'
 import AuthPromptModal from '../../components/ui/AuthPromptModal'
 import type { MapPoint, EventDisplay, DiscoverCenter, AttendeeInfo } from '../../utils/api'

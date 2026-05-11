@@ -11,7 +11,7 @@ import {
 } from 'lucide-react-native'
 import { useUser, useTheme } from '../../components/contexts'
 import { Avatar, Text, Section, StackHeader } from '../../components/ui'
-import ThemeSelector from '../../components/ThemeSelector'
+import ThemeSelector from '../../components/settings/ThemeSelector'
 import { usePostHog } from 'posthog-react-native'
 import Constants from 'expo-constants'
 

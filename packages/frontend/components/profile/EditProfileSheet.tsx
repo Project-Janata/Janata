@@ -24,10 +24,10 @@ try {
   ImageManipulator = require('expo-image-manipulator')
 } catch {}
 import { Camera, Check } from 'lucide-react-native'
-import { useUser, useTheme } from './contexts'
-import { Text } from './ui'
+import { useUser, useTheme } from '../contexts'
+import { Text } from '../ui'
 import BirthdatePicker from './BirthdatePicker'
-import { fetchCenters, CenterData } from '../utils/api'
+import { fetchCenters, CenterData } from '../../utils/api'
 
 const INTEREST_OPTIONS = [
   'Satsangs',

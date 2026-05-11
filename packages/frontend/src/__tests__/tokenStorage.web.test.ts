@@ -122,8 +122,8 @@ async function getTokenStorage() {
   ;(globalThis as any).__DEV__ = true
   // Make sure window is still set after resetModules
   ;(globalThis as any).window = globalThis
-  vi.doUnmock('../../components/utils/tokenStorage')
-  return await import('../../components/utils/tokenStorage.web')
+  vi.doUnmock('../storage/tokenStorage')
+  return await import('../storage/tokenStorage.web')
 }
 
 describe('setStoredToken', () => {
