@@ -11,6 +11,11 @@ module.exports = {
   presets: [require('nativewind/preset')],
   theme: {
     extend: {
+      fontFamily: {
+        sans: ['Inclusive Sans', 'ui-sans-serif', 'system-ui', 'sans-serif'],
+        serif: ['ui-serif', 'Georgia', 'Cambria', 'serif'],
+        mono: ['ui-monospace', 'SFMono-Regular', 'Menlo', 'monospace'],
+      },
       colors: {
         primary: {
           DEFAULT: colors.orange[600],
@@ -53,10 +58,6 @@ module.exports = {
           DEFAULT: colors.white,
           dark: colors.neutral[800],
         },
-      },
-      fontFamily: {
-        // ↓ Change the font name here to switch the entire app's font
-        sans: ['Inclusive Sans'],
       },
     },
   },

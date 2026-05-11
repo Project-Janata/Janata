@@ -92,11 +92,14 @@ function SettingsPanel({ visible, onClose, onLogout }) {
   if (!visible) return null
 
   const displayName =
-    user?.firstName && user?.lastName ? `${user.firstName} ${user.lastName}` : user?.username || 'User'
+    user?.firstName && user?.lastName
+      ? `${user.firstName} ${user.lastName}`
+      : user?.username || 'User'
 
   const profileImage = user?.profileImage
   const getInitials = () => {
-    if (user?.firstName && user?.lastName) return `${user.firstName[0]}${user.lastName[0]}`.toUpperCase()
+    if (user?.firstName && user?.lastName)
+      return `${user.firstName[0]}${user.lastName[0]}`.toUpperCase()
     if (user?.firstName) return user.firstName[0].toUpperCase()
     if (user?.username) return user.username[0].toUpperCase()
     return '?'
@@ -166,31 +169,55 @@ function SettingsPanel({ visible, onClose, onLogout }) {
         {/* Profile Button */}
         <Pressable
           className={`flex-row items-center mb-2 p-2 rounded-lg ${
-            pathname === '/settings/profile' ? 'bg-primary' : 'hover:bg-gray-100 dark:hover:bg-neutral-800'
+            pathname === '/settings/profile'
+              ? 'bg-primary'
+              : 'hover:bg-gray-100 dark:hover:bg-neutral-800'
           }`}
           onPress={() => {
             onClose()
-            router.push('/settings/profile')
+            router.push('/profile')
           }}
         >
-          <User size={16} color={pathname === '/settings/profile' ? '#fff' : isDark ? '#fff' : '#374151'} className="mr-3" />
-          <Text className={`font-sans ${
-            pathname === '/settings/profile' ? 'text-white font-sans' : 'text-content dark:text-content-dark'
-          }`}>Profile</Text>
+          <User
+            size={16}
+            color={pathname === '/settings/profile' ? '#fff' : isDark ? '#fff' : '#374151'}
+            className="mr-3"
+          />
+          <Text
+            className={`font-sans ${
+              pathname === '/settings/profile'
+                ? 'text-white font-sans'
+                : 'text-content dark:text-content-dark'
+            }`}
+          >
+            Profile
+          </Text>
         </Pressable>
         <Pressable
           className={`flex-row items-center mb-2 p-2 rounded-lg ${
-            pathname === '/settings/preferences' ? 'bg-primary' : 'hover:bg-gray-100 dark:hover:bg-neutral-800'
+            pathname === '/settings/preferences'
+              ? 'bg-primary'
+              : 'hover:bg-gray-100 dark:hover:bg-neutral-800'
           }`}
           onPress={() => {
             onClose()
             router.push('/settings/preferences')
           }}
         >
-          <Settings size={16} color={pathname === '/settings/preferences' ? '#fff' : isDark ? '#fff' : '#374151'} className="mr-3" />
-          <Text className={`font-sans ${
-            pathname === '/settings/preferences' ? 'text-white font-sans' : 'text-content dark:text-content-dark'
-          }`}>Preferences</Text>
+          <Settings
+            size={16}
+            color={pathname === '/settings/preferences' ? '#fff' : isDark ? '#fff' : '#374151'}
+            className="mr-3"
+          />
+          <Text
+            className={`font-sans ${
+              pathname === '/settings/preferences'
+                ? 'text-white font-sans'
+                : 'text-content dark:text-content-dark'
+            }`}
+          >
+            Preferences
+          </Text>
         </Pressable>
         {isSuperAdmin(user) && (
           <Pressable

@@ -1,6 +1,7 @@
 import React, { useState } from 'react'
 import { View, Text, Pressable, Platform } from 'react-native'
 import DateTimePicker from '@react-native-community/datetimepicker'
+import { useTheme } from './contexts'
 
 interface BirthdatePickerProps {
   value?: Date
@@ -8,61 +9,61 @@ interface BirthdatePickerProps {
 }
 
 export default function BirthdatePicker({ value, onChange }: BirthdatePickerProps) {
-  const [date, setDate] = useState(value || new Date(2000, 0, 1))
+  const { isDark } = useTheme()
+  const [pickerDate, setPickerDate] = useState(value || new Date(2000, 0, 1))
   const [show, setShow] = useState(false)
 
-  const handleChange = (event: any, selectedDate?: Date) => {
-    // On Android, the picker closes automatically
-    if (Platform.OS === 'android') {
-      setShow(false)
-    }
+  const handleOpen = () => {
+    setPickerDate(value || new Date(2000, 0, 1))
+    setShow((s) => !s)
+  }
 
+  const handleChange = (_event: any, selectedDate?: Date) => {
+    if (Platform.OS === 'android') setShow(false)
     if (selectedDate) {
-      setDate(selectedDate)
+      setPickerDate(selectedDate)
       onChange(selectedDate)
     }
   }
 
-  const formatDate = (date: Date) => {
-    return date.toLocaleDateString('en-US', {
-      month: 'long',
-      day: 'numeric',
-      year: 'numeric',
-    })
-  }
+  const formatDate = (d: Date) =>
+    d.toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' })
+
+  const textColor = isDark ? '#FAFAFA' : '#1C1917'
+  const mutedColor = isDark ? '#737373' : '#A8A29E'
+  const accentColor = '#C2410C'
 
   return (
-    <View className="p-4">
-      <Pressable
-        onPress={() => setShow(true)}
-        className="bg-muted/50 dark:bg-muted-dark/10 py-3 px-4 rounded-lg border-2 border-transparent active:border-primary"
-      >
-        <Text className="font-sans text-base text-content dark:text-content-dark">
-          {formatDate(date)}
+    <View>
+      <Pressable onPress={handleOpen}>
+        <Text style={{ fontFamily: 'Inclusive Sans', fontSize: 15, color: value ? textColor : mutedColor, paddingTop: 6 }}>
+          {value ? formatDate(value) : 'Select date'}
         </Text>
       </Pressable>
 
       {show && (
-        <View>
+        <View style={{ marginTop: 8 }}>
           <DateTimePicker
-            value={date}
+            value={pickerDate}
             mode="date"
             display={Platform.OS === 'ios' ? 'spinner' : 'default'}
             onChange={handleChange}
             maximumDate={(() => { const d = new Date(); d.setFullYear(d.getFullYear() - 18); return d })()}
             minimumDate={new Date(1900, 0, 1)}
+            themeVariant={isDark ? 'dark' : 'light'}
           />
-
-          {/* iOS needs a done button */}
           {Platform.OS === 'ios' && (
             <Pressable
-              onPress={() => {
-                onChange(date)
-                setShow(false)
+              onPress={() => { onChange(pickerDate); setShow(false) }}
+              style={{
+                marginTop: 8,
+                backgroundColor: accentColor,
+                borderRadius: 10,
+                paddingVertical: 12,
+                alignItems: 'center',
               }}
-              className="bg-primary py-3 px-4 rounded-lg mt-2"
             >
-              <Text className="font-sans text-base text-white text-center font-semibold">
+              <Text style={{ fontFamily: 'Inclusive Sans', fontSize: 15, color: '#fff', fontWeight: '600' }}>
                 Done
               </Text>
             </Pressable>

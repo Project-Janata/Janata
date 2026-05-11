@@ -37,6 +37,7 @@ interface UserContextType {
   loading: boolean
   authStatus: AuthStatus
   onboardingComplete: boolean
+  refreshUser: () => Promise<void>
   login: (username: string, password: string) => Promise<{ success: boolean; message?: string }>
   signup: (username: string, password: string, inviteCode?: string) => Promise<{ success: boolean; message?: string }>
   logout: () => Promise<void>
@@ -296,12 +297,20 @@ export const UserProvider = ({ children }: { children: ReactNode }) => {
     }
   }, [posthog])
 
+  const refreshUser = useCallback(async () => {
+    const session = await authService.bootstrapSession()
+    if (session.authStatus === 'authenticated' && session.user) {
+      setUser(session.user)
+    }
+  }, [])
+
   const contextValue = useMemo(
     () => ({
       user,
       loading,
       authStatus,
       onboardingComplete,
+      refreshUser,
       login,
       signup,
       logout,
@@ -319,6 +328,7 @@ export const UserProvider = ({ children }: { children: ReactNode }) => {
       loading,
       authStatus,
       onboardingComplete,
+      refreshUser,
       login,
       signup,
       logout,

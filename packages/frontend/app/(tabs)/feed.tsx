@@ -1318,14 +1318,14 @@ function CreatePostSheet({
     >
       <KeyboardAvoidingView
         behavior={Platform.OS === 'ios' ? 'padding' : undefined}
-        style={{ flex: 1, backgroundColor: colors.page }}
+        style={{ flex: 1, backgroundColor: colors.page, borderTopLeftRadius: 24, borderTopRightRadius: 24, overflow: 'hidden' }}
       >
         <View
           style={{
             flexDirection: 'row',
             alignItems: 'center',
             justifyContent: 'space-between',
-            paddingHorizontal: 16,
+            paddingHorizontal: Platform.OS === 'ios' ? 20 : 16,
             paddingTop: Platform.OS === 'ios' ? 14 : 18,
             paddingBottom: 12,
             borderBottomWidth: 1,

@@ -402,6 +402,56 @@ export async function getUserEvents(username: string): Promise<EventData[]> {
   }
 }
 
+// ── Profile endpoints ─────────────────────────────────────────────────
+
+export async function fetchUserEvents(username: string): Promise<EventData[]> {
+  try {
+    const response = await authFetch(`/profile/${encodeURIComponent(username)}/events`)
+    if (!response.ok) return []
+    const data = await response.json()
+    return data.events || []
+  } catch (err: any) {
+    if (__DEV__) console.warn('[fetchUserEvents]', err?.message || err)
+    return []
+  }
+}
+
+export async function fetchUserPosts(username: string): Promise<EventData[]> {
+  try {
+    const response = await authFetch(`/profile/${encodeURIComponent(username)}/posts`)
+    if (!response.ok) return []
+    const data = await response.json()
+    return data.posts || []
+  } catch (err: any) {
+    if (__DEV__) console.warn('[fetchUserPosts]', err?.message || err)
+    return []
+  }
+}
+
+export async function fetchUserGroups(username: string): Promise<CenterData[]> {
+  try {
+    const response = await authFetch(`/profile/${encodeURIComponent(username)}/groups`)
+    if (!response.ok) return []
+    const data = await response.json()
+    return data.groups || []
+  } catch (err: any) {
+    if (__DEV__) console.warn('[fetchUserGroups]', err?.message || err)
+    return []
+  }
+}
+
+export async function fetchUserMessages(username: string): Promise<[]> {
+  try {
+    const response = await authFetch(`/profile/${encodeURIComponent(username)}/messages`)
+    if (!response.ok) return []
+    const data = await response.json()
+    return data.messages || []
+  } catch (err: any) {
+    if (__DEV__) console.warn('[fetchUserMessages]', err?.message || err)
+    return []
+  }
+}
+
 // ── Data normalization (flat fields) ──────────────────────────────────
 
 export function centersToMapPoints(centers: CenterData[]): MapPoint[] {

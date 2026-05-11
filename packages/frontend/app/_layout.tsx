@@ -1,6 +1,6 @@
 import '@expo/metro-runtime'
 import { useEffect, useRef } from 'react'
-import { ActivityIndicator, Animated, LogBox, Platform, View } from 'react-native'
+import { ActivityIndicator, Animated, LogBox, Platform, Text, View } from 'react-native'
 
 // Suppress non-fatal WorkletsTurboModule error in Expo Go (reanimated v4 compat)
 LogBox.ignoreLogs(['Exception in HostFunction: <unknown>'])
@@ -46,10 +46,22 @@ export default function RootLayout() {
     'Inclusive Sans SemiBold': InclusiveSans_600SemiBold,
     'Inclusive Sans Medium': InclusiveSans_500Medium,
     'Inclusive Sans Light': InclusiveSans_300Light,
+    'Inter': require('../assets/fonts/Inter-Regular.ttf'),
+    'Inter Bold': require('../assets/fonts/Inter-Bold.ttf'),
+    'Inter SemiBold': require('../assets/fonts/Inter-SemiBold.ttf'),
+    'Inter Medium': require('../assets/fonts/Inter-Medium.ttf'),
+    'Inter Light': require('../assets/fonts/Inter-Light.ttf'),
   })
 
   useEffect(() => {
     if (fontsLoaded) {
+      // Set default font family for all Text components
+      const TextAny = Text as any
+      const defaultProps = TextAny.defaultProps || {}
+      TextAny.defaultProps = {
+        ...defaultProps,
+        style: [{ fontFamily: 'Inclusive Sans' }, defaultProps.style],
+      }
       SplashScreen.hideAsync().catch(() => {})
     }
   }, [fontsLoaded])
@@ -161,7 +173,7 @@ function RootLayoutNav() {
   return (
     <Animated.View style={{ flex: 1, opacity: fadeAnim }}>
       <NavigationThemeProvider value={navTheme}>
-        <Stack screenOptions={{ headerShown: false }}>
+        <Stack screenOptions={{ headerShown: false, animation: 'slide_from_right' }}>
           <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
           <Stack.Screen name="auth" options={{ headerShown: false }} />
           <Stack.Screen name="landing" options={{ headerShown: false }} />
@@ -174,6 +186,8 @@ function RootLayoutNav() {
           <Stack.Screen name="privacy" options={{ headerShown: Platform.OS !== 'web', title: 'Privacy Policy', headerBackTitle: '' }} />
           <Stack.Screen name="terms" options={{ headerShown: Platform.OS !== 'web', title: 'Terms of Service', headerBackTitle: '' }} />
           <Stack.Screen name="cookies" options={{ headerShown: Platform.OS !== 'web', title: 'Cookie Policy', headerBackTitle: '' }} />
+          <Stack.Screen name="edit-profile" options={{ headerShown: false }} />
+          <Stack.Screen name="center-picker" options={{ headerShown: false }} />
           <Stack.Screen name="admin" options={{ headerShown: false }} />
         </Stack>
       </NavigationThemeProvider>

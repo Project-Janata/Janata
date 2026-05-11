@@ -82,6 +82,7 @@ app.use(
         'http://localhost:19006',
       ]
       if (allowed.includes(origin)) return origin
+      if (origin.startsWith('http://localhost:')) return origin
       if (origin.endsWith('.chinmaya-janata.pages.dev')) return origin
       if (origin.endsWith('.project-janatha.pages.dev')) return origin
       return ''
@@ -397,12 +398,14 @@ app.put('/auth/update-profile', authMiddleware, async (c) => {
     bio?: string
     phoneNumber?: string
     interests?: string[]
+    dateOfBirth?: string
   }>()
 
   const updates: Partial<UserRow> = {}
   if (body.firstName !== undefined) updates.first_name = body.firstName
   if (body.lastName !== undefined) updates.last_name = body.lastName
   if (body.email !== undefined) updates.email = body.email
+  if (body.dateOfBirth !== undefined) updates.date_of_birth = body.dateOfBirth
   // Coerce empty string to null (allowed by FK), reject non-existent center IDs naturally
   if (body.centerID !== undefined) updates.center_id = body.centerID || null
   if (body.profileComplete !== undefined) updates.profile_complete = body.profileComplete ? 1 : 0
@@ -712,6 +715,41 @@ app.post('/getUserEvents', authMiddleware, async (c) => {
     message: 'Success',
     events: events.map(eventRowToApi),
   })
+})
+
+// ═══════════════════════════════════════════════════════════════════════
+// PROFILE ROUTES
+// ═══════════════════════════════════════════════════════════════════════
+
+app.get('/profile/:username/events', authMiddleware, async (c) => {
+  const { username } = c.req.param()
+  const targetUser = await db.getUserByUsername(c.env.DB, username)
+  if (!targetUser) return c.json({ message: 'User not found' }, 404)
+  const events = await db.getUserEvents(c.env.DB, targetUser.id)
+  return c.json({ events: events.map(eventRowToApi) })
+})
+
+app.get('/profile/:username/posts', authMiddleware, async (c) => {
+  const { username } = c.req.param()
+  const targetUser = await db.getUserByUsername(c.env.DB, username)
+  if (!targetUser) return c.json({ message: 'User not found' }, 404)
+  const posts = await db.getUserCreatedEvents(c.env.DB, targetUser.id)
+  return c.json({ posts: posts.map(eventRowToApi) })
+})
+
+app.get('/profile/:username/groups', authMiddleware, async (c) => {
+  const { username } = c.req.param()
+  const targetUser = await db.getUserByUsername(c.env.DB, username)
+  if (!targetUser) return c.json({ message: 'User not found' }, 404)
+  const groups = targetUser.center_id
+    ? [centerRowToApi(await db.getCenterById(c.env.DB, targetUser.center_id) as any)]
+    : []
+  return c.json({ groups: groups.filter(Boolean) })
+})
+
+app.get('/profile/:username/messages', authMiddleware, async (_c) => {
+  // Messaging not yet implemented — reserved for future use
+  return _c.json({ messages: [], total: 0 })
 })
 
 // ═══════════════════════════════════════════════════════════════════════
