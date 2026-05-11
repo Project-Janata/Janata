@@ -54,6 +54,7 @@ lerna-debug.log*
 *.launch
 .settings/
 *.sublime-workspace
+.claude/
 
 # OS
 .DS_Store
