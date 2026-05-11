@@ -1,3 +1,7 @@
 export { BoardPostCard, ThreadPanel } from './ThreadPanel'
 export type { ComposerState, ThreadPanelColors } from './ThreadPanel'
 export * from './__mocks__/mockData'
+export type { ColorSet, GroupKind } from './types'
+export { EmptyPanel } from './EmptyPanel'
+export { SignInCallout } from './SignInCallout'
+export { CreatePostSheet } from './CreatePostSheet'

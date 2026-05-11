@@ -42,6 +42,8 @@ import {
   eventBoards,
   groupChats,
   inboxThreads,
+  EmptyPanel,
+  SignInCallout,
   type BoardMessage,
   type CenterBoard,
   type EventBoard,
@@ -49,10 +51,10 @@ import {
   type InboxThread,
   type PersonSummary,
   type ThreadPanelColors,
+  type ColorSet,
+  type GroupKind,
 } from '../../components/connect'
 import type { DiscoverCenter, EventDisplay } from '../../utils/api'
-
-type GroupKind = 'center' | 'event'
 
 type ChatMessage = {
   id: string
@@ -76,24 +78,6 @@ type Conversation = {
   avatarColor?: string
   groupMembers?: PersonSummary[]
   messages: ChatMessage[]
-}
-
-type ColorSet = {
-  page: string
-  surface: string
-  panel: string
-  rail: string
-  card: string
-  cardActive: string
-  border: string
-  borderStrong: string
-  text: string
-  textMuted: string
-  textSoft: string
-  orange: string
-  orangeSoft: string
-  green: string
-  greenSoft: string
 }
 
 function dmToConversation(thread: InboxThread): Conversation {
@@ -319,6 +303,8 @@ export default function ChatScreen() {
 
         {!user ? (
           <SignInCallout
+            title="Sign in for Connect"
+            subtitle="Your group chats, requests, and DMs live here."
             colors={colors}
             onPress={() => {
               posthog?.capture('connect_signin_pressed')
@@ -1115,84 +1101,3 @@ function GroupIcon({
   )
 }
 
-function EmptyPanel({
-  title,
-  subtitle,
-  colors,
-}: {
-  title: string
-  subtitle: string
-  colors: ColorSet
-}) {
-  return (
-    <View style={{ paddingVertical: 18, paddingHorizontal: 4, gap: 5 }}>
-      <Text style={{ fontFamily: 'Inclusive Sans', fontSize: 17, color: colors.text }}>{title}</Text>
-      <Text
-        style={{
-          fontFamily: 'Inclusive Sans',
-          fontSize: 14,
-          lineHeight: 20,
-          color: colors.textMuted,
-        }}
-      >
-        {subtitle}
-      </Text>
-    </View>
-  )
-}
-
-function SignInCallout({ colors, onPress }: { colors: ColorSet; onPress: () => void }) {
-  return (
-    <View
-      style={{
-        backgroundColor: colors.orangeSoft,
-        borderRadius: 18,
-        padding: 16,
-        flexDirection: 'row',
-        alignItems: 'center',
-        gap: 12,
-      }}
-    >
-      <View
-        style={{
-          width: 42,
-          height: 42,
-          borderRadius: 15,
-          backgroundColor: colors.surface,
-          alignItems: 'center',
-          justifyContent: 'center',
-        }}
-      >
-        <UsersRound size={20} color={colors.orange} />
-      </View>
-      <View style={{ flex: 1 }}>
-        <Text style={{ fontFamily: 'Inclusive Sans', fontSize: 16, color: colors.text }}>
-          Sign in for Connect
-        </Text>
-        <Text
-          style={{
-            fontFamily: 'Inclusive Sans',
-            fontSize: 13,
-            lineHeight: 19,
-            color: colors.textMuted,
-          }}
-        >
-          Your group chats, requests, and DMs live here.
-        </Text>
-      </View>
-      <Pressable
-        onPress={onPress}
-        style={{
-          backgroundColor: colors.text,
-          borderRadius: 999,
-          paddingHorizontal: 14,
-          paddingVertical: 10,
-        }}
-      >
-        <Text style={{ fontFamily: 'Inclusive Sans', fontSize: 13, color: colors.surface }}>
-          Sign in
-        </Text>
-      </Pressable>
-    </View>
-  )
-}
