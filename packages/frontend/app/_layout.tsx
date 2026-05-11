@@ -173,7 +173,7 @@ function RootLayoutNav() {
   return (
     <Animated.View style={{ flex: 1, opacity: fadeAnim }}>
       <NavigationThemeProvider value={navTheme}>
-        <Stack screenOptions={{ headerShown: false }}>
+        <Stack screenOptions={{ headerShown: false, animation: 'slide_from_right' }}>
           <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
           <Stack.Screen name="auth" options={{ headerShown: false }} />
           <Stack.Screen name="landing" options={{ headerShown: false }} />
@@ -186,6 +186,7 @@ function RootLayoutNav() {
           <Stack.Screen name="privacy" options={{ headerShown: Platform.OS !== 'web', title: 'Privacy Policy', headerBackTitle: '' }} />
           <Stack.Screen name="terms" options={{ headerShown: Platform.OS !== 'web', title: 'Terms of Service', headerBackTitle: '' }} />
           <Stack.Screen name="cookies" options={{ headerShown: Platform.OS !== 'web', title: 'Cookie Policy', headerBackTitle: '' }} />
+          <Stack.Screen name="edit-profile" options={{ headerShown: false }} />
           <Stack.Screen name="admin" options={{ headerShown: false }} />
         </Stack>
       </NavigationThemeProvider>

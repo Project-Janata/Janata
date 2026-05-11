@@ -82,6 +82,7 @@ app.use(
         'http://localhost:19006',
       ]
       if (allowed.includes(origin)) return origin
+      if (origin.startsWith('http://localhost:')) return origin
       if (origin.endsWith('.chinmaya-janata.pages.dev')) return origin
       if (origin.endsWith('.project-janatha.pages.dev')) return origin
       return ''

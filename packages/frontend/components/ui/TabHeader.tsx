@@ -1,7 +1,7 @@
 import React from 'react'
 import { View, Text, Pressable, Platform } from 'react-native'
 import { useRouter } from 'expo-router'
-import { Plus, User } from 'lucide-react-native'
+import { Plus, User, Settings, Bell } from 'lucide-react-native'
 import { usePostHog } from 'posthog-react-native'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
 import { useUser, useTheme } from '../contexts'
@@ -15,9 +15,8 @@ interface TabHeaderProps {
   transparent?: boolean
   pillTitle?: boolean
   borderAvatar?: boolean
-  showPlus?: boolean
-  onPlusPress?: () => void
-  rightContent?: React.ReactNode
+  action?: 'create' | 'notifications' | 'settings'
+  onActionPress?: () => void
 }
 
 export default function TabHeader({
@@ -26,9 +25,8 @@ export default function TabHeader({
   transparent = false,
   pillTitle = false,
   borderAvatar = false,
-  showPlus = false,
-  onPlusPress,
-  rightContent,
+  action,
+  onActionPress,
 }: TabHeaderProps) {
   const router = useRouter()
   const { user } = useUser()
@@ -39,18 +37,40 @@ export default function TabHeader({
 
   const bgColor = transparent ? 'transparent' : isDark ? '#262626' : '#FFFFFF'
   const textColor = transparent ? '#FFFFFF' : isDark ? '#FAFAFA' : '#1C1917'
+  const iconColor = transparent ? '#FFFFFF' : isDark ? '#FAFAFA' : '#1C1917'
+  const btnBorderColor = transparent ? 'rgba(255,255,255,0.4)' : isDark ? '#404040' : '#D6D3D1'
 
   const displayName =
     user?.firstName && user?.lastName ? `${user.firstName} ${user.lastName}` : user?.username || ''
 
   const profileImage = user?.profileImage
 
-  const handleProfilePress = () => {
-    posthog?.capture('nav_menu_opened')
-    if (Platform.OS === 'web') {
-      // web handled by rightContent
-    } else {
-      router.push('/profile' as never)
+  const handleActionPress = () => {
+    if (onActionPress) return onActionPress()
+    switch (action) {
+      case 'create':
+        posthog?.capture('nav_create_pressed')
+        triggerCreate()
+        break
+      case 'notifications':
+        router.push('/notifications' as never)
+        break
+      case 'settings':
+        router.push('/settings' as never)
+        break
+    }
+  }
+
+  const ActionIcon = () => {
+    if (!action) return null
+    const iconProps = { size: 18, color: iconColor }
+    switch (action) {
+      case 'create':
+        return <Plus {...iconProps} strokeWidth={2} />
+      case 'notifications':
+        return <Bell {...iconProps} />
+      case 'settings':
+        return <Settings {...iconProps} />
     }
   }
 
@@ -91,74 +111,31 @@ export default function TabHeader({
               </Text>
             </View>
           ) : (
-            <Text
-              style={{
-                fontFamily: 'Inclusive Sans',
-                fontSize: 22,
-                color: textColor,
-              }}
-            >
+            <Text style={{ fontFamily: 'Inclusive Sans', fontSize: 22, color: textColor }}>
               {title}
             </Text>
           )
         ) : null}
       </View>
 
-      {/* Right: Actions + Profile */}
+      {/* Right: Action button + Avatar */}
       <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
-        {rightContent}
-        {showPlus ? (
+        {action ? (
           <Pressable
-            onPress={onPlusPress || triggerCreate}
+            onPress={handleActionPress}
             style={{
               width: 36,
               height: 36,
               borderRadius: 18,
               borderWidth: 1.5,
-              borderColor: transparent ? 'rgba(255,255,255,0.4)' : isDark ? '#404040' : '#D6D3D1',
+              borderColor: btnBorderColor,
               alignItems: 'center',
               justifyContent: 'center',
             }}
           >
-            <Plus
-              size={18}
-              color={transparent ? '#FFFFFF' : isDark ? '#FAFAFA' : '#1C1917'}
-              strokeWidth={2}
-            />
+            <ActionIcon />
           </Pressable>
         ) : null}
-        {user ? (
-          <Pressable
-            onPress={handleProfilePress}
-            style={
-              borderAvatar
-                ? {
-                    borderRadius: 20,
-                    borderWidth: 2,
-                    borderColor: '#FFFFFF',
-                    overflow: 'hidden',
-                  }
-                : undefined
-            }
-          >
-            <Avatar image={profileImage || undefined} name={displayName} size={36} />
-          </Pressable>
-        ) : (
-          <Pressable
-            onPress={() => router.push('/auth')}
-            style={{
-              width: 36,
-              height: 36,
-              borderRadius: 18,
-              borderWidth: 1,
-              borderColor: transparent ? 'rgba(255,255,255,0.4)' : isDark ? '#404040' : '#D6D3D1',
-              alignItems: 'center',
-              justifyContent: 'center',
-            }}
-          >
-            <User size={18} color={transparent ? '#FFFFFF' : isDark ? '#FAFAFA' : '#1C1917'} />
-          </Pressable>
-        )}
       </View>
     </View>
   )

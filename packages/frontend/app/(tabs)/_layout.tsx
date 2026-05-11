@@ -3,7 +3,7 @@ import { Platform, View, Text, Pressable, Image, StatusBar } from 'react-native'
 import { useState, useEffect } from 'react'
 import { useUser, useTheme } from '../../components/contexts'
 import { HeaderActionProvider } from '../../components/contexts/HeaderActionContext'
-import { House, MessageSquare, Newspaper, Compass, Plus, User, Bell } from 'lucide-react-native'
+import { House, MessageSquare, Newspaper, Compass, Plus, Bell } from 'lucide-react-native'
 import SettingsPanel from '../../components/SettingsPanel'
 import Logo from '../../components/ui/Logo'
 import TabHeader from '../../components/ui/TabHeader'
@@ -253,7 +253,9 @@ export default function TabLayout() {
             options={{
               tabBarShowLabel: false,
               title: 'Feed',
-              header: isWeb ? () => <WebHeader /> : () => <TabHeader title="Feed" showPlus />,
+              header: isWeb
+                ? () => <WebHeader />
+                : () => <TabHeader title="Feed" action="create" />,
               tabBarIcon: ({ color, size }) => <Newspaper size={size} color={color} />,
             }}
           />
@@ -262,8 +264,35 @@ export default function TabLayout() {
             options={{
               tabBarShowLabel: false,
               title: 'Chat',
-              header: isWeb ? () => <WebHeader /> : () => <TabHeader title="Chat" showPlus />,
+              header: isWeb
+                ? () => <WebHeader />
+                : () => <TabHeader title="Chat" action="create" />,
               tabBarIcon: ({ color, size }) => <MessageSquare size={size} color={color} />,
+            }}
+          />
+          <Tabs.Screen
+            name="profile"
+            options={{
+              tabBarShowLabel: false,
+              title: 'Profile',
+              header: isWeb
+                ? () => <WebHeader />
+                : () => <TabHeader title="You" action="settings" />,
+              tabBarIcon: ({ size, focused }) => (
+                <Avatar
+                  image={user?.profileImage ?? undefined}
+                  name={
+                    user?.firstName
+                      ? `${user.firstName} ${user.lastName ?? ''}`.trim()
+                      : user?.username
+                  }
+                  size={size + 4}
+                  style={{
+                    borderWidth: focused ? 2 : 0,
+                    borderColor: '#E8862A',
+                  }}
+                />
+              ),
             }}
           />
         </Tabs>

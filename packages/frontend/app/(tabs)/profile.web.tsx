@@ -10,11 +10,11 @@ import {
   useWindowDimensions,
 } from 'react-native'
 import { Camera, Pencil, MapPin } from 'lucide-react-native'
-import { useUser, useTheme } from '../components/contexts'
-import { Text } from '../components/ui'
-import BirthdatePicker from '../components/BirthdatePicker'
-import WebAvatarCropper from '../components/AvatarCropper.web'
-import { fetchCenters, CenterData } from '../utils/api'
+import { useUser, useTheme } from '../../components/contexts'
+import { Text } from '../../components/ui'
+import BirthdatePicker from '../../components/BirthdatePicker'
+import WebAvatarCropper from '../../components/AvatarCropper.web'
+import { fetchCenters, CenterData } from '../../utils/api'
 
 type ProfileData = {
   name: string

@@ -11,6 +11,7 @@ import {
   ChevronRight,
   LogOut,
   AlertTriangle,
+  ChevronLeft,
 } from 'lucide-react-native'
 import { useUser, useTheme } from '../../components/contexts'
 import { Avatar, Text, Section } from '../../components/ui'
@@ -142,10 +143,7 @@ export default function PreferencesNative() {
 
   return (
     <View style={{ flex: 1 }}>
-      <SafeAreaView
-        style={{ backgroundColor: cardBg }}
-        edges={['top']}
-      >
+      <SafeAreaView style={{ backgroundColor: cardBg }} edges={['top']}>
         <StatusBar barStyle={isDark ? 'light-content' : 'dark-content'} />
 
         {/* Header */}
@@ -159,20 +157,12 @@ export default function PreferencesNative() {
             borderBottomColor: borderColor,
           }}
         >
-          <Pressable
-            onPress={() => router.back()}
-            style={{
-              alignSelf: 'flex-start',
-              padding: 8,
-              marginLeft: -8,
-              marginBottom: 8,
-            }}
-          >
-            <ArrowLeft size={28} color={textColor} />
-          </Pressable>
-          <Text style={{ fontSize: 30, color: textColor, letterSpacing: -0.5 }}>
-            Preferences
-          </Text>
+          <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+            <Pressable onPress={() => router.back()} style={{ padding: 8, marginLeft: -8 }}>
+              <ChevronLeft size={22} color={textColor} />
+            </Pressable>
+            <Text style={{ fontSize: 22, color: textColor, letterSpacing: -0.5 }}>Settings</Text>
+          </View>
         </View>
       </SafeAreaView>
 
@@ -186,12 +176,14 @@ export default function PreferencesNative() {
       >
         {/* Appearance */}
         <Section title="APPEARANCE" titleColor={faintColor}>
-          <View style={{
-            borderTopWidth: 1,
-            borderBottomWidth: 1,
-            borderColor,
-            marginHorizontal: -16,
-          }}>
+          <View
+            style={{
+              borderTopWidth: 1,
+              borderBottomWidth: 1,
+              borderColor,
+              marginHorizontal: -16,
+            }}
+          >
             <View style={{ paddingVertical: 14, paddingHorizontal: 16, backgroundColor: cardBg }}>
               <ThemeSelector />
             </View>
@@ -200,12 +192,14 @@ export default function PreferencesNative() {
 
         {/* Regulatory */}
         <Section title="REGULATORY" titleColor={faintColor}>
-          <View style={{
-            borderTopWidth: 1,
-            borderBottomWidth: 1,
-            borderColor,
-            marginHorizontal: -16,
-          }}>
+          <View
+            style={{
+              borderTopWidth: 1,
+              borderBottomWidth: 1,
+              borderColor,
+              marginHorizontal: -16,
+            }}
+          >
             <MenuRow
               onPress={() => {
                 posthog?.capture('privacy_policy_viewed')
@@ -244,12 +238,14 @@ export default function PreferencesNative() {
 
         {/* About */}
         <Section title="ABOUT" titleColor={faintColor}>
-          <View style={{
-            borderTopWidth: 1,
-            borderBottomWidth: 1,
-            borderColor,
-            marginHorizontal: -16,
-          }}>
+          <View
+            style={{
+              borderTopWidth: 1,
+              borderBottomWidth: 1,
+              borderColor,
+              marginHorizontal: -16,
+            }}
+          >
             <AboutInfoRow icon={Info} label="Version" value={APP_VERSION} />
             <AboutInfoRow
               icon={Info}
@@ -262,12 +258,14 @@ export default function PreferencesNative() {
 
         {/* Account Actions */}
         <Section title="ACCOUNT" titleColor={faintColor}>
-          <View style={{
-            borderTopWidth: 1,
-            borderBottomWidth: 1,
-            borderColor,
-            marginHorizontal: -16,
-          }}>
+          <View
+            style={{
+              borderTopWidth: 1,
+              borderBottomWidth: 1,
+              borderColor,
+              marginHorizontal: -16,
+            }}
+          >
             <MenuRow onPress={handleLogout} showArrow={false}>
               <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12 }}>
                 <LogOut size={20} color="#ef4444" />

@@ -1,25 +1,23 @@
 import React, { useState, useEffect } from 'react'
 import { ScrollView, View, Pressable, Image, Share } from 'react-native'
-import { SafeAreaView } from 'react-native-safe-area-context'
-import { Settings, ChevronLeft, BadgeCheck, Building2 } from 'lucide-react-native'
+import { BadgeCheck, Building2 } from 'lucide-react-native'
 import { Badge, useRouter } from 'expo-router'
-import { useUser, useTheme } from '../components/contexts'
-import { Section, Text } from '../components/ui'
+import { useUser, useTheme } from '../../components/contexts'
+import { Section, Text } from '../../components/ui'
+import TabHeader from '../../components/ui/TabHeader'
 import {
   fetchCenters,
   fetchUserEvents,
   fetchUserGroups,
   fetchUserPosts,
   CenterData,
-} from '../utils/api'
-import EditProfileSheet from '../components/EditProfileSheet'
+} from '../../utils/api'
 
 export default function ProfileNative() {
   const router = useRouter()
   const { user, refreshUser } = useUser()
   const { isDark } = useTheme()
   const [allCenters, setAllCenters] = useState<CenterData[]>([])
-  const [showEditSheet, setShowEditSheet] = useState(false)
   const [postCount, setPostCount] = useState(0)
   const [eventCount, setEventCount] = useState(0)
   const [groupCount, setGroupCount] = useState(0)
@@ -38,7 +36,10 @@ export default function ProfileNative() {
         .then((e) => setEventCount(e.length))
         .catch(() => {})
       fetchUserGroups(user.username)
-        .then((g) => { setUserGroups(g); setGroupCount(g.length) })
+        .then((g) => {
+          setUserGroups(g)
+          setGroupCount(g.length)
+        })
         .catch(() => {})
     }
   }, [])
@@ -111,28 +112,6 @@ export default function ProfileNative() {
 
   return (
     <View style={{ flex: 1 }}>
-      <SafeAreaView style={{ backgroundColor: cardBg }} edges={['top']}>
-        <View
-          style={{
-            flexDirection: 'row',
-            alignItems: 'center',
-            justifyContent: 'space-between',
-            paddingHorizontal: 8,
-            paddingVertical: 8,
-            borderBottomWidth: 1,
-            borderColor,
-            backgroundColor: cardBg,
-          }}
-        >
-          <Pressable onPress={() => router.back()} style={{ padding: 8 }}>
-            <ChevronLeft size={24} color={textColor} />
-          </Pressable>
-          <Pressable onPress={() => router.push('/settings' as never)} style={{ padding: 8 }}>
-            <Settings size={20} color="#C2410C" />
-          </Pressable>
-        </View>
-      </SafeAreaView>
-
       <ScrollView style={{ flex: 1, backgroundColor: isDark ? '#1A1A1A' : '#F5F5F4' }}>
         {/* Profile header */}
         <View style={{ paddingTop: 28, paddingHorizontal: 20, gap: 12 }}>
@@ -318,7 +297,7 @@ export default function ProfileNative() {
           }}
         >
           <Pressable
-            onPress={() => setShowEditSheet(true)}
+            onPress={() => router.push('/edit-profile')}
             style={{
               flex: 1,
               paddingVertical: 9,
@@ -425,10 +404,18 @@ export default function ProfileNative() {
                       <Building2 size={16} color="#C2410C" />
                     </View>
                     <View style={{ flex: 1 }}>
-                      <Text style={{ fontFamily: 'Inclusive Sans', fontSize: 15, color: textColor }}>
+                      <Text
+                        style={{ fontFamily: 'Inclusive Sans', fontSize: 15, color: textColor }}
+                      >
                         {group.name}
                       </Text>
-                      <Text style={{ fontFamily: 'Inclusive Sans', fontSize: 13, color: mutedTextColor }}>
+                      <Text
+                        style={{
+                          fontFamily: 'Inclusive Sans',
+                          fontSize: 13,
+                          color: mutedTextColor,
+                        }}
+                      >
                         My center • {group.memberCount ?? 0} members
                       </Text>
                     </View>
@@ -438,7 +425,9 @@ export default function ProfileNative() {
                 <View
                   style={{ paddingVertical: 14, paddingHorizontal: 20, backgroundColor: cardBg }}
                 >
-                  <Text style={{ fontFamily: 'Inclusive Sans', fontSize: 15, color: mutedTextColor }}>
+                  <Text
+                    style={{ fontFamily: 'Inclusive Sans', fontSize: 15, color: mutedTextColor }}
+                  >
                     No center selected
                   </Text>
                 </View>
@@ -450,7 +439,6 @@ export default function ProfileNative() {
         <View style={{ height: 40 }} />
       </ScrollView>
 
-      <EditProfileSheet visible={showEditSheet} onClose={() => setShowEditSheet(false)} />
     </View>
   )
 }

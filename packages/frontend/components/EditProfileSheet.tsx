@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react'
+import React, { useState, useEffect, useRef } from 'react'
 import {
   View,
   TextInput,
@@ -10,20 +10,33 @@ import {
   ScrollView,
   KeyboardAvoidingView,
   Platform,
+  Animated,
+  Dimensions,
 } from 'react-native'
 import { SafeAreaView } from 'react-native-safe-area-context'
 let ImagePicker: typeof import('expo-image-picker') | null = null
-try { ImagePicker = require('expo-image-picker') } catch {}
+try {
+  ImagePicker = require('expo-image-picker')
+} catch {}
 
 let ImageManipulator: typeof import('expo-image-manipulator') | null = null
-try { ImageManipulator = require('expo-image-manipulator') } catch {}
+try {
+  ImageManipulator = require('expo-image-manipulator')
+} catch {}
 import { Camera, Check } from 'lucide-react-native'
 import { useUser, useTheme } from './contexts'
 import { Text } from './ui'
 import BirthdatePicker from './BirthdatePicker'
 import { fetchCenters, CenterData } from '../utils/api'
 
-const INTEREST_OPTIONS = ['Satsangs', 'Bhiksha', 'Global events', 'Local events', 'Casual', 'Formal']
+const INTEREST_OPTIONS = [
+  'Satsangs',
+  'Bhiksha',
+  'Global events',
+  'Local events',
+  'Casual',
+  'Formal',
+]
 
 interface Props {
   visible: boolean
@@ -71,12 +84,16 @@ export default function EditProfileSheet({ visible, onClose }: Props) {
   }, [visible])
 
   useEffect(() => {
-    fetchCenters().then(setAllCenters).catch(() => {})
+    fetchCenters()
+      .then(setAllCenters)
+      .catch(() => {})
   }, [])
 
   const filteredCenters =
     centerSearch.length >= 2
-      ? allCenters.filter((c) => c.name.toLowerCase().includes(centerSearch.toLowerCase())).slice(0, 6)
+      ? allCenters
+          .filter((c) => c.name.toLowerCase().includes(centerSearch.toLowerCase()))
+          .slice(0, 6)
       : []
 
   const selectedCenterName = allCenters.find((c) => c.centerID === centerID)?.name
@@ -203,7 +220,15 @@ export default function EditProfileSheet({ visible, onClose }: Props) {
       presentationStyle="pageSheet"
       onRequestClose={onClose}
     >
-      <View style={{ flex: 1, backgroundColor: pageBg }}>
+      <View
+        style={{
+          flex: 1,
+          backgroundColor: pageBg,
+          borderTopRightRadius: 24,
+          borderTopLeftRadius: 24,
+          overflow: 'hidden',
+        }}
+      >
         <SafeAreaView style={{ backgroundColor: cardBg }} edges={['top']}>
           <View
             style={{
@@ -222,7 +247,14 @@ export default function EditProfileSheet({ visible, onClose }: Props) {
                 Cancel
               </Text>
             </Pressable>
-            <Text style={{ fontFamily: 'Inclusive Sans', fontSize: 16, color: textColor, fontWeight: '600' }}>
+            <Text
+              style={{
+                fontFamily: 'Inclusive Sans',
+                fontSize: 16,
+                color: textColor,
+                fontWeight: '600',
+              }}
+            >
               Edit Profile
             </Text>
             <Pressable
@@ -234,7 +266,14 @@ export default function EditProfileSheet({ visible, onClose }: Props) {
               {isSaving ? (
                 <ActivityIndicator size="small" color="#C2410C" />
               ) : (
-                <Text style={{ fontFamily: 'Inclusive Sans', fontSize: 15, color: '#C2410C', fontWeight: '600' }}>
+                <Text
+                  style={{
+                    fontFamily: 'Inclusive Sans',
+                    fontSize: 15,
+                    color: '#C2410C',
+                    fontWeight: '600',
+                  }}
+                >
                   Save
                 </Text>
               )}
@@ -293,7 +332,14 @@ export default function EditProfileSheet({ visible, onClose }: Props) {
                   <Camera size={13} color="#fff" />
                 </View>
               </Pressable>
-              <Text style={{ fontFamily: 'Inclusive Sans', fontSize: 13, color: '#C2410C', marginTop: 8 }}>
+              <Text
+                style={{
+                  fontFamily: 'Inclusive Sans',
+                  fontSize: 13,
+                  color: '#C2410C',
+                  marginTop: 8,
+                }}
+              >
                 Change Photo
               </Text>
             </View>
@@ -303,7 +349,10 @@ export default function EditProfileSheet({ visible, onClose }: Props) {
               <Text style={fieldLabelStyle}>Name</Text>
               <TextInput
                 value={name}
-                onChangeText={(v) => { setName(v); setErrors((p) => ({ ...p, name: '' })) }}
+                onChangeText={(v) => {
+                  setName(v)
+                  setErrors((p) => ({ ...p, name: '' }))
+                }}
                 placeholder="Full name"
                 placeholderTextColor={mutedColor}
                 style={inputStyle}
@@ -311,7 +360,14 @@ export default function EditProfileSheet({ visible, onClose }: Props) {
                 autoComplete="name"
               />
               {errors.name ? (
-                <Text style={{ fontFamily: 'Inclusive Sans', fontSize: 12, color: '#DC2626', marginTop: 4 }}>
+                <Text
+                  style={{
+                    fontFamily: 'Inclusive Sans',
+                    fontSize: 12,
+                    color: '#DC2626',
+                    marginTop: 4,
+                  }}
+                >
                   {errors.name}
                 </Text>
               ) : null}

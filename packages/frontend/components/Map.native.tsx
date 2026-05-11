@@ -319,7 +319,7 @@ const Map = memo<MapProps>(function Map({
           and zoom buttons aren't built in at all. */}
       {showControls && (
         <MapControls
-          top={insets.top + 56 + 6}
+          top={Math.max(insets.top, 8)}
           buttonBg={buttonBg}
           iconColor={iconColor}
           isDark={isDark}
