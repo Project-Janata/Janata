@@ -9,9 +9,7 @@ import {
   ScrollView,
   KeyboardAvoidingView,
   Platform,
-  StatusBar,
 } from 'react-native'
-import { SafeAreaView } from 'react-native-safe-area-context'
 import { useRouter } from 'expo-router'
 let ImagePicker: typeof import('expo-image-picker') | null = null
 try {
@@ -22,9 +20,9 @@ let ImageManipulator: typeof import('expo-image-manipulator') | null = null
 try {
   ImageManipulator = require('expo-image-manipulator')
 } catch {}
-import { ChevronLeft, Camera, Check } from 'lucide-react-native'
+import { Camera, Check } from 'lucide-react-native'
 import { useUser, useTheme } from '../components/contexts'
-import { Text, Section } from '../components/ui'
+import { Text, Section, StackHeader } from '../components/ui'
 import BirthdatePicker from '../components/BirthdatePicker'
 import { fetchCenters, CenterData } from '../utils/api'
 
@@ -220,29 +218,7 @@ export default function EditProfileScreen() {
 
   return (
     <View style={{ flex: 1 }}>
-      <SafeAreaView style={{ backgroundColor: cardBg }} edges={['top']}>
-        <StatusBar barStyle={isDark ? 'light-content' : 'dark-content'} />
-        <View
-          style={{
-            paddingHorizontal: 20,
-            paddingTop: 8,
-            paddingBottom: 16,
-            backgroundColor: cardBg,
-            borderBottomWidth: 1,
-            borderBottomColor: borderColor,
-          }}
-        >
-          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12 }}>
-            <Pressable
-              onPress={() => router.back()}
-              style={{ padding: 8, marginLeft: -8 }}
-            >
-              <ChevronLeft size={22} color={textColor} />
-            </Pressable>
-            <Text style={{ fontSize: 22, color: textColor, letterSpacing: -0.5 }}>Edit Profile</Text>
-          </View>
-        </View>
-      </SafeAreaView>
+      <StackHeader title="Edit Profile" />
 
       <KeyboardAvoidingView
         style={{ flex: 1, backgroundColor: pageBg }}

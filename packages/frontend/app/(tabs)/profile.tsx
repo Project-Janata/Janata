@@ -60,21 +60,12 @@ export default function ProfileNative() {
   }
 
   const getUserRole = () => {
-    switch (user?.verificationLevel) {
-      case 45:
-        return 'CHYK'
-      case 54:
-        return 'Sevak'
-      case 63:
-        return 'Coordinator'
-      case 108:
-        return 'Brahmachari'
-      case 1008:
-        return 'Swami'
-      case 1000008:
-        return 'Global Head'
-      default:
-        return null
+    const age = user?.dateOfBirth
+      ? Math.floor((Date.now() - new Date(user.dateOfBirth).getTime()) / 31557600000)
+      : null
+    if (age !== null) {
+      if (age >= 18 && age <= 35) return 'CHYK'
+      if (age > 35) return 'Sevak'
     }
   }
 
@@ -438,7 +429,6 @@ export default function ProfileNative() {
 
         <View style={{ height: 40 }} />
       </ScrollView>
-
     </View>
   )
 }

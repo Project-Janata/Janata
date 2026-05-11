@@ -1,20 +1,16 @@
 import React, { useState } from 'react'
-import { View, Pressable, ScrollView, StatusBar, Modal, Alert } from 'react-native'
-import { SafeAreaView } from 'react-native-safe-area-context'
+import { View, Pressable, ScrollView, Modal, Alert } from 'react-native'
 import { useRouter } from 'expo-router'
 import {
-  ArrowLeft,
-  User,
   Shield,
   Info,
   FileText,
   ChevronRight,
   LogOut,
   AlertTriangle,
-  ChevronLeft,
 } from 'lucide-react-native'
 import { useUser, useTheme } from '../../components/contexts'
-import { Avatar, Text, Section } from '../../components/ui'
+import { Avatar, Text, Section, StackHeader } from '../../components/ui'
 import ThemeSelector from '../../components/ThemeSelector'
 import { usePostHog } from 'posthog-react-native'
 import Constants from 'expo-constants'
@@ -143,28 +139,7 @@ export default function PreferencesNative() {
 
   return (
     <View style={{ flex: 1 }}>
-      <SafeAreaView style={{ backgroundColor: cardBg }} edges={['top']}>
-        <StatusBar barStyle={isDark ? 'light-content' : 'dark-content'} />
-
-        {/* Header */}
-        <View
-          style={{
-            paddingHorizontal: 20,
-            paddingTop: 8,
-            paddingBottom: 16,
-            backgroundColor: cardBg,
-            borderBottomWidth: 1,
-            borderBottomColor: borderColor,
-          }}
-        >
-          <View style={{ flexDirection: 'row', alignItems: 'center' }}>
-            <Pressable onPress={() => router.back()} style={{ padding: 8, marginLeft: -8 }}>
-              <ChevronLeft size={22} color={textColor} />
-            </Pressable>
-            <Text style={{ fontSize: 22, color: textColor, letterSpacing: -0.5 }}>Settings</Text>
-          </View>
-        </View>
-      </SafeAreaView>
+      <StackHeader title="Settings" />
 
       <ScrollView
         style={{ flex: 1, backgroundColor: pageBg }}
