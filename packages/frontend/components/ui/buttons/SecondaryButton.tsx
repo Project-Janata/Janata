@@ -1,30 +1,42 @@
-import { Pressable, Text, ActivityIndicator } from 'react-native'
 import React from 'react'
+import { ActivityIndicator, Pressable, Text } from 'react-native'
+import { useColors } from '../../../hooks/useColors'
 
 interface SecondaryButtonProps {
   children: React.ReactNode
   onPress?: () => void
   disabled?: boolean
   loading?: boolean
-  style?: any
-  [key: string]: any
+  style?: object
 }
 
-export default function SecondaryButton({ children, onPress, disabled, loading, style, ...props }: SecondaryButtonProps) {
+export default function SecondaryButton({ children, onPress, disabled, loading, style }: SecondaryButtonProps) {
+  const c = useColors()
   const isDisabled = disabled || loading
 
   return (
     <Pressable
       onPress={!isDisabled ? onPress : undefined}
       disabled={isDisabled}
-      className="border border-borderColor dark:border-borderColor-dark bg-transparent text-content dark:text-content-dark px-4 py-3 rounded-full active:bg-gray-4 disabled:opacity-50"
-      style={style}
-      {...props}
+      style={({ pressed }) => [
+        {
+          borderWidth: 1,
+          borderColor: c.border,
+          backgroundColor: pressed ? c.surface : 'transparent',
+          paddingHorizontal: 16,
+          paddingVertical: 14,
+          borderRadius: 999,
+          alignItems: 'center',
+          justifyContent: 'center',
+          opacity: isDisabled ? 0.5 : 1,
+        },
+        style,
+      ]}
     >
       {loading ? (
-        <ActivityIndicator size="small" color="#78716C" />
+        <ActivityIndicator size="small" color={c.textMuted} />
       ) : (
-        <Text className="font-sans text-content dark:text-content-dark text-base leading-5 text-center">
+        <Text style={{ fontWeight: '500', fontSize: 15, lineHeight: 20, color: c.text, textAlign: 'center' }}>
           {children}
         </Text>
       )}

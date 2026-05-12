@@ -2,7 +2,7 @@ import React from 'react'
 import { SafeAreaView } from 'react-native-safe-area-context'
 import { View, Text, Pressable, Platform } from 'react-native'
 import { useOnboarding } from '../contexts'
-import BirthdatePicker from '../BirthdatePicker'
+import BirthdatePicker from '../profile/BirthdatePicker'
 import { PrimaryButton } from '../ui'
 
 export default function Step2() {

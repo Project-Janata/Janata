@@ -6,7 +6,7 @@
  */
 
 import { API_URL } from './api'
-import { getStoredToken } from '../components/utils/tokenStorage'
+import { getStoredToken } from '../src/storage/tokenStorage'
 
 // Helper function for authenticated API calls
 async function authFetch(endpoint: string, options: RequestInit = {}): Promise<Response> {

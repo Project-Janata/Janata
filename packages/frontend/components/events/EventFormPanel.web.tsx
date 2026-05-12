@@ -2,7 +2,7 @@ import React, { useState, useEffect, useCallback } from 'react'
 import { View, Text, ScrollView, TextInput, Pressable, ActivityIndicator, Switch } from 'react-native'
 import { ChevronLeft, ChevronDown } from 'lucide-react-native'
 import { useDetailColors, type DetailColors } from '../../hooks/useDetailColors'
-import { useTheme } from '../../components/contexts'
+import { useTheme } from '../contexts'
 import PrimaryButton from '../ui/buttons/PrimaryButton'
 import SecondaryButton from '../ui/buttons/SecondaryButton'
 import {

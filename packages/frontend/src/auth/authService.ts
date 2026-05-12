@@ -6,7 +6,7 @@ import {
   removeStoredToken,
   getStoredRefreshToken,
   setStoredRefreshToken,
-} from '../../components/utils/tokenStorage'
+} from '../storage/tokenStorage'
 
 export type SessionState =
   | { authStatus: 'booting'; user: null }

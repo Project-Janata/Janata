@@ -22,7 +22,7 @@ vi.mock('@react-native-async-storage/async-storage', () => ({
 }))
 
 // Mock tokenStorage (web version) — individual tests can override
-vi.mock('../../components/utils/tokenStorage', () => ({
+vi.mock('../storage/tokenStorage', () => ({
   getStoredToken: vi.fn().mockResolvedValue(null),
   setStoredToken: vi.fn().mockResolvedValue(undefined),
   removeStoredToken: vi.fn().mockResolvedValue(undefined),

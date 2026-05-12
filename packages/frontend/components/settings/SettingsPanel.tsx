@@ -1,11 +1,11 @@
 import React, { useEffect, useRef, useState } from 'react'
 import { Animated, Text, Pressable, View, Image, Easing } from 'react-native'
-import { useUser, useTheme } from './contexts'
+import { useUser, useTheme } from '../contexts'
 import { Settings, LogOut, Sun, Moon, User, Monitor, Shield } from 'lucide-react-native'
 import { router, usePathname } from 'expo-router'
 import ThemeSelector from './ThemeSelector'
-import { Avatar } from './ui'
-import { isSuperAdmin } from '../utils/admin'
+import { Avatar } from '../ui'
+import { isSuperAdmin } from '../../utils/admin'
 
 function SettingsPanel({ visible, onClose, onLogout }) {
   const opacityAnim = useRef(new Animated.Value(0)).current

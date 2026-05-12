@@ -1,7 +1,7 @@
 import React from 'react'
 import { View, Text } from 'react-native'
 import { MapPin, ThumbsUp, MessageCircle } from 'lucide-react-native'
-import { Card } from './ui'
+import { Card } from '../ui'
 
 export interface EventCardData {
   id: string

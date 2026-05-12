@@ -9,10 +9,10 @@
  * This file exports all components.
  *
  */
-export { default as SettingsPanel } from './SettingsPanel'
+export { default as SettingsPanel } from './settings/SettingsPanel'
 export { default as TabSegment } from './ui/TabSegment'
-export { default as PasswordStrength } from './PasswordStrength'
-export { default as ThemeSelector } from './ThemeSelector'
-export { EventCard } from './EventCard'
-export { default as MapPopover } from './MapPopover'
-export { default as WeekCalendar } from './WeekCalendar'
+export { default as PasswordStrength } from './auth/PasswordStrength'
+export { default as ThemeSelector } from './settings/ThemeSelector'
+export { EventCard } from './events/EventCard'
+export { default as MapPopover } from './map/MapPopover'
+export { default as WeekCalendar } from './events/WeekCalendar'

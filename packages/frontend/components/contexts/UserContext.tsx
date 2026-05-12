@@ -22,12 +22,12 @@ import React, {
   useCallback,
 } from 'react'
 import { usePostHog } from 'posthog-react-native'
-import { getStoredToken, removeStoredToken } from '../utils/tokenStorage'
+import { getStoredToken, removeStoredToken } from '../../src/storage/tokenStorage'
 import {
   clearOnboardingComplete,
   getOnboardingComplete,
   setOnboardingComplete,
-} from '../utils/onboardingStorage'
+} from '../../utils/onboardingStorage'
 import { authService } from '../../src/auth/authService'
 import { API_BASE_URL, API_TIMEOUTS } from '../../src/config/api'
 import type { AuthStatus, User, UpdateProfileRequest } from '../../src/auth/types'

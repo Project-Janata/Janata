@@ -24,7 +24,7 @@ try {
 import { Camera, ChevronRight } from 'lucide-react-native'
 import { useUser, useTheme } from '../components/contexts'
 import { Text, Section, StackHeader } from '../components/ui'
-import BirthdatePicker from '../components/BirthdatePicker'
+import BirthdatePicker from '../components/profile/BirthdatePicker'
 import { fetchCenters, CenterData } from '../utils/api'
 import { centerPickerStore } from '../utils/centerPickerStore'
 
@@ -186,7 +186,6 @@ export default function EditProfileScreen() {
   const pageBg = isDark ? '#1A1A1A' : '#F5F5F4'
 
   const inputStyle = {
-    fontFamily: 'Inclusive Sans' as const,
     fontSize: 15,
     color: textColor,
     backgroundColor: 'transparent' as const,
@@ -194,7 +193,6 @@ export default function EditProfileScreen() {
   }
 
   const fieldLabelStyle = {
-    fontFamily: 'Inclusive Sans' as const,
     fontSize: 11,
     color: faintColor,
     letterSpacing: 0.9,

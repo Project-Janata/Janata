@@ -6,7 +6,7 @@
  *  - click: detail card with info + CTA button
  */
 import React from 'react'
-import type { MapPoint, EventDisplay, DiscoverCenter } from '../utils/api'
+import type { MapPoint, EventDisplay, DiscoverCenter } from '../../utils/api'
 
 type MapPopoverProps = {
   point: MapPoint

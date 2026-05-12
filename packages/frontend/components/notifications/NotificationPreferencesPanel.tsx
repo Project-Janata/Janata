@@ -6,11 +6,11 @@
 
 import React, { useEffect, useState } from 'react'
 import { View, Text, ScrollView, StyleSheet, Switch, ActivityIndicator, Alert } from 'react-native'
-import type { NotificationPreferences } from '../utils/notificationService'
+import type { NotificationPreferences } from '../../utils/notificationService'
 import {
   getNotificationPreferences,
   updateNotificationPreferences,
-} from '../utils/notificationService'
+} from '../../utils/notificationService'
 
 export const NotificationPreferencesPanel: React.FC = () => {
   const [preferences, setPreferences] = useState<NotificationPreferences | null>(null)

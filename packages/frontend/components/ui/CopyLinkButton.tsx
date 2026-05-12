@@ -92,12 +92,12 @@ export default function CopyLinkButton({ path, color = '#78716C', variant = 'inl
       {copied ? (
         <>
           <Check size={14} color="#16A34A" />
-          <Text style={{ fontFamily: 'Inclusive Sans', fontSize: 13, color: '#16A34A' }}>Copied</Text>
+          <Text style={{ fontSize: 13, color: '#16A34A' }}>Copied</Text>
         </>
       ) : (
         <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
           <Link2 size={14} color={color} />
-          <Text style={{ fontFamily: 'Inclusive Sans', fontSize: 13, color }}>Copy link</Text>
+          <Text style={{ fontSize: 13, color }}>Copy link</Text>
         </View>
       )}
     </Pressable>

@@ -12,8 +12,8 @@ import {
 import { Camera, Pencil, MapPin } from 'lucide-react-native'
 import { useUser, useTheme } from '../../components/contexts'
 import { Text } from '../../components/ui'
-import BirthdatePicker from '../../components/BirthdatePicker'
-import WebAvatarCropper from '../../components/AvatarCropper.web'
+import BirthdatePicker from '../../components/profile/BirthdatePicker'
+import WebAvatarCropper from '../../components/profile/AvatarCropper.web'
 import { fetchCenters, CenterData } from '../../utils/api'
 
 type ProfileData = {

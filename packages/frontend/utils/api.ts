@@ -1,4 +1,4 @@
-import { getStoredToken } from '../components/utils/tokenStorage'
+import { getStoredToken } from '../src/storage/tokenStorage'
 import { API_BASE_URL } from '../src/config/api'
 
 export const API_URL = API_BASE_URL

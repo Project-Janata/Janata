@@ -8,8 +8,8 @@ import Avatar from '../ui/Avatar'
 import PrimaryButton from '../ui/buttons/PrimaryButton'
 import DestructiveButton from '../ui/buttons/DestructiveButton'
 import { useDetailColors, type DetailColors } from '../../hooks/useDetailColors'
-import { buildEventBoard, ThreadPanel } from '../../components/connect'
-import { useUser } from '../../components/contexts'
+import { buildEventBoard, ThreadPanel } from '../connect'
+import { useUser } from '../contexts'
 
 // ---------------------------------------------------------------------------
 // Date helpers

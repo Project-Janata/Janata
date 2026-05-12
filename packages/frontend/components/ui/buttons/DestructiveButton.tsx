@@ -1,30 +1,38 @@
-import { Pressable, Text, ActivityIndicator } from 'react-native'
 import React from 'react'
+import { ActivityIndicator, Pressable, Text } from 'react-native'
 
 interface DestructiveButtonProps {
   children: React.ReactNode
   onPress?: () => void
   disabled?: boolean
   loading?: boolean
-  style?: any
-  [key: string]: any
+  style?: object
 }
 
-export default function DestructiveButton({ children, onPress, disabled, loading, style, ...props }: DestructiveButtonProps) {
+export default function DestructiveButton({ children, onPress, disabled, loading, style }: DestructiveButtonProps) {
   const isDisabled = disabled || loading
 
   return (
     <Pressable
       onPress={!isDisabled ? onPress : undefined}
       disabled={isDisabled}
-      className="bg-red-600 px-4 py-3 rounded-full active:bg-red-700 disabled:opacity-50"
-      style={style}
-      {...props}
+      style={({ pressed }) => [
+        {
+          backgroundColor: pressed ? '#B91C1C' : '#DC2626',
+          paddingHorizontal: 16,
+          paddingVertical: 14,
+          borderRadius: 999,
+          alignItems: 'center',
+          justifyContent: 'center',
+          opacity: isDisabled ? 0.5 : 1,
+        },
+        style,
+      ]}
     >
       {loading ? (
         <ActivityIndicator size="small" color="#FFFFFF" />
       ) : (
-        <Text className="text-backgroundStrong font-sans text-bold text-gray-100 leading-4 text-center">
+        <Text style={{ fontWeight: '500', fontSize: 15, lineHeight: 20, color: '#FFFFFF', textAlign: 'center' }}>
           {children}
         </Text>
       )}

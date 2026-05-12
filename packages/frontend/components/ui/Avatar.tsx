@@ -1,5 +1,5 @@
-import React from 'react'
-import { View, Text, Image } from 'react-native'
+import React, { useState } from 'react'
+import { Image, Text, View } from 'react-native'
 
 interface AvatarProps {
   image?: string
@@ -11,70 +11,32 @@ interface AvatarProps {
 }
 
 export default function Avatar({ image, initials, name, size = 40, style, backgroundColor }: AvatarProps) {
-  const [imageError, setImageError] = React.useState(false)
+  const [imageError, setImageError] = useState(false)
+  const fontSize = size * 0.38
+  const bgColor = backgroundColor || '#C2410C'
 
   const getInitials = () => {
     if (initials) return initials
     if (name) {
       const parts = name.split(' ')
-      if (parts.length >= 2) {
-        return `${parts[0][0]}${parts[1][0]}`.toUpperCase()
-      }
-      return name.slice(0, 2).toUpperCase()
+      return parts.length >= 2
+        ? `${parts[0][0]}${parts[1][0]}`.toUpperCase()
+        : name.slice(0, 2).toUpperCase()
     }
     return '?'
   }
 
-  const fontSize = size * 0.4
-  const bgColor = backgroundColor || '#C2410C'
-
   if (image && !imageError) {
     return (
-      <View
-        style={[
-          {
-            width: size,
-            height: size,
-            borderRadius: size / 2,
-            overflow: 'hidden',
-          },
-          style,
-        ]}
-      >
-        <Image
-          source={{ uri: image }}
-          style={{
-            width: '100%',
-            height: '100%',
-          }}
-          resizeMode="cover"
-          onError={() => setImageError(true)}
-        />
+      <View style={[{ width: size, height: size, borderRadius: size / 2, overflow: 'hidden' }, style]}>
+        <Image source={{ uri: image }} style={{ width: '100%', height: '100%' }} resizeMode="cover" onError={() => setImageError(true)} />
       </View>
     )
   }
 
   return (
-    <View
-      style={[
-        {
-          width: size,
-          height: size,
-          borderRadius: size / 2,
-          backgroundColor: bgColor,
-          alignItems: 'center',
-          justifyContent: 'center',
-        },
-        style,
-      ]}
-    >
-      <Text
-        style={{
-          color: 'white',
-          fontSize,
-          fontWeight: '600',
-        }}
-      >
+    <View style={[{ width: size, height: size, borderRadius: size / 2, backgroundColor: bgColor, alignItems: 'center', justifyContent: 'center' }, style]}>
+      <Text style={{ fontWeight: '600', fontSize, color: '#FFFFFF' }}>
         {getInitials()}
       </Text>
     </View>

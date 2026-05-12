@@ -6,14 +6,14 @@
 
 import React, { useEffect, useState } from 'react'
 import { View, Text, FlatList, StyleSheet, ActivityIndicator, TouchableOpacity, Alert } from 'react-native'
-import type { Notification } from '../utils/notificationService'
+import type { Notification } from '../../utils/notificationService'
 import {
   getNotifications,
   markNotificationAsRead,
   markAllNotificationsAsRead,
   archiveNotification,
   deleteNotification,
-} from '../utils/notificationService'
+} from '../../utils/notificationService'
 import { NotificationItem } from './NotificationItem'
 
 interface NotificationCenterProps {
