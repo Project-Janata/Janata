@@ -685,7 +685,7 @@ export function useDiscoverData(
   options?: UseDiscoverOptions,
 ) {
   const fetchAttendees = options?.fetchAttendees ?? false
-  const [allEvents, setAllEvents] = useState<EventDisplay[]>([])
+  const [allEvents, setAllEvents] = useState<EventDisplay[]>(DISCOVER_SAMPLE_EVENTS)
   const [allCenters, setAllCenters] = useState<DiscoverCenter[]>([])
   const [loading, setLoading] = useState(true)
   const [isLive, setIsLive] = useState(false)

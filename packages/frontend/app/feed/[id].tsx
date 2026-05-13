@@ -131,9 +131,17 @@ export default function FeedPostDetail() {
           </Text>
           <Pressable
             onPress={() => router.back()}
-            style={{ marginTop: 16, paddingVertical: 10, paddingHorizontal: 20, borderRadius: 12, backgroundColor: colors.orange }}
+            style={{
+              marginTop: 16,
+              paddingVertical: 10,
+              paddingHorizontal: 20,
+              borderRadius: 12,
+              backgroundColor: colors.orange,
+            }}
           >
-            <Text style={{ fontFamily: 'Inclusive Sans', fontSize: 14, color: '#FFFFFF' }}>Go back</Text>
+            <Text style={{ fontFamily: 'Inclusive Sans', fontSize: 14, color: '#FFFFFF' }}>
+              Go back
+            </Text>
           </Pressable>
         </View>
       </SafeAreaView>
@@ -160,19 +168,14 @@ export default function FeedPostDetail() {
           <ArrowLeft size={22} color={colors.orange} />
         </Pressable>
         <View style={{ flex: 1 }}>
-          <Text style={{ fontFamily: 'Inclusive Sans', fontSize: 16, color: colors.text }}>
-            Post
-          </Text>
-          <Text style={{ fontFamily: 'Inclusive Sans', fontSize: 12, color: colors.textMuted }} numberOfLines={1}>
+          <Text style={{ fontSize: 16, color: colors.text }}>Post</Text>
+          <Text style={{ fontSize: 12, color: colors.textMuted }} numberOfLines={1}>
             {post.sourceTitle}
           </Text>
         </View>
       </View>
 
-      <ScrollView
-        style={{ flex: 1 }}
-        contentContainerStyle={{ paddingBottom: 40 }}
-      >
+      <ScrollView style={{ flex: 1 }} contentContainerStyle={{ paddingBottom: 40 }}>
         <View style={{ padding: 16 }}>
           <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, marginBottom: 12 }}>
             <View
@@ -205,22 +208,23 @@ export default function FeedPostDetail() {
             />
             <View style={{ flex: 1, gap: 8 }}>
               <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
-                <Text style={{ fontFamily: 'Inclusive Sans', fontSize: 15, color: colors.text }}>
-                  {post.author.name}
-                </Text>
+                <Text style={{ fontSize: 15, color: colors.text }}>{post.author.name}</Text>
                 {post.author.verification === 'sevak' ? (
-                  <View style={{ backgroundColor: colors.orangeSoft, paddingHorizontal: 6, paddingVertical: 2, borderRadius: 4 }}>
-                    <Text style={{ fontFamily: 'Inclusive Sans', fontSize: 10, color: colors.orange }}>SEVAK</Text>
+                  <View
+                    style={{
+                      backgroundColor: colors.orangeSoft,
+                      paddingHorizontal: 6,
+                      paddingVertical: 2,
+                      borderRadius: 4,
+                    }}
+                  >
+                    <Text style={{ fontSize: 10, color: colors.orange }}>SEVAK</Text>
                   </View>
                 ) : null}
-                <Text style={{ fontFamily: 'Inclusive Sans', fontSize: 12, color: colors.textMuted }}>
-                  · {post.timestamp}
-                </Text>
+                <Text style={{ fontSize: 12, color: colors.textMuted }}>· {post.timestamp}</Text>
               </View>
 
-              <Text style={{ fontFamily: 'Inclusive Sans', fontSize: 15, lineHeight: 22, color: colors.text }}>
-                {post.body}
-              </Text>
+              <Text style={{ fontSize: 15, lineHeight: 22, color: colors.text }}>{post.body}</Text>
 
               {post.attachmentLabel ? (
                 <View
@@ -233,7 +237,7 @@ export default function FeedPostDetail() {
                     justifyContent: 'center',
                   }}
                 >
-                  <Text style={{ fontFamily: 'Inclusive Sans', fontSize: 12, color: colors.textMuted }}>
+                  <Text style={{ fontSize: 12, color: colors.textMuted }}>
                     {post.attachmentLabel}
                   </Text>
                 </View>
@@ -243,14 +247,19 @@ export default function FeedPostDetail() {
                 {reactions.map((reaction, i) => (
                   <View key={i} style={{ flexDirection: 'row', alignItems: 'center', gap: 4 }}>
                     <Text style={{ fontSize: 14 }}>{reaction.emoji}</Text>
-                    <Text style={{ fontFamily: 'Inclusive Sans', fontSize: 13, color: colors.textMuted }}>
+                    <Text
+                      style={{
+                        fontSize: 13,
+                        color: colors.textMuted,
+                      }}
+                    >
                       {reaction.count}
                     </Text>
                   </View>
                 ))}
                 <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4 }}>
                   <MessageCircle size={14} color={colors.textMuted} />
-                  <Text style={{ fontFamily: 'Inclusive Sans', fontSize: 13, color: colors.textMuted }}>
+                  <Text style={{ fontSize: 13, color: colors.textMuted }}>
                     {replies.length} {replies.length === 1 ? 'reply' : 'replies'}
                   </Text>
                 </View>
@@ -261,13 +270,29 @@ export default function FeedPostDetail() {
 
         {replies.length > 0 ? (
           <View style={{ borderTopWidth: 1, borderTopColor: colors.border, paddingTop: 16 }}>
-            <Text style={{ fontFamily: 'Inclusive Sans', fontSize: 12, letterSpacing: 0.5, color: colors.textMuted, paddingHorizontal: 16, marginBottom: 12 }}>
+            <Text
+              style={{
+                fontFamily: 'Inclusive Sans',
+                fontSize: 12,
+                letterSpacing: 0.5,
+                color: colors.textMuted,
+                paddingHorizontal: 16,
+                marginBottom: 12,
+              }}
+            >
               REPLIES
             </Text>
             {replies.map((reply) => (
               <View
                 key={reply.id}
-                style={{ flexDirection: 'row', gap: 12, paddingHorizontal: 16, paddingVertical: 12, borderBottomWidth: 1, borderBottomColor: colors.border }}
+                style={{
+                  flexDirection: 'row',
+                  gap: 12,
+                  paddingHorizontal: 16,
+                  paddingVertical: 12,
+                  borderBottomWidth: 1,
+                  borderBottomColor: colors.border,
+                }}
               >
                 <Avatar
                   name={reply.author.name}
@@ -277,14 +302,23 @@ export default function FeedPostDetail() {
                 />
                 <View style={{ flex: 1, gap: 4 }}>
                   <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
-                    <Text style={{ fontFamily: 'Inclusive Sans', fontSize: 14, color: colors.text }}>
-                      {reply.author.name}
-                    </Text>
-                    <Text style={{ fontFamily: 'Inclusive Sans', fontSize: 12, color: colors.textMuted }}>
+                    <Text style={{ fontSize: 14, color: colors.text }}>{reply.author.name}</Text>
+                    <Text
+                      style={{
+                        fontSize: 12,
+                        color: colors.textMuted,
+                      }}
+                    >
                       · {reply.timestamp}
                     </Text>
                   </View>
-                  <Text style={{ fontFamily: 'Inclusive Sans', fontSize: 14, lineHeight: 20, color: colors.textSecondary }}>
+                  <Text
+                    style={{
+                      fontSize: 14,
+                      lineHeight: 20,
+                      color: colors.textSecondary,
+                    }}
+                  >
                     {reply.body}
                   </Text>
                 </View>

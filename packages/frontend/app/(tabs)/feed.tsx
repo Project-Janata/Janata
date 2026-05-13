@@ -3,78 +3,41 @@ import {
   Animated,
   Easing,
   KeyboardAvoidingView,
-  Modal,
   Platform,
-  Pressable,
   ScrollView,
   Text,
-  TextInput,
   View,
   useWindowDimensions,
 } from 'react-native'
 import { useFocusEffect, useNavigation, useRouter } from 'expo-router'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
-import {
-  ArrowLeft,
-  Building2,
-  CalendarDays,
-  ChevronDown,
-  MessageCircle,
-  Plus,
-  Search,
-  Send,
-  UsersRound,
-  X,
-} from 'lucide-react-native'
 import { usePostHog } from 'posthog-react-native'
-import { Avatar } from '../../components/ui'
 import { useUser } from '../../components/contexts'
 import { useColors } from '../../hooks/useColors'
 import { toThreadColors } from '../../tokens'
-import type { AppColors } from '../../tokens'
 import { useHeaderAction } from '../../components/contexts/HeaderActionContext'
 import { useCenterList, useMyEvents } from '../../hooks/useApiData'
 import { extractCityState } from '../../utils/addressParsing'
 import {
-  ThreadPanel,
   buildCenterBoard,
   buildEventBoard,
   centerBoards,
   eventBoards,
-  EmptyPanel,
   SignInCallout,
   CreatePostSheet,
   type BoardMessage,
   type CenterBoard,
   type EventBoard,
-  type PersonSummary,
-  type ThreadPanelColors,
-  type GroupKind,
 } from '../../components/connect'
+import {
+  FeedHeader,
+  NativeChatHeader,
+  FeedWorkspace,
+  PostThread,
+  type FeedPost,
+  type GroupBoard,
+} from '../../components/feed'
 import type { DiscoverCenter, EventDisplay } from '../../utils/api'
-
-type GroupBoard = {
-  id: string
-  kind: GroupKind
-  title: string
-  eyebrow: string
-  subtitle: string
-  meta: string
-  preview: string
-  unreadCount: number
-  messages: BoardMessage[]
-  distanceMi?: number
-}
-
-type FeedPost = BoardMessage & {
-  groupId: string
-  groupKind: GroupKind
-  sourceTitle: string
-  sourceSubtitle: string
-  sourceLabel: string
-  replyMessages: BoardMessage[]
-}
-
 
 function formatEventDateLabel(date: string) {
   const parsed = new Date(`${date}T00:00:00`)
@@ -182,10 +145,9 @@ function centerToNearbyGroup(
   const distanceMi = haversineMiles(anchor, center)
   const locationLabel = extractCityState(center.address) || center.address || 'Center board'
   const distanceLabel = formatDistance(distanceMi)
-  const subtitle = [
-    locationLabel,
-    distanceLabel ? `${distanceLabel} away` : null,
-  ].filter(Boolean).join(' - ')
+  const subtitle = [locationLabel, distanceLabel ? `${distanceLabel} away` : null]
+    .filter(Boolean)
+    .join(' - ')
 
   return centerToGroup(
     buildCenterBoard({
@@ -244,9 +206,12 @@ export default function FeedScreen() {
   const insets = useSafeAreaInsets()
   const posthog = usePostHog()
   const detailTranslateX = useRef(new Animated.Value(width)).current
-  const { events: myEvents, loading: myEventsLoading, refetch: refetchMyEvents } = useMyEvents(user?.username)
+  const {
+    events: myEvents,
+    loading: myEventsLoading,
+    refetch: refetchMyEvents,
+  } = useMyEvents(user?.username)
   const { centers: allCenters, loading: centersLoading, refetch: refetchCenters } = useCenterList()
-  const loadMoreRef = useRef<(() => void) | null>(null)
 
   const isDesktop = width >= 980
   const [query, setQuery] = useState('')
@@ -290,23 +255,26 @@ export default function FeedScreen() {
         nextGroups.push(centerToNearbyGroup(item, userCenter))
       }
     } else if (!user) {
-      nextGroups.push(centerToGroup(centerBoards[0]))
+      for (const board of centerBoards) {
+        nextGroups.push(centerToGroup(board))
+      }
     }
 
     const registeredEvents = sortUpcomingEvents(myEvents)
-    const liveEventGroups = user && isVerifiedMember
-      ? registeredEvents.map((event) => {
-          const eventDistance = haversineMiles(userCenter, {
-            latitude: event.latitude,
-            longitude: event.longitude,
+    const liveEventGroups =
+      user && isVerifiedMember
+        ? registeredEvents.map((event) => {
+            const eventDistance = haversineMiles(userCenter, {
+              latitude: event.latitude,
+              longitude: event.longitude,
+            })
+            return eventToGroup(eventToBoard(event), eventDistance)
           })
-          return eventToGroup(eventToBoard(event), eventDistance)
-        })
-      : []
+        : []
 
     if (liveEventGroups.length > 0) {
       nextGroups.push(...liveEventGroups)
-    } else if (!user) {
+    } else {
       nextGroups.push(...eventBoards.map(eventToGroup))
     }
 
@@ -431,14 +399,6 @@ export default function FeedScreen() {
           paddingBottom: Platform.OS === 'web' ? 40 : 112,
         }}
         showsVerticalScrollIndicator={false}
-        onScroll={(e) => {
-          const { layoutMeasurement, contentOffset, contentSize } = e.nativeEvent
-          const paddingToBottom = 400
-          if (layoutMeasurement.height + contentOffset.y >= contentSize.height - paddingToBottom) {
-            loadMoreRef.current?.()
-          }
-        }}
-        scrollEventThrottle={400}
       >
         <FeedHeader
           query={query}
@@ -484,12 +444,40 @@ export default function FeedScreen() {
                     }}
                   />
                   <View style={{ flex: 1, gap: 6 }}>
-                    <View style={{ width: '50%', height: 14, borderRadius: 7, backgroundColor: colors.panel }} />
-                    <View style={{ width: '30%', height: 12, borderRadius: 6, backgroundColor: colors.panel }} />
+                    <View
+                      style={{
+                        width: '50%',
+                        height: 14,
+                        borderRadius: 7,
+                        backgroundColor: colors.panel,
+                      }}
+                    />
+                    <View
+                      style={{
+                        width: '30%',
+                        height: 12,
+                        borderRadius: 6,
+                        backgroundColor: colors.panel,
+                      }}
+                    />
                   </View>
                 </View>
-                <View style={{ width: '80%', height: 12, borderRadius: 6, backgroundColor: colors.panel }} />
-                <View style={{ width: '60%', height: 12, borderRadius: 6, backgroundColor: colors.panel }} />
+                <View
+                  style={{
+                    width: '80%',
+                    height: 12,
+                    borderRadius: 6,
+                    backgroundColor: colors.panel,
+                  }}
+                />
+                <View
+                  style={{
+                    width: '60%',
+                    height: 12,
+                    borderRadius: 6,
+                    backgroundColor: colors.panel,
+                  }}
+                />
               </View>
             ))}
           </View>
@@ -536,7 +524,12 @@ export default function FeedScreen() {
             />
             <View style={{ flex: 1 }}>
               {selectedPost ? (
-                <PostThread post={selectedPost} colors={colors} fullScreen bottomInset={insets.bottom} />
+                <PostThread
+                  post={selectedPost}
+                  colors={colors}
+                  fullScreen
+                  bottomInset={insets.bottom}
+                />
               ) : null}
             </View>
           </KeyboardAvoidingView>
@@ -552,652 +545,3 @@ export default function FeedScreen() {
     </View>
   )
 }
-
-function FeedWorkspace({
-  posts,
-  selectedPost,
-  colors,
-  threadColors,
-  isDesktop,
-  canAccessBoards,
-  isSignedIn,
-  nativeDetailOpen,
-  mobilePostOpen,
-  onRequestAccess,
-  onSelectPost,
-}: {
-  posts: FeedPost[]
-  selectedPost?: FeedPost
-  colors: AppColors
-  threadColors: ThreadPanelColors
-  isDesktop: boolean
-  canAccessBoards: boolean
-  isSignedIn: boolean
-  nativeDetailOpen: boolean
-  mobilePostOpen: boolean
-  onRequestAccess: () => void
-  onSelectPost: (id: string) => void
-}) {
-  if (!canAccessBoards) {
-    return (
-      <ThreadPanel
-        messages={[]}
-        colors={threadColors}
-        emptyTitle="No posts yet"
-        emptySubtitle="Once your boards have posts, they will show up here."
-        composerPlaceholder="Share something with the center..."
-        composerState="locked"
-        lockedTitle={isSignedIn ? 'For verified members' : 'Sign in for member boards'}
-        lockedSubtitle={
-          isSignedIn
-            ? "Boards are conversations between verified CHYKs at a center. Get verified and you're in."
-            : 'Sign in to see your center board, event boards, and member conversations.'
-        }
-        primaryActionLabel={isSignedIn ? 'Redeem invite' : 'Sign in'}
-        secondaryActionLabel={isSignedIn ? 'Apply' : 'Learn more'}
-        onPrimaryAction={onRequestAccess}
-        onSecondaryAction={onRequestAccess}
-      />
-    )
-  }
-
-  if (isDesktop) {
-    return (
-      <View style={{ flexDirection: 'row', gap: 18, alignItems: 'flex-start' }}>
-        <View style={{ flex: 1.05, minWidth: 0 }}>
-          <FeedList posts={posts} colors={threadColors} feedColors={colors} onSelectPost={onSelectPost} />
-        </View>
-        <View style={{ flex: 0.95, minWidth: 0 }}>
-          {selectedPost ? (
-            <PostThread post={selectedPost} colors={colors} />
-          ) : (
-            <EmptyPanel title="No posts found" subtitle="Try a different search." colors={colors} />
-          )}
-        </View>
-      </View>
-    )
-  }
-
-  if (mobilePostOpen && !nativeDetailOpen && selectedPost) {
-    return <PostThread post={selectedPost} colors={colors} />
-  }
-
-  return <FeedList posts={posts} colors={threadColors} feedColors={colors} onSelectPost={onSelectPost} />
-}
-
-function FeedPostCard({
-  post,
-  colors,
-  onPress,
-}: {
-  post: FeedPost
-  colors: AppColors
-  onPress?: () => void
-}) {
-  const reactions = post.reactions ?? [{ emoji: '🙏', count: 2 }]
-  const replies = post.replyCount ?? 2
-
-  return (
-    <Pressable
-      onPress={onPress}
-      style={{
-        paddingVertical: 14,
-        borderBottomWidth: 1,
-        borderBottomColor: colors.border,
-      }}
-    >
-      <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, marginBottom: 8 }}>
-        <View
-          style={{
-            width: 18,
-            height: 18,
-            borderRadius: 5,
-            backgroundColor: post.sourceKind === 'event' ? colors.accentSoft : colors.panel,
-            alignItems: 'center',
-            justifyContent: 'center',
-          }}
-        >
-          {post.sourceKind === 'event' ? (
-            <CalendarDays size={10} color={colors.accent} strokeWidth={2.4} />
-          ) : (
-            <Building2 size={10} color={colors.textMuted} strokeWidth={2.3} />
-          )}
-        </View>
-        <Text style={{ fontFamily: 'Inclusive Sans', fontSize: 12, color: colors.textMuted }} numberOfLines={1}>
-          {post.sourceTitle}
-        </Text>
-        <Text style={{ fontFamily: 'Inclusive Sans', fontSize: 12, color: colors.textFaint }}>
-          · {post.timestamp}
-        </Text>
-      </View>
-
-      <View style={{ flexDirection: 'row', gap: 12 }}>
-        <Avatar
-          name={post.author.name}
-          initials={post.author.initials}
-          size={38}
-          backgroundColor={post.author.accentColor}
-        />
-        <View style={{ flex: 1, gap: 6 }}>
-          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
-            <Text style={{ fontFamily: 'Inclusive Sans', fontSize: 14, color: colors.text }}>
-              {post.author.name}
-            </Text>
-            {post.author.verification === 'sevak' ? (
-              <View style={{ backgroundColor: colors.accentSoft, paddingHorizontal: 6, paddingVertical: 1, borderRadius: 4 }}>
-                <Text style={{ fontFamily: 'Inclusive Sans', fontSize: 10, color: colors.accent }}>SEVAK</Text>
-              </View>
-            ) : null}
-          </View>
-
-          <Text style={{ fontFamily: 'Inclusive Sans', fontSize: 14, lineHeight: 20, color: colors.text }}>
-            {post.body}
-          </Text>
-
-          {post.attachmentLabel ? (
-            <View
-              style={{
-                marginTop: 4,
-                height: 64,
-                borderRadius: 12,
-                backgroundColor: colors.panel,
-                alignItems: 'center',
-                justifyContent: 'center',
-              }}
-            >
-              <Text style={{ fontFamily: 'Inclusive Sans', fontSize: 11, color: colors.textMuted }}>
-                {post.attachmentLabel}
-              </Text>
-            </View>
-          ) : null}
-
-          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 16, marginTop: 6 }}>
-            {reactions.map((reaction, i) => (
-              <View key={i} style={{ flexDirection: 'row', alignItems: 'center', gap: 4 }}>
-                <Text style={{ fontSize: 13 }}>{reaction.emoji}</Text>
-                <Text style={{ fontFamily: 'Inclusive Sans', fontSize: 12, color: colors.textMuted }}>
-                  {reaction.count}
-                </Text>
-              </View>
-            ))}
-            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4 }}>
-              <MessageCircle size={13} color={colors.textMuted} />
-              <Text style={{ fontFamily: 'Inclusive Sans', fontSize: 12, color: colors.textMuted }}>
-                {replies}
-              </Text>
-            </View>
-          </View>
-        </View>
-      </View>
-    </Pressable>
-  )
-}
-
-function FeedList({
-  posts,
-  colors,
-  feedColors,
-  onSelectPost,
-  loadMoreRef,
-}: {
-  posts: FeedPost[]
-  colors: ThreadPanelColors
-  feedColors: AppColors
-  onSelectPost: (id: string) => void
-  loadMoreRef?: React.MutableRefObject<(() => void) | null>
-}) {
-  const [visibleCount, setVisibleCount] = useState(25)
-  const visiblePosts = posts.slice(0, visibleCount)
-  const hasMore = visibleCount < posts.length
-
-  const loadMore = useCallback(() => {
-    if (hasMore) {
-      setVisibleCount((prev) => Math.min(prev + 25, posts.length))
-    }
-  }, [hasMore, posts.length])
-
-  useEffect(() => {
-    setVisibleCount(25)
-  }, [posts])
-
-  useEffect(() => {
-    if (loadMoreRef) {
-      loadMoreRef.current = loadMore
-    }
-  }, [loadMore, loadMoreRef])
-
-  if (posts.length === 0) {
-    return (
-      <View style={{ paddingVertical: 40, alignItems: 'center', gap: 8 }}>
-        <Text style={{ fontFamily: 'Inclusive Sans', fontSize: 16, color: colors.text }}>
-          No posts found
-        </Text>
-        <Text style={{ fontFamily: 'Inclusive Sans', fontSize: 13, color: colors.textMuted }}>
-          Try a different search or check back after your next event.
-        </Text>
-      </View>
-    )
-  }
-
-  return (
-    <View>
-      {visiblePosts.map((post) => (
-        <FeedPostCard
-          key={post.id}
-          post={post}
-          colors={feedColors}
-          onPress={() => onSelectPost(post.id)}
-        />
-      ))}
-      {hasMore ? (
-        <View style={{ paddingVertical: 20, alignItems: 'center' }}>
-          <Text style={{ fontFamily: 'Inclusive Sans', fontSize: 13, color: colors.textMuted }}>
-            Loading more...
-          </Text>
-        </View>
-      ) : null}
-    </View>
-  )
-}
-
-function PostThread({
-  post,
-  colors,
-  fullScreen = false,
-  bottomInset = 0,
-}: {
-  post: FeedPost
-  colors: AppColors
-  fullScreen?: boolean
-  bottomInset?: number
-}) {
-  const replies = post.replyMessages.slice(0, Math.max(post.replyCount ?? post.replyMessages.length, 1))
-  const content = (
-    <View style={{ paddingHorizontal: fullScreen ? 16 : 4, paddingTop: fullScreen ? 14 : 0, paddingBottom: 16 }}>
-      <SourceBoardChip post={post} colors={colors} />
-      <PostMessageBlock message={post} colors={colors} original />
-
-      <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10, marginTop: 18, marginBottom: 14 }}>
-        <Text style={{ fontFamily: 'Inclusive Sans', fontSize: 12, letterSpacing: 0.5, color: colors.textFaint }}>
-          {replies.length} {replies.length === 1 ? 'REPLY' : 'REPLIES'}
-        </Text>
-        <View style={{ flex: 1, height: 1, backgroundColor: colors.border }} />
-      </View>
-
-      <View style={{ gap: 16 }}>
-        {replies.map((reply) => (
-          <PostMessageBlock key={reply.id} message={reply} colors={colors} />
-        ))}
-      </View>
-    </View>
-  )
-
-  return (
-    <View style={{ flex: fullScreen ? 1 : undefined, backgroundColor: colors.bg }}>
-      {!fullScreen ? (
-        <View style={{ paddingHorizontal: 4, paddingTop: 6, paddingBottom: 14, gap: 8 }}>
-          <Text style={{ fontFamily: 'Inclusive Sans', fontSize: 12, color: colors.accent }}>
-            {post.sourceLabel}
-          </Text>
-          <Text style={{ fontFamily: 'Inclusive Sans', fontSize: 24, lineHeight: 29, color: colors.text }}>
-            Post
-          </Text>
-          <Text style={{ fontFamily: 'Inclusive Sans', fontSize: 14, lineHeight: 20, color: colors.textMuted }}>
-            {post.sourceSubtitle}
-          </Text>
-        </View>
-      ) : null}
-      {fullScreen ? (
-        <>
-          <ScrollView
-            style={{ flex: 1 }}
-            contentContainerStyle={{ paddingBottom: 16 }}
-            keyboardShouldPersistTaps="handled"
-            showsVerticalScrollIndicator={false}
-          >
-            {content}
-          </ScrollView>
-          <ThreadReplyComposer colors={colors} bottomInset={bottomInset} />
-        </>
-      ) : (
-        <View
-          style={{
-            borderRadius: 20,
-            borderWidth: 1,
-            borderColor: colors.border,
-            backgroundColor: colors.card,
-            overflow: 'hidden',
-          }}
-        >
-          {content}
-          <ThreadReplyComposer colors={colors} bottomInset={0} compact />
-        </View>
-      )}
-    </View>
-  )
-}
-
-function SourceBoardChip({ post, colors }: { post: FeedPost; colors: AppColors }) {
-  const isEvent = post.groupKind === 'event'
-  return (
-    <View
-      style={{
-        alignSelf: 'flex-start',
-        borderRadius: 999,
-        backgroundColor: colors.accentSoft,
-        paddingHorizontal: 11,
-        paddingVertical: 7,
-        marginBottom: 16,
-        flexDirection: 'row',
-        alignItems: 'center',
-        gap: 6,
-      }}
-    >
-      {isEvent ? (
-        <CalendarDays size={13} color={colors.accent} strokeWidth={2.3} />
-      ) : (
-        <Building2 size={13} color={colors.accent} strokeWidth={2.3} />
-      )}
-      <Text style={{ fontFamily: 'Inclusive Sans', fontSize: 12, color: colors.accent }}>
-        {post.sourceTitle} - Board
-      </Text>
-    </View>
-  )
-}
-
-function PostMessageBlock({
-  message,
-  colors,
-  original = false,
-}: {
-  message: BoardMessage
-  colors: AppColors
-  original?: boolean
-}) {
-  const reactions = message.reactions ?? []
-
-  return (
-    <View style={{ flexDirection: 'row', gap: original ? 12 : 10 }}>
-      <Avatar
-        name={message.author.name}
-        initials={message.author.initials}
-        size={original ? 42 : 34}
-        backgroundColor={message.author.accentColor}
-      />
-      <View style={{ flex: 1, minWidth: 0 }}>
-        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 7, flexWrap: 'wrap' }}>
-          <Text style={{ fontFamily: 'Inclusive Sans', fontSize: original ? 15 : 13, color: colors.text }}>
-            {message.author.name}
-          </Text>
-          {message.author.verification === 'sevak' ? (
-            <Text style={{ fontFamily: 'Inclusive Sans', fontSize: 12, color: '#C2410C' }}>SEVAK</Text>
-          ) : null}
-          {message.pinned ? (
-            <View style={{ borderRadius: 999, backgroundColor: colors.panel, paddingHorizontal: 8, paddingVertical: 3 }}>
-              <Text style={{ fontFamily: 'Inclusive Sans', fontSize: 11, color: colors.textMuted }}>Pinned</Text>
-            </View>
-          ) : null}
-          <Text style={{ marginLeft: 'auto', fontFamily: 'Inclusive Sans', fontSize: 12, color: colors.textFaint }}>
-            {message.timestamp}
-          </Text>
-        </View>
-
-        <Text
-          style={{
-            marginTop: original ? 8 : 5,
-            fontFamily: 'Inclusive Sans',
-            fontSize: original ? 16 : 14,
-            lineHeight: original ? 23 : 20,
-            color: colors.textMuted,
-          }}
-        >
-          {message.body}
-        </Text>
-
-        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 7, flexWrap: 'wrap', marginTop: 10 }}>
-          {reactions.map((reaction, index) => (
-            <ReactionChip
-              key={`${reaction.emoji}-${index}`}
-              emoji={reaction.emoji}
-              count={reaction.count}
-              colors={colors}
-              active={index === 0}
-            />
-          ))}
-          {original ? (
-            <View
-              style={{
-                borderRadius: 999,
-                borderWidth: 1,
-                borderStyle: 'dashed',
-                borderColor: colors.border,
-                paddingHorizontal: 10,
-                paddingVertical: 5,
-              }}
-            >
-              <Text style={{ fontFamily: 'Inclusive Sans', fontSize: 12, color: colors.textFaint }}>+ React</Text>
-            </View>
-          ) : null}
-        </View>
-      </View>
-    </View>
-  )
-}
-
-function ReactionChip({
-  emoji,
-  count,
-  colors,
-  active,
-}: {
-  emoji: string
-  count: number
-  colors: AppColors
-  active?: boolean
-}) {
-  return (
-    <View
-      style={{
-        borderRadius: 999,
-        borderWidth: 1,
-        borderColor: active ? colors.borderStrong : colors.border,
-        backgroundColor: active ? colors.accentSoft : colors.panel,
-        paddingHorizontal: 10,
-        paddingVertical: 5,
-        flexDirection: 'row',
-        alignItems: 'center',
-        gap: 4,
-      }}
-    >
-      <Text style={{ fontSize: 13 }}>{emoji}</Text>
-      <Text style={{ fontFamily: 'Inclusive Sans', fontSize: 13, color: colors.textMuted }}>{count}</Text>
-    </View>
-  )
-}
-
-function ThreadReplyComposer({
-  colors,
-  bottomInset,
-  compact = false,
-}: {
-  colors: AppColors
-  bottomInset: number
-  compact?: boolean
-}) {
-  return (
-    <View
-      style={{
-        borderTopWidth: 1,
-        borderTopColor: colors.border,
-        backgroundColor: colors.surface,
-        paddingTop: compact ? 9 : 10,
-        paddingHorizontal: 12,
-        paddingBottom: compact ? 12 : Math.max(bottomInset, 8) + 8,
-      }}
-    >
-      <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
-        <Avatar name="Aditi Mehta" initials="AM" size={30} backgroundColor="#0478A5" />
-        <View
-          style={{
-            flex: 1,
-            minHeight: 38,
-            borderRadius: 19,
-            backgroundColor: colors.panel,
-            paddingHorizontal: 14,
-            justifyContent: 'center',
-          }}
-        >
-          <TextInput
-            editable={false}
-            placeholder="Reply..."
-            placeholderTextColor={colors.textFaint}
-            style={{ fontFamily: 'Inclusive Sans', fontSize: 15, color: colors.text }}
-          />
-        </View>
-        <View
-          style={{
-            width: 36,
-            height: 36,
-            borderRadius: 18,
-            backgroundColor: colors.accent,
-            alignItems: 'center',
-            justifyContent: 'center',
-          }}
-        >
-          <Send size={15} color="#FFFFFF" />
-        </View>
-      </View>
-    </View>
-  )
-}
-
-function FeedHeader({
-  query,
-  colors,
-  mobileInDetail,
-  onBack,
-  onChangeQuery,
-}: {
-  query: string
-  colors: AppColors
-  mobileInDetail: boolean
-  onBack: () => void
-  onChangeQuery: (query: string) => void
-}) {
-  if (mobileInDetail) {
-    return (
-      <Pressable
-        onPress={onBack}
-        style={{
-          flexDirection: 'row',
-          alignItems: 'center',
-          gap: 8,
-          alignSelf: 'flex-start',
-          paddingVertical: 4,
-        }}
-      >
-        <ArrowLeft size={18} color={colors.textMuted} />
-        <Text style={{ fontFamily: 'Inclusive Sans', fontSize: 15, color: colors.textMuted }}>
-          Back
-        </Text>
-      </Pressable>
-    )
-  }
-
-  return (
-    <View style={{ gap: 10, marginBottom: 4 }}>
-      <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, marginTop: 4 }}>
-        <View
-          style={{
-            flex: 1,
-            minHeight: 42,
-            borderRadius: 14,
-            backgroundColor: colors.border,
-            paddingHorizontal: 12,
-            flexDirection: 'row',
-            alignItems: 'center',
-            gap: 10,
-          }}
-        >
-          <Search size={17} color={colors.textFaint} />
-          <TextInput
-            value={query}
-            onChangeText={onChangeQuery}
-            placeholder="Search posts, people, groups"
-            placeholderTextColor={colors.textFaint}
-            style={{
-              flex: 1,
-              fontFamily: 'Inclusive Sans',
-              fontSize: 15,
-              color: colors.text,
-              paddingVertical: 9,
-            }}
-           />
-        </View>
-      </View>
-    </View>
-  )
-}
-
-function NativeChatHeader({
-  colors,
-  insetsTop,
-  title,
-  subtitle,
-  hideAvatar,
-  onBack,
-}: {
-  colors: AppColors
-  insetsTop: number
-  title: string
-  subtitle?: string
-  hideAvatar?: boolean
-  onBack: () => void
-}) {
-  return (
-    <View
-      style={{
-        paddingTop: insetsTop + 6,
-        paddingHorizontal: 14,
-        paddingBottom: 10,
-        backgroundColor: colors.surface,
-        borderBottomWidth: 1,
-        borderBottomColor: colors.border,
-      }}
-    >
-      <View style={{ minHeight: 52, flexDirection: 'row', alignItems: 'center' }}>
-        <Pressable
-          onPress={onBack}
-          hitSlop={10}
-          style={{
-            width: 82,
-            minHeight: 42,
-            flexDirection: 'row',
-            alignItems: 'center',
-            gap: 5,
-          }}
-        >
-          <ArrowLeft size={21} color={colors.accent} />
-          <Text style={{ fontFamily: 'Inclusive Sans', fontSize: 15, color: colors.accent }}>
-            Back
-          </Text>
-        </Pressable>
-
-        <View style={{ flex: 1, alignItems: 'center', gap: 4 }}>
-          {hideAvatar ? null : null}
-          <Text style={{ fontFamily: 'Inclusive Sans', fontSize: 14, color: colors.text }} numberOfLines={1}>
-            {title}
-          </Text>
-          {subtitle ? (
-            <Text style={{ fontFamily: 'Inclusive Sans', fontSize: 11, color: colors.textFaint }} numberOfLines={1}>
-              {subtitle}
-            </Text>
-          ) : null}
-        </View>
-
-        <View style={{ width: 82 }} />
-      </View>
-    </View>
-  )
-}
-
