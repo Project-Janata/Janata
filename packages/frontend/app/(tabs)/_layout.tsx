@@ -212,27 +212,7 @@ export default function TabLayout() {
               title: 'Home',
               header: isWeb
                 ? () => <WebHeader />
-                : () => (
-                    <TabHeader
-                      showLogo
-                      rightContent={
-                        <Pressable
-                          onPress={() => router.push('/chat')}
-                          style={{
-                            width: 36,
-                            height: 36,
-                            borderRadius: 18,
-                            borderWidth: 1.5,
-                            borderColor: isDark ? '#404040' : '#D6D3D1',
-                            alignItems: 'center',
-                            justifyContent: 'center',
-                          }}
-                        >
-                          <Bell size={17} color={isDark ? '#FAFAF9' : '#1C1917'} />
-                        </Pressable>
-                      }
-                    />
-                  ),
+                : () => <TabHeader showLogo action="notifications" />,
               tabBarIcon: ({ color, size }) => <House size={size} color={color} />,
             }}
           />

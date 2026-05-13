@@ -8,6 +8,7 @@ import {
   ChevronRight,
   LogOut,
   AlertTriangle,
+  UserPlus,
 } from 'lucide-react-native'
 import { useUser, useTheme } from '../../components/contexts'
 import { Avatar, Text, Section, StackHeader } from '../../components/ui'
@@ -164,7 +165,24 @@ export default function PreferencesNative() {
             </View>
           </View>
         </Section>
-
+        {/* Connect */}
+        <Section title="CONNECT" titleColor={faintColor}>
+          <View
+            style={{
+              borderTopWidth: 1,
+              borderBottomWidth: 1,
+              borderColor,
+              marginHorizontal: -16,
+            }}
+          >
+            <MenuRow onPress={() => router.push('/settings/invite')}>
+              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12 }}>
+                <UserPlus size={20} color={textColor} />
+                <Text style={{ fontSize: 15, color: textColor }}>Invite Friends</Text>
+              </View>
+            </MenuRow>
+          </View>
+        </Section>
         {/* Regulatory */}
         <Section title="REGULATORY" titleColor={faintColor}>
           <View
