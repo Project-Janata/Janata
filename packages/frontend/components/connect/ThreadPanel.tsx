@@ -100,11 +100,7 @@ export function ThreadPanel({
           ))}
         </View>
       ) : (
-        <EmptyBoardState
-          colors={colors}
-          title={emptyTitle}
-          subtitle={emptySubtitle}
-        />
+        <EmptyBoardState colors={colors} title={emptyTitle} subtitle={emptySubtitle} />
       )}
     </View>
   )
@@ -212,7 +208,6 @@ function EmptyBoardState({
       </Text>
       <Text
         style={{
-          fontFamily: 'Inclusive Sans',
           fontSize: 14,
           color: colors.textSecondary,
           lineHeight: 22,
@@ -238,7 +233,10 @@ export function BoardPostCard({
 }) {
   const replies = message.replyCount ?? Math.max(1, message.author.verification === 'sevak' ? 1 : 2)
   const reactions = message.reactions ?? [
-    { emoji: message.author.verification === 'sevak' ? '🪔' : '🙏', count: message.author.verification === 'sevak' ? 6 : 2 },
+    {
+      emoji: message.author.verification === 'sevak' ? '🪔' : '🙏',
+      count: message.author.verification === 'sevak' ? 6 : 2,
+    },
   ]
   const accent = colors.accent ?? '#E8862A'
   const accentSoft = colors.accentSoft ?? '#FFF7ED'
@@ -261,13 +259,13 @@ export function BoardPostCard({
         paddingVertical: isFeedCard ? 14 : 18,
         borderRadius: isFeedCard ? 16 : 0,
         borderWidth: isFeedCard ? 1 : 0,
-        borderColor: isFeedCard
+        borderColor: isFeedCard ? (message.pinned ? '#FFE0C2' : colors.border) : 'transparent',
+        borderBottomWidth: isFeedCard ? 1 : 1,
+        borderBottomColor: isFeedCard
           ? message.pinned
             ? '#FFE0C2'
             : colors.border
-          : 'transparent',
-        borderBottomWidth: isFeedCard ? 1 : 1,
-        borderBottomColor: isFeedCard ? (message.pinned ? '#FFE0C2' : colors.border) : colors.border,
+          : colors.border,
         backgroundColor: isFeedCard ? (colors.cardBg ?? '#FFFFFF') : 'transparent',
         shadowColor: message.pinned ? '#C2410C' : '#000000',
         shadowOpacity: isFeedCard ? (message.pinned ? 0.08 : 0.03) : 0,
@@ -292,7 +290,6 @@ export function BoardPostCard({
           <Text
             style={{
               flex: 1,
-              fontFamily: 'Inclusive Sans',
               fontSize: 12,
               color: colors.textSecondary,
             }}
@@ -313,20 +310,47 @@ export function BoardPostCard({
         />
 
         <View style={{ flex: 1, gap: 8 }}>
-          <View style={{ flexDirection: 'row', alignItems: 'flex-start', justifyContent: 'space-between', gap: 12 }}>
+          <View
+            style={{
+              flexDirection: 'row',
+              alignItems: 'flex-start',
+              justifyContent: 'space-between',
+              gap: 12,
+            }}
+          >
             <View style={{ flex: 1 }}>
-              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 7, flexWrap: 'wrap' }}>
-                <Text style={{ fontFamily: 'Inclusive Sans', fontSize: isFeedCard ? 14 : 16, color: colors.text }}>
+              <View
+                style={{ flexDirection: 'row', alignItems: 'center', gap: 7, flexWrap: 'wrap' }}
+              >
+                <Text
+                  style={{
+                    fontSize: isFeedCard ? 14 : 16,
+                    color: colors.text,
+                  }}
+                >
                   {message.author.name}
                 </Text>
                 {message.author.verification === 'sevak' ? (
-                  <Text style={{ fontFamily: 'Inclusive Sans', fontSize: 12, letterSpacing: 0.4, color: '#C2410C' }}>
-                    SEVAK
+                  <Text
+                    style={{
+                      fontFamily: 'Inclusive Sans',
+                      fontSize: 12,
+                      letterSpacing: 0.4,
+                      color: '#C2410C',
+                    }}
+                  >
+                    {message.author.role || 'SEVAK'}
                   </Text>
                 ) : null}
                 {!isFeedCard && message.pinned ? <Pill label="Pinned" colors={colors} /> : null}
               </View>
-              <Text style={{ fontFamily: 'Inclusive Sans', fontSize: 13, color: colors.textMuted, marginTop: 2 }}>
+              <Text
+                style={{
+                  fontSize: 13,
+                  color: colors.textMuted,
+                  marginTop: 2,
+                }}
+              >
                 {message.timestamp}
               </Text>
             </View>
@@ -335,7 +359,6 @@ export function BoardPostCard({
 
           <Text
             style={{
-              fontFamily: 'Inclusive Sans',
               fontSize: isFeedCard ? 14 : 17,
               lineHeight: isFeedCard ? 20 : 26,
               color: colors.textSecondary,
@@ -355,13 +378,23 @@ export function BoardPostCard({
                 justifyContent: 'center',
               }}
             >
-              <Text style={{ fontFamily: 'Inclusive Sans', fontSize: 12, color: colors.textSecondary }}>
+              <Text
+                style={{ fontFamily: 'Inclusive Sans', fontSize: 12, color: colors.textSecondary }}
+              >
                 {message.attachmentLabel}
               </Text>
             </View>
           ) : null}
 
-          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, flexWrap: 'wrap', marginTop: 2 }}>
+          <View
+            style={{
+              flexDirection: 'row',
+              alignItems: 'center',
+              gap: 8,
+              flexWrap: 'wrap',
+              marginTop: 2,
+            }}
+          >
             {reactions.map((reaction, index) => (
               <ReactionPill
                 key={`${reaction.emoji}-${index}`}
@@ -381,7 +414,9 @@ export function BoardPostCard({
                 paddingVertical: 5,
               }}
             >
-              <Text style={{ fontFamily: 'Inclusive Sans', fontSize: 13, color: colors.textMuted }}>+ React</Text>
+              <Text style={{ fontFamily: 'Inclusive Sans', fontSize: 13, color: colors.textMuted }}>
+                + React
+              </Text>
             </View>
             <View
               style={{
@@ -419,8 +454,8 @@ function ReactionPill({
       style={{
         borderRadius: 999,
         borderWidth: 1,
-        borderColor: active ? colors.accentSoft ?? colors.border : colors.border,
-        backgroundColor: active ? colors.accentSoft ?? colors.iconBoxBg : colors.iconBoxBg,
+        borderColor: active ? (colors.accentSoft ?? colors.border) : colors.border,
+        backgroundColor: active ? (colors.accentSoft ?? colors.iconBoxBg) : colors.iconBoxBg,
         paddingHorizontal: 10,
         paddingVertical: 5,
         flexDirection: 'row',
@@ -429,17 +464,28 @@ function ReactionPill({
       }}
     >
       <Text style={{ fontSize: 13 }}>{emoji}</Text>
-      <Text style={{ fontFamily: 'Inclusive Sans', fontSize: 13, color: colors.textSecondary }}>{count}</Text>
+      <Text style={{ fontFamily: 'Inclusive Sans', fontSize: 13, color: colors.textSecondary }}>
+        {count}
+      </Text>
     </View>
   )
 }
 
-function Pill({ label, colors, tone = 'neutral' }: { label: string; colors: ThreadPanelColors; tone?: 'neutral' | 'accent' }) {
+function Pill({
+  label,
+  colors,
+  tone = 'neutral',
+}: {
+  label: string
+  colors: ThreadPanelColors
+  tone?: 'neutral' | 'accent'
+}) {
   return (
     <View
       style={{
         borderRadius: 999,
-        backgroundColor: tone === 'accent' ? colors.accentSoft ?? colors.iconBoxBg : colors.iconBoxBg,
+        backgroundColor:
+          tone === 'accent' ? (colors.accentSoft ?? colors.iconBoxBg) : colors.iconBoxBg,
         paddingHorizontal: 9,
         paddingVertical: 3,
       }}
@@ -448,7 +494,7 @@ function Pill({ label, colors, tone = 'neutral' }: { label: string; colors: Thre
         style={{
           fontFamily: 'Inclusive Sans',
           fontSize: 12,
-          color: tone === 'accent' ? colors.accent ?? colors.textSecondary : colors.textSecondary,
+          color: tone === 'accent' ? (colors.accent ?? colors.textSecondary) : colors.textSecondary,
         }}
       >
         {label}
@@ -503,7 +549,14 @@ function LockedBoardState({
       >
         <Lock size={34} color={colors.textMuted} strokeWidth={1.8} />
       </View>
-      <Text style={{ fontFamily: 'Inclusive Sans', fontSize: 21, color: colors.text, textAlign: 'center' }}>
+      <Text
+        style={{
+          fontFamily: 'Inclusive Sans',
+          fontSize: 21,
+          color: colors.text,
+          textAlign: 'center',
+        }}
+      >
         {title}
       </Text>
       <Text
@@ -531,7 +584,9 @@ function LockedBoardState({
             justifyContent: 'center',
           }}
         >
-          <Text style={{ fontFamily: 'Inclusive Sans', fontSize: 15, color: '#FFFFFF' }}>{primaryActionLabel}</Text>
+          <Text style={{ fontFamily: 'Inclusive Sans', fontSize: 15, color: '#FFFFFF' }}>
+            {primaryActionLabel}
+          </Text>
         </Pressable>
         <Pressable
           onPress={onSecondaryAction}
@@ -546,7 +601,9 @@ function LockedBoardState({
             backgroundColor: colors.cardBg ?? colors.panelBg,
           }}
         >
-          <Text style={{ fontFamily: 'Inclusive Sans', fontSize: 15, color: colors.textSecondary }}>{secondaryActionLabel}</Text>
+          <Text style={{ fontFamily: 'Inclusive Sans', fontSize: 15, color: colors.textSecondary }}>
+            {secondaryActionLabel}
+          </Text>
         </Pressable>
       </View>
     </View>

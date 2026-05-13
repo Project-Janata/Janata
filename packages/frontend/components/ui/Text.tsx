@@ -26,11 +26,11 @@ export function Text({ style, ...props }: RNTextProps) {
   const flat = Object.assign({}, ...styleArray.filter(Boolean)) as Record<string, unknown>
   const { fontWeight, fontFamily: explicitFamily, ...rest } = flat
 
-  const baseFamily = (explicitFamily as string | undefined) || 'Inclusive Sans'
+  const baseFamily = explicitFamily as string | undefined
   const weight = String(fontWeight ?? '')
 
   let fontFamily = baseFamily
-  if (weight) {
+  if (weight && baseFamily) {
     const map = baseFamily.startsWith('Inter') ? INTER_WEIGHTS : INCLUSIVE_SANS_WEIGHTS
     fontFamily = map[weight] ?? baseFamily
   }

@@ -52,7 +52,7 @@ export default function InviteScreen() {
         }}
       >
         <GradientIconBadge size={96}>
-          <UserPlus size={40} color="#fff" strokeWidth={1.5} />
+          <UserPlus size={40} color="#fff" strokeWidth={2} />
         </GradientIconBadge>
         <Text style={{ fontFamily: 'Inclusive Sans', fontSize: 32, color: c.text, marginTop: 16 }}>
           Bring a friend

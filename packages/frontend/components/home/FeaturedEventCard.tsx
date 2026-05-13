@@ -1,7 +1,14 @@
 import React from 'react'
 import { Image, Pressable, Text, View } from 'react-native'
 import { Clock3, MapPin } from 'lucide-react-native'
-import Svg, { Circle, Defs, Line, LinearGradient as SvgLinearGradient, Rect, Stop } from 'react-native-svg'
+import Svg, {
+  Circle,
+  Defs,
+  Line,
+  LinearGradient as SvgLinearGradient,
+  Rect,
+  Stop,
+} from 'react-native-svg'
 import { Avatar } from '../ui'
 import { useColors } from '../../hooks/useColors'
 import type { FeaturedHomeEvent } from '../connect'
@@ -42,14 +49,65 @@ function GradientHero({ isDark }: { isDark: boolean }) {
           </SvgLinearGradient>
         </Defs>
         <Rect x="0" y="0" width="300" height="124" fill="url(#featGrad)" />
-        <Circle cx="248" cy="62" r="14" stroke="#7C2D12" strokeOpacity="0.18" strokeWidth="0.8" fill="none" />
-        <Circle cx="248" cy="62" r="26" stroke="#7C2D12" strokeOpacity="0.16" strokeWidth="0.8" fill="none" />
-        <Circle cx="248" cy="62" r="38" stroke="#7C2D12" strokeOpacity="0.14" strokeWidth="0.8" fill="none" />
-        <Circle cx="248" cy="62" r="50" stroke="#7C2D12" strokeOpacity="0.12" strokeWidth="0.8" fill="none" />
-        <Circle cx="248" cy="62" r="62" stroke="#7C2D12" strokeOpacity="0.10" strokeWidth="0.8" fill="none" />
+        <Circle
+          cx="248"
+          cy="62"
+          r="14"
+          stroke="#7C2D12"
+          strokeOpacity="0.18"
+          strokeWidth="0.8"
+          fill="none"
+        />
+        <Circle
+          cx="248"
+          cy="62"
+          r="26"
+          stroke="#7C2D12"
+          strokeOpacity="0.16"
+          strokeWidth="0.8"
+          fill="none"
+        />
+        <Circle
+          cx="248"
+          cy="62"
+          r="38"
+          stroke="#7C2D12"
+          strokeOpacity="0.14"
+          strokeWidth="0.8"
+          fill="none"
+        />
+        <Circle
+          cx="248"
+          cy="62"
+          r="50"
+          stroke="#7C2D12"
+          strokeOpacity="0.12"
+          strokeWidth="0.8"
+          fill="none"
+        />
+        <Circle
+          cx="248"
+          cy="62"
+          r="62"
+          stroke="#7C2D12"
+          strokeOpacity="0.10"
+          strokeWidth="0.8"
+          fill="none"
+        />
         {[0, 30, 60, 90, 120, 150, 180, 210, 240, 270, 300, 330].map((deg) => {
           const rad = (deg * Math.PI) / 180
-          return <Line key={deg} x1="248" y1="62" x2={248 + 70 * Math.cos(rad)} y2={62 + 70 * Math.sin(rad)} stroke="#7C2D12" strokeOpacity="0.11" strokeWidth="0.8" />
+          return (
+            <Line
+              key={deg}
+              x1="248"
+              y1="62"
+              x2={248 + 70 * Math.cos(rad)}
+              y2={62 + 70 * Math.sin(rad)}
+              stroke="#7C2D12"
+              strokeOpacity="0.11"
+              strokeWidth="0.8"
+            />
+          )
         })}
       </Svg>
     </View>
@@ -58,7 +116,14 @@ function GradientHero({ isDark }: { isDark: boolean }) {
 
 function InkPill({ label }: { label: string }) {
   return (
-    <View style={{ backgroundColor: '#1C1917', borderRadius: 999, paddingHorizontal: 9, paddingVertical: 4 }}>
+    <View
+      style={{
+        backgroundColor: '#1C1917',
+        borderRadius: 999,
+        paddingHorizontal: 9,
+        paddingVertical: 4,
+      }}
+    >
       <Text style={{ fontSize: 11, color: '#FAFAF7', letterSpacing: 0.2 }}>{label}</Text>
     </View>
   )
@@ -66,31 +131,70 @@ function InkPill({ label }: { label: string }) {
 
 function GoingPill({ label }: { label: string }) {
   return (
-    <View style={{ backgroundColor: '#DCFCE7', borderRadius: 999, paddingHorizontal: 9, paddingVertical: 4, flexDirection: 'row', alignItems: 'center', gap: 5 }}>
+    <View
+      style={{
+        backgroundColor: '#DCFCE7',
+        borderRadius: 999,
+        paddingHorizontal: 9,
+        paddingVertical: 4,
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: 5,
+      }}
+    >
       <View style={{ width: 6, height: 6, borderRadius: 3, backgroundColor: '#15803D' }} />
       <Text style={{ fontWeight: '500', fontSize: 11, color: '#15803D' }}>{label}</Text>
     </View>
   )
 }
 
-function AttendeeStack({ attendees, fallback }: { attendees?: EventDisplay['attendeesList']; fallback: { name: string; initials: string; accentColor?: string }[] }) {
+function AttendeeStack({
+  attendees,
+  fallback,
+}: {
+  attendees?: EventDisplay['attendeesList']
+  fallback: { name: string; initials: string; accentColor?: string }[]
+}) {
   const max = 4
-  const items = attendees && attendees.length > 0
-    ? attendees.slice(0, max).map((a) => ({ name: a.name, initials: a.initials, image: a.image }))
-    : fallback.slice(0, max).map((p) => ({ name: p.name, initials: p.initials, accentColor: p.accentColor }))
+  const items =
+    attendees && attendees.length > 0
+      ? attendees.slice(0, max).map((a) => ({ name: a.name, initials: a.initials, image: a.image }))
+      : fallback
+          .slice(0, max)
+          .map((p) => ({ name: p.name, initials: p.initials, accentColor: p.accentColor }))
 
   return (
     <View style={{ flexDirection: 'row' }}>
       {items.map((item, index) => (
-        <View key={`${item.name}-${index}`} style={{ marginLeft: index === 0 ? 0 : -7, borderWidth: 2, borderColor: '#FFFFFF', borderRadius: 14 }}>
-          <Avatar name={item.name} initials={item.initials} image={(item as any).image} backgroundColor={(item as any).accentColor} size={22} />
+        <View
+          key={`${item.name}-${index}`}
+          style={{
+            marginLeft: index === 0 ? 0 : -7,
+            borderWidth: 2,
+            borderColor: '#FFFFFF',
+            borderRadius: 14,
+          }}
+        >
+          <Avatar
+            name={item.name}
+            initials={item.initials}
+            image={(item as any).image}
+            backgroundColor={(item as any).accentColor}
+            size={22}
+          />
         </View>
       ))}
     </View>
   )
 }
 
-export function FeaturedEventCard({ featured, onPress }: { featured: FeaturedSource; onPress: () => void }) {
+export function FeaturedEventCard({
+  featured,
+  onPress,
+}: {
+  featured: FeaturedSource
+  onPress: () => void
+}) {
   const c = useColors()
   const isDark = c.bg === '#1A1A1A'
 
@@ -98,13 +202,24 @@ export function FeaturedEventCard({ featured, onPress }: { featured: FeaturedSou
   const mock = featured.kind === 'mock' ? featured.event : null
   const title = event?.title ?? mock!.title
   const dateLabel = event
-    ? event.date ? new Date(`${event.date}T00:00:00`).toLocaleDateString('en-US', { month: 'short', day: 'numeric' }) : 'TBD'
+    ? event.date
+      ? new Date(`${event.date}T00:00:00`).toLocaleDateString('en-US', {
+          month: 'short',
+          day: 'numeric',
+        })
+      : 'TBD'
     : mock!.dateLabel
   const timeLabel = event?.time || mock?.timeLabel || 'TBD'
-  const locationLabel = event ? event.location || event.address || 'Location TBA' : mock!.locationLabel
+  const locationLabel = event
+    ? event.location || event.address || 'Location TBA'
+    : mock!.locationLabel
   const goingPill = event ? event.isRegistered : mock!.going
-  const countdown = event ? countdownLabel(event.date) : mock?.countdownLabel ?? null
-  const attendeesGoingLabel = event ? (event.attendees > 0 ? `${event.attendees} going` : null) : mock!.attendeesGoingLabel
+  const countdown = event ? countdownLabel(event.date) : (mock?.countdownLabel ?? null)
+  const attendeesGoingLabel = event
+    ? event.attendees > 0
+      ? `${event.attendees} going`
+      : null
+    : mock!.attendeesGoingLabel
   const attendeesList = event?.attendeesList?.slice(0, 4)
   const fallbackAttendees = mock?.attendees ?? []
   const heroImage = event?.image
@@ -122,9 +237,15 @@ export function FeaturedEventCard({ featured, onPress }: { featured: FeaturedSou
       }}
     >
       <View style={{ height: 124, position: 'relative' }}>
-        {heroImage
-          ? <Image source={{ uri: heroImage }} style={{ width: '100%', height: '100%' }} resizeMode="cover" />
-          : <GradientHero isDark={isDark} />}
+        {heroImage ? (
+          <Image
+            source={{ uri: heroImage }}
+            style={{ width: '100%', height: '100%' }}
+            resizeMode="cover"
+          />
+        ) : (
+          <GradientHero isDark={isDark} />
+        )}
         <View style={{ position: 'absolute', top: 12, left: 12, flexDirection: 'row', gap: 6 }}>
           {countdown && <InkPill label={countdown} />}
           {goingPill && <GoingPill label="You're going" />}
@@ -132,21 +253,54 @@ export function FeaturedEventCard({ featured, onPress }: { featured: FeaturedSou
       </View>
 
       <View style={{ paddingHorizontal: 16, paddingTop: 14, paddingBottom: 14 }}>
-        <Text style={{ fontFamily: 'Inclusive Sans', fontSize: 18, lineHeight: 23, letterSpacing: -0.2, color: c.text }} numberOfLines={2}>{title}</Text>
+        <Text
+          style={{
+            fontFamily: 'Inclusive Sans',
+            fontSize: 18,
+            lineHeight: 23,
+            letterSpacing: -0.2,
+            color: c.text,
+          }}
+          numberOfLines={2}
+        >
+          {title}
+        </Text>
         <View style={{ flexDirection: 'column', gap: 4, marginTop: 8 }}>
           <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
             <Clock3 size={13} color={c.textFaint} />
-            <Text style={{ fontSize: 13, color: c.textSecondary }} numberOfLines={1}>{dateLabel} · {timeLabel}</Text>
+            <Text
+              style={{ fontFamily: 'Inclusive Sans', fontSize: 13, color: c.textSecondary }}
+              numberOfLines={1}
+            >
+              {dateLabel} · {timeLabel}
+            </Text>
           </View>
           <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
             <MapPin size={13} color={c.textFaint} />
-            <Text style={{ fontSize: 13, color: c.textSecondary }} numberOfLines={1}>{locationLabel}</Text>
+            <Text
+              style={{ fontFamily: 'Inclusive Sans', fontSize: 13, color: c.textSecondary }}
+              numberOfLines={1}
+            >
+              {locationLabel}
+            </Text>
           </View>
         </View>
         {(attendeesGoingLabel || fallbackAttendees.length > 0) && (
-          <View style={{ marginTop: 12, paddingTop: 12, borderTopWidth: 1, borderTopColor: c.divider, flexDirection: 'row', alignItems: 'center', gap: 10 }}>
+          <View
+            style={{
+              marginTop: 12,
+              paddingTop: 12,
+              borderTopWidth: 1,
+              borderTopColor: c.divider,
+              flexDirection: 'row',
+              alignItems: 'center',
+              gap: 10,
+            }}
+          >
             <AttendeeStack attendees={attendeesList} fallback={fallbackAttendees} />
-            <Text style={{ fontSize: 12, color: c.textMuted }} numberOfLines={1}>{attendeesGoingLabel}</Text>
+            <Text style={{ fontSize: 12, color: c.textMuted }} numberOfLines={1}>
+              {attendeesGoingLabel}
+            </Text>
           </View>
         )}
       </View>

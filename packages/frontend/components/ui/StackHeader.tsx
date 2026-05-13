@@ -32,12 +32,14 @@ export default function StackHeader({ title, onBack, right }: StackHeaderProps) 
           borderBottomColor: c.border,
         }}
       >
-        <Pressable onPress={onBack ?? (() => router.back())} style={{ padding: 8, marginLeft: -8 }} hitSlop={8}>
+        <Pressable
+          onPress={onBack ?? (() => router.back())}
+          style={{ padding: 8, marginLeft: -8 }}
+          hitSlop={8}
+        >
           <ChevronLeft size={22} color={c.icon} />
         </Pressable>
-        <Text style={{ fontFamily: 'Inclusive Sans', fontSize: 22, color: c.text, letterSpacing: -0.5, flex: 1, marginLeft: 4 }}>
-          {title}
-        </Text>
+        <Text style={{ fontSize: 18, color: c.text, flex: 1, marginLeft: 4 }}>{title}</Text>
         {right ?? <View style={{ width: 36 }} />}
       </View>
     </View>

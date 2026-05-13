@@ -12,7 +12,17 @@ import {
 } from 'react-native'
 import { SafeAreaView } from 'react-native-safe-area-context'
 import { useLocalSearchParams, useRouter } from 'expo-router'
-import { ChevronLeft, Share2, MapPin, Globe, Phone, User, Navigation, BadgeCheck, Users } from 'lucide-react-native'
+import {
+  ChevronLeft,
+  Share as ShareIcon,
+  MapPin,
+  Globe,
+  Phone,
+  User,
+  Navigation,
+  BadgeCheck,
+  Users,
+} from 'lucide-react-native'
 import { usePostHog } from 'posthog-react-native'
 import { useCenterDetail } from '../../hooks/useApiData'
 import { Badge, UnderlineTabBar } from '../../components/ui'
@@ -26,9 +36,7 @@ import { useUser } from '../../components/contexts'
 function formatDateCallout(dateStr: string): { month: string; day: string } {
   const d = new Date(dateStr + 'T00:00:00')
   if (isNaN(d.getTime())) return { month: '', day: '' }
-  const month = d
-    .toLocaleDateString('en-US', { month: 'short' })
-    .toUpperCase()
+  const month = d.toLocaleDateString('en-US', { month: 'short' }).toUpperCase()
   const day = String(d.getDate())
   return { month, day }
 }
@@ -93,12 +101,18 @@ function HeaderBar({
       <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
         <Pressable
           onPress={onBack}
-          style={{ flexDirection: 'row', alignItems: 'center', gap: 4, padding: 8, minHeight: 44, minWidth: 44 }}
+          style={{
+            flexDirection: 'row',
+            alignItems: 'center',
+            gap: 4,
+            padding: 8,
+            minHeight: 44,
+            minWidth: 44,
+          }}
         >
           <ChevronLeft size={20} color={colors.iconHeader} />
           <Text
             style={{
-              fontFamily: 'Inclusive Sans',
               fontSize: 14,
               color: colors.iconHeader,
             }}
@@ -107,8 +121,17 @@ function HeaderBar({
           </Text>
         </Pressable>
 
-        <Pressable onPress={onShare} style={{ padding: 8, minHeight: 44, minWidth: 44, alignItems: 'center', justifyContent: 'center' }}>
-          <Share2 size={18} color={colors.iconHeader} />
+        <Pressable
+          onPress={onShare}
+          style={{
+            padding: 8,
+            minHeight: 44,
+            minWidth: 44,
+            alignItems: 'center',
+            justifyContent: 'center',
+          }}
+        >
+          <ShareIcon size={18} color={colors.iconHeader} />
         </Pressable>
       </View>
 
@@ -132,7 +155,6 @@ function HeaderBar({
               <Users size={13} color={colors.textSecondary} />
               <Text
                 style={{
-                  fontFamily: 'Inclusive Sans',
                   fontSize: 13,
                   color: colors.textSecondary,
                 }}
@@ -149,7 +171,6 @@ function HeaderBar({
               <BadgeCheck size={13} color="#E8862A" />
               <Text
                 style={{
-                  fontFamily: 'Inclusive Sans',
                   fontSize: 13,
                   color: '#E8862A',
                 }}
@@ -192,7 +213,9 @@ export default function CenterDetailPage() {
     try {
       const url = id ? `https://chinmayajanata.org/center/${id}` : 'https://chinmayajanata.org'
       await Share.share({
-        message: center ? `Check out ${center.name} on Chinmaya Janata! ${url}` : `Check out this center on Chinmaya Janata! ${url}`,
+        message: center
+          ? `Check out ${center.name} on Chinmaya Janata! ${url}`
+          : `Check out this center on Chinmaya Janata! ${url}`,
         url,
       })
     } catch {
@@ -209,9 +232,7 @@ export default function CenterDetailPage() {
   const handleWebsitePress = () => {
     if (!center?.website) return
     posthog?.capture('center_website_pressed', { centerId: id })
-    const url = center.website.startsWith('http')
-      ? center.website
-      : `https://${center.website}`
+    const url = center.website.startsWith('http') ? center.website : `https://${center.website}`
     Linking.openURL(url)
   }
 
@@ -232,12 +253,26 @@ export default function CenterDetailPage() {
   if (!center) {
     return (
       <SafeAreaView style={{ flex: 1, backgroundColor: colors.panelBg }} edges={['top']}>
-        <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center', paddingHorizontal: 16 }}>
-          <Text style={{ fontSize: 22, fontFamily: 'Inclusive Sans', color: colors.text, marginBottom: 16 }}>
+        <View
+          style={{ flex: 1, justifyContent: 'center', alignItems: 'center', paddingHorizontal: 16 }}
+        >
+          <Text
+            style={{
+              fontSize: 22,
+              fontFamily: 'Inclusive Sans',
+              color: colors.text,
+              marginBottom: 16,
+            }}
+          >
             Center not found
           </Text>
-          <Pressable onPress={() => router.back()} style={{ marginTop: 8, minHeight: 44, justifyContent: 'center' }}>
-            <Text style={{ fontSize: 16, fontFamily: 'Inclusive Sans', color: '#E8862A' }}>Go Back</Text>
+          <Pressable
+            onPress={() => router.back()}
+            style={{ marginTop: 8, minHeight: 44, justifyContent: 'center' }}
+          >
+            <Text style={{ fontSize: 16, fontFamily: 'Inclusive Sans', color: '#E8862A' }}>
+              Go Back
+            </Text>
           </Pressable>
         </View>
       </SafeAreaView>
@@ -245,9 +280,7 @@ export default function CenterDetailPage() {
   }
 
   // Strip protocol for website display
-  const displayWebsite = (center.website ?? '')
-    .replace(/^https?:\/\//, '')
-    .replace(/\/$/, '')
+  const displayWebsite = (center.website ?? '').replace(/^https?:\/\//, '').replace(/\/$/, '')
   const board = buildCenterBoard({
     id: center.id,
     centerName: center.name,
@@ -293,129 +326,123 @@ export default function CenterDetailPage() {
         <View style={{ paddingHorizontal: 20, paddingTop: 20, paddingBottom: 32 }}>
           {activeTab === 'About' && (
             <>
-          {/* Point of contact subtitle */}
-          {center.pointOfContact ? (
-            <Text
-              style={{
-                fontFamily: 'Inclusive Sans',
-                fontSize: 13,
-                color: colors.textSecondary,
-                marginBottom: 16,
-              }}
-            >
-              Point of Contact: {center.pointOfContact}
-            </Text>
-          ) : null}
+              {/* Point of contact subtitle */}
+              {center.pointOfContact ? (
+                <Text
+                  style={{
+                    fontFamily: 'Inclusive Sans',
+                    fontSize: 13,
+                    color: colors.textSecondary,
+                    marginBottom: 16,
+                  }}
+                >
+                  Point of Contact: {center.pointOfContact}
+                </Text>
+              ) : null}
 
-          {/* Meta rows */}
-          <View style={{ gap: 16 }}>
-            {/* Address */}
-            {center.address ? (
-              <View style={{ flexDirection: 'row', alignItems: 'flex-start', gap: 12 }}>
-                <MetaIcon icon={MapPin} color="#E8862A" colors={colors} />
-                <View style={{ flex: 1, gap: 8 }}>
-                  <Text
-                    style={{
-                      fontFamily: 'Inclusive Sans',
-                      fontSize: 14,
-                      color: colors.text,
-                      lineHeight: 20,
-                    }}
-                  >
-                    {center.address}
-                  </Text>
+              {/* Meta rows */}
+              <View style={{ gap: 16 }}>
+                {/* Address */}
+                {center.address ? (
+                  <View style={{ flexDirection: 'row', alignItems: 'flex-start', gap: 12 }}>
+                    <MetaIcon icon={MapPin} color="#E8862A" colors={colors} />
+                    <View style={{ flex: 1, gap: 8 }}>
+                      <Text
+                        style={{
+                          fontSize: 14,
+                          color: colors.text,
+                          lineHeight: 20,
+                        }}
+                      >
+                        {center.address}
+                      </Text>
+                      <Pressable
+                        onPress={handleAddressPress}
+                        style={{ alignSelf: 'flex-start', paddingVertical: 4 }}
+                        accessibilityLabel="Get directions"
+                      >
+                        <Text
+                          style={{
+                            fontSize: 14,
+                            color: '#E8862A',
+                          }}
+                        >
+                          Get directions →
+                        </Text>
+                      </Pressable>
+                    </View>
+                  </View>
+                ) : null}
+
+                {/* Website */}
+                {center.website ? (
                   <Pressable
-                    onPress={handleAddressPress}
-                    style={{ alignSelf: 'flex-start', paddingVertical: 4 }}
-                    accessibilityLabel="Get directions"
+                    onPress={handleWebsitePress}
+                    style={{ flexDirection: 'row', alignItems: 'center', gap: 12, minHeight: 44 }}
                   >
+                    <MetaIcon icon={Globe} color="#E8862A" colors={colors} />
                     <Text
                       style={{
-                        fontFamily: 'Inclusive Sans',
                         fontSize: 14,
                         color: '#E8862A',
+                        lineHeight: 20,
+                        flex: 1,
                       }}
+                      numberOfLines={1}
                     >
-                      Get directions →
+                      {displayWebsite}
                     </Text>
                   </Pressable>
-                </View>
-              </View>
-            ) : null}
+                ) : null}
 
-            {/* Website */}
-            {center.website ? (
-              <Pressable
-                onPress={handleWebsitePress}
-                style={{ flexDirection: 'row', alignItems: 'center', gap: 12, minHeight: 44 }}
-              >
-                <MetaIcon icon={Globe} color="#E8862A" colors={colors} />
-                <Text
-                  style={{
-                    fontFamily: 'Inclusive Sans',
-                    fontSize: 14,
-                    color: '#E8862A',
-                    lineHeight: 20,
-                    flex: 1,
-                  }}
-                  numberOfLines={1}
-                >
-                  {displayWebsite}
-                </Text>
-              </Pressable>
-            ) : null}
-
-            {/* Phone */}
-            {center.phone ? (
-              <Pressable
-                onPress={handlePhonePress}
-                style={{ flexDirection: 'row', alignItems: 'center', gap: 12, minHeight: 44 }}
-              >
-                <MetaIcon icon={Phone} color="#E8862A" colors={colors} />
-                <Text
-                  style={{
-                    fontFamily: 'Inclusive Sans',
-                    fontSize: 14,
-                    color: colors.text,
-                    lineHeight: 20,
-                    flex: 1,
-                  }}
-                >
-                  {center.phone}
-                </Text>
-              </Pressable>
-            ) : null}
-
-            {/* Acharya */}
-            {center.acharya ? (
-              <View style={{ flexDirection: 'row', alignItems: 'flex-start', gap: 12 }}>
-                <MetaIcon icon={User} color="#E8862A" colors={colors} />
-                <View style={{ flex: 1, justifyContent: 'center' }}>
-                  <Text
-                    style={{
-                      fontFamily: 'Inclusive Sans',
-                      fontSize: 14,
-                      color: colors.text,
-                      lineHeight: 20,
-                    }}
+                {/* Phone */}
+                {center.phone ? (
+                  <Pressable
+                    onPress={handlePhonePress}
+                    style={{ flexDirection: 'row', alignItems: 'center', gap: 12, minHeight: 44 }}
                   >
-                    {center.acharya}
-                  </Text>
-                  <Text
-                    style={{
-                      fontFamily: 'Inclusive Sans',
-                      fontSize: 13,
-                      color: colors.textSecondary,
-                      lineHeight: 18,
-                      marginTop: 2,
-                    }}
-                  >
-                    Resident Acharya
-                  </Text>
-                </View>
+                    <MetaIcon icon={Phone} color="#E8862A" colors={colors} />
+                    <Text
+                      style={{
+                        fontSize: 14,
+                        color: colors.text,
+                        lineHeight: 20,
+                        flex: 1,
+                      }}
+                    >
+                      {center.phone}
+                    </Text>
+                  </Pressable>
+                ) : null}
+
+                {/* Acharya */}
+                {center.acharya ? (
+                  <View style={{ flexDirection: 'row', alignItems: 'flex-start', gap: 12 }}>
+                    <MetaIcon icon={User} color="#E8862A" colors={colors} />
+                    <View style={{ flex: 1, justifyContent: 'center' }}>
+                      <Text
+                        style={{
+                          fontSize: 14,
+                          color: colors.text,
+                          lineHeight: 20,
+                        }}
+                      >
+                        {center.acharya}
+                      </Text>
+                      <Text
+                        style={{
+                          fontSize: 13,
+                          color: colors.textSecondary,
+                          lineHeight: 18,
+                          marginTop: 2,
+                        }}
+                      >
+                        Resident Acharya
+                      </Text>
+                    </View>
+                  </View>
+                ) : null}
               </View>
-            ) : null}
-          </View>
             </>
           )}
 
@@ -511,7 +538,8 @@ export default function CenterDetailPage() {
                               marginTop: 2,
                             }}
                           >
-                            {event.time}{event.attendees > 0 ? ` \u00B7 ${event.attendees} attending` : ''}
+                            {event.time}
+                            {event.attendees > 0 ? ` \u00B7 ${event.attendees} attending` : ''}
                           </Text>
                         </View>
                       </Pressable>
@@ -520,7 +548,13 @@ export default function CenterDetailPage() {
                 </View>
               ) : (
                 <View style={{ alignItems: 'center', paddingVertical: 32 }}>
-                  <Text style={{ fontFamily: 'Inclusive Sans', fontSize: 14, color: colors.textSecondary }}>
+                  <Text
+                    style={{
+                      fontFamily: 'Inclusive Sans',
+                      fontSize: 14,
+                      color: colors.textSecondary,
+                    }}
+                  >
                     No upcoming events yet
                   </Text>
                 </View>

@@ -31,7 +31,7 @@ export default function SettingsLayout() {
     return (
       <Stack screenOptions={{ headerShown: false, animation: 'slide_from_right' }}>
         <Stack.Screen name="index" />
-        <Stack.Screen name="profile" />
+        <Stack.Screen name="invite" />
       </Stack>
     )
   }
@@ -40,19 +40,53 @@ export default function SettingsLayout() {
   return (
     <>
       <Stack.Screen options={{ headerShown: false }} />
-      <SafeAreaView style={{ flex: 1, backgroundColor: isDark ? '#171717' : '#FFFFFF' }} edges={['bottom']}>
+      <SafeAreaView
+        style={{ flex: 1, backgroundColor: isDark ? '#171717' : '#FFFFFF' }}
+        edges={['bottom']}
+      >
         <View style={{ flex: 1, flexDirection: 'row' }}>
           {showSidebar && (
-            <View style={{ width: 256, borderRightWidth: 1, borderRightColor: isDark ? '#44403C' : '#E7E5E4', backgroundColor: isDark ? '#1C1917' : '#FAFAF9' }}>
-              <View style={{ padding: 24, borderBottomWidth: 1, borderBottomColor: isDark ? '#44403C' : '#E7E5E4' }}>
-                <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 8 }}>
+            <View
+              style={{
+                width: 256,
+                borderRightWidth: 1,
+                borderRightColor: isDark ? '#44403C' : '#E7E5E4',
+                backgroundColor: isDark ? '#1C1917' : '#FAFAF9',
+              }}
+            >
+              <View
+                style={{
+                  padding: 24,
+                  borderBottomWidth: 1,
+                  borderBottomColor: isDark ? '#44403C' : '#E7E5E4',
+                }}
+              >
+                <View
+                  style={{
+                    flexDirection: 'row',
+                    alignItems: 'center',
+                    justifyContent: 'space-between',
+                    marginBottom: 8,
+                  }}
+                >
                   <Pressable
                     onPress={handleClose}
-                    style={{ minWidth: 44, minHeight: 44, justifyContent: 'center', alignItems: 'center' }}
+                    style={{
+                      minWidth: 44,
+                      minHeight: 44,
+                      justifyContent: 'center',
+                      alignItems: 'center',
+                    }}
                   >
                     <ArrowLeft size={20} color={isDark ? '#a1a1aa' : '#71717a'} />
                   </Pressable>
-                  <Text style={{ fontFamily: 'Inclusive Sans', fontSize: 24, color: isDark ? '#FAFAF9' : '#1C1917' }}>
+                  <Text
+                    style={{
+                      fontFamily: 'Inclusive Sans',
+                      fontSize: 24,
+                      color: isDark ? '#FAFAF9' : '#1C1917',
+                    }}
+                  >
                     Settings
                   </Text>
                   <View style={{ width: 44 }} />
