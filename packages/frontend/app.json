@@ -1,7 +1,7 @@
 {
   "expo": {
-    "name": "Chinmaya Janata",
-    "slug": "chinmaya-janata",
+    "name": "Janata",
+    "slug": "janata",
     "version": "0.2.0",
     "orientation": "portrait",
     "icon": "./assets/images/logo.png",
@@ -9,7 +9,7 @@
     "userInterfaceStyle": "automatic",
     "splash": {
       "image": "./assets/images/logo_with_text.png",
-      "resizeMode": "contain",
+      "resizeMode": "contain", 
       "backgroundColor": "#ffffff"
     },
     "android": {
@@ -48,7 +48,19 @@
     "plugins": [
       "expo-router",
       "expo-font",
-      "expo-localization"
+      "expo-localization",
+      [
+        "expo-splash-screen",
+        {
+          "image": "./assets/images/logo_with_text.png",
+          "resizeMode": "contain",
+          "backgroundColor": "#ffffff",
+          "dark": {
+            "image": "./assets/images/logo_with_text.png",
+            "backgroundColor": "#121212"
+          }
+        }
+      ]
     ],
     "experiments": {
       "typedRoutes": true
