@@ -43,7 +43,6 @@ export function PostThread({
       >
         <Text
           style={{
-            fontFamily: 'Inclusive Sans',
             fontSize: 12,
             letterSpacing: 0.5,
             color: colors.textFaint,
@@ -81,7 +80,6 @@ export function PostThread({
           </Text>
           <Text
             style={{
-              fontFamily: 'Inclusive Sans',
               fontSize: 14,
               lineHeight: 20,
               color: colors.textMuted,
@@ -180,9 +178,7 @@ function PostMessageBlock({
             {message.author.name}
           </Text>
           {message.author.verification === 'sevak' ? (
-            <Text style={{ fontFamily: 'Inclusive Sans', fontSize: 12, color: '#C2410C' }}>
-              SEVAK
-            </Text>
+            <Text style={{ fontSize: 12, color: '#C2410C' }}>SEVAK</Text>
           ) : null}
           {message.pinned ? (
             <View
@@ -193,19 +189,10 @@ function PostMessageBlock({
                 paddingVertical: 3,
               }}
             >
-              <Text style={{ fontFamily: 'Inclusive Sans', fontSize: 11, color: colors.textMuted }}>
-                Pinned
-              </Text>
+              <Text style={{ fontSize: 11, color: colors.textMuted }}>Pinned</Text>
             </View>
           ) : null}
-          <Text
-            style={{
-              marginLeft: 'auto',
-              fontFamily: 'Inclusive Sans',
-              fontSize: 12,
-              color: colors.textFaint,
-            }}
-          >
+          <Text style={{ marginLeft: 'auto', fontSize: 12, color: colors.textFaint }}>
             {message.timestamp}
           </Text>
         </View>
@@ -213,7 +200,6 @@ function PostMessageBlock({
         <Text
           style={{
             marginTop: original ? 8 : 5,
-            fontFamily: 'Inclusive Sans',
             fontSize: original ? 16 : 14,
             lineHeight: original ? 23 : 20,
             color: colors.textMuted,
@@ -251,9 +237,7 @@ function PostMessageBlock({
                 paddingVertical: 5,
               }}
             >
-              <Text style={{ fontFamily: 'Inclusive Sans', fontSize: 12, color: colors.textFaint }}>
-                + React
-              </Text>
+              <Text style={{ fontSize: 12, color: colors.textFaint }}>+ React</Text>
             </View>
           ) : null}
         </View>
@@ -288,9 +272,7 @@ function ReactionChip({
       }}
     >
       <Text style={{ fontSize: 13 }}>{emoji}</Text>
-      <Text style={{ fontFamily: 'Inclusive Sans', fontSize: 13, color: colors.textMuted }}>
-        {count}
-      </Text>
+      <Text style={{ fontSize: 13, color: colors.textMuted }}>{count}</Text>
     </View>
   )
 }
@@ -331,7 +313,7 @@ function ThreadReplyComposer({
             editable={false}
             placeholder="Reply..."
             placeholderTextColor={colors.textFaint}
-            style={{ fontFamily: 'Inclusive Sans', fontSize: 15, color: colors.text }}
+            style={{ fontSize: 15, color: colors.text }}
           />
         </View>
         <View

@@ -29,7 +29,7 @@ export function FeedHeader({
         }}
       >
         <ArrowLeft size={18} color={colors.textMuted} />
-        <Text style={{ fontFamily: 'Inclusive Sans', fontSize: 15, color: colors.textMuted }}>
+        <Text style={{ fontSize: 15, color: colors.textMuted }}>
           Back
         </Text>
       </Pressable>

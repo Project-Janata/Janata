@@ -33,10 +33,10 @@ export function FeedList({
   if (posts.length === 0) {
     return (
       <View style={{ paddingVertical: 40, alignItems: 'center', gap: 8 }}>
-        <Text style={{ fontFamily: 'Inclusive Sans', fontSize: 16, color: colors.text }}>
+        <Text style={{ fontSize: 16, color: colors.text }}>
           No posts found
         </Text>
-        <Text style={{ fontFamily: 'Inclusive Sans', fontSize: 13, color: colors.textMuted }}>
+        <Text style={{ fontSize: 13, color: colors.textMuted }}>
           Try a different search or check back after your next event.
         </Text>
       </View>
@@ -55,7 +55,7 @@ export function FeedList({
       ))}
       {hasMore ? (
         <View style={{ paddingVertical: 20, alignItems: 'center' }}>
-          <Text style={{ fontFamily: 'Inclusive Sans', fontSize: 13, color: colors.textMuted }}>
+          <Text style={{ fontSize: 13, color: colors.textMuted }}>
             Loading more...
           </Text>
         </View>
