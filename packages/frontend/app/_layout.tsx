@@ -1,6 +1,6 @@
 import '@expo/metro-runtime'
-import { useEffect, useRef } from 'react'
-import { ActivityIndicator, Animated, LogBox, Platform, Text, View } from 'react-native'
+import { useCallback, useEffect, useRef, useState } from 'react'
+import { Animated, LogBox, Platform, Text } from 'react-native'
 
 // Suppress non-fatal WorkletsTurboModule error in Expo Go (reanimated v4 compat)
 LogBox.ignoreLogs(['Exception in HostFunction: <unknown>'])
@@ -53,34 +53,47 @@ export default function RootLayout() {
     'Inter Light': require('../assets/fonts/Inter-Light.ttf'),
   })
 
-  useEffect(() => {
-    if (fontsLoaded) {
-      // Set default font family for all Text components
-      const TextAny = Text as any
-      const defaultProps = TextAny.defaultProps || {}
-      TextAny.defaultProps = {
-        ...defaultProps,
-        style: [{ fontFamily: 'Inclusive Sans' }, defaultProps.style],
-      }
-      SplashScreen.hideAsync().catch(() => {})
-    }
-  }, [fontsLoaded])
+  const readyFlags = useRef({ auth: false, minTime: false })
+  const hideStarted = useRef(false)
 
-  if (!fontsLoaded) {
-    return null
-  }
+  const tryHide = useCallback(() => {
+    if (hideStarted.current) return
+    if (!readyFlags.current.auth || !readyFlags.current.minTime) return
+    hideStarted.current = true
+    SplashScreen.hideAsync().catch(() => {})
+  }, [])
+
+  useEffect(() => {
+    if (!fontsLoaded) return
+    const TextAny = Text as any
+    const defaultProps = TextAny.defaultProps || {}
+    TextAny.defaultProps = {
+      ...defaultProps,
+      style: [{ fontFamily: 'Inclusive Sans' }, defaultProps.style],
+    }
+    const timer = setTimeout(() => {
+      readyFlags.current.minTime = true
+      tryHide()
+    }, 3000)
+    return () => clearTimeout(timer)
+  }, [fontsLoaded, tryHide])
+
+  const handleAuthReady = useCallback(() => {
+    readyFlags.current.auth = true
+    tryHide()
+  }, [tryHide])
+
+  if (!fontsLoaded) return null
 
   return posthogEnabled ? (
     <PostHogProvider
       apiKey={posthogKey!.trim()}
-      options={{
-        host: posthogHost,
-      }}
+      options={{ host: posthogHost }}
     >
       <ErrorBoundary>
         <CustomThemeProvider>
           <UserProvider>
-            <RootLayoutNav />
+            <RootLayoutNav onAuthReady={handleAuthReady} />
           </UserProvider>
         </CustomThemeProvider>
       </ErrorBoundary>
@@ -89,19 +102,25 @@ export default function RootLayout() {
     <ErrorBoundary>
       <CustomThemeProvider>
         <UserProvider>
-          <RootLayoutNav />
+          <RootLayoutNav onAuthReady={handleAuthReady} />
         </UserProvider>
       </CustomThemeProvider>
     </ErrorBoundary>
   )
 }
 
-function RootLayoutNav() {
+function RootLayoutNav({ onAuthReady }: { onAuthReady: () => void }) {
   const { user, loading } = useUser()
   const { isDark } = useTheme()
   const pathname = usePathname()
   const router = useRouter()
   const isAuthenticated = !!user
+
+  useEffect(() => {
+    if (!loading) {
+      onAuthReady()
+    }
+  }, [loading, onAuthReady])
 
   useEffect(() => {
     if (loading) return
@@ -111,7 +130,6 @@ function RootLayoutNav() {
     const inLandingPage = pathname === '/landing'
 
     if (!isAuthenticated) {
-      // Allow public pages through without redirect
       const isPublicPage =
         inAuthGroup ||
         inLandingPage ||
@@ -127,21 +145,15 @@ function RootLayoutNav() {
         router.replace('/landing')
       }
     } else {
-      // User IS authenticated
-
-      // Check for completion flag OR fallback to checking fields
       const isComplete =
         user.profileComplete || (!!user.firstName && !!user.lastName)
 
       if (!isComplete) {
-        // User needs to onboard
         if (!inOnboardingGroup) {
           router.replace('/onboarding')
         }
       } else {
-        // User is fully onboarded
         if (inAuthGroup || inOnboardingGroup) {
-          // Redirect away from auth/onboarding pages to Home
           router.replace('/')
         }
       }
@@ -162,13 +174,7 @@ function RootLayoutNav() {
     }
   }, [isDark, fadeAnim])
 
-  if (loading) {
-    return (
-      <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center' }}>
-        <ActivityIndicator size="large" color="#ea580c" />
-      </View>
-    )
-  }
+  if (loading) return null
 
   return (
     <Animated.View style={{ flex: 1, opacity: fadeAnim }}>
