@@ -41,24 +41,33 @@ export default function TabHeader({
   const bgColor = transparent ? 'transparent' : c.card
   const textColor = transparent ? '#FFFFFF' : c.text
   const iconColor = transparent ? '#FFFFFF' : c.icon
-  const btnBorder = transparent ? 'rgba(255,255,255,0.4)' : c.border
 
   const handleActionPress = () => {
     if (onActionPress) return onActionPress()
     switch (action) {
-      case 'create':        posthog?.capture('nav_create_pressed'); triggerCreate(); break
-      case 'notifications': router.push('/notifications' as never); break
-      case 'settings':      router.push('/settings' as never); break
+      case 'create':
+        posthog?.capture('nav_create_pressed')
+        triggerCreate()
+        break
+      case 'notifications':
+        router.push('/notifications' as never)
+        break
+      case 'settings':
+        router.push('/settings' as never)
+        break
     }
   }
 
-  const actionIconProps = { size: 18, color: iconColor }
+  const actionIconProps = { size: 20, color: iconColor }
   const ActionIcon = () => {
     if (!action) return null
     switch (action) {
-      case 'create':        return <Plus {...actionIconProps} strokeWidth={2} />
-      case 'notifications': return <Bell {...actionIconProps} />
-      case 'settings':      return <Settings {...actionIconProps} />
+      case 'create':
+        return <Plus {...actionIconProps} strokeWidth={2} />
+      case 'notifications':
+        return <Bell {...actionIconProps} />
+      case 'settings':
+        return <Settings {...actionIconProps} />
     }
   }
 
@@ -79,11 +88,22 @@ export default function TabHeader({
           <Logo showText size={24} />
         ) : title ? (
           pillTitle ? (
-            <View style={{ backgroundColor: transparent ? 'rgba(0,0,0,0.55)' : c.surface, borderRadius: 999, paddingHorizontal: 14, paddingVertical: 6 }}>
-              <Text style={{ fontFamily: 'Inclusive Sans', fontSize: 16, color: textColor }}>{title}</Text>
+            <View
+              style={{
+                backgroundColor: transparent ? 'rgba(0,0,0,0.55)' : c.surface,
+                borderRadius: 999,
+                paddingHorizontal: 14,
+                paddingVertical: 6,
+              }}
+            >
+              <Text style={{ fontFamily: 'Inclusive Sans', fontSize: 16, color: textColor }}>
+                {title}
+              </Text>
             </View>
           ) : (
-            <Text style={{ fontFamily: 'Inclusive Sans', fontSize: 22, color: textColor }}>{title}</Text>
+            <Text style={{ fontFamily: 'Inclusive Sans', fontSize: 22, color: textColor }}>
+              {title}
+            </Text>
           )
         ) : null}
       </View>
@@ -93,7 +113,17 @@ export default function TabHeader({
         {action && (
           <Pressable
             onPress={handleActionPress}
-            style={{ width: 36, height: 36, borderRadius: 18, borderWidth: 1.5, borderColor: btnBorder, alignItems: 'center', justifyContent: 'center' }}
+            style={({ pressed }) => ({
+              width: 36,
+              height: 36,
+              borderRadius: 18,
+              alignItems: 'center',
+              justifyContent: 'center',
+              backgroundColor: transparent
+                ? 'rgba(0,0,0,0.35)'
+                : c.surface,
+              opacity: pressed ? 0.6 : 1,
+            })}
           >
             <ActionIcon />
           </Pressable>

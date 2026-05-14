@@ -6,7 +6,7 @@ import { useCenterDetail } from '../../hooks/useApiData'
 import { useDetailColors } from '../../hooks/useDetailColors'
 import type { EventDisplay } from '../../utils/api'
 import UnderlineTabBar from '../../components/ui/UnderlineTabBar'
-import { buildCenterBoard, ThreadPanel } from '../../components/connect'
+import { buildCenterBoard, ThreadPanel } from '../../components/boards'
 import { useUser } from '../../components/contexts'
 
 export default function CenterDetailWeb() {

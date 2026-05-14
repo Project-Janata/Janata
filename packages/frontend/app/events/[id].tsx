@@ -20,7 +20,7 @@ import { useUser } from '../../components/contexts'
 import { Badge, UnderlineTabBar, Avatar, PrimaryButton, DestructiveButton } from '../../components/ui'
 import { useDetailColors, type DetailColors } from '../../hooks/useDetailColors'
 import { removeEvent } from '../../utils/api'
-import { buildEventBoard, ThreadPanel } from '../../components/connect'
+import { buildEventBoard, ThreadPanel } from '../../components/boards'
 
 const ADMIN_EMAIL = 'chinmayajanata@gmail.com'
 

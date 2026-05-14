@@ -26,6 +26,8 @@ import TabHeader from './TabHeader'
 import StackHeader from './StackHeader'
 import { Text } from './Text'
 import { Section } from './Section'
+import { GradientIconBadge } from './GradientIconBadge'
+import { IconBadge } from './IconBadge'
 
 export {
   PrimaryButton,
@@ -47,4 +49,6 @@ export {
   StackHeader,
   Text,
   Section,
+  GradientIconBadge,
+  IconBadge,
 }

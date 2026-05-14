@@ -685,7 +685,7 @@ export function useDiscoverData(
   options?: UseDiscoverOptions,
 ) {
   const fetchAttendees = options?.fetchAttendees ?? false
-  const [allEvents, setAllEvents] = useState<EventDisplay[]>([])
+  const [allEvents, setAllEvents] = useState<EventDisplay[]>(DISCOVER_SAMPLE_EVENTS)
   const [allCenters, setAllCenters] = useState<DiscoverCenter[]>([])
   const [loading, setLoading] = useState(true)
   const [isLive, setIsLive] = useState(false)
@@ -736,7 +736,9 @@ export function useDiscoverData(
         fetchedEvents = allApiEvents.map((e) => apiEventToDisplay(e))
       }
 
-      if (fetchedEvents.length > 0) {
+      const todayStr = new Date().toISOString().split('T')[0]
+      const hasFutureEvents = fetchedEvents.some((e) => !e.date || e.date >= todayStr)
+      if (hasFutureEvents) {
         setAllEvents(fetchedEvents)
         setIsLive(true)
       }
@@ -779,7 +781,7 @@ export function useDiscoverData(
         ? filteredEvents.filter((e) => e.isRegistered)
         : filteredEvents
       const sortByDate = (a: EventDisplay, b: EventDisplay) =>
-        b.date.localeCompare(a.date)
+        a.date.localeCompare(b.date)
       const registered = eventsToShow.filter((e) => e.isRegistered).sort(sortByDate)
       const unregistered = eventsToShow.filter((e) => !e.isRegistered).sort(sortByDate)
 

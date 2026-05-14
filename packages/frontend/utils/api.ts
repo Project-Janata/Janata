@@ -492,9 +492,85 @@ export function centersToDiscoverCenters(centers: CenterData[]): DiscoverCenter[
     }))
 }
 
-// ── Discover sample data (empty since we fetch from API) ──────────────────────────
-
-export const DISCOVER_SAMPLE_EVENTS: EventDisplay[] = []
+// ── Discover sample data — scraped from Chinmaya chapter sites (2026-04-30) ──────
+export const DISCOVER_SAMPLE_EVENTS: EventDisplay[] = [
+  {
+    id: 'sample-hanuman-havan',
+    title: 'Hanuman Chalisa Havan',
+    date: '2026-05-16',
+    time: '8:30 AM',
+    location: 'Hillsboro, OR',
+    address: 'Chinmaya Haridwar, 3551 NE John Olsen Ave, Hillsboro, OR 97124',
+    attendees: 18,
+    likes: 0,
+    comments: 0,
+    description: 'Sacred Vedic fire offering opening with Shodasha Upachara Puja followed by chanting verses of the Hanuman Chalisa.',
+    pointOfContact: 'contact@cmportland.org',
+    image: 'https://cmportland.org/images/HanumanChalisaHavan.jpg',
+    centerName: 'Chinmaya Portland',
+    category: null,
+    externalUrl: 'https://cmportland.org/havan/',
+  },
+  {
+    id: 'sample-gcc-state-finals',
+    title: 'GCC State Finals',
+    date: '2026-05-16',
+    time: 'TBD',
+    location: 'Dallas, TX',
+    address: 'Chinmaya Mangalam, Dallas, TX',
+    attendees: 42,
+    likes: 0,
+    comments: 0,
+    description: 'Texas state finals of the Gita Chanting Competition.',
+    pointOfContact: '(972) 250-2470',
+    centerName: 'Chinmaya Mission Dallas Fort-Worth',
+    category: null,
+    externalUrl: 'https://cmdfw.org/upcoming-cmdfw-events/',
+  },
+  {
+    id: 'sample-chyk-memorial-day-camp',
+    title: 'ChYK Memorial Day Camp',
+    date: '2026-05-23',
+    time: 'All day',
+    location: 'Chicago area, IL',
+    address: 'Abhyudaya Retreat Center',
+    attendees: 31,
+    likes: 0,
+    comments: 0,
+    description: 'West Central Zone retreat for Chinmaya Yuva Kendra (CHYK) members at Abhyudaya Retreat Center.',
+    pointOfContact: '847-740-1215',
+    centerName: 'ChYK West Central Zone',
+    category: null,
+  },
+  {
+    id: 'sample-summer-camp-give-me-five',
+    title: 'Summer Camp 2026 – Give Me Five',
+    date: '2026-06-15',
+    time: '9:00 AM – 3:00 PM',
+    location: 'Orlando, FL',
+    attendees: 87,
+    likes: 0,
+    comments: 0,
+    description: '34th annual summer camp for children ages 5-13, themed on the Gita Panchamrit.',
+    image: 'https://res.cloudinary.com/chinmayaorlando/image/upload/q_auto/cmo/2026/summercamp.jpg',
+    centerName: 'Chinmaya Mission Orlando',
+    category: null,
+    externalUrl: 'https://www.chinmayaorlando.org/index.php/upcoming-events/476-summer-camp-2026',
+  },
+  {
+    id: 'sample-aradhana-camp',
+    title: '33rd Mahasamadhi Aradhana Camp',
+    date: '2026-07-30',
+    time: '5:00 PM',
+    location: 'Parsippany, NJ',
+    attendees: 24,
+    likes: 0,
+    comments: 0,
+    description: 'Annual Mahasamadhi Aradhana Camp celebrating Pujya Gurudev.',
+    centerName: 'Chinmaya Mission Tri-State',
+    category: null,
+  },
+]
 
 export const DISCOVER_SAMPLE_CENTERS: DiscoverCenter[] = []
 

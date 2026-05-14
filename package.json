@@ -51,7 +51,9 @@
   },
   "dependencies": {
     "@expo-google-fonts/inclusive-sans": "^0.4.1",
+    "@expo-google-fonts/jetbrains-mono": "^0.4.1",
     "expo": "~55.0.15",
+    "expo-contacts": "^55.0.14",
     "expo-image-picker": "^55.0.18",
     "expo-splash-screen": "^55.0.20",
     "hono": "^4.7.0",

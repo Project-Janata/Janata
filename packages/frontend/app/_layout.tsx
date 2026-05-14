@@ -11,6 +11,7 @@ import {
   InclusiveSans_600SemiBold,
   InclusiveSans_700Bold,
 } from '@expo-google-fonts/inclusive-sans'
+import { JetBrainsMono_400Regular, JetBrainsMono_700Bold } from '@expo-google-fonts/jetbrains-mono'
 import {
   DarkTheme,
   DefaultTheme,
@@ -34,8 +35,7 @@ export const unstable_settings = {
 
 SplashScreen.preventAutoHideAsync()
 
-const posthogHost =
-  process.env.EXPO_PUBLIC_POSTHOG_HOST || 'https://us.i.posthog.com'
+const posthogHost = process.env.EXPO_PUBLIC_POSTHOG_HOST || 'https://us.i.posthog.com'
 const posthogKey = process.env.EXPO_PUBLIC_POSTHOG_KEY
 const posthogEnabled = posthogKey && posthogKey.trim().length > 0
 
@@ -46,11 +46,8 @@ export default function RootLayout() {
     'Inclusive Sans SemiBold': InclusiveSans_600SemiBold,
     'Inclusive Sans Medium': InclusiveSans_500Medium,
     'Inclusive Sans Light': InclusiveSans_300Light,
-    'Inter': require('../assets/fonts/Inter-Regular.ttf'),
-    'Inter Bold': require('../assets/fonts/Inter-Bold.ttf'),
-    'Inter SemiBold': require('../assets/fonts/Inter-SemiBold.ttf'),
-    'Inter Medium': require('../assets/fonts/Inter-Medium.ttf'),
-    'Inter Light': require('../assets/fonts/Inter-Light.ttf'),
+    'JetBrains Mono': JetBrainsMono_400Regular,
+    'JetBrains Mono Bold': JetBrainsMono_700Bold,
   })
 
   const readyFlags = useRef({ auth: false, minTime: false })
@@ -86,10 +83,7 @@ export default function RootLayout() {
   if (!fontsLoaded) return null
 
   return posthogEnabled ? (
-    <PostHogProvider
-      apiKey={posthogKey!.trim()}
-      options={{ host: posthogHost }}
-    >
+    <PostHogProvider apiKey={posthogKey!.trim()} options={{ host: posthogHost }}>
       <ErrorBoundary>
         <CustomThemeProvider>
           <UserProvider>
@@ -145,8 +139,7 @@ function RootLayoutNav({ onAuthReady }: { onAuthReady: () => void }) {
         router.replace('/landing')
       }
     } else {
-      const isComplete =
-        user.profileComplete || (!!user.firstName && !!user.lastName)
+      const isComplete = user.profileComplete || (!!user.firstName && !!user.lastName)
 
       if (!isComplete) {
         if (!inOnboardingGroup) {
@@ -185,13 +178,37 @@ function RootLayoutNav({ onAuthReady }: { onAuthReady: () => void }) {
           <Stack.Screen name="landing" options={{ headerShown: false }} />
           <Stack.Screen name="onboarding" options={{ headerShown: false, gestureEnabled: false }} />
           <Stack.Screen name="settings" options={{ headerShown: false }} />
-          <Stack.Screen name="events/index" options={{ headerShown: true, title: 'My Events', headerBackTitle: '' }} />
+          <Stack.Screen
+            name="events/index"
+            options={{ headerShown: true, title: 'My Events', headerBackTitle: '' }}
+          />
           <Stack.Screen name="events/[id]" options={{ headerShown: false }} />
           <Stack.Screen name="events/form" options={{ headerShown: false }} />
           <Stack.Screen name="center/[id]" options={{ headerShown: false }} />
-          <Stack.Screen name="privacy" options={{ headerShown: Platform.OS !== 'web', title: 'Privacy Policy', headerBackTitle: '' }} />
-          <Stack.Screen name="terms" options={{ headerShown: Platform.OS !== 'web', title: 'Terms of Service', headerBackTitle: '' }} />
-          <Stack.Screen name="cookies" options={{ headerShown: Platform.OS !== 'web', title: 'Cookie Policy', headerBackTitle: '' }} />
+          <Stack.Screen
+            name="privacy"
+            options={{
+              headerShown: Platform.OS !== 'web',
+              title: 'Privacy Policy',
+              headerBackTitle: '',
+            }}
+          />
+          <Stack.Screen
+            name="terms"
+            options={{
+              headerShown: Platform.OS !== 'web',
+              title: 'Terms of Service',
+              headerBackTitle: '',
+            }}
+          />
+          <Stack.Screen
+            name="cookies"
+            options={{
+              headerShown: Platform.OS !== 'web',
+              title: 'Cookie Policy',
+              headerBackTitle: '',
+            }}
+          />
           <Stack.Screen name="edit-profile" options={{ headerShown: false }} />
           <Stack.Screen name="center-picker" options={{ headerShown: false }} />
           <Stack.Screen name="admin" options={{ headerShown: false }} />
