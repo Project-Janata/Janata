@@ -1,6 +1,6 @@
 import React, { useCallback, useEffect, useState } from 'react'
 import { Text, View } from 'react-native'
-import type { ThreadPanelColors } from '../connect'
+import type { ThreadPanelColors } from '../boards'
 import type { AppColors } from '../../tokens'
 import type { FeedPost } from './types'
 import { FeedPostCard } from './FeedPostCard'

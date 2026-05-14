@@ -28,7 +28,7 @@ import {
   type BoardMessage,
   type CenterBoard,
   type EventBoard,
-} from '../../components/connect'
+} from '../../components/boards'
 import {
   FeedHeader,
   NativeChatHeader,

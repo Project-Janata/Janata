@@ -1,4 +1,4 @@
-import type { GroupKind, PersonSummary } from '../connect'
+import type { GroupKind, PersonSummary } from '../boards'
 
 export type ChatMessage = {
   id: string

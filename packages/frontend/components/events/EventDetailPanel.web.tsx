@@ -8,7 +8,7 @@ import Avatar from '../ui/Avatar'
 import PrimaryButton from '../ui/buttons/PrimaryButton'
 import DestructiveButton from '../ui/buttons/DestructiveButton'
 import { useDetailColors, type DetailColors } from '../../hooks/useDetailColors'
-import { buildEventBoard, ThreadPanel } from '../connect'
+import { buildEventBoard, ThreadPanel } from '../boards'
 import { useUser } from '../contexts'
 
 // ---------------------------------------------------------------------------

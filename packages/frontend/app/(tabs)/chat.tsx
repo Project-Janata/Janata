@@ -19,7 +19,7 @@ import {
   SignInCallout,
   type GroupChatThread,
   type InboxThread,
-} from '../../components/connect'
+} from '../../components/boards'
 import {
   ConnectHeader,
   NativeChatHeader,

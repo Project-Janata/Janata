@@ -1,4 +1,4 @@
-import type { BoardMessage, GroupKind } from '../connect'
+import type { BoardMessage, GroupKind } from '../boards'
 
 export type GroupBoard = {
   id: string

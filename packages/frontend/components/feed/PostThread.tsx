@@ -3,7 +3,7 @@ import { ScrollView, Text, TextInput, View } from 'react-native'
 import { Building2, CalendarDays, Send } from 'lucide-react-native'
 import { Avatar } from '../ui'
 import type { AppColors } from '../../tokens'
-import type { BoardMessage } from '../connect'
+import type { BoardMessage } from '../boards'
 import type { FeedPost } from './types'
 
 export function PostThread({

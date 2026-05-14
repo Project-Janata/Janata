@@ -1,6 +1,6 @@
 import React from 'react'
 import { View } from 'react-native'
-import { EmptyPanel } from '../connect'
+import { EmptyPanel } from '../boards'
 import type { AppColors } from '../../tokens'
 import type { Conversation } from './types'
 import { ConversationList } from './ConversationList'

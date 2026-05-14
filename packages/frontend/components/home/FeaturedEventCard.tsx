@@ -11,7 +11,7 @@ import Svg, {
 } from 'react-native-svg'
 import { Avatar } from '../ui'
 import { useColors } from '../../hooks/useColors'
-import type { FeaturedHomeEvent } from '../connect'
+import type { FeaturedHomeEvent } from '../boards'
 import type { EventDisplay } from '../../utils/api'
 
 export type FeaturedSource =

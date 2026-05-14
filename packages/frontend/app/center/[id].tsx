@@ -28,7 +28,7 @@ import { useCenterDetail } from '../../hooks/useApiData'
 import { Badge, UnderlineTabBar } from '../../components/ui'
 import type { EventDisplay } from '../../utils/api'
 import { useDetailColors, type DetailColors } from '../../hooks/useDetailColors'
-import { buildCenterBoard, ThreadPanel } from '../../components/connect'
+import { buildCenterBoard, ThreadPanel } from '../../components/boards'
 import { useUser } from '../../components/contexts'
 
 // ── Helpers ─────────────────────────────────────────────────────────────

@@ -6,7 +6,7 @@ import UnderlineTabBar from '../ui/UnderlineTabBar'
 import type { CenterDisplay } from '../../hooks/useApiData'
 import type { EventDisplay } from '../../utils/api'
 import { useDetailColors } from '../../hooks/useDetailColors'
-import { buildCenterBoard, ThreadPanel } from '../connect'
+import { buildCenterBoard, ThreadPanel } from '../boards'
 import { useUser } from '../contexts'
 
 // ── Props ────────────────────────────────────────────────────────────────

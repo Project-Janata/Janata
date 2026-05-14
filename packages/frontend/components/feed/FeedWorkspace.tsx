@@ -1,6 +1,6 @@
 import React from 'react'
 import { View } from 'react-native'
-import { EmptyPanel, ThreadPanel, type ThreadPanelColors } from '../connect'
+import { EmptyPanel, ThreadPanel, type ThreadPanelColors } from '../boards'
 import type { AppColors } from '../../tokens'
 import type { FeedPost } from './types'
 import { FeedList } from './FeedList'

@@ -3,7 +3,7 @@ import { Text, View } from 'react-native'
 import { Building2, CalendarDays } from 'lucide-react-native'
 import { Avatar } from '../ui'
 import type { AppColors } from '../../tokens'
-import type { GroupKind, PersonSummary } from '../connect'
+import type { GroupKind, PersonSummary } from '../boards'
 
 export function GroupConversationAvatar({
   members,

@@ -5,7 +5,7 @@ import { useLocalSearchParams, useRouter } from 'expo-router'
 import { ArrowLeft } from 'lucide-react-native'
 import { useTheme } from '../../components/contexts'
 import { Avatar } from '../../components/ui'
-import { groupChats, inboxThreads, type PersonSummary } from '../../components/connect'
+import { groupChats, inboxThreads, type PersonSummary } from '../../components/boards'
 
 type GroupKind = 'center' | 'event'
 

@@ -3,7 +3,7 @@ import { Pressable, Text, View } from 'react-native'
 import { ArrowLeft } from 'lucide-react-native'
 import { Avatar } from '../ui'
 import type { AppColors } from '../../tokens'
-import type { GroupKind, PersonSummary } from '../connect'
+import type { GroupKind, PersonSummary } from '../boards'
 import { GroupConversationAvatar, GroupIcon } from './GroupAvatar'
 
 export function NativeChatHeader({

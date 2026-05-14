@@ -13,7 +13,7 @@ import PrimaryButton from '../../components/ui/buttons/PrimaryButton'
 import DestructiveButton from '../../components/ui/buttons/DestructiveButton'
 import AuthPromptModal from '../../components/ui/AuthPromptModal'
 import { useDetailColors } from '../../hooks/useDetailColors'
-import { buildEventBoard, ThreadPanel } from '../../components/connect'
+import { buildEventBoard, ThreadPanel } from '../../components/boards'
 
 function formatEventDateLabel(dateStr: string): string {
   const d = new Date(`${dateStr}T00:00:00`)

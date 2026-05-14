@@ -1,7 +1,7 @@
 import React from 'react'
 import { Pressable, Text, View } from 'react-native'
 import { Avatar } from '../ui'
-import { EmptyPanel } from '../connect'
+import { EmptyPanel } from '../boards'
 import type { AppColors } from '../../tokens'
 import type { Conversation } from './types'
 import { GroupConversationAvatar } from './GroupAvatar'

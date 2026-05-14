@@ -2,8 +2,8 @@ import React from 'react'
 import { Pressable, Text, View } from 'react-native'
 import { ChevronRight } from 'lucide-react-native'
 import { Avatar } from '../ui'
-import { connectionRequests } from '../connect'
-import type { PersonSummary } from '../connect'
+import { connectionRequests } from '../boards'
+import type { PersonSummary } from '../boards'
 import type { AppColors } from '../../tokens'
 
 function RequestAvatarStack({ people, colors }: { people: PersonSummary[]; colors: AppColors }) {

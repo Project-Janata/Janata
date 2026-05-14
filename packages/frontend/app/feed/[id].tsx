@@ -14,7 +14,7 @@ import {
   eventBoards,
   type BoardMessage,
   type PersonSummary,
-} from '../../components/connect'
+} from '../../components/boards'
 
 type GroupKind = 'center' | 'event'
 
