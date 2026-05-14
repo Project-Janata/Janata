@@ -1,8 +1,17 @@
 import { View, Text, Share, Pressable, Platform } from 'react-native'
 import { useState, useEffect } from 'react'
-import { UserPlus, Link as LinkIcon, Check, Clock } from 'lucide-react-native'
+import {
+  UserPlus,
+  Link as LinkIcon,
+  Check,
+  Clock,
+  MessageCircle,
+  Mail,
+  EllipsisIcon,
+} from 'lucide-react-native'
+import { FontAwesome5 } from '@expo/vector-icons'
 import { useUser } from '../../components/contexts'
-import { StackHeader, GradientIconBadge, Card } from '../../components/ui'
+import { StackHeader, GradientIconBadge, Card, IconBadge } from '../../components/ui'
 import { fetchCenters } from '../../utils/api'
 import { useColors } from '../../hooks/useColors'
 
@@ -123,6 +132,49 @@ export default function InviteScreen() {
             </Text>
           </View>
         </Card>
+        <View style={{ height: 32 }} />
+        <Text
+          style={{
+            fontSize: 11,
+            letterSpacing: 0.9,
+            color: c.textFaint,
+            marginBottom: 10,
+            alignSelf: 'flex-start',
+          }}
+        >
+          SHARE VIA
+        </Text>
+        <View
+          style={{ flexDirection: 'row', gap: 36, alignItems: 'flex-start', alignSelf: 'center' }}
+        >
+          <View style={{ gap: 8, alignItems: 'center' }}>
+            <IconBadge size={56} color="#5ec26a">
+              <MessageCircle size={32} color="#fff" strokeWidth={2} />
+            </IconBadge>
+            <Text style={{ fontSize: 12, color: c.text, fontWeight: '500' }}>Messages</Text>
+          </View>
+          <View style={{ gap: 8, alignItems: 'center' }}>
+            <IconBadge size={56} color="#25D366">
+              <FontAwesome5 name="whatsapp" size={32} color="#fff" />
+            </IconBadge>
+            <Text style={{ fontSize: 12, color: c.text, fontWeight: '500' }}>WhatsApp</Text>
+          </View>
+          <View style={{ gap: 8, alignItems: 'center' }}>
+            <IconBadge size={56} color="#4d81ee">
+              <Mail size={32} color="#fff" strokeWidth={2} />
+            </IconBadge>
+            <Text style={{ fontSize: 12, color: c.text, fontWeight: '500' }}>Email</Text>
+          </View>
+          <Pressable
+            style={{ gap: 8, alignItems: 'center' }}
+            onPress={() => Share.share({ message: inviteUrl ?? '' })}
+          >
+            <IconBadge size={56} color="#6c757d">
+              <EllipsisIcon size={32} color="#fff" strokeWidth={2} />
+            </IconBadge>
+            <Text style={{ fontSize: 12, color: c.text, fontWeight: '500' }}>Other</Text>
+          </Pressable>
+        </View>
       </View>
     </View>
   )
