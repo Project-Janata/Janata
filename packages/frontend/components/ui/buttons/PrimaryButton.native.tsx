@@ -1,7 +1,10 @@
 <<<<<<< HEAD
+<<<<<<< HEAD
 import React from 'react'
 import { ActivityIndicator, Pressable, Text, type StyleProp, type ViewStyle } from 'react-native'
 =======
+=======
+>>>>>>> da32827 (feat: refactor onboarding steps to use shared components and improve structure)
 import React, { useState } from 'react'
 import { ActivityIndicator, Pressable, Text } from 'react-native'
 >>>>>>> da32827 (feat: refactor onboarding steps to use shared components and improve structure)
@@ -32,6 +35,7 @@ export default function PrimaryButton({ children, onPress, disabled, loading, st
       onPressOut={() => setPressed(false)}
       disabled={isDisabled}
 <<<<<<< HEAD
+<<<<<<< HEAD
       className={[
         'bg-primary',
         'px-4 py-3.5 rounded-full',
@@ -41,6 +45,8 @@ export default function PrimaryButton({ children, onPress, disabled, loading, st
       ].join(' ')}
       style={style}
 =======
+=======
+>>>>>>> da32827 (feat: refactor onboarding steps to use shared components and improve structure)
       style={[
         {
           backgroundColor: pressed ? '#D97520' : '#E8862A',
