@@ -26,7 +26,10 @@ export default function PrimaryButton({
 }: PrimaryButtonProps) {
   const isDisabled = disabled || loading
   const [pressed, setPressed] = useState(false)
+<<<<<<< HEAD
   const c = useColors()
+=======
+>>>>>>> da32827 (feat: refactor onboarding steps to use shared components and improve structure)
 
   return (
     <Pressable
