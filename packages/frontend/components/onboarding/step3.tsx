@@ -30,14 +30,25 @@ export default function Step3() {
   useEffect(() => {
     let mounted = true
     fetchCenters()
-      .then((centers) => { if (mounted && centers.length > 0) setAllCenters(centers) })
+      .then((centers) => {
+        if (mounted && centers.length > 0) setAllCenters(centers)
+      })
       .catch(() => {})
-    return () => { mounted = false }
+    return () => {
+      mounted = false
+    }
   }, [])
 
   const geocodeLocation = async (input: string) => {
-    if (!input.trim()) { setNearbyCenters([]); setShowSuggestions(false); return }
-    if (allCenters.length === 0) { setError('Loading centers… please try again in a moment.'); return }
+    if (!input.trim()) {
+      setNearbyCenters([])
+      setShowSuggestions(false)
+      return
+    }
+    if (allCenters.length === 0) {
+      setError('Loading centers… please try again in a moment.')
+      return
+    }
 
     setLoading(true)
     setError('')
@@ -68,7 +79,10 @@ export default function Step3() {
       setNearbyCenters(sorted)
       setShowSuggestions(true)
       setError('')
-      if (sorted.length > 0) { setSelectedCenter(sorted[0]); setCenterID(sorted[0].id) }
+      if (sorted.length > 0) {
+        setSelectedCenter(sorted[0])
+        setCenterID(sorted[0].id)
+      }
     } catch {
       setError('Unable to find location')
       setNearbyCenters([])
@@ -86,7 +100,9 @@ export default function Step3() {
       setNearbyCenters([])
       setShowSuggestions(false)
     }
-    return () => { if (debounceTimer.current) clearTimeout(debounceTimer.current) }
+    return () => {
+      if (debounceTimer.current) clearTimeout(debounceTimer.current)
+    }
   }, [searchInput, allCenters])
 
   const handleSelectCenter = (center: CenterWithDistance) => {
@@ -96,14 +112,15 @@ export default function Step3() {
   }
 
   const handleContinue = () => {
-    if (!selectedCenter) { setError('Please search and select a center'); return }
+    if (!selectedCenter) {
+      setError('Please search and select a center')
+      return
+    }
     goToNextStep()
   }
 
   return (
-    <StepLayout footer={
-      <StepFooter onContinue={handleContinue} disabled={!selectedCenter} />
-    }>
+    <StepLayout footer={<StepFooter onContinue={handleContinue} disabled={!selectedCenter} />}>
       <View className="w-full">
         <StepHeading
           title="Choose your center"
@@ -135,7 +152,9 @@ export default function Step3() {
                     key={center.id}
                     onPress={() => handleSelectCenter(center)}
                     className={`px-5 py-4 ${
-                      index !== nearbyCenters.length - 1 ? 'border-b border-stone-200 dark:border-stone-700' : ''
+                      index !== nearbyCenters.length - 1
+                        ? 'border-b border-stone-200 dark:border-stone-700'
+                        : ''
                     } ${selectedCenter?.id === center.id ? 'bg-orange-50 dark:bg-orange-950' : ''}`}
                   >
                     <View className="flex-row justify-between items-center gap-3">
@@ -152,7 +171,9 @@ export default function Step3() {
                           </Text>
                           {index === 0 && (
                             <View className="bg-primary rounded-full px-2 py-1">
-                              <Text className="text-white text-xs font-sans font-bold">NEAREST</Text>
+                              <Text className="text-white text-xs font-sans font-bold">
+                                NEAREST
+                              </Text>
                             </View>
                           )}
                         </View>

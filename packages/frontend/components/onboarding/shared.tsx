@@ -42,10 +42,7 @@ export function StepHeading({ title, subtitle }: { title: string; subtitle: stri
 
 // ── OnboardingInput ──────────────────────────────────────────────────────────
 
-export function OnboardingInput({
-  focused,
-  ...props
-}: TextInputProps & { focused?: boolean }) {
+export function OnboardingInput({ focused, ...props }: TextInputProps & { focused?: boolean }) {
   const [internalFocused, setInternalFocused] = useState(false)
   const isFocused = focused ?? internalFocused
   const c = useColors()
@@ -113,9 +110,7 @@ export function StepFooter({
           disabled={isSubmitting}
           style={{ alignSelf: 'center', marginTop: 12 }}
         >
-          <Text className="text-sm font-sans text-stone-400 dark:text-stone-500">
-            Skip for now
-          </Text>
+          <Text className="text-sm font-sans text-stone-400 dark:text-stone-500">Skip for now</Text>
         </Pressable>
       )}
     </>
