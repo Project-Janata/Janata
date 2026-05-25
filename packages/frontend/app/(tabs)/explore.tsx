@@ -1,5 +1,5 @@
 // Discover tab — mobile / native layout
-import React, { useState, Suspense, useRef, useCallback, useMemo } from 'react'
+import React, { useState, useRef, useCallback, useMemo } from 'react'
 import { EmptyState } from '../../components/ui/EmptyState'
 import { DiscoverListSkeleton } from '../../components/ui/Skeleton'
 import {
@@ -7,7 +7,6 @@ import {
   Text,
   ScrollView,
   Pressable,
-  ActivityIndicator,
   TextInput,
   Animated,
   PanResponder,
@@ -32,8 +31,16 @@ import type { EventDisplay, DiscoverCenter, AttendeeInfo } from '../../utils/api
 import { extractCityState } from '../../utils/addressParsing'
 
 
-// Lazy load Map to avoid loading heavy web dependencies on mobile web
-const Map = React.lazy(() => import('../../components/map/Map'))
+// Map.native.tsx is the only file that bundles for native, so the
+// react-native-maps deps would never have been lazy-skippable here.
+// Lazy loading the chunk also crashes iOS in this monorepo setup:
+// Metro resolves lazy-chunk URLs from the workspace root instead of
+// packages/frontend/, returning 404 to the device and producing a
+// "Could not load bundle" render error.
+// See app/(tabs)/explore.web.tsx — web still lazy-loads Map there
+// because Map.web.tsx pulls in maplibre-gl (~800KB) and the bug is
+// Metro-specific.
+import Map from '../../components/map/Map'
 
 const FILTERS: { label: DiscoverFilter }[] = [
   { label: 'Events' },
@@ -448,15 +455,7 @@ export default function DiscoverScreen() {
     >
       {/* Map — full bleed behind the sheet */}
       <View style={StyleSheet.absoluteFill}>
-        <Suspense
-          fallback={
-            <View className="flex-1 justify-center items-center bg-stone-100 dark:bg-neutral-800">
-              <ActivityIndicator size="large" color="#9A3412" />
-            </View>
-          }
-        >
-          <Map points={filteredPoints} onPointPress={handlePointPress} userCenterID={user?.centerID} bottomPadding={90} />
-        </Suspense>
+        <Map points={filteredPoints} onPointPress={handlePointPress} userCenterID={user?.centerID} bottomPadding={90} />
       </View>
 
       {/* Bottom Sheet — hidden until we measure the container */}
