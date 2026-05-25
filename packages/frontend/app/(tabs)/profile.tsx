@@ -244,6 +244,8 @@ export default function ProfileNative() {
           ].map((stat, i, arr) => (
             <View
               key={stat.label}
+              accessible
+              accessibilityLabel={`${stat.value} ${stat.label}`}
               style={{
                 flex: 1,
                 alignItems: 'center',
@@ -292,6 +294,8 @@ export default function ProfileNative() {
         >
           <Pressable
             onPress={() => router.push('/edit-profile')}
+            accessibilityRole="button"
+            accessibilityLabel="Edit profile"
             style={{
               flex: 1,
               paddingVertical: 9,
@@ -311,6 +315,8 @@ export default function ProfileNative() {
           </Pressable>
           <Pressable
             onPress={handleShare}
+            accessibilityRole="button"
+            accessibilityLabel="Share profile"
             style={{
               flex: 1,
               paddingVertical: 9,
