@@ -422,7 +422,9 @@ function InfiniteScrollColumn({
   )
 }
 
-const TEAM = [
+type TeamMember = { name: string; image: any; color?: string }
+
+const TEAM: TeamMember[] = [
   { name: 'Abhiram', image: require('../../assets/images/landing/abhiram.jpg') },
   { name: 'Kish', image: require('../../assets/images/landing/kish.jpg') },
   { name: 'Sahanav', image: require('../../assets/images/landing/sahanav.jpg') },
@@ -453,7 +455,7 @@ function AvatarStack() {
                 width: 38,
                 height: 38,
                 borderRadius: 19,
-                backgroundColor: person.color,
+                backgroundColor: person.color ?? '#9CA3AF',
                 borderWidth: 2,
                 borderColor: '#FAFAF7',
                 alignItems: 'center',
