@@ -667,16 +667,12 @@ export default function AuthScreen() {
               <span
                 role="button"
                 tabIndex={0}
-                onClick={() =>
-                  window.alert(
-                    'Please contact info@chinmayajanata.org to reset your password.'
-                  )
-                }
+                onClick={() => router.push('/auth/forgot')}
                 onKeyDown={(e) => {
-                  if (e.key === 'Enter' || e.key === ' ')
-                    window.alert(
-                      'Please contact info@chinmayajanata.org to reset your password.'
-                    )
+                  if (e.key === 'Enter' || e.key === ' ') {
+                    e.preventDefault()
+                    router.push('/auth/forgot')
+                  }
                 }}
                 style={{
                   color: '#C2410C',

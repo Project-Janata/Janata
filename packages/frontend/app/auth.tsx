@@ -7,7 +7,6 @@ import {
   KeyboardAvoidingView,
   Pressable,
   TouchableOpacity,
-  Alert,
 } from 'react-native'
 import { useRouter, useLocalSearchParams } from 'expo-router'
 import { Code, ArrowLeft } from 'lucide-react-native'
@@ -380,12 +379,7 @@ export default function AuthScreen() {
               {authStep === 'login' && (
                 <Pressable
                   className="items-center mt-2"
-                  onPress={() =>
-                    Alert.alert(
-                      'Reset Password',
-                      'Please contact info@chinmayajanata.org to reset your password.'
-                    )
-                  }
+                  onPress={() => router.push('/auth/forgot')}
                 >
                   <Text className="text-primary font-sans font-medium">Forgot password?</Text>
                 </Pressable>
