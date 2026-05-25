@@ -1,5 +1,5 @@
 import { Tabs, usePathname, useRouter } from 'expo-router'
-import { Platform, View, Text, Pressable, Image, StatusBar } from 'react-native'
+import { Platform, View, Text, Pressable, Image, StatusBar, useWindowDimensions } from 'react-native'
 import { useState, useEffect } from 'react'
 import { useUser, useTheme } from '../../components/contexts'
 import { HeaderActionProvider } from '../../components/contexts/HeaderActionContext'
@@ -19,6 +19,8 @@ export default function TabLayout() {
   const canCreate = !!user
   const posthog = usePostHog()
   const tabBarShowLabel = Platform.OS === 'web'
+  const { width } = useWindowDimensions()
+  const isDesktopWeb = Platform.OS === 'web' && width >= 768
 
   useEffect(() => {
     if (Platform.OS !== 'web' && !loading && !user) {
@@ -124,14 +126,7 @@ export default function TabLayout() {
               }}
               onPress={() => {
                 posthog?.capture('nav_create_event')
-                if (typeof window !== 'undefined') {
-                  const isMobile = window.innerWidth < 768
-                  if (isMobile) {
-                    router.push('/events/form')
-                  } else {
-                    window.dispatchEvent(new CustomEvent('open-event-form'))
-                  }
-                }
+                router.push('/explore?action=create')
               }}
             >
               <Plus size={16} color="#E8862A" />
@@ -210,7 +205,7 @@ export default function TabLayout() {
             options={{
               tabBarShowLabel: tabBarShowLabel,
               title: 'Home',
-              header: isWeb
+              header: isDesktopWeb
                 ? () => <WebHeader />
                 : () => <TabHeader showLogo action="notifications" />,
               tabBarIcon: ({ color, size }) => <House size={size} color={color} />,
@@ -221,10 +216,20 @@ export default function TabLayout() {
             options={{
               tabBarShowLabel: false,
               title: 'Explore',
-              headerTransparent: !isWeb,
-              header: isWeb
+              headerTransparent: !isDesktopWeb,
+              header: isDesktopWeb
                 ? () => <WebHeader />
-                : () => <TabHeader title="Explore" transparent pillTitle borderAvatar />,
+                : () => (
+                    <TabHeader
+                      title="Explore"
+                      transparent
+                      pillTitle
+                      borderAvatar
+                      {...(Platform.OS === 'web'
+                        ? { action: 'create' as const, onActionPress: () => router.push('/events/form') }
+                        : {})}
+                    />
+                  ),
               tabBarIcon: ({ color, size }) => <Compass size={size} color={color} />,
             }}
           />
@@ -233,7 +238,7 @@ export default function TabLayout() {
             options={{
               tabBarShowLabel: false,
               title: 'Feed',
-              header: isWeb
+              header: isDesktopWeb
                 ? () => <WebHeader />
                 : () => <TabHeader title="Feed" action="create" />,
               tabBarIcon: ({ color, size }) => <Newspaper size={size} color={color} />,
@@ -244,7 +249,7 @@ export default function TabLayout() {
             options={{
               tabBarShowLabel: false,
               title: 'Chat',
-              header: isWeb
+              header: isDesktopWeb
                 ? () => <WebHeader />
                 : () => <TabHeader title="Chat" action="create" />,
               tabBarIcon: ({ color, size }) => <MessageSquare size={size} color={color} />,
@@ -255,7 +260,7 @@ export default function TabLayout() {
             options={{
               tabBarShowLabel: false,
               title: 'Profile',
-              header: isWeb
+              header: isDesktopWeb
                 ? () => <WebHeader />
                 : () => <TabHeader title="You" action="settings" />,
               tabBarIcon: ({ size, focused }) => (

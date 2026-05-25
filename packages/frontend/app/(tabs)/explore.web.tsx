@@ -1044,16 +1044,16 @@ export default function DiscoverScreenWeb() {
     }))
   }, [selectedItem, filteredPoints, allEvents, allCenters])
 
-  // Listen for create event from header nav button
+  // Open the create-event form when navigated with ?action=create (from the
+  // desktop "Create Event" button). Clear the param afterward so refresh/back
+  // doesn't reopen it and repeat clicks re-trigger.
   useEffect(() => {
-    if (typeof window === 'undefined') return
-    const handler = () => {
+    if (params.action === 'create') {
       setSelectedItem(null)
       setFormPanel({})
+      router.setParams({ action: undefined } as never)
     }
-    window.addEventListener('open-event-form', handler)
-    return () => window.removeEventListener('open-event-form', handler)
-  }, [])
+  }, [params.action])
 
   // Fixed 440px width for both list and detail panels — no shift on selection
   const rightPanelWidth = 440
