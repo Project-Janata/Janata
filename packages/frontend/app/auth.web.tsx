@@ -46,20 +46,24 @@ export default function AuthScreen() {
   const router = useRouter()
   const { checkUserExists, login, signup, loading } = useUser()
 
-  // Read mode, returnTo, and inviteCode from URL params
+  // Read mode, returnTo, inviteCode, and email from URL params
   const urlParams = typeof window !== 'undefined' ? new URLSearchParams(window.location.search) : null
   const initialMode = urlParams?.get('mode')
   const returnTo = urlParams?.get('returnTo')
   const urlInviteCode = urlParams?.get('inviteCode')
+  const urlEmail = urlParams?.get('email') ?? ''
 
   // When inviteCode is provided via URL (e.g. from public explore flow),
-  // skip the invite-code step and go straight to signup
+  // skip the invite-code step and go straight to signup.
+  // mode=login is meaningful only when we also have an email — otherwise we'd
+  // render a login screen with a disabled empty email field that the user
+  // can't edit, which is a dead-end. Fall back to the initial step instead.
   const [authStep, setAuthStep] = useState<AuthStep>(
-    initialMode === 'login' ? 'login'
+    initialMode === 'login' && urlEmail ? 'login'
       : initialMode === 'signup' && urlInviteCode ? 'signup'
       : 'initial'
   )
-  const [username, setUsername] = useState('')
+  const [username, setUsername] = useState(urlEmail)
   const [password, setPassword] = useState('')
   const [confirmPassword, setConfirmPassword] = useState('')
   const [inviteCode, setInviteCode] = useState(urlInviteCode || '')

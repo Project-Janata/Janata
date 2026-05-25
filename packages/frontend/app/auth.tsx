@@ -29,16 +29,21 @@ export default function AuthScreen() {
   const { checkUserExists, login, signup, loading } = useUser()
   const posthog = usePostHog()
 
-  // Read params for deep-link support (e.g. from AuthPromptModal)
-  const params = useLocalSearchParams<{ mode?: string; returnTo?: string; inviteCode?: string }>()
+  // Read params for deep-link support (e.g. from AuthPromptModal, or
+  // /auth/forgot's "Back to sign in" button).
+  const params = useLocalSearchParams<{ mode?: string; returnTo?: string; inviteCode?: string; email?: string }>()
   const urlInviteCode = params.inviteCode
+  const urlEmail = typeof params.email === 'string' ? params.email : ''
 
+  // mode=login is meaningful only when we also have an email — otherwise we'd
+  // render a login screen with a disabled empty email field that the user
+  // can't edit, which is a dead-end. Fall back to the initial step instead.
   const [authStep, setAuthStep] = useState<AuthStep>(
-    params.mode === 'login' ? 'login'
+    params.mode === 'login' && urlEmail ? 'login'
       : params.mode === 'signup' && urlInviteCode ? 'signup'
       : 'initial'
   )
-  const [username, setUsername] = useState('')
+  const [username, setUsername] = useState(urlEmail)
   const [password, setPassword] = useState('')
   const [confirmPassword, setConfirmPassword] = useState('')
   const [inviteCode, setInviteCode] = useState(urlInviteCode || '')
