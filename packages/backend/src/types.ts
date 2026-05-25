@@ -49,6 +49,7 @@ export interface UserRow {
   profile_complete: number // 0 | 1
   interests: string | null // JSON array
   invite_code: string | null // Invite code used for signup
+  email_verified_at: string | null // ISO timestamp; NULL until email verified
   created_at: string
   updated_at: string
 }
