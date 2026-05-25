@@ -217,10 +217,15 @@ app.post('/auth/register', rateLimit(5, 60_000), async (c) => {
     if (!inviteCodeData) {
       return c.json({ message: 'Invalid or inactive invite code' }, 401)
     }
+    // Atomically consume the code so single-use invites can't be raced by
+    // two simultaneous signups. Admin cohort codes (max_uses=NULL) succeed
+    // trivially. Note: verification_level stays UNVERIFIED_USER; the bump
+    // happens at email-verify time (see GET /auth/verify-email).
+    const consumed = await inviteCodes.consumeInviteCode(c.env, inviteCodeData.code)
+    if (!consumed) {
+      return c.json({ message: 'Invite code already redeemed or expired' }, 409)
+    }
     inviteCodeUsed = inviteCodeData.code
-    // Note: verification_level stays UNVERIFIED_USER. The bump to
-    // inviteCodeData.verification_level happens at email-verify time
-    // (see GET /auth/verify-email).
   }
 
   const hashedPassword = await hashPassword(validPassword)
@@ -437,9 +442,11 @@ app.get('/auth/verify-email', async (c) => {
 
   // Path A promotion: if user signed up with an invite code and hasn't been
   // promoted yet, apply the code's verification_level now. Won't downgrade.
+  // Use getInviteCode (not validateInviteCode) since single-use codes are
+  // already consumed at signup; we just need the recorded level.
   let newLevel = user.verification_level
   if (user.invite_code && user.verification_level < NORMAL_USER) {
-    const inviteCode = await inviteCodes.validateInviteCode(c.env, user.invite_code)
+    const inviteCode = await inviteCodes.getInviteCode(c.env, user.invite_code)
     if (inviteCode) {
       newLevel = Math.max(user.verification_level, inviteCode.verification_level)
     }
@@ -460,6 +467,90 @@ app.get('/auth/verify-email', async (c) => {
   const updated = await db.getUserById(c.env.DB, user.id)
   return c.json({
     message: 'Email verified',
+    user: updated ? userRowToApi(updated) : null,
+  })
+})
+
+// ── User-issued invite codes (v2) ─────────────────────────────────────
+//
+// Verified users can mint single-use, 30-day-expiry links and share them.
+// Recipients redeem either at signup (handled in /auth/register) or
+// post-signup via /auth/redeem-invite. See
+// docs/plans/2026-05-05-v2-roles-invites-messaging.md §5.A.
+
+const INVITE_SHARE_URL_BASE = 'https://chinmayajanata.org/join'
+
+app.post('/auth/invite-codes', authMiddleware, async (c) => {
+  const user = c.get('user')
+  if (user.verification_level < NORMAL_USER) {
+    return c.json({ message: 'Only verified users can issue invite codes' }, 403)
+  }
+
+  const result = await inviteCodes.mintUserInviteCode(c.env, user.id)
+  if (!result.success) {
+    console.error('mintUserInviteCode error:', result.error)
+    return c.json({ message: 'Failed to mint invite code' }, 500)
+  }
+
+  return c.json({
+    code: result.code,
+    expiresAt: result.expiresAt,
+    shareUrl: `${INVITE_SHARE_URL_BASE}?code=${result.code}`,
+  })
+})
+
+app.get('/auth/invite-codes/mine', authMiddleware, async (c) => {
+  const user = c.get('user')
+  const rows = await inviteCodes.getUserMintedCodes(c.env, user.id)
+  return c.json({
+    codes: rows.map((row) => ({
+      ...inviteCodes.inviteCodeRowToApi(row),
+      shareUrl: `${INVITE_SHARE_URL_BASE}?code=${row.code}`,
+    })),
+  })
+})
+
+app.post('/auth/redeem-invite', rateLimit(5, 60_000), authMiddleware, async (c) => {
+  const user = c.get('user')
+
+  if (user.verification_level >= NORMAL_USER) {
+    return c.json({ message: 'Already verified; no invite needed' }, 400)
+  }
+  if (user.invite_code) {
+    return c.json({ message: 'An invite code is already associated with this account' }, 400)
+  }
+
+  const body = await c.req.json<{ code?: string }>().catch(() => ({ code: undefined }))
+  if (!body.code || typeof body.code !== 'string' || body.code.trim().length === 0) {
+    return c.json({ message: 'Invite code is required' }, 400)
+  }
+
+  const validated = await inviteCodes.validateInviteCode(c.env, body.code)
+  if (!validated) {
+    return c.json({ message: 'Invalid, expired, or fully redeemed invite code' }, 401)
+  }
+
+  const consumed = await inviteCodes.consumeInviteCode(c.env, validated.code)
+  if (!consumed) {
+    // Race: someone else consumed it between validate and consume.
+    return c.json({ message: 'Invite code already redeemed or expired' }, 409)
+  }
+
+  // Record the code on the user. If email is already verified, apply the
+  // promotion now. Otherwise the bump happens at email-verify.
+  const updates: Partial<UserRow> = { invite_code: validated.code }
+  let promoted = false
+  if (user.email_verified_at && user.verification_level < validated.verification_level) {
+    updates.verification_level = validated.verification_level
+    promoted = true
+  }
+  await db.updateUser(c.env.DB, user.id, updates)
+
+  const updated = await db.getUserById(c.env.DB, user.id)
+  return c.json({
+    message: promoted
+      ? 'Invite redeemed; you are now verified'
+      : 'Invite recorded; verify your email to complete promotion',
     user: updated ? userRowToApi(updated) : null,
   })
 })
