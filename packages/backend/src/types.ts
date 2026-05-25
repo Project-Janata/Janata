@@ -115,6 +115,12 @@ export interface InviteCodeRow {
   verification_level: number
   is_active: number // 0 | 1
   created_at: string
+  // v2 extensions for user-issued single-use links. Admin cohort codes
+  // leave these NULL/0 and behave as before (multi-use, no expiry).
+  created_by_user_id: string | null
+  expires_at: string | null
+  max_uses: number | null
+  uses_count: number
 }
 
 // ── API response types ────────────────────────────────────────────────
