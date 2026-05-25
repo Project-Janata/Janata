@@ -24,11 +24,18 @@ if (typeof document !== 'undefined') {
 
 type Step = 'enter-email' | 'enter-code-and-password' | 'done'
 
+// Use longhand border properties (borderWidth/borderStyle/borderColor) instead
+// of the `border` shorthand. React-DOM warns when a render diff removes a
+// longhand (borderColor) while a shorthand (border) is still set, which is
+// exactly what happens between focused and unfocused states. Keeping
+// everything in longhand reduces the diff to a single borderColor swap.
 const inputBase: React.CSSProperties = {
   width: '100%',
   height: 48,
   padding: '0 16px',
-  border: '1px solid #E7E5E4',
+  borderWidth: 1,
+  borderStyle: 'solid',
+  borderColor: '#E7E5E4',
   borderRadius: 8,
   backgroundColor: '#FFFFFF',
   color: '#1C1917',
