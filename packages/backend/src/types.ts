@@ -6,6 +6,8 @@
  * Shared TypeScript types for the Chinmaya Janata backend.
  */
 
+import { NORMAL_USER } from './constants'
+
 // ── Cloudflare bindings ────────────────────────────────────────────────
 
 export interface Env {
@@ -20,6 +22,10 @@ export interface Env {
    * so `wrangler deploy` cannot carry it to staging or prod.
    */
   DEV_BYPASS_ADMIN_AUTH?: string
+  /** Resend API key for outbound email. Secret. */
+  RESEND_API_KEY?: string
+  /** From address for outbound email. Set in wrangler.toml [vars]. */
+  RESEND_FROM_EMAIL?: string
 }
 
 // ── Database row types (mirrors D1 schema) ────────────────────────────
@@ -201,7 +207,9 @@ export function userRowToApi(row: UserRow): UserApiResponse {
     bio: row.bio,
     centerID: row.center_id,
     points: row.points,
-    isVerified: row.is_verified === 1,
+    // is_verified is derived from verification_level so v2 promotion paths
+    // (email verify + invite redeem) don't have to remember to write it.
+    isVerified: row.verification_level >= NORMAL_USER,
     verificationLevel: row.verification_level,
     isActive: row.is_active === 1,
     profileComplete: row.profile_complete === 1,
