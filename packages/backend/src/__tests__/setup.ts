@@ -15,8 +15,13 @@ CREATE TABLE IF NOT EXISTS invite_codes (
   label             TEXT NOT NULL,
   verification_level INTEGER NOT NULL DEFAULT 45,
   is_active         INTEGER NOT NULL DEFAULT 1,
-  created_at        TEXT NOT NULL DEFAULT (datetime('now'))
+  created_at        TEXT NOT NULL DEFAULT (datetime('now')),
+  created_by_user_id TEXT REFERENCES users(id),
+  expires_at        TEXT,
+  max_uses          INTEGER,
+  uses_count        INTEGER NOT NULL DEFAULT 0
 );
+CREATE INDEX IF NOT EXISTS idx_invite_codes_creator ON invite_codes(created_by_user_id);
 
 CREATE TABLE IF NOT EXISTS users (
   id              TEXT PRIMARY KEY,
