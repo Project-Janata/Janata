@@ -126,14 +126,7 @@ export default function TabLayout() {
               }}
               onPress={() => {
                 posthog?.capture('nav_create_event')
-                if (typeof window !== 'undefined') {
-                  const isMobile = window.innerWidth < 768
-                  if (isMobile) {
-                    router.push('/events/form')
-                  } else {
-                    window.dispatchEvent(new CustomEvent('open-event-form'))
-                  }
-                }
+                router.push('/explore?action=create')
               }}
             >
               <Plus size={16} color="#E8862A" />
