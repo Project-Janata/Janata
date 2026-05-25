@@ -23,7 +23,8 @@ import {
 import * as db from './db'
 import * as inviteCodes from './inviteCodes'
 import * as notifications from './notifications'
-import { ADMIN_EMAIL, NORMAL_USER, SEVAK, BRAHMACHARI, TIER_DESCALE, ADMIN_CUTOFF, DEVELOPER_EMAILS } from './constants'
+import { sendVerificationEmail } from './email'
+import { ADMIN_EMAIL, NORMAL_USER, SEVAK, BRAHMACHARI, TIER_DESCALE, ADMIN_CUTOFF, DEVELOPER_EMAILS, UNVERIFIED_USER } from './constants'
 import { rateLimit, cacheControl, securityHeaders, validate } from './middleware'
 
 // ── Hono app type with CF bindings ────────────────────────────────────
@@ -199,64 +200,83 @@ app.post('/auth/register', rateLimit(5, 60_000), async (c) => {
     return c.json({ message: 'Username already exists' }, 409)
   }
 
-  // For new users during beta, require and validate invite code
-  // (unless they are a developer, which bypasses the requirement)
+  // v2 signup model: new users land at UNVERIFIED_USER (30) and promote on
+  // email-verify (with optional invite-code-driven level bump). Developer
+  // emails still bypass to BRAHMACHARI. Invite code is now optional; if
+  // provided we validate and store it, but don't apply the level bump until
+  // email-verify. See docs/plans/2026-05-05-v2-roles-invites-messaging.md §5.
   const isDeveloper = DEVELOPER_EMAILS.includes(normalizedUsername.toLowerCase())
-  
-  let verificationLevel = NORMAL_USER
-  let isVerified = 0
+
+  let verificationLevel = UNVERIFIED_USER
   let inviteCodeUsed: string | null = null
 
   if (isDeveloper) {
     verificationLevel = BRAHMACHARI
-    isVerified = 1
-  } else {
-    // Non-developer new users must provide a valid invite code during beta
-    if (!body.inviteCode || typeof body.inviteCode !== 'string' || body.inviteCode.trim().length === 0) {
-      return c.json({ message: 'Invite code is required for beta access' }, 400)
-    }
-
-    // Validate the invite code (must be active)
+  } else if (body.inviteCode && typeof body.inviteCode === 'string' && body.inviteCode.trim().length > 0) {
     const inviteCodeData = await inviteCodes.validateInviteCode(c.env, body.inviteCode)
     if (!inviteCodeData) {
       return c.json({ message: 'Invalid or inactive invite code' }, 401)
     }
-
-    // Set verification level from the invite code
-    verificationLevel = inviteCodeData.verification_level
     inviteCodeUsed = inviteCodeData.code
+    // Note: verification_level stays UNVERIFIED_USER. The bump to
+    // inviteCodeData.verification_level happens at email-verify time
+    // (see GET /auth/verify-email).
   }
 
   const hashedPassword = await hashPassword(validPassword)
+  const userId = crypto.randomUUID()
 
   try {
     const created = await db.createUser(c.env.DB, {
-      id: crypto.randomUUID(),
+      id: userId,
       username: normalizedUsername.toLowerCase(),
       password: hashedPassword,
       email: normalizedUsername.toLowerCase(),
       verification_level: verificationLevel,
-      is_verified: isVerified,
       invite_code: inviteCodeUsed,
     })
 
     if (!created.success) {
-    const status = created.error === 'User already exists' ? 409 : 500
-    return c.json(
-      {
-        message:
-          created.error === 'User already exists'
-            ? 'Username already exists'
-            : 'Failed to create user',
-      },
-      status
-    )
-  }
+      const status = created.error === 'User already exists' ? 409 : 500
+      return c.json(
+        {
+          message:
+            created.error === 'User already exists'
+              ? 'Username already exists'
+              : 'Failed to create user',
+        },
+        status,
+      )
+    }
 
-  return c.json(
-    { message: 'User registered successfully', username: normalizedUsername.toLowerCase() },
-    201
-  )
+    // Auto-send verification email (non-fatal). Skipped for developer accounts
+    // since they're already at BRAHMACHARI and don't need to verify. If the
+    // send fails (Resend down, etc.) the user can request a resend via
+    // POST /auth/send-verification-email.
+    if (!isDeveloper) {
+      try {
+        const bytes = new Uint8Array(32)
+        crypto.getRandomValues(bytes)
+        const token = Array.from(bytes).map((b) => b.toString(16).padStart(2, '0')).join('')
+        const expiresAt = new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString()
+
+        await c.env.DB.prepare(
+          `INSERT INTO email_verification_tokens (token, user_id, expires_at) VALUES (?, ?, ?)`,
+        )
+          .bind(token, userId, expiresAt)
+          .run()
+
+        await sendVerificationEmail(c.env, { email: normalizedUsername.toLowerCase() }, token)
+      } catch (err: any) {
+        console.error('signup verification email error:', err)
+        // Non-fatal: user can request a resend later.
+      }
+    }
+
+    return c.json(
+      { message: 'User registered successfully', username: normalizedUsername.toLowerCase() },
+      201,
+    )
   } catch (err: any) {
     console.error('createUser error:', err)
     return c.json({ message: 'Failed to create user', error: err?.message }, 500)
@@ -343,6 +363,104 @@ app.get('/auth/verify', authMiddleware, (c) => {
   return c.json({
     message: 'Token is valid',
     user: userRowToApi(user),
+  })
+})
+
+// ── Email verification (v2) ───────────────────────────────────────────
+//
+// Promotion path: signup lands at UNVERIFIED_USER (30). User receives an
+// email with a verification link. GET /auth/verify-email consumes the
+// token, sets email_verified_at, and (if the user has a stored invite
+// code) bumps their verification_level to the code's level. See
+// docs/plans/2026-05-05-v2-roles-invites-messaging.md §4-5.
+
+app.post('/auth/send-verification-email', rateLimit(3, 60 * 60_000), authMiddleware, async (c) => {
+  const user = c.get('user')
+  if (!user.email) {
+    return c.json({ message: 'User has no email on file' }, 400)
+  }
+  if (user.email_verified_at) {
+    return c.json({ message: 'Email already verified' }, 400)
+  }
+
+  // 32 bytes = 64 hex chars = 256 bits entropy
+  const bytes = new Uint8Array(32)
+  crypto.getRandomValues(bytes)
+  const token = Array.from(bytes).map((b) => b.toString(16).padStart(2, '0')).join('')
+  const expiresAt = new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString()
+
+  try {
+    await c.env.DB.prepare(
+      `INSERT INTO email_verification_tokens (token, user_id, expires_at) VALUES (?, ?, ?)`,
+    )
+      .bind(token, user.id, expiresAt)
+      .run()
+
+    await sendVerificationEmail(c.env, { email: user.email }, token)
+  } catch (err: any) {
+    console.error('send-verification-email error:', err)
+    return c.json({ message: 'Failed to send verification email' }, 500)
+  }
+
+  return c.json({ message: 'Verification email sent' })
+})
+
+app.get('/auth/verify-email', async (c) => {
+  const token = c.req.query('token')
+  if (!token || typeof token !== 'string') {
+    return c.json({ message: 'Token is required' }, 400)
+  }
+
+  const row = await c.env.DB.prepare(
+    `SELECT token, user_id, expires_at, consumed_at
+       FROM email_verification_tokens WHERE token = ?`,
+  )
+    .bind(token)
+    .first<{ token: string; user_id: string; expires_at: string; consumed_at: string | null }>()
+
+  if (!row) {
+    return c.json({ message: 'Invalid token' }, 410)
+  }
+  if (row.consumed_at) {
+    return c.json({ message: 'Token already used' }, 410)
+  }
+  if (new Date(row.expires_at) <= new Date()) {
+    return c.json({ message: 'Token expired' }, 410)
+  }
+
+  const user = await db.getUserById(c.env.DB, row.user_id)
+  if (!user) {
+    return c.json({ message: 'User not found' }, 404)
+  }
+
+  const now = new Date().toISOString()
+
+  // Path A promotion: if user signed up with an invite code and hasn't been
+  // promoted yet, apply the code's verification_level now. Won't downgrade.
+  let newLevel = user.verification_level
+  if (user.invite_code && user.verification_level < NORMAL_USER) {
+    const inviteCode = await inviteCodes.validateInviteCode(c.env, user.invite_code)
+    if (inviteCode) {
+      newLevel = Math.max(user.verification_level, inviteCode.verification_level)
+    }
+  }
+
+  await c.env.DB.prepare(
+    `UPDATE email_verification_tokens SET consumed_at = ? WHERE token = ?`,
+  )
+    .bind(now, token)
+    .run()
+
+  const updates: Partial<UserRow> = { email_verified_at: now }
+  if (newLevel !== user.verification_level) {
+    updates.verification_level = newLevel
+  }
+  await db.updateUser(c.env.DB, user.id, updates)
+
+  const updated = await db.getUserById(c.env.DB, user.id)
+  return c.json({
+    message: 'Email verified',
+    user: updated ? userRowToApi(updated) : null,
   })
 })
 

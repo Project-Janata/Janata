@@ -37,11 +37,21 @@ CREATE TABLE IF NOT EXISTS users (
   profile_complete INTEGER NOT NULL DEFAULT 0,
   interests       TEXT,
   invite_code     TEXT REFERENCES invite_codes(code),
+  email_verified_at TEXT,
   created_at      TEXT NOT NULL DEFAULT (datetime('now')),
   updated_at      TEXT NOT NULL DEFAULT (datetime('now'))
 );
 CREATE INDEX IF NOT EXISTS idx_users_username ON users(username);
 CREATE INDEX IF NOT EXISTS idx_users_center   ON users(center_id);
+
+CREATE TABLE IF NOT EXISTS email_verification_tokens (
+  token       TEXT PRIMARY KEY,
+  user_id     TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  expires_at  TEXT NOT NULL,
+  consumed_at TEXT,
+  created_at  TEXT NOT NULL DEFAULT (datetime('now'))
+);
+CREATE INDEX IF NOT EXISTS idx_email_tokens_user ON email_verification_tokens(user_id);
 
 CREATE TABLE IF NOT EXISTS centers (
   id              TEXT PRIMARY KEY,
@@ -137,6 +147,7 @@ export async function dropAllTables(): Promise<void> {
     'event_endorsers',
     'event_attendees',
     'events',
+    'email_verification_tokens',
     'users',
     'centers',
     'invite_codes',

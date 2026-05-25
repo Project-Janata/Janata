@@ -10,6 +10,7 @@
 # Secrets (set via Wrangler CLI, NOT in this file):
 #   npx wrangler secret put JWT_SECRET
 #   npx wrangler secret put JWT_REFRESH_SECRET
+#   npx wrangler secret put RESEND_API_KEY
 
 name = "chinmaya-janata-api"
 main = "src/worker.ts"
@@ -27,3 +28,4 @@ bucket_name = "chinmaya-janata-avatars"
 [vars]
 JWT_SECRET = "dev-secret-key-change-in-production"
 JWT_REFRESH_SECRET = "dev-refresh-secret-key-change-in-production"
+RESEND_FROM_EMAIL = "noreply@chinmayajanata.org"

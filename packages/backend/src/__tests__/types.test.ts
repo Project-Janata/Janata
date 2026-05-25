@@ -91,8 +91,16 @@ describe('userRowToApi', () => {
     expect(api.profileComplete).toBe(true)
   })
 
-  it('converts is_verified=0, is_active=0, profile_complete=0 to false', () => {
-    const row = { ...mockUserRow, is_verified: 0, is_active: 0, profile_complete: 0 }
+  it('converts integer booleans to false; derives isVerified from verification_level', () => {
+    // isVerified is now derived from verification_level >= NORMAL_USER (45),
+    // not the legacy is_verified column. Use UNVERIFIED_USER (30) here.
+    const row = {
+      ...mockUserRow,
+      is_verified: 0,
+      is_active: 0,
+      profile_complete: 0,
+      verification_level: 30,
+    }
     const api = userRowToApi(row)
     expect(api.isVerified).toBe(false)
     expect(api.isActive).toBe(false)

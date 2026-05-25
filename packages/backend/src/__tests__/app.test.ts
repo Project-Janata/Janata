@@ -173,13 +173,13 @@ describe('POST /api/auth/register', () => {
     expect(body.message).toBe('Username already exists')
   })
 
-  it('rejects missing invite code for non-developer (400)', async () => {
+  it('accepts missing invite code; lands at UNVERIFIED_USER (v2 model)', async () => {
     const { res, body } = await jsonPost('/api/auth/register', {
       username: 'noinvite',
       password: 'password123',
     })
-    expect(res.status).toBe(400)
-    expect(body.message).toContain('Invite code is required')
+    expect(res.status).toBe(201)
+    expect(body.message).toBe('User registered successfully')
   })
 
   it('rejects invalid invite code (401)', async () => {

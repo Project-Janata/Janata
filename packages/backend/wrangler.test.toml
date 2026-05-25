@@ -4,6 +4,11 @@ compatibility_date = "2026-02-26"
 [vars]
 JWT_SECRET = "test-jwt-secret-for-testing-only"
 JWT_REFRESH_SECRET = "test-jwt-refresh-secret-for-testing-only"
+RESEND_FROM_EMAIL = "test@example.com"
+# Skip real Resend calls in tests. Without this, .dev.vars leaks its real
+# API key into the test pool worker and each signup test makes a network
+# round-trip to Resend (10x test slowdown).
+EMAIL_SEND_DISABLED = "true"
 
 [[d1_databases]]
 binding = "DB"

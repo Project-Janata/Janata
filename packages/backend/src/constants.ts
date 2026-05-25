@@ -19,6 +19,11 @@ export const DEVELOPER_EMAILS = [
 ]
 
 // Verification levels
+// UNVERIFIED_USER is the v2 starting tier for self-signups before email
+// verification or invite redemption. Promotion to NORMAL_USER happens on
+// email-verify (with optional invite-code-driven level bump). See
+// docs/plans/2026-05-05-v2-roles-invites-messaging.md §4.
+export const UNVERIFIED_USER = 30
 export const NORMAL_USER = 45
 export const SEVAK = 54
 export const SENIOR_SEVAK = 63
