@@ -113,6 +113,15 @@ export default function TabHeader({
         {action && (
           <Pressable
             onPress={handleActionPress}
+            accessibilityRole="button"
+            accessibilityLabel={
+              action === 'create'
+                ? 'Create'
+                : action === 'notifications'
+                  ? 'Notifications'
+                  : 'Settings'
+            }
+            hitSlop={8}
             style={({ pressed }) => ({
               width: 36,
               height: 36,
