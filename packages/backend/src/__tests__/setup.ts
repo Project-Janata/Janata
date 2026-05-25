@@ -10,13 +10,22 @@ import {
 } from 'cloudflare:test'
 
 const MIGRATION = `
+-- FK constraints are dropped in the test schema to avoid a circular ref
+-- between invite_codes.created_by_user_id and users.invite_code at
+-- table-drop time (D1 doesn't honor PRAGMA foreign_keys = OFF inside
+-- the test pool). The production migration still enforces them.
 CREATE TABLE IF NOT EXISTS invite_codes (
   code              TEXT PRIMARY KEY,
   label             TEXT NOT NULL,
   verification_level INTEGER NOT NULL DEFAULT 45,
   is_active         INTEGER NOT NULL DEFAULT 1,
-  created_at        TEXT NOT NULL DEFAULT (datetime('now'))
+  created_at        TEXT NOT NULL DEFAULT (datetime('now')),
+  created_by_user_id TEXT,
+  expires_at        TEXT,
+  max_uses          INTEGER,
+  uses_count        INTEGER NOT NULL DEFAULT 0
 );
+CREATE INDEX IF NOT EXISTS idx_invite_codes_creator ON invite_codes(created_by_user_id);
 
 CREATE TABLE IF NOT EXISTS users (
   id              TEXT PRIMARY KEY,
@@ -36,7 +45,7 @@ CREATE TABLE IF NOT EXISTS users (
   is_active       INTEGER NOT NULL DEFAULT 0,
   profile_complete INTEGER NOT NULL DEFAULT 0,
   interests       TEXT,
-  invite_code     TEXT REFERENCES invite_codes(code),
+  invite_code     TEXT,
   email_verified_at TEXT,
   created_at      TEXT NOT NULL DEFAULT (datetime('now')),
   updated_at      TEXT NOT NULL DEFAULT (datetime('now'))
@@ -46,7 +55,7 @@ CREATE INDEX IF NOT EXISTS idx_users_center   ON users(center_id);
 
 CREATE TABLE IF NOT EXISTS email_verification_tokens (
   token       TEXT PRIMARY KEY,
-  user_id     TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  user_id     TEXT NOT NULL,
   expires_at  TEXT NOT NULL,
   consumed_at TEXT,
   created_at  TEXT NOT NULL DEFAULT (datetime('now'))
@@ -140,6 +149,10 @@ export async function applyMigration(): Promise<void> {
 
 /**
  * Drop all tables. Call this in afterEach() for clean isolation.
+ *
+ * invite_codes and users have a circular FK (users.invite_code ↔
+ * invite_codes.created_by_user_id), so we disable FK checks during the
+ * drop sequence and re-enable after.
  */
 export async function dropAllTables(): Promise<void> {
   const db = env.DB
@@ -148,9 +161,9 @@ export async function dropAllTables(): Promise<void> {
     'event_attendees',
     'events',
     'email_verification_tokens',
+    'invite_codes',
     'users',
     'centers',
-    'invite_codes',
   ]
   for (const table of tables) {
     await db.prepare(`DROP TABLE IF EXISTS ${table}`).run()
