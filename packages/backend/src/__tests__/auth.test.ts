@@ -5,6 +5,7 @@
  * legacy bcrypt detection, and timing-safe comparison.
  */
 import { describe, it, expect } from 'vitest'
+import { SignJWT } from 'jose'
 import {
   hashPassword,
   verifyPassword,
@@ -12,12 +13,17 @@ import {
   generateRefreshToken,
   verifyToken,
   verifyRefreshToken,
+  passwordFingerprint,
 } from '../auth'
 
 const TEST_SECRET = 'test-jwt-secret-for-testing-only'
 const TEST_REFRESH_SECRET = 'test-jwt-refresh-secret-for-testing-only'
 
-const testUser = { id: 'u-test-1', username: 'testuser' }
+// Tokens are now fingerprinted off the password hash, so test fixtures need
+// a stored password too. The actual value doesn't matter for most tests —
+// only that the same hash is reused across calls that expect the same `tv`.
+const TEST_PASSWORD_HASH = '100000:c2FsdHNhbHRzYWx0c2FsdA==:aGFzaGhhc2hoYXNoaGFzaGhhc2hoYXNoaGFzaGhhc2g='
+const testUser = { id: 'u-test-1', username: 'testuser', password: TEST_PASSWORD_HASH }
 
 // ═══════════════════════════════════════════════════════════════════════
 // PASSWORD HASHING (PBKDF2)
@@ -207,8 +213,8 @@ describe('cross-verification', () => {
   })
 
   it('tokens with different users produce different payloads', async () => {
-    const user1 = { id: 'u-1', username: 'alice' }
-    const user2 = { id: 'u-2', username: 'bob' }
+    const user1 = { id: 'u-1', username: 'alice', password: TEST_PASSWORD_HASH }
+    const user2 = { id: 'u-2', username: 'bob', password: TEST_PASSWORD_HASH }
 
     const token1 = await generateToken(user1, TEST_SECRET)
     const token2 = await generateToken(user2, TEST_SECRET)
@@ -220,5 +226,76 @@ describe('cross-verification', () => {
     expect(payload1!.username).toBe('alice')
     expect(payload2!.id).toBe('u-2')
     expect(payload2!.username).toBe('bob')
+  })
+})
+
+// ═══════════════════════════════════════════════════════════════════════
+// PASSWORD FINGERPRINT (tv claim)
+// ═══════════════════════════════════════════════════════════════════════
+
+describe('passwordFingerprint', () => {
+  it('returns 16 hex chars (64 bits)', async () => {
+    const fp = await passwordFingerprint(TEST_PASSWORD_HASH)
+    expect(fp).toMatch(/^[0-9a-f]{16}$/)
+  })
+
+  it('is deterministic for the same hash', async () => {
+    const fp1 = await passwordFingerprint(TEST_PASSWORD_HASH)
+    const fp2 = await passwordFingerprint(TEST_PASSWORD_HASH)
+    expect(fp1).toBe(fp2)
+  })
+
+  it('differs across different password hashes', async () => {
+    const hashA = await hashPassword('password-a')
+    const hashB = await hashPassword('password-b')
+    const fpA = await passwordFingerprint(hashA)
+    const fpB = await passwordFingerprint(hashB)
+    expect(fpA).not.toBe(fpB)
+  })
+
+  it('differs even when the same plaintext is rehashed (salt changes)', async () => {
+    const hash1 = await hashPassword('samepassword')
+    const hash2 = await hashPassword('samepassword')
+    const fp1 = await passwordFingerprint(hash1)
+    const fp2 = await passwordFingerprint(hash2)
+    expect(fp1).not.toBe(fp2)
+  })
+})
+
+describe('JWT tv claim', () => {
+  it('access token embeds tv matching the password fingerprint', async () => {
+    const token = await generateToken(testUser, TEST_SECRET)
+    const payload = await verifyToken(token, TEST_SECRET)
+    expect(payload!.tv).toBe(await passwordFingerprint(TEST_PASSWORD_HASH))
+  })
+
+  it('refresh token embeds tv matching the password fingerprint', async () => {
+    const token = await generateRefreshToken(testUser, TEST_REFRESH_SECRET)
+    const payload = await verifyRefreshToken(token, TEST_REFRESH_SECRET)
+    expect(payload!.tv).toBe(await passwordFingerprint(TEST_PASSWORD_HASH))
+  })
+
+  it('tokens for users with different passwords carry different tv', async () => {
+    const userA = { id: 'a', username: 'a', password: await hashPassword('one') }
+    const userB = { id: 'b', username: 'b', password: await hashPassword('two') }
+    const tokenA = await generateToken(userA, TEST_SECRET)
+    const tokenB = await generateToken(userB, TEST_SECRET)
+    const payloadA = await verifyToken(tokenA, TEST_SECRET)
+    const payloadB = await verifyToken(tokenB, TEST_SECRET)
+    expect(payloadA!.tv).not.toBe(payloadB!.tv)
+  })
+
+  it('JWT minted without tv claim still verifies (legacy compatibility)', async () => {
+    // Older tokens were issued before the rollout and don't carry tv.
+    // verifyToken should still accept them; the middleware's mismatch check
+    // skips when the claim is absent.
+    const legacy = await new SignJWT({ id: 'legacy', username: 'oldie', type: 'access' })
+      .setProtectedHeader({ alg: 'HS256' })
+      .setIssuedAt()
+      .setExpirationTime('30d')
+      .sign(new TextEncoder().encode(TEST_SECRET))
+    const payload = await verifyToken(legacy, TEST_SECRET)
+    expect(payload).not.toBeNull()
+    expect(payload!.tv).toBeUndefined()
   })
 })

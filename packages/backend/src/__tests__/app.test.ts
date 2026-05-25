@@ -6,6 +6,7 @@
  */
 import { describe, it, expect, beforeEach } from 'vitest'
 import { env, createExecutionContext, waitOnExecutionContext } from 'cloudflare:test'
+import { SignJWT } from 'jose'
 import { applyMigration, dropAllTables, TEST_INVITE_CODE } from './setup'
 import { app } from '../app'
 import { hashPassword } from '../auth'
@@ -292,6 +293,46 @@ describe('GET /api/auth/verify', () => {
       headers: { Authorization: 'Bearer invalidtoken' },
     })
     expect(res.status).toBe(403)
+  })
+
+  it('rejects token after password rotation (401, tv mismatch)', async () => {
+    // Mint a token, then rotate the password directly in the DB to simulate
+    // a password reset. The old token's tv claim should no longer match.
+    const { token } = await registerAndLogin('rotatepw', 'password123')
+    const newHash = await hashPassword('different-password')
+    await env.DB.prepare('UPDATE users SET password = ? WHERE username = ?')
+      .bind(newHash, 'rotatepw')
+      .run()
+
+    const { res, body } = await fetchJSON('/api/auth/verify', {
+      headers: authHeader(token),
+    })
+    expect(res.status).toBe(401)
+    expect(body.message).toMatch(/sign in again/i)
+  })
+
+  it('accepts legacy tokens that pre-date the tv claim', async () => {
+    // Register so the user row exists, then mint a JWT directly without a
+    // `tv` claim — same shape as tokens issued before this rollout.
+    await jsonPost('/api/auth/register', {
+      username: 'legacyuser',
+      password: 'password123',
+      inviteCode: TEST_INVITE_CODE,
+    })
+    const legacy = await new SignJWT({
+      id: 'ignored-by-middleware',
+      username: 'legacyuser',
+      type: 'access',
+    })
+      .setProtectedHeader({ alg: 'HS256' })
+      .setIssuedAt()
+      .setExpirationTime('30d')
+      .sign(new TextEncoder().encode(env.JWT_SECRET))
+
+    const { res } = await fetchJSON('/api/auth/verify', {
+      headers: authHeader(legacy),
+    })
+    expect(res.status).toBe(200)
   })
 })
 
