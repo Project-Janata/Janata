@@ -1642,3 +1642,218 @@ describe('Admin end-to-end workflow', () => {
     expect(stats2.events).toBe(1)
   })
 })
+
+// ═══════════════════════════════════════════════════════════════════════
+// USER-ISSUED INVITE CODES (v2)
+// ═══════════════════════════════════════════════════════════════════════
+
+// Developer email path: lands at BRAHMACHARI (108) without an invite code.
+// Used in tests to get a "verified" user that can mint invite codes.
+const DEV_EMAIL = 'kishparikh18@gmail.com'
+
+async function registerAsDeveloper(): Promise<{ token: string; user: any }> {
+  await jsonPost('/api/auth/register', { username: DEV_EMAIL, password: 'devpassword123' })
+  const { body } = await jsonPost('/api/auth/authenticate', {
+    username: DEV_EMAIL,
+    password: 'devpassword123',
+  })
+  return { token: body.token, user: body.user }
+}
+
+describe('POST /api/auth/invite-codes (mint)', () => {
+  it('verified user mints a single-use 30-day code', async () => {
+    const { token } = await registerAsDeveloper()
+    const { res, body } = await jsonPost('/api/auth/invite-codes', {}, authHeader(token))
+    expect(res.status).toBe(200)
+    expect(body.code).toMatch(/^[0-9A-F]{12}$/)
+    expect(body.shareUrl).toContain(body.code)
+    expect(new Date(body.expiresAt).getTime()).toBeGreaterThan(Date.now())
+  })
+
+  it('rejects unverified user with 403', async () => {
+    // Self-signup with no invite = UNVERIFIED_USER
+    await jsonPost('/api/auth/register', { username: 'noinvite@test.com', password: 'password123' })
+    const { body: auth } = await jsonPost('/api/auth/authenticate', {
+      username: 'noinvite@test.com',
+      password: 'password123',
+    })
+    const { res, body } = await jsonPost('/api/auth/invite-codes', {}, authHeader(auth.token))
+    expect(res.status).toBe(403)
+    expect(body.message).toContain('verified')
+  })
+
+  it('rejects missing auth with 401', async () => {
+    const { res } = await jsonPost('/api/auth/invite-codes', {})
+    expect(res.status).toBe(401)
+  })
+
+  it('returns a different code on each call', async () => {
+    const { token } = await registerAsDeveloper()
+    const { body: a } = await jsonPost('/api/auth/invite-codes', {}, authHeader(token))
+    const { body: b } = await jsonPost('/api/auth/invite-codes', {}, authHeader(token))
+    expect(a.code).not.toBe(b.code)
+  })
+})
+
+describe('GET /api/auth/invite-codes/mine', () => {
+  it('returns empty list when user has not minted any codes', async () => {
+    const { token } = await registerAsDeveloper()
+    const { res, body } = await fetchJSON('/api/auth/invite-codes/mine', {
+      headers: authHeader(token),
+    })
+    expect(res.status).toBe(200)
+    expect(body.codes).toEqual([])
+  })
+
+  it('returns the codes the user has minted', async () => {
+    const { token } = await registerAsDeveloper()
+    await jsonPost('/api/auth/invite-codes', {}, authHeader(token))
+    await jsonPost('/api/auth/invite-codes', {}, authHeader(token))
+    const { body } = await fetchJSON('/api/auth/invite-codes/mine', {
+      headers: authHeader(token),
+    })
+    expect(body.codes).toHaveLength(2)
+    expect(body.codes[0].isUsable).toBe(true)
+    expect(body.codes[0].shareUrl).toContain(body.codes[0].code)
+  })
+
+  it("does not leak other users' codes", async () => {
+    // Mint a code as dev user, then sign up a separate user and check theirs is empty.
+    const { token: devToken } = await registerAsDeveloper()
+    await jsonPost('/api/auth/invite-codes', {}, authHeader(devToken))
+
+    await jsonPost('/api/auth/register', { username: 'other@test.com', password: 'password123' })
+    const { body: auth } = await jsonPost('/api/auth/authenticate', {
+      username: 'other@test.com',
+      password: 'password123',
+    })
+    const { body } = await fetchJSON('/api/auth/invite-codes/mine', {
+      headers: authHeader(auth.token),
+    })
+    expect(body.codes).toEqual([])
+  })
+})
+
+describe('POST /api/auth/redeem-invite', () => {
+  it('records the invite code for an unverified user (no email-verify yet)', async () => {
+    // Verified user mints a code
+    const { token: devToken } = await registerAsDeveloper()
+    const { body: minted } = await jsonPost('/api/auth/invite-codes', {}, authHeader(devToken))
+
+    // Unverified user redeems it
+    await jsonPost('/api/auth/register', { username: 'redeem@test.com', password: 'password123' })
+    const { body: auth } = await jsonPost('/api/auth/authenticate', {
+      username: 'redeem@test.com',
+      password: 'password123',
+    })
+    const { res, body } = await jsonPost(
+      '/api/auth/redeem-invite',
+      { code: minted.code },
+      authHeader(auth.token),
+    )
+    expect(res.status).toBe(200)
+    expect(body.message).toContain('verify your email')
+    expect(body.user.verificationLevel).toBe(30) // still UNVERIFIED
+  })
+
+  it('rejects already-verified users with 400', async () => {
+    const { token } = await registerAsDeveloper()
+    const { res, body } = await jsonPost(
+      '/api/auth/redeem-invite',
+      { code: 'ANYTHING' },
+      authHeader(token),
+    )
+    expect(res.status).toBe(400)
+    expect(body.message).toContain('Already verified')
+  })
+
+  it('rejects users who already have an invite_code associated', async () => {
+    // Sign up using TEST_INVITE_CODE so invite_code is recorded
+    await jsonPost('/api/auth/register', {
+      username: 'hasinv@test.com',
+      password: 'password123',
+      inviteCode: TEST_INVITE_CODE,
+    })
+    const { body: auth } = await jsonPost('/api/auth/authenticate', {
+      username: 'hasinv@test.com',
+      password: 'password123',
+    })
+    const { res, body } = await jsonPost(
+      '/api/auth/redeem-invite',
+      { code: 'ANYTHING' },
+      authHeader(auth.token),
+    )
+    expect(res.status).toBe(400)
+    expect(body.message).toContain('already associated')
+  })
+
+  it('rejects invalid codes with 401', async () => {
+    await jsonPost('/api/auth/register', { username: 'bad@test.com', password: 'password123' })
+    const { body: auth } = await jsonPost('/api/auth/authenticate', {
+      username: 'bad@test.com',
+      password: 'password123',
+    })
+    const { res, body } = await jsonPost(
+      '/api/auth/redeem-invite',
+      { code: 'NOPE' },
+      authHeader(auth.token),
+    )
+    expect(res.status).toBe(401)
+    expect(body.message).toContain('Invalid')
+  })
+
+  it('rejects already-consumed single-use codes with 401 (validate fails)', async () => {
+    const { token: devToken } = await registerAsDeveloper()
+    const { body: minted } = await jsonPost('/api/auth/invite-codes', {}, authHeader(devToken))
+
+    // First redemption: user A
+    await jsonPost('/api/auth/register', { username: 'first@test.com', password: 'password123' })
+    const { body: authA } = await jsonPost('/api/auth/authenticate', {
+      username: 'first@test.com',
+      password: 'password123',
+    })
+    const first = await jsonPost(
+      '/api/auth/redeem-invite',
+      { code: minted.code },
+      authHeader(authA.token),
+    )
+    expect(first.res.status).toBe(200)
+
+    // Second redemption attempt by user B should fail
+    await jsonPost('/api/auth/register', { username: 'second@test.com', password: 'password123' })
+    const { body: authB } = await jsonPost('/api/auth/authenticate', {
+      username: 'second@test.com',
+      password: 'password123',
+    })
+    const second = await jsonPost(
+      '/api/auth/redeem-invite',
+      { code: minted.code },
+      authHeader(authB.token),
+    )
+    expect(second.res.status).toBe(401)
+  })
+})
+
+describe('POST /api/auth/register — invite code consume', () => {
+  it('single-use code can only be redeemed once at signup', async () => {
+    const { token: devToken } = await registerAsDeveloper()
+    const { body: minted } = await jsonPost('/api/auth/invite-codes', {}, authHeader(devToken))
+
+    const a = await jsonPost('/api/auth/register', {
+      username: 'racea@test.com',
+      password: 'password123',
+      inviteCode: minted.code,
+    })
+    const b = await jsonPost('/api/auth/register', {
+      username: 'raceb@test.com',
+      password: 'password123',
+      inviteCode: minted.code,
+    })
+    expect(a.res.status).toBe(201)
+    // Sequential: validateInviteCode rejects on the second call (uses_count
+    // already at max_uses), returning 401. In a true concurrent race the
+    // second signup could get 409 from consumeInviteCode losing. Either
+    // outcome is a correct rejection.
+    expect([401, 409]).toContain(b.res.status)
+  })
+})
