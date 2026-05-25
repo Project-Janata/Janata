@@ -200,64 +200,83 @@ app.post('/auth/register', rateLimit(5, 60_000), async (c) => {
     return c.json({ message: 'Username already exists' }, 409)
   }
 
-  // For new users during beta, require and validate invite code
-  // (unless they are a developer, which bypasses the requirement)
+  // v2 signup model: new users land at UNVERIFIED_USER (30) and promote on
+  // email-verify (with optional invite-code-driven level bump). Developer
+  // emails still bypass to BRAHMACHARI. Invite code is now optional; if
+  // provided we validate and store it, but don't apply the level bump until
+  // email-verify. See docs/plans/2026-05-05-v2-roles-invites-messaging.md §5.
   const isDeveloper = DEVELOPER_EMAILS.includes(normalizedUsername.toLowerCase())
-  
-  let verificationLevel = NORMAL_USER
-  let isVerified = 0
+
+  let verificationLevel = UNVERIFIED_USER
   let inviteCodeUsed: string | null = null
 
   if (isDeveloper) {
     verificationLevel = BRAHMACHARI
-    isVerified = 1
-  } else {
-    // Non-developer new users must provide a valid invite code during beta
-    if (!body.inviteCode || typeof body.inviteCode !== 'string' || body.inviteCode.trim().length === 0) {
-      return c.json({ message: 'Invite code is required for beta access' }, 400)
-    }
-
-    // Validate the invite code (must be active)
+  } else if (body.inviteCode && typeof body.inviteCode === 'string' && body.inviteCode.trim().length > 0) {
     const inviteCodeData = await inviteCodes.validateInviteCode(c.env, body.inviteCode)
     if (!inviteCodeData) {
       return c.json({ message: 'Invalid or inactive invite code' }, 401)
     }
-
-    // Set verification level from the invite code
-    verificationLevel = inviteCodeData.verification_level
     inviteCodeUsed = inviteCodeData.code
+    // Note: verification_level stays UNVERIFIED_USER. The bump to
+    // inviteCodeData.verification_level happens at email-verify time
+    // (see GET /auth/verify-email).
   }
 
   const hashedPassword = await hashPassword(validPassword)
+  const userId = crypto.randomUUID()
 
   try {
     const created = await db.createUser(c.env.DB, {
-      id: crypto.randomUUID(),
+      id: userId,
       username: normalizedUsername.toLowerCase(),
       password: hashedPassword,
       email: normalizedUsername.toLowerCase(),
       verification_level: verificationLevel,
-      is_verified: isVerified,
       invite_code: inviteCodeUsed,
     })
 
     if (!created.success) {
-    const status = created.error === 'User already exists' ? 409 : 500
-    return c.json(
-      {
-        message:
-          created.error === 'User already exists'
-            ? 'Username already exists'
-            : 'Failed to create user',
-      },
-      status
-    )
-  }
+      const status = created.error === 'User already exists' ? 409 : 500
+      return c.json(
+        {
+          message:
+            created.error === 'User already exists'
+              ? 'Username already exists'
+              : 'Failed to create user',
+        },
+        status,
+      )
+    }
 
-  return c.json(
-    { message: 'User registered successfully', username: normalizedUsername.toLowerCase() },
-    201
-  )
+    // Auto-send verification email (non-fatal). Skipped for developer accounts
+    // since they're already at BRAHMACHARI and don't need to verify. If the
+    // send fails (Resend down, etc.) the user can request a resend via
+    // POST /auth/send-verification-email.
+    if (!isDeveloper) {
+      try {
+        const bytes = new Uint8Array(32)
+        crypto.getRandomValues(bytes)
+        const token = Array.from(bytes).map((b) => b.toString(16).padStart(2, '0')).join('')
+        const expiresAt = new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString()
+
+        await c.env.DB.prepare(
+          `INSERT INTO email_verification_tokens (token, user_id, expires_at) VALUES (?, ?, ?)`,
+        )
+          .bind(token, userId, expiresAt)
+          .run()
+
+        await sendVerificationEmail(c.env, { email: normalizedUsername.toLowerCase() }, token)
+      } catch (err: any) {
+        console.error('signup verification email error:', err)
+        // Non-fatal: user can request a resend later.
+      }
+    }
+
+    return c.json(
+      { message: 'User registered successfully', username: normalizedUsername.toLowerCase() },
+      201,
+    )
   } catch (err: any) {
     console.error('createUser error:', err)
     return c.json({ message: 'Failed to create user', error: err?.message }, 500)

@@ -23,6 +23,11 @@ interface SendArgs {
  * (sendVerificationEmail, etc.) rather than this directly.
  */
 async function sendEmail(env: Env, args: SendArgs): Promise<void> {
+  // Test escape hatch: skip the real send. Tests set EMAIL_SEND_DISABLED=true
+  // in wrangler.test.toml so signups don't make 11 real Resend calls per run.
+  if (env.EMAIL_SEND_DISABLED === 'true') {
+    return
+  }
   if (!env.RESEND_API_KEY) {
     throw new Error('RESEND_API_KEY is not configured')
   }

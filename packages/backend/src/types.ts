@@ -26,6 +26,8 @@ export interface Env {
   RESEND_API_KEY?: string
   /** From address for outbound email. Set in wrangler.toml [vars]. */
   RESEND_FROM_EMAIL?: string
+  /** When "true", outbound email sends are skipped. Tests set this. */
+  EMAIL_SEND_DISABLED?: string
 }
 
 // ── Database row types (mirrors D1 schema) ────────────────────────────
