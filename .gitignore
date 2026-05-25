@@ -41,6 +41,7 @@ lerna-debug.log*
 # Environment variables
 .env
 .env.*
+**/.dev.vars
 
 # IDE & Editor
 .idea/

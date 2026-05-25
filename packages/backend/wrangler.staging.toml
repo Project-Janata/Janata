@@ -17,3 +17,7 @@ bucket_name = "chinmaya-janata-avatars"
 [vars]
 JWT_SECRET = "dev-secret-key-change-in-production"
 JWT_REFRESH_SECRET = "dev-refresh-secret-key-change-in-production"
+RESEND_FROM_EMAIL = "noreply@chinmayajanata.org"
+
+# Secrets set via:
+#   npx wrangler secret put RESEND_API_KEY --config wrangler.staging.toml
