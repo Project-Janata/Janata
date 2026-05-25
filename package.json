@@ -69,7 +69,7 @@
   "overrides": {
     "react": "19.2.0",
     "react-dom": "19.2.0",
-    "react-test-renderer": "19.2.4"
+    "react-test-renderer": "19.2.0"
   },
   "resolutions": {
     "react-native-css-interop": "0.2.2"
