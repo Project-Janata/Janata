@@ -1,6 +1,6 @@
 import '@expo/metro-runtime'
 import { useCallback, useEffect, useRef, useState } from 'react'
-import { Animated, LogBox, Platform, Text } from 'react-native'
+import { Animated, LogBox, Platform, Text, View, useWindowDimensions } from 'react-native'
 
 // Suppress non-fatal WorkletsTurboModule error in Expo Go (reanimated v4 compat)
 LogBox.ignoreLogs(['Exception in HostFunction: <unknown>'])
@@ -27,6 +27,7 @@ import {
   useTheme,
 } from '../components/contexts'
 import { ErrorBoundary } from '../components/ui/ErrorBoundary'
+import WebBottomNav from '../components/ui/WebBottomNav'
 import '../globals.css'
 
 export const unstable_settings = {
@@ -109,6 +110,15 @@ function RootLayoutNav({ onAuthReady }: { onAuthReady: () => void }) {
   const pathname = usePathname()
   const router = useRouter()
   const isAuthenticated = !!user
+  const { width } = useWindowDimensions()
+  // Mirrors the desktop WebHeader, which shows its nav regardless of auth —
+  // only hide on the full-screen landing/auth/onboarding flows.
+  const showBottomNav =
+    Platform.OS === 'web' &&
+    width < 768 &&
+    !pathname.startsWith('/auth') &&
+    !pathname.startsWith('/onboarding') &&
+    pathname !== '/landing'
 
   useEffect(() => {
     if (!loading) {
@@ -172,6 +182,7 @@ function RootLayoutNav({ onAuthReady }: { onAuthReady: () => void }) {
   return (
     <Animated.View style={{ flex: 1, opacity: fadeAnim }}>
       <NavigationThemeProvider value={navTheme}>
+        <View style={{ flex: 1 }}>
         <Stack screenOptions={{ headerShown: false, animation: 'slide_from_right' }}>
           <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
           <Stack.Screen name="auth" options={{ headerShown: false }} />
@@ -213,6 +224,8 @@ function RootLayoutNav({ onAuthReady }: { onAuthReady: () => void }) {
           <Stack.Screen name="center-picker" options={{ headerShown: false }} />
           <Stack.Screen name="admin" options={{ headerShown: false }} />
         </Stack>
+        </View>
+        {showBottomNav && <WebBottomNav />}
       </NavigationThemeProvider>
     </Animated.View>
   )
