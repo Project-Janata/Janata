@@ -31,9 +31,12 @@ jest.mock('../../../../hooks/useDetailColors', () => ({
   })),
 }))
 
-const { useLocalSearchParams, useRouter } = jest.requireMock('expo-router')
-const { useEventDetail } = jest.requireMock('../../../../hooks/useApiData')
-const { useUser } = jest.requireMock('../../../../components/contexts')
+// jest.requireMock returns `unknown` by default; cast to the shape we
+// stub out in the vi.mock factories above so destructuring stays type-safe.
+type MockedModule = Record<string, jest.Mock>
+const { useLocalSearchParams, useRouter } = jest.requireMock('expo-router') as MockedModule
+const { useEventDetail } = jest.requireMock('../../../../hooks/useApiData') as MockedModule
+const { useUser } = jest.requireMock('../../../../components/contexts') as MockedModule
 
 const mockUseLocalSearchParams = useLocalSearchParams as jest.Mock
 const mockUseRouter = useRouter as jest.Mock

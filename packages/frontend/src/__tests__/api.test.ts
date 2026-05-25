@@ -4,9 +4,53 @@
  * Covers API_URL generation, fetch helpers, caching, and data normalization.
  */
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
+import type { CenterData, EventData } from '../../utils/api'
 
 // We need to be able to re-import the module with different Platform/DEV settings,
 // so we'll use dynamic imports and resetModules where needed.
+
+// ── Fixture builders ───────────────────────────────────────────────────
+// Build full CenterData/EventData objects so tests stay type-correct as the
+// types evolve. Tests pass only the fields they care about; defaults fill the
+// rest with sensible nulls matching the wire shape from the backend.
+
+function makeCenter(overrides: Partial<CenterData> = {}): CenterData {
+  return {
+    centerID: '',
+    name: '',
+    latitude: 0,
+    longitude: 0,
+    address: null,
+    website: null,
+    phone: null,
+    image: null,
+    acharya: null,
+    pointOfContact: null,
+    memberCount: 0,
+    isVerified: false,
+    ...overrides,
+  }
+}
+
+function makeEvent(overrides: Partial<EventData> = {}): EventData {
+  return {
+    eventID: '',
+    title: '',
+    description: '',
+    date: '2025-01-01',
+    latitude: 0,
+    longitude: 0,
+    address: null,
+    centerID: null,
+    tier: 1,
+    peopleAttending: 0,
+    pointOfContact: null,
+    image: null,
+    category: null,
+    createdBy: null,
+    ...overrides,
+  }
+}
 
 // ── Global fetch mock ──────────────────────────────────────────────────
 const mockFetch = vi.fn()
@@ -441,8 +485,8 @@ describe('centersToMapPoints', () => {
 
   it('converts centers with lat/lng to map points', () => {
     const centers = [
-      { centerID: '1', name: 'A', latitude: 37.0, longitude: -122.0, address: null, memberCount: 10, isVerified: true },
-      { centerID: '2', name: 'B', latitude: 38.0, longitude: -121.0, address: 'Addr', memberCount: 5, isVerified: false },
+      makeCenter({ centerID: '1', name: 'A', latitude: 37.0, longitude: -122.0, memberCount: 10, isVerified: true }),
+      makeCenter({ centerID: '2', name: 'B', latitude: 38.0, longitude: -121.0, address: 'Addr', memberCount: 5, isVerified: false }),
     ]
     const result = api.centersToMapPoints(centers)
     expect(result).toHaveLength(2)
@@ -451,8 +495,8 @@ describe('centersToMapPoints', () => {
 
   it('keeps entries with latitude=0 (valid coordinate)', () => {
     const centers = [
-      { centerID: '1', name: 'A', latitude: 0, longitude: -122.0, address: null, memberCount: 10, isVerified: true },
-      { centerID: '2', name: 'B', latitude: 38.0, longitude: -121.0, address: null, memberCount: 5, isVerified: false },
+      makeCenter({ centerID: '1', name: 'A', latitude: 0, longitude: -122.0, memberCount: 10, isVerified: true }),
+      makeCenter({ centerID: '2', name: 'B', latitude: 38.0, longitude: -121.0, memberCount: 5, isVerified: false }),
     ]
     const result = api.centersToMapPoints(centers)
     expect(result).toHaveLength(2)
@@ -460,7 +504,7 @@ describe('centersToMapPoints', () => {
 
   it('keeps entries with longitude=0 (valid coordinate)', () => {
     const centers = [
-      { centerID: '1', name: 'A', latitude: 37.0, longitude: 0, address: null, memberCount: 10, isVerified: true },
+      makeCenter({ centerID: '1', name: 'A', latitude: 37.0, longitude: 0, memberCount: 10, isVerified: true }),
     ]
     const result = api.centersToMapPoints(centers)
     expect(result).toHaveLength(1)
@@ -468,7 +512,7 @@ describe('centersToMapPoints', () => {
 
   it('uses "Unknown Center" when name is empty', () => {
     const centers = [
-      { centerID: '1', name: '', latitude: 37.0, longitude: -122.0, address: null, memberCount: 0, isVerified: false },
+      makeCenter({ centerID: '1', name: '', latitude: 37.0, longitude: -122.0 }),
     ]
     const result = api.centersToMapPoints(centers)
     expect(result[0].name).toBe('Unknown Center')
@@ -489,7 +533,7 @@ describe('eventsToMapPoints', () => {
 
   it('converts events with lat/lng to map points', () => {
     const events = [
-      { eventID: 'e1', title: 'Ev1', description: '', date: '2025-01-01', latitude: 37.0, longitude: -122.0, address: null, centerID: null, tier: 1, peopleAttending: 0, pointOfContact: null, image: null, category: null },
+      makeEvent({ eventID: 'e1', title: 'Ev1', latitude: 37.0, longitude: -122.0 }),
     ]
     const result = api.eventsToMapPoints(events)
     expect(result).toHaveLength(1)
@@ -498,8 +542,8 @@ describe('eventsToMapPoints', () => {
 
   it('keeps entries with lat/lng=0 (valid coordinates)', () => {
     const events = [
-      { eventID: 'e1', title: 'Ev1', description: '', date: '2025-01-01', latitude: 0, longitude: -122.0, address: null, centerID: null, tier: 1, peopleAttending: 0, pointOfContact: null, image: null, category: null },
-      { eventID: 'e2', title: 'Ev2', description: '', date: '2025-01-01', latitude: 37.0, longitude: 0, address: null, centerID: null, tier: 1, peopleAttending: 0, pointOfContact: null, image: null, category: null },
+      makeEvent({ eventID: 'e1', title: 'Ev1', latitude: 0, longitude: -122.0 }),
+      makeEvent({ eventID: 'e2', title: 'Ev2', latitude: 37.0, longitude: 0 }),
     ]
     const result = api.eventsToMapPoints(events)
     expect(result).toHaveLength(2)
@@ -507,7 +551,7 @@ describe('eventsToMapPoints', () => {
 
   it('uses description as fallback when title is empty', () => {
     const events = [
-      { eventID: 'e1', title: '', description: 'Desc', date: '2025-01-01', latitude: 37.0, longitude: -122.0, address: null, centerID: null, tier: 1, peopleAttending: 0, pointOfContact: null, image: null, category: null },
+      makeEvent({ eventID: 'e1', description: 'Desc', latitude: 37.0, longitude: -122.0 }),
     ]
     const result = api.eventsToMapPoints(events)
     expect(result[0].name).toBe('Desc')
@@ -515,7 +559,7 @@ describe('eventsToMapPoints', () => {
 
   it('uses "Event" when both title and description are empty', () => {
     const events = [
-      { eventID: 'e1', title: '', description: '', date: '2025-01-01', latitude: 37.0, longitude: -122.0, address: null, centerID: null, tier: 1, peopleAttending: 0, pointOfContact: null, image: null, category: null },
+      makeEvent({ eventID: 'e1', latitude: 37.0, longitude: -122.0 }),
     ]
     const result = api.eventsToMapPoints(events)
     expect(result[0].name).toBe('Event')
@@ -536,7 +580,7 @@ describe('centersToDiscoverCenters', () => {
 
   it('transforms centers to DiscoverCenter format', () => {
     const centers = [
-      { centerID: '1', name: 'A', latitude: 37.0, longitude: -122.0, address: '123 St', memberCount: 10, isVerified: true },
+      makeCenter({ centerID: '1', name: 'A', latitude: 37.0, longitude: -122.0, address: '123 St', memberCount: 10, isVerified: true }),
     ]
     const result = api.centersToDiscoverCenters(centers)
     expect(result).toEqual([
@@ -546,8 +590,8 @@ describe('centersToDiscoverCenters', () => {
 
   it('keeps entries with lat/lng=0 (valid coordinates)', () => {
     const centers = [
-      { centerID: '1', name: 'A', latitude: 0, longitude: -122.0, address: null, memberCount: 10, isVerified: true },
-      { centerID: '2', name: 'B', latitude: 37.0, longitude: -122.0, address: null, memberCount: 5, isVerified: false },
+      makeCenter({ centerID: '1', name: 'A', latitude: 0, longitude: -122.0, memberCount: 10, isVerified: true }),
+      makeCenter({ centerID: '2', name: 'B', latitude: 37.0, longitude: -122.0, memberCount: 5, isVerified: false }),
     ]
     const result = api.centersToDiscoverCenters(centers)
     expect(result).toHaveLength(2)
@@ -555,7 +599,7 @@ describe('centersToDiscoverCenters', () => {
 
   it('converts null address to undefined', () => {
     const centers = [
-      { centerID: '1', name: 'A', latitude: 37.0, longitude: -122.0, address: null, memberCount: 10, isVerified: true },
+      makeCenter({ centerID: '1', name: 'A', latitude: 37.0, longitude: -122.0 }),
     ]
     const result = api.centersToDiscoverCenters(centers)
     expect(result[0].address).toBeUndefined()
@@ -563,7 +607,7 @@ describe('centersToDiscoverCenters', () => {
 
   it('uses "Unknown Center" for empty name', () => {
     const centers = [
-      { centerID: '1', name: '', latitude: 37.0, longitude: -122.0, address: null, memberCount: 0, isVerified: false },
+      makeCenter({ centerID: '1', name: '', latitude: 37.0, longitude: -122.0 }),
     ]
     const result = api.centersToDiscoverCenters(centers)
     expect(result[0].name).toBe('Unknown Center')

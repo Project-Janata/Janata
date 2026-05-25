@@ -93,10 +93,13 @@ const resolveEndpointUrl = (endpoint: string): string => {
 
 /** Helper to build the PostHog person properties from a User object */
 const userTraits = (u: User) => ({
-  email: u.email,
-  firstName: u.firstName,
-  lastName: u.lastName,
-  profileComplete: u.profileComplete,
+  // PostHog's PostHogEventProperties doesn't accept `undefined`, only null /
+  // string / number / boolean. The User type marks several fields optional,
+  // so coerce undefined→null at the boundary.
+  email: u.email ?? null,
+  firstName: u.firstName ?? null,
+  lastName: u.lastName ?? null,
+  profileComplete: u.profileComplete ?? false,
 })
 
 export const UserProvider = ({ children }: { children: ReactNode }) => {
@@ -109,7 +112,7 @@ export const UserProvider = ({ children }: { children: ReactNode }) => {
   const login = useCallback(async (username: string, password: string) => {
     const result = await authService.login(username, password)
     if (!result.success) {
-      posthog?.capture('login_failed', { reason: result.message })
+      posthog?.capture('login_failed', { reason: result.message ?? null })
       return { success: false, message: result.message }
     }
 
@@ -125,7 +128,7 @@ export const UserProvider = ({ children }: { children: ReactNode }) => {
   const signup = useCallback(async (username: string, password: string, inviteCode?: string) => {
     const result = await authService.signup(username, password, inviteCode)
     if (!result.success || !result.user) {
-      posthog?.capture('signup_failed', { reason: result.message })
+      posthog?.capture('signup_failed', { reason: result.message ?? null })
       return { success: false, message: result.message || 'Signup failed. Please try again.' }
     }
 
@@ -198,7 +201,7 @@ export const UserProvider = ({ children }: { children: ReactNode }) => {
   const deleteAccount = useCallback(async () => {
     const result = await authService.deleteAccount()
     if (!result.success) {
-      posthog?.capture('delete_account_failed', { reason: result.message })
+      posthog?.capture('delete_account_failed', { reason: result.message ?? null })
       return { success: false, message: result.message || 'Failed to delete account' }
     }
 
@@ -223,7 +226,7 @@ export const UserProvider = ({ children }: { children: ReactNode }) => {
     if (!result.success || !result.user) {
       // Rollback optimistic update on failure
       setUser(previousUser)
-      posthog?.capture('profile_update_failed', { reason: result.message })
+      posthog?.capture('profile_update_failed', { reason: result.message ?? null })
       return { success: false, message: result.message || 'Failed to update profile' }
     }
 

@@ -107,10 +107,13 @@ function SettingsPanel({ visible, onClose, onLogout }) {
 
   return (
     <>
-      {/* Backdrop */}
+      {/* Backdrop. position: 'fixed' is web CSS — honored by react-native-web
+          at runtime but not in RN's ViewStyle type. This component renders
+          inside WebHeader (web-only branch in app/(tabs)/_layout.tsx), so
+          the cast is safe. */}
       <Pressable
         style={{
-          position: 'fixed',
+          position: 'fixed' as 'absolute',
           top: 0,
           left: 0,
           right: 0,
@@ -123,7 +126,7 @@ function SettingsPanel({ visible, onClose, onLogout }) {
       {/* Settings Panel */}
       <Animated.View
         style={{
-          position: 'fixed',
+          position: 'fixed' as 'absolute',
           top: 56,
           right: 16,
           zIndex: 100,

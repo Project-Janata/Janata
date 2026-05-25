@@ -339,7 +339,12 @@ export function BoardPostCard({
                       color: '#C2410C',
                     }}
                   >
-                    {message.author.role || 'SEVAK'}
+                    {/* The author.verification === 'sevak' guard above means the label
+                        is always SEVAK in this branch. PersonSummary used to have a
+                        free-form `role` string that overrode the label; it was
+                        consolidated into the `verification` enum, so the fallback is
+                        the only path now. */}
+                    SEVAK
                   </Text>
                 ) : null}
                 {!isFeedCard && message.pinned ? <Pill label="Pinned" colors={colors} /> : null}
