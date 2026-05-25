@@ -323,6 +323,71 @@ export const authClient = {
     }
   },
 
+  /**
+   * Request a new verification email be sent. The user must already be
+   * authenticated (signup auto-sends one; this is the resend path).
+   * Rate-limited server-side to 3/hour per user.
+   */
+  async sendVerificationEmail(token: string): AsyncResult<GenericSuccessResponse> {
+    try {
+      const response = await withTimeout(
+        buildUrl('/auth/send-verification-email'),
+        {
+          method: 'POST',
+          headers: { Authorization: `Bearer ${token}` },
+        },
+        API_TIMEOUTS.standard,
+      )
+
+      const data = await safeJson<GenericSuccessResponse>(response)
+
+      if (!response.ok) {
+        return {
+          success: false,
+          error: toError(data?.message || 'Failed to send verification email', response.status),
+        }
+      }
+
+      return { success: true, data: { success: true, message: data?.message } }
+    } catch (error: any) {
+      if (error?.name === 'AbortError') {
+        return { success: false, error: toError('Request timeout. Please check your connection.') }
+      }
+      return { success: false, error: toError('Network error. Please try again.') }
+    }
+  },
+
+  /**
+   * Consume an email-verification token. Called by the /verify-email
+   * frontend route after the user clicks the link in their inbox. No
+   * auth required — the token itself is the credential.
+   */
+  async verifyEmail(verificationToken: string): AsyncResult<{ user: User }> {
+    try {
+      const response = await withTimeout(
+        buildUrl(`/auth/verify-email?token=${encodeURIComponent(verificationToken)}`),
+        { method: 'GET' },
+        API_TIMEOUTS.standard,
+      )
+
+      const data = await safeJson<{ user: User; message?: string }>(response)
+
+      if (!response.ok || !data?.user) {
+        return {
+          success: false,
+          error: toError(data?.message || 'Email verification failed', response.status),
+        }
+      }
+
+      return { success: true, data: { user: data.user } }
+    } catch (error: any) {
+      if (error?.name === 'AbortError') {
+        return { success: false, error: toError('Request timeout. Please check your connection.') }
+      }
+      return { success: false, error: toError('Network error. Please try again.') }
+    }
+  },
+
   async deleteAccount(token: string): AsyncResult<GenericSuccessResponse> {
     try {
       const response = await withTimeout(
