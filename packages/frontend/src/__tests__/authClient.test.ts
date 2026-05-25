@@ -394,3 +394,115 @@ describe('authClient.deleteAccount', () => {
     }
   })
 })
+
+// ── Password reset ────────────────────────────────────────────────────
+
+describe('authClient.requestPasswordReset', () => {
+  it('returns success when server says ok', async () => {
+    mockFetch.mockResolvedValue(mockResponse({ ok: true }))
+
+    const result = await authClient.requestPasswordReset('user@example.com')
+    expect(result.success).toBe(true)
+  })
+
+  it('normalizes the email (trim + lowercase) before posting', async () => {
+    mockFetch.mockResolvedValue(mockResponse({ ok: true }))
+
+    await authClient.requestPasswordReset('  USER@Example.com  ')
+    const call = mockFetch.mock.calls[0]
+    const body = JSON.parse(call[1].body)
+    expect(body.username).toBe('user@example.com')
+  })
+
+  it('returns error when the server rejects (e.g. rate limit)', async () => {
+    mockFetch.mockResolvedValue(
+      mockResponse({ message: 'Too many requests' }, false, 429),
+    )
+
+    const result = await authClient.requestPasswordReset('user@example.com')
+    expect(result.success).toBe(false)
+    if (!result.success) {
+      expect(result.error.status).toBe(429)
+    }
+  })
+
+  it('returns network error on fetch failure', async () => {
+    mockFetch.mockRejectedValue(new Error('fetch failed'))
+
+    const result = await authClient.requestPasswordReset('user@example.com')
+    expect(result.success).toBe(false)
+    if (!result.success) {
+      expect(result.error.message).toBe('Network error. Please try again.')
+    }
+  })
+})
+
+describe('authClient.confirmPasswordReset', () => {
+  it('returns success when server confirms', async () => {
+    mockFetch.mockResolvedValue(mockResponse({ ok: true }))
+
+    const result = await authClient.confirmPasswordReset(
+      'user@example.com',
+      '123456',
+      'newSecret99',
+    )
+    expect(result.success).toBe(true)
+  })
+
+  it('posts the trimmed code and the new password', async () => {
+    mockFetch.mockResolvedValue(mockResponse({ ok: true }))
+
+    await authClient.confirmPasswordReset(
+      '  USER@Example.com  ',
+      '  123456 ',
+      'newSecret99',
+    )
+    const call = mockFetch.mock.calls[0]
+    const body = JSON.parse(call[1].body)
+    expect(body.username).toBe('user@example.com')
+    expect(body.code).toBe('123456')
+    expect(body.newPassword).toBe('newSecret99')
+  })
+
+  it('returns the server error when ok=false (e.g. wrong code)', async () => {
+    mockFetch.mockResolvedValue(
+      mockResponse({ ok: false, error: 'Code invalid or expired' }, false, 400),
+    )
+
+    const result = await authClient.confirmPasswordReset(
+      'user@example.com',
+      '999999',
+      'newSecret99',
+    )
+    expect(result.success).toBe(false)
+    if (!result.success) {
+      expect(result.error.message).toMatch(/invalid or expired/i)
+    }
+  })
+
+  it('treats a 200 with ok:false as failure', async () => {
+    // Defensive: server should always pair ok:false with 400, but if it
+    // ever returns 200 + ok:false we should still surface the error.
+    mockFetch.mockResolvedValue(
+      mockResponse({ ok: false, error: 'something went wrong' }, true, 200),
+    )
+
+    const result = await authClient.confirmPasswordReset(
+      'user@example.com',
+      '000000',
+      'newSecret99',
+    )
+    expect(result.success).toBe(false)
+  })
+
+  it('returns network error on fetch failure', async () => {
+    mockFetch.mockRejectedValue(new Error('fetch failed'))
+
+    const result = await authClient.confirmPasswordReset(
+      'user@example.com',
+      '123456',
+      'newSecret99',
+    )
+    expect(result.success).toBe(false)
+  })
+})

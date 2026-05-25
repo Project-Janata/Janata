@@ -388,6 +388,84 @@ export const authClient = {
     }
   },
 
+  /**
+   * Start the password-reset flow. Always returns success from the
+   * server's perspective — we don't reveal whether the email is on file
+   * (anti-enumeration). Rate-limited 5/min per IP server-side.
+   */
+  async requestPasswordReset(email: string): AsyncResult<GenericSuccessResponse> {
+    try {
+      const username = normalizeUsername(email)
+      const response = await withTimeout(
+        buildUrl('/auth/password-reset/request'),
+        {
+          method: 'POST',
+          body: JSON.stringify({ username }),
+        },
+        API_TIMEOUTS.auth,
+      )
+
+      const data = await safeJson<GenericSuccessResponse & { ok?: boolean }>(response)
+
+      if (!response.ok) {
+        return {
+          success: false,
+          error: toError(data?.message || 'Failed to send reset code', response.status),
+        }
+      }
+
+      return { success: true, data: { success: true, message: data?.message } }
+    } catch (error: any) {
+      if (error?.name === 'AbortError') {
+        return { success: false, error: toError('Request timeout. Please check your connection.') }
+      }
+      return { success: false, error: toError('Network error. Please try again.') }
+    }
+  },
+
+  /**
+   * Submit the 6-digit code and the new password. On success the server
+   * rotates users.password, which kills every live JWT for the user via
+   * the tv-claim mechanism. Caller should treat that as a sign-out and
+   * redirect to login.
+   */
+  async confirmPasswordReset(
+    email: string,
+    code: string,
+    newPassword: string,
+  ): AsyncResult<GenericSuccessResponse> {
+    try {
+      const username = normalizeUsername(email)
+      const response = await withTimeout(
+        buildUrl('/auth/password-reset/verify'),
+        {
+          method: 'POST',
+          body: JSON.stringify({ username, code: code.trim(), newPassword }),
+        },
+        API_TIMEOUTS.auth,
+      )
+
+      const data = await safeJson<{ ok?: boolean; error?: string; message?: string }>(response)
+
+      if (!response.ok || data?.ok === false) {
+        return {
+          success: false,
+          error: toError(
+            data?.error || data?.message || 'Code invalid or expired',
+            response.status,
+          ),
+        }
+      }
+
+      return { success: true, data: { success: true, message: data?.message } }
+    } catch (error: any) {
+      if (error?.name === 'AbortError') {
+        return { success: false, error: toError('Request timeout. Please check your connection.') }
+      }
+      return { success: false, error: toError('Network error. Please try again.') }
+    }
+  },
+
   async deleteAccount(token: string): AsyncResult<GenericSuccessResponse> {
     try {
       const response = await withTimeout(
