@@ -80,3 +80,49 @@ export async function sendVerificationEmail(
     html,
   })
 }
+
+/**
+ * Send a 6-digit password-reset code to the user. Called from the
+ * /auth/password-reset/request handler.
+ */
+export async function sendPasswordResetEmail(
+  env: Env,
+  user: { email: string },
+  code: string,
+): Promise<void> {
+  const html = [
+    '<p>Hari Om,</p>',
+    '<p>Use this code to reset your Chinmaya Janata password:</p>',
+    `<p style="font-size:28px; font-weight:bold; letter-spacing:6px; font-family:monospace;">${code}</p>`,
+    '<p>This code expires in 15 minutes.</p>',
+    '<p>If you didn\'t request a password reset, you can safely ignore this email — your password is unchanged.</p>',
+    '<p>We will never ask you for this code. Do not share it with anyone.</p>',
+  ].join('\n')
+
+  await sendEmail(env, {
+    to: user.email,
+    subject: 'Your Chinmaya Janata password reset code',
+    html,
+  })
+}
+
+/**
+ * Confirmation email after a successful password reset. Sent fire-and-forget.
+ */
+export async function sendPasswordChangedEmail(
+  env: Env,
+  user: { email: string },
+): Promise<void> {
+  const html = [
+    '<p>Hari Om,</p>',
+    '<p>Your Chinmaya Janata password was just changed.</p>',
+    '<p>If this was you, no further action is needed.</p>',
+    '<p>If you did not change your password, please reply to this email immediately — your account may be compromised.</p>',
+  ].join('\n')
+
+  await sendEmail(env, {
+    to: user.email,
+    subject: 'Your Chinmaya Janata password was changed',
+    html,
+  })
+}

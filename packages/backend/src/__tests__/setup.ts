@@ -62,6 +62,17 @@ CREATE TABLE IF NOT EXISTS email_verification_tokens (
 );
 CREATE INDEX IF NOT EXISTS idx_email_tokens_user ON email_verification_tokens(user_id);
 
+CREATE TABLE IF NOT EXISTS password_reset_codes (
+  id          TEXT PRIMARY KEY,
+  user_id     TEXT NOT NULL,
+  code_hash   TEXT NOT NULL,
+  expires_at  TEXT NOT NULL,
+  used_at     TEXT,
+  attempts    INTEGER NOT NULL DEFAULT 0,
+  created_at  TEXT NOT NULL DEFAULT (datetime('now'))
+);
+CREATE INDEX IF NOT EXISTS idx_prc_user_active ON password_reset_codes(user_id, expires_at);
+
 CREATE TABLE IF NOT EXISTS centers (
   id              TEXT PRIMARY KEY,
   name            TEXT NOT NULL,
@@ -161,6 +172,7 @@ export async function dropAllTables(): Promise<void> {
     'event_attendees',
     'events',
     'email_verification_tokens',
+    'password_reset_codes',
     'invite_codes',
     'users',
     'centers',

@@ -24,6 +24,7 @@ import {
 import * as db from './db'
 import * as inviteCodes from './inviteCodes'
 import * as notifications from './notifications'
+import * as passwordReset from './passwordReset'
 import { sendVerificationEmail } from './email'
 import { ADMIN_EMAIL, NORMAL_USER, SEVAK, BRAHMACHARI, TIER_DESCALE, ADMIN_CUTOFF, DEVELOPER_EMAILS, UNVERIFIED_USER } from './constants'
 import { rateLimit, cacheControl, securityHeaders, validate } from './middleware'
@@ -482,6 +483,50 @@ app.get('/auth/verify-email', async (c) => {
     message: 'Email verified',
     user: updated ? userRowToApi(updated) : null,
   })
+})
+
+// ── Password reset (v2) ───────────────────────────────────────────────
+//
+// Self-serve flow: user requests a 6-digit code (always returns ok to
+// avoid enumeration), then submits the code + new password to /verify.
+// On success, every live JWT for the user dies via the password-hash
+// fingerprint in auth.ts. See docs/plans/2026-05-24-password-reset.md.
+
+app.post('/auth/password-reset/request', rateLimit(5, 60_000), async (c) => {
+  let body: { username?: string } = {}
+  try {
+    body = await c.req.json<{ username: string }>()
+  } catch {
+    // empty body -- still return ok so attackers learn nothing
+  }
+  if (body.username && typeof body.username === 'string') {
+    await passwordReset.handlePasswordResetRequest(c.env, body.username)
+  }
+  return c.json({ ok: true })
+})
+
+app.post('/auth/password-reset/verify', rateLimit(10, 60_000), async (c) => {
+  let body: { username?: string; code?: string; newPassword?: string } = {}
+  try {
+    body = await c.req.json()
+  } catch {
+    // fall through to validation below
+  }
+  if (
+    typeof body.username !== 'string' ||
+    typeof body.code !== 'string' ||
+    typeof body.newPassword !== 'string'
+  ) {
+    return c.json({ ok: false, error: 'Missing required fields' }, 400)
+  }
+
+  const result = await passwordReset.handlePasswordResetVerify(
+    c.env,
+    body.username,
+    body.code,
+    body.newPassword,
+  )
+  return c.json(result, result.ok ? 200 : 400)
 })
 
 // ── User-issued invite codes (v2) ─────────────────────────────────────
