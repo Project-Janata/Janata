@@ -19,6 +19,7 @@ import {
   generateRefreshToken,
   verifyToken,
   verifyRefreshToken,
+  passwordFingerprint,
 } from './auth'
 import * as db from './db'
 import * as inviteCodes from './inviteCodes'
@@ -119,6 +120,18 @@ async function authMiddleware(c: any, next: () => Promise<void>): Promise<Respon
   const userData = await db.getUserByUsername(c.env.DB, decoded.username)
   if (!userData) {
     return c.json({ message: 'User not found' }, 403)
+  }
+
+  // Session-kill on password change: tokens minted after the rollout carry a
+  // `tv` claim fingerprinting the password hash at issue time. If the password
+  // has rotated since (reset flow), the fingerprints diverge and the token
+  // dies. JWTs without a `tv` claim were issued before this check existed —
+  // accept them so existing users aren't logged out at deploy.
+  if (typeof decoded.tv === 'string') {
+    const expected = await passwordFingerprint(userData.password)
+    if (decoded.tv !== expected) {
+      return c.json({ message: 'Session expired, please sign in again' }, 401)
+    }
   }
 
   c.set('user', userData)
