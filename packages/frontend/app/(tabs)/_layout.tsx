@@ -1,13 +1,27 @@
 import { Tabs, usePathname, useRouter } from 'expo-router'
-import { Platform, View, Text, Pressable, Image, StatusBar, useWindowDimensions } from 'react-native'
+import {
+  Platform,
+  View,
+  Text,
+  Pressable,
+  Image,
+  StatusBar,
+  useWindowDimensions,
+} from 'react-native'
 import { useState, useEffect } from 'react'
 import { useUser, useTheme } from '../../components/contexts'
 import { HeaderActionProvider } from '../../components/contexts/HeaderActionContext'
-import { House, Newspaper, Compass, Plus } from 'lucide-react-native'
+import { Plus, Bell } from 'lucide-react-native'
+import { Ionicons } from '@expo/vector-icons'
+import { Plus, Bell } from 'lucide-react-native'
+import { Ionicons } from '@expo/vector-icons'
 import SettingsPanel from '../../components/settings/SettingsPanel'
 import Logo from '../../components/ui/Logo'
 import TabHeader from '../../components/ui/TabHeader'
+import { Avatar } from '../../components/ui'
+import { useColors } from '../../hooks/useColors'
 import { usePostHog } from 'posthog-react-native'
+import { AppColors } from 'packages/frontend/tokens'
 
 export default function TabLayout() {
   const router = useRouter()
@@ -15,6 +29,7 @@ export default function TabLayout() {
   const { user, loading, logout } = useUser()
   const { isDark } = useTheme()
   const [settingsVisible, setSettingsVisible] = useState(false)
+  const c = useColors() as AppColors
   const canCreate = !!user
   const posthog = usePostHog()
   const tabBarShowLabel = Platform.OS === 'web'
@@ -37,6 +52,7 @@ export default function TabLayout() {
     { label: 'Home', href: '/' },
     { label: 'Explore', href: '/explore' },
     { label: 'Feed', href: '/feed' },
+    { label: 'Messages', href: '/chat' },
   ] as const
 
   const isRouteActive = (href: (typeof navItems)[number]['href']) => {
@@ -206,7 +222,12 @@ export default function TabLayout() {
               header: isDesktopWeb
                 ? () => <WebHeader />
                 : () => <TabHeader showLogo action="notifications" />,
-              tabBarIcon: ({ color, size }) => <House size={size} color={color} />,
+              tabBarIcon: ({ color, size, focused }) => (
+                <Ionicons name={focused ? 'home' : 'home-outline'} size={size} color={color} />
+              ),
+              tabBarIcon: ({ color, size, focused }) => (
+                <Ionicons name={focused ? 'home' : 'home-outline'} size={size} color={color} />
+              ),
             }}
           />
           <Tabs.Screen
@@ -219,10 +240,15 @@ export default function TabLayout() {
                 ? () => <WebHeader />
                 : () => (
                     <TabHeader
+                      title="Explore"
                       transparent
+                      pillTitle
                       borderAvatar
                       {...(Platform.OS === 'web'
-                        ? { action: 'create' as const, onActionPress: () => router.push('/events/form') }
+                        ? {
+                            action: 'create' as const,
+                            onActionPress: () => router.push('/events/form'),
+                          }
                         : {})}
                     />
                   ),
@@ -237,33 +263,69 @@ export default function TabLayout() {
               header: isDesktopWeb
                 ? () => <WebHeader />
                 : () => <TabHeader title="Feed" action="create" />,
-              tabBarIcon: ({ color, size }) => <Newspaper size={size} color={color} />,
+              tabBarIcon: ({ color, size, focused }) => (
+                <Ionicons
+                  name={focused ? 'newspaper' : 'newspaper-outline'}
+                  size={size}
+                  color={color}
+                />
+              ),
+              tabBarIcon: ({ color, size, focused }) => (
+                <Ionicons
+                  name={focused ? 'newspaper' : 'newspaper-outline'}
+                  size={size}
+                  color={color}
+                />
+              ),
             }}
           />
           <Tabs.Screen
             name="chat"
             options={{
-              href: null,
               tabBarShowLabel: false,
               title: 'Chat',
               header: isDesktopWeb
                 ? () => <WebHeader />
                 : () => <TabHeader title="Chat" action="create" />,
+              tabBarIcon: ({ color, size, focused }) => (
+                <Ionicons
+                  name={focused ? 'chatsquare' : 'chatsquare-outline'}
+                  size={size}
+                  color={color}
+                />
+              ),
+              tabBarIcon: ({ color, size, focused }) => (
+                <Ionicons
+                  name={focused ? 'chatsquare' : 'chatsquare-outline'}
+                  size={size}
+                  color={color}
+                />
+              ),
             }}
           />
           <Tabs.Screen
             name="profile"
             options={{
-              // Profile is no longer a bottom-bar tab on native — it's reached via
-              // the avatar button in TabHeader (showProfile). href: null keeps the
-              // /profile route mounted/navigable and leaves web (WebHeader /
-              // WebBottomNav) untouched, while removing the native tab icon.
-              href: null,
               tabBarShowLabel: false,
               title: 'Profile',
               header: isDesktopWeb
                 ? () => <WebHeader />
-                : () => <TabHeader title="You" action="settings" showProfile={false} />,
+                : () => <TabHeader title="You" action="settings" />,
+              tabBarIcon: ({ size, focused }) => (
+                <Avatar
+                  image={user?.profileImage ?? undefined}
+                  name={
+                    user?.firstName
+                      ? `${user.firstName} ${user.lastName ?? ''}`.trim()
+                      : user?.username
+                  }
+                  size={size + 4}
+                  style={{
+                    borderWidth: focused ? 2 : 0,
+                    borderColor: c.primary,
+                  }}
+                />
+              ),
             }}
           />
         </Tabs>
