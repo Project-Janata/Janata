@@ -1,9 +1,18 @@
 import { Tabs, usePathname, useRouter } from 'expo-router'
-import { Platform, View, Text, Pressable, Image, StatusBar, useWindowDimensions } from 'react-native'
+import {
+  Platform,
+  View,
+  Text,
+  Pressable,
+  Image,
+  StatusBar,
+  useWindowDimensions,
+} from 'react-native'
 import { useState, useEffect } from 'react'
 import { useUser, useTheme } from '../../components/contexts'
 import { HeaderActionProvider } from '../../components/contexts/HeaderActionContext'
-import { House, MessageSquare, Newspaper, Compass, Plus, Bell } from 'lucide-react-native'
+import { Plus, Bell } from 'lucide-react-native'
+import { Ionicons } from '@expo/vector-icons'
 import SettingsPanel from '../../components/settings/SettingsPanel'
 import Logo from '../../components/ui/Logo'
 import TabHeader from '../../components/ui/TabHeader'
@@ -208,7 +217,9 @@ export default function TabLayout() {
               header: isDesktopWeb
                 ? () => <WebHeader />
                 : () => <TabHeader showLogo action="notifications" />,
-              tabBarIcon: ({ color, size }) => <House size={size} color={color} />,
+              tabBarIcon: ({ color, size, focused }) => (
+                <Ionicons name={focused ? 'home' : 'home-outline'} size={size} color={color} />
+              ),
             }}
           />
           <Tabs.Screen
@@ -226,7 +237,10 @@ export default function TabLayout() {
                       pillTitle
                       borderAvatar
                       {...(Platform.OS === 'web'
-                        ? { action: 'create' as const, onActionPress: () => router.push('/events/form') }
+                        ? {
+                            action: 'create' as const,
+                            onActionPress: () => router.push('/events/form'),
+                          }
                         : {})}
                     />
                   ),
@@ -241,7 +255,13 @@ export default function TabLayout() {
               header: isDesktopWeb
                 ? () => <WebHeader />
                 : () => <TabHeader title="Feed" action="create" />,
-              tabBarIcon: ({ color, size }) => <Newspaper size={size} color={color} />,
+              tabBarIcon: ({ color, size, focused }) => (
+                <Ionicons
+                  name={focused ? 'newspaper' : 'newspaper-outline'}
+                  size={size}
+                  color={color}
+                />
+              ),
             }}
           />
           <Tabs.Screen
@@ -252,7 +272,13 @@ export default function TabLayout() {
               header: isDesktopWeb
                 ? () => <WebHeader />
                 : () => <TabHeader title="Chat" action="create" />,
-              tabBarIcon: ({ color, size }) => <MessageSquare size={size} color={color} />,
+              tabBarIcon: ({ color, size, focused }) => (
+                <Ionicons
+                  name={focused ? 'chatsquare' : 'chatsquare-outline'}
+                  size={size}
+                  color={color}
+                />
+              ),
             }}
           />
           <Tabs.Screen
