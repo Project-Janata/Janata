@@ -13,6 +13,8 @@ import { useUser, useTheme } from '../../components/contexts'
 import { HeaderActionProvider } from '../../components/contexts/HeaderActionContext'
 import { Plus, Bell } from 'lucide-react-native'
 import { Ionicons } from '@expo/vector-icons'
+import { Plus, Bell } from 'lucide-react-native'
+import { Ionicons } from '@expo/vector-icons'
 import SettingsPanel from '../../components/settings/SettingsPanel'
 import Logo from '../../components/ui/Logo'
 import TabHeader from '../../components/ui/TabHeader'
@@ -220,6 +222,9 @@ export default function TabLayout() {
               tabBarIcon: ({ color, size, focused }) => (
                 <Ionicons name={focused ? 'home' : 'home-outline'} size={size} color={color} />
               ),
+              tabBarIcon: ({ color, size, focused }) => (
+                <Ionicons name={focused ? 'home' : 'home-outline'} size={size} color={color} />
+              ),
             }}
           />
           <Tabs.Screen
@@ -262,6 +267,13 @@ export default function TabLayout() {
                   color={color}
                 />
               ),
+              tabBarIcon: ({ color, size, focused }) => (
+                <Ionicons
+                  name={focused ? 'newspaper' : 'newspaper-outline'}
+                  size={size}
+                  color={color}
+                />
+              ),
             }}
           />
           <Tabs.Screen
@@ -272,6 +284,13 @@ export default function TabLayout() {
               header: isDesktopWeb
                 ? () => <WebHeader />
                 : () => <TabHeader title="Chat" action="create" />,
+              tabBarIcon: ({ color, size, focused }) => (
+                <Ionicons
+                  name={focused ? 'chatsquare' : 'chatsquare-outline'}
+                  size={size}
+                  color={color}
+                />
+              ),
               tabBarIcon: ({ color, size, focused }) => (
                 <Ionicons
                   name={focused ? 'chatsquare' : 'chatsquare-outline'}

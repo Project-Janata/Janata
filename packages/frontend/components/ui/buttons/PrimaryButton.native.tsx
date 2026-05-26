@@ -24,10 +24,13 @@ interface PrimaryButtonProps {
 export default function PrimaryButton({ children, onPress, disabled, loading, style }: PrimaryButtonProps) {
   const isDisabled = disabled || loading
   const [pressed, setPressed] = useState(false)
+  const [pressed, setPressed] = useState(false)
 
   return (
     <Pressable
       onPress={!isDisabled ? onPress : undefined}
+      onPressIn={() => setPressed(true)}
+      onPressOut={() => setPressed(false)}
       onPressIn={() => setPressed(true)}
       onPressOut={() => setPressed(false)}
       disabled={isDisabled}
@@ -47,6 +50,8 @@ export default function PrimaryButton({ children, onPress, disabled, loading, st
           paddingHorizontal: 16,
           paddingVertical: 14,
           borderRadius: 999,
+          alignItems: 'center' as const,
+          justifyContent: 'center' as const,
           alignItems: 'center' as const,
           justifyContent: 'center' as const,
           opacity: isDisabled ? 0.5 : 1,
