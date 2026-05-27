@@ -1381,6 +1381,241 @@ describe('board routes', () => {
 })
 
 // ═══════════════════════════════════════════════════════════════════════
+// AGGREGATED FEED (issue #205)
+// ═══════════════════════════════════════════════════════════════════════
+
+describe('GET /api/feed — aggregated cross-board feed', () => {
+  let adminToken: string
+  let memberToken: string
+  let strangerToken: string
+  let centerId: string
+  let otherCenterId: string
+  let memberId: string
+
+  beforeEach(async () => {
+    adminToken = await createAdmin()
+    const member = await registerAndLogin('feedmember', 'password123')
+    memberToken = member.token
+    const stranger = await registerAndLogin('feedstranger', 'password123')
+    strangerToken = stranger.token
+
+    // Two centers — member belongs to one, the other exists so we can test
+    // that the feed only shows the user's own center's posts.
+    const { body: c1 } = await jsonPost(
+      '/api/addCenter',
+      { centerName: 'Feed Center A', latitude: 37.0, longitude: -121.0 },
+      authHeader(adminToken),
+    )
+    centerId = c1.id
+    const { body: c2 } = await jsonPost(
+      '/api/addCenter',
+      { centerName: 'Feed Center B', latitude: 38.0, longitude: -122.0 },
+      authHeader(adminToken),
+    )
+    otherCenterId = c2.id
+
+    // Place member at center A; stranger stays unaffiliated.
+    await env.DB.prepare(
+      'UPDATE users SET center_id = ? WHERE username = ?',
+    )
+      .bind(centerId, 'feedmember')
+      .run()
+    const memberRow = await env.DB.prepare(
+      'SELECT id FROM users WHERE username = ?',
+    )
+      .bind('feedmember')
+      .first<{ id: string }>()
+    memberId = memberRow!.id
+  })
+
+  it('returns center board posts for the member, excludes the other center', async () => {
+    await jsonPost(
+      `/api/boards/center/${centerId}/posts`,
+      { body: 'mine' },
+      authHeader(memberToken),
+    )
+    // Have admin post on the OTHER center after temporarily moving
+    // their center_id so verifyBoardAccess passes.
+    await env.DB.prepare('UPDATE users SET center_id = ? WHERE email = ?')
+      .bind(otherCenterId, 'chinmayajanata@gmail.com')
+      .run()
+    await jsonPost(
+      `/api/boards/center/${otherCenterId}/posts`,
+      { body: 'not mine' },
+      authHeader(adminToken),
+    )
+
+    const { res, body } = await fetchJSON(
+      '/api/feed',
+      { headers: authHeader(memberToken) },
+    )
+    expect(res.status).toBe(200)
+    expect(body.posts.map((p: { body: string }) => p.body)).toEqual(['mine'])
+  })
+
+  it('includes event board posts only for events the user RSVPd to', async () => {
+    const { body: event } = await jsonPost(
+      '/api/addEvent',
+      {
+        title: 'Feed Event',
+        date: '2026-06-01T10:00:00Z',
+        latitude: 37.0,
+        longitude: -121.0,
+        centerID: centerId,
+      },
+      authHeader(adminToken),
+    )
+
+    // Admin posts on event board first (admin can access the board because
+    // they are the event creator and an admin). Then member RSVPs and
+    // posts their own. Stranger does nothing.
+    await env.DB.prepare('UPDATE users SET center_id = ? WHERE email = ?')
+      .bind(centerId, 'chinmayajanata@gmail.com')
+      .run()
+    await jsonPost('/api/attendEvent', { eventID: event.id }, authHeader(adminToken))
+    await jsonPost(
+      `/api/boards/event/${event.id}/posts`,
+      { body: 'event chatter' },
+      authHeader(adminToken),
+    )
+
+    await jsonPost('/api/attendEvent', { eventID: event.id }, authHeader(memberToken))
+    await jsonPost(
+      `/api/boards/event/${event.id}/posts`,
+      { body: 'my event reply' },
+      authHeader(memberToken),
+    )
+
+    // Member should see BOTH event-board posts + their center post (no center post here)
+    const { body: memberFeed } = await fetchJSON(
+      '/api/feed',
+      { headers: authHeader(memberToken) },
+    )
+    const memberBodies = memberFeed.posts.map((p: { body: string }) => p.body).sort()
+    expect(memberBodies).toEqual(['event chatter', 'my event reply'])
+
+    // Stranger should see NEITHER (no center, no RSVP)
+    const { body: strangerFeed } = await fetchJSON(
+      '/api/feed',
+      { headers: authHeader(strangerToken) },
+    )
+    expect(strangerFeed.posts).toEqual([])
+  })
+
+  it('excludes replies from the aggregated feed', async () => {
+    const { body: parent } = await jsonPost(
+      `/api/boards/center/${centerId}/posts`,
+      { body: 'top level' },
+      authHeader(memberToken),
+    )
+    await jsonPost(
+      `/api/boards/posts/${parent.post.id}/replies`,
+      { body: 'should not appear in feed' },
+      authHeader(memberToken),
+    )
+
+    const { body } = await fetchJSON(
+      '/api/feed',
+      { headers: authHeader(memberToken) },
+    )
+    expect(body.posts.map((p: { body: string }) => p.body)).toEqual(['top level'])
+  })
+
+  it('excludes soft-deleted posts from the feed', async () => {
+    const { body: postBody } = await jsonPost(
+      `/api/boards/center/${centerId}/posts`,
+      { body: 'will be deleted' },
+      authHeader(memberToken),
+    )
+    // Soft-delete by setting deleted_at directly (the DELETE route lives
+    // in #248 which isn't on this branch).
+    await env.DB.prepare(
+      `UPDATE board_posts SET deleted_at = datetime('now') WHERE id = ?`,
+    )
+      .bind(postBody.post.id)
+      .run()
+
+    const { body } = await fetchJSON(
+      '/api/feed',
+      { headers: authHeader(memberToken) },
+    )
+    expect(body.posts).toEqual([])
+  })
+
+  it('sorts feed reverse-chronological across boards', async () => {
+    // Center post first
+    await jsonPost(
+      `/api/boards/center/${centerId}/posts`,
+      { body: 'center first' },
+      authHeader(memberToken),
+    )
+    await new Promise((r) => setTimeout(r, 1100))
+
+    // Event post second
+    const { body: event } = await jsonPost(
+      '/api/addEvent',
+      {
+        title: 'sort test event',
+        date: '2026-06-01T10:00:00Z',
+        latitude: 37.0,
+        longitude: -121.0,
+        centerID: centerId,
+      },
+      authHeader(adminToken),
+    )
+    await jsonPost('/api/attendEvent', { eventID: event.id }, authHeader(memberToken))
+    await jsonPost(
+      `/api/boards/event/${event.id}/posts`,
+      { body: 'event second' },
+      authHeader(memberToken),
+    )
+
+    const { body } = await fetchJSON(
+      '/api/feed',
+      { headers: authHeader(memberToken) },
+    )
+    expect(body.posts.map((p: { body: string }) => p.body)).toEqual([
+      'event second',
+      'center first',
+    ])
+  })
+
+  it('honors limit + offset for pagination', async () => {
+    // Create 5 posts (no inter-post delay — pagination correctness doesn't
+    // care about created_at ordering, just that limit/offset split correctly).
+    for (let i = 0; i < 5; i++) {
+      await jsonPost(
+        `/api/boards/center/${centerId}/posts`,
+        { body: `post ${i}` },
+        authHeader(memberToken),
+      )
+    }
+
+    const { body: page1 } = await fetchJSON(
+      '/api/feed?limit=2&offset=0',
+      { headers: authHeader(memberToken) },
+    )
+    expect(page1.posts).toHaveLength(2)
+
+    const { body: page2 } = await fetchJSON(
+      '/api/feed?limit=2&offset=2',
+      { headers: authHeader(memberToken) },
+    )
+    expect(page2.posts).toHaveLength(2)
+
+    // No overlap between pages
+    const page1Ids = page1.posts.map((p: { id: string }) => p.id)
+    const page2Ids = page2.posts.map((p: { id: string }) => p.id)
+    expect(page1Ids.filter((id: string) => page2Ids.includes(id))).toEqual([])
+  })
+
+  it('returns 401 without authentication', async () => {
+    const { res } = await fetchJSON('/api/feed')
+    expect(res.status).toBe(401)
+  })
+})
+
+// ═══════════════════════════════════════════════════════════════════════
 // EVENTS
 // ═══════════════════════════════════════════════════════════════════════
 

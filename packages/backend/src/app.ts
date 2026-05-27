@@ -1503,6 +1503,32 @@ app.get('/boards/posts/:postId/replies', authMiddleware, async (c) => {
   })
 })
 
+/**
+ * Aggregated cross-board feed (#205). Returns every top-level post on a
+ * board the authenticated user has access to (verified center member:
+ * posts on that center's board; event-attendee: posts on those event
+ * boards), in reverse-chronological order. Replies are excluded from this
+ * top-level feed. Per #205: target latency <300ms on production data.
+ */
+app.get('/feed', authMiddleware, async (c) => {
+  const user = c.get('user')
+  const limit = Number.parseInt(c.req.query('limit') || '50', 10)
+  const offset = Number.parseInt(c.req.query('offset') || '0', 10)
+
+  const posts = await db.listAggregatedFeed(
+    c.env.DB,
+    {
+      id: user.id,
+      center_id: user.center_id,
+    },
+    { limit, offset },
+  )
+
+  return c.json({
+    posts: posts.map(boardPostToApi),
+  })
+})
+
 // ═══════════════════════════════════════════════════════════════════════
 // EVENT ROUTES
 // ═══════════════════════════════════════════════════════════════════════
