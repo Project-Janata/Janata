@@ -28,7 +28,14 @@ import {
 } from '../components/contexts'
 import { ErrorBoundary } from '../components/ui/ErrorBoundary'
 import WebBottomNav from '../components/ui/WebBottomNav'
+import { initSentry } from '../src/lib/sentry'
 import '../globals.css'
+
+// Initialize Sentry at module load — before any render. No-op when
+// EXPO_PUBLIC_SENTRY_DSN is unset (current state for dev + previews) so
+// this is a free addition until Kish creates the project + sets the env.
+// See src/lib/sentry.ts + #105 for the activation steps.
+initSentry()
 
 export const unstable_settings = {
   initialRouteName: '(tabs)',

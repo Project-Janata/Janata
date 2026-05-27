@@ -1,6 +1,8 @@
 import React, { Component, type ErrorInfo, type ReactNode } from 'react'
 import { ScrollView, View, Text, Pressable } from 'react-native'
 
+import { captureError } from '../../src/lib/sentry'
+
 interface Props {
   children: ReactNode
   fallback?: ReactNode
@@ -38,6 +40,10 @@ export class ErrorBoundary extends Component<Props, State> {
         componentStack: info.componentStack,
       }
     }
+    // Forward to Sentry. No-op until EXPO_PUBLIC_SENTRY_DSN is set + the
+    // @sentry/react-native package is installed — see src/lib/sentry.ts
+    // and #105 for activation steps.
+    captureError(error, { componentStack: info.componentStack ?? '(none)' })
     this.setState({ componentStack: info.componentStack ?? null })
   }
 
