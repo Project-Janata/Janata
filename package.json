@@ -12,7 +12,7 @@
     "dev:backend": "cd packages/backend && npm run dev",
     "dev:frontend": "cd packages/frontend && npm run dev",
     "build": "npm run typecheck && npm run build:frontend",
-    "build:frontend": "cd packages/frontend && npm run build && rm -rf ../../dist && cp -R dist ../../dist",
+    "build:frontend": "cd packages/frontend && npm run build && rm -rf ../../dist && cp -R dist ../../dist && node ../../scripts/generate-sitemap.cjs",
     "typecheck": "cd packages/backend && npm run typecheck",
     "deploy": "npm run deploy:backend && npm run deploy:frontend",
     "deploy:frontend": "npm run build:frontend && npx wrangler pages deploy dist",

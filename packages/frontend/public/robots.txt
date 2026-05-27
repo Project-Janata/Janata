@@ -1,0 +1,27 @@
+# robots.txt for Chinmaya Janata
+# Public site: https://chinmayajanata.org
+
+User-agent: *
+Allow: /
+Allow: /center/
+Allow: /events/
+Allow: /landing
+Allow: /terms
+Allow: /privacy
+Allow: /cookies
+
+# Auth-gated and admin surfaces — don't index
+Disallow: /auth
+Disallow: /auth/
+Disallow: /admin
+Disallow: /admin/
+Disallow: /onboarding
+Disallow: /edit-profile
+Disallow: /settings
+Disallow: /settings/
+Disallow: /chat/
+Disallow: /feed/
+
+# AI crawlers — same rules; no separate carve-outs.
+
+Sitemap: https://chinmayajanata.org/sitemap.xml

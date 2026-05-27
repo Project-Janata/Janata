@@ -8,6 +8,8 @@ import { createBoardPost, type EventDisplay } from '../../utils/api'
 import UnderlineTabBar from '../../components/ui/UnderlineTabBar'
 import { ThreadPanel, boardPostToMessage } from '../../components/boards'
 import { useUser } from '../../components/contexts'
+import { SeoHead } from '../../components/seo/SeoHead'
+import { buildCenterJsonLd } from '../../components/seo/jsonLd'
 
 export default function CenterDetailWeb() {
   const { id: rawId } = useLocalSearchParams()
@@ -110,8 +112,22 @@ function MobileCenterDetail({ centerId }: { centerId: string }) {
   }
 
   const displayWebsite = (center.website ?? '').replace(/^https?:\/\//, '').replace(/\/$/, '')
+  const seoTitle = center.name || 'Center'
+  const seoDesc =
+    `${center.name} — a Chinmaya Mission center` +
+    (center.address ? ` at ${center.address}` : '') +
+    '. Find upcoming events, contact info, and connect with the local community on Chinmaya Janata.'
+  const centerJsonLd = buildCenterJsonLd(center)
+
   return (
     <View style={{ flex: 1, backgroundColor: colors.panelBg }}>
+      <SeoHead
+        title={seoTitle}
+        description={seoDesc}
+        path={`/center/${center.id}`}
+        ogImage={center.image || undefined}
+        jsonLd={centerJsonLd}
+      />
       {/* Header */}
       <View style={{ paddingHorizontal: 16, paddingTop: 16, paddingBottom: 8, gap: 10 }}>
         <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>

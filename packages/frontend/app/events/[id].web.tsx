@@ -14,6 +14,8 @@ import DestructiveButton from '../../components/ui/buttons/DestructiveButton'
 import AuthPromptModal from '../../components/ui/AuthPromptModal'
 import { useDetailColors } from '../../hooks/useDetailColors'
 import { ThreadPanel, boardPostToMessage } from '../../components/boards'
+import { SeoHead } from '../../components/seo/SeoHead'
+import { buildEventJsonLd } from '../../components/seo/jsonLd'
 
 function formatEventDateLabel(dateStr: string): string {
   const d = new Date(`${dateStr}T00:00:00`)
@@ -109,8 +111,24 @@ function MobileEventDetail({ eventId }: { eventId: string }) {
     )
   }
 
+  const seoTitle = event.title || 'Event'
+  const seoDesc =
+    event.description && event.description.length > 30
+      ? event.description
+      : `${event.title} on ${event.date}` +
+        (event.address ? ` at ${event.address}` : '') +
+        '. Find details and RSVP on Chinmaya Janata.'
+  const eventJsonLd = buildEventJsonLd(event)
+
   return (
     <View style={{ flex: 1, backgroundColor: colors.panelBg }}>
+      <SeoHead
+        title={seoTitle}
+        description={seoDesc}
+        path={`/events/${event.id}`}
+        ogImage={event.image || undefined}
+        jsonLd={eventJsonLd}
+      />
       {/* Header */}
       <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: 16, paddingTop: 16, paddingBottom: 8 }}>
         <Pressable onPress={() => router.back()} style={{ flexDirection: 'row', alignItems: 'center', gap: 4 }}>
