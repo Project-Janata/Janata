@@ -213,6 +213,30 @@ export async function getAllCenters(db: D1Database): Promise<CenterRow[]> {
   return result.results ?? []
 }
 
+/**
+ * Paginated centers fetch (#107). Returns the page of results plus the
+ * grand total so the caller can render "showing N of M" + know when to
+ * stop requesting more pages.
+ *
+ * `limit` is clamped to [1, 200] to bound worker CPU + response size.
+ * `offset` is clamped to non-negative integers.
+ */
+export async function getCentersPaginated(
+  db: D1Database,
+  limit: number,
+  offset: number,
+): Promise<{ data: CenterRow[]; total: number }> {
+  const safeLimit = Math.max(1, Math.min(200, Math.floor(limit)))
+  const safeOffset = Math.max(0, Math.floor(offset))
+  const [page, countResult] = await Promise.all([
+    db.prepare('SELECT * FROM centers ORDER BY name LIMIT ?1 OFFSET ?2')
+      .bind(safeLimit, safeOffset)
+      .all<CenterRow>(),
+    db.prepare('SELECT COUNT(*) as count FROM centers').first<{ count: number }>(),
+  ])
+  return { data: page.results ?? [], total: countResult?.count ?? 0 }
+}
+
 export async function updateCenter(
   db: D1Database,
   centerId: string,
@@ -350,6 +374,26 @@ export async function getAllEvents(db: D1Database): Promise<EventRow[]> {
     .prepare('SELECT * FROM events ORDER BY date DESC')
     .all<EventRow>()
   return result.results ?? []
+}
+
+/**
+ * Paginated events fetch (#107). Mirrors getCentersPaginated. Sort order
+ * is date DESC so the newest/upcoming events naturally land on page 1.
+ */
+export async function getEventsPaginated(
+  db: D1Database,
+  limit: number,
+  offset: number,
+): Promise<{ data: EventRow[]; total: number }> {
+  const safeLimit = Math.max(1, Math.min(200, Math.floor(limit)))
+  const safeOffset = Math.max(0, Math.floor(offset))
+  const [page, countResult] = await Promise.all([
+    db.prepare('SELECT * FROM events ORDER BY date DESC LIMIT ?1 OFFSET ?2')
+      .bind(safeLimit, safeOffset)
+      .all<EventRow>(),
+    db.prepare('SELECT COUNT(*) as count FROM events').first<{ count: number }>(),
+  ])
+  return { data: page.results ?? [], total: countResult?.count ?? 0 }
 }
 
 export async function getEventsByCenterId(

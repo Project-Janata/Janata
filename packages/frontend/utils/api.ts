@@ -242,6 +242,44 @@ export function invalidateCentersCache(): void {
   _centersTimestamp = 0
 }
 
+/**
+ * Paginated centers result (#107). `total` is the count BEFORE the page slice,
+ * useful for "showing N of M" and for knowing when to stop calling for more.
+ */
+export interface PaginatedResult<T> {
+  data: T[]
+  total: number
+  limit: number
+  offset: number
+}
+
+/**
+ * Paginated centers fetch (#107). Use for infinite scroll: start at offset=0
+ * and call again with `offset += limit` until `data.length === 0` OR
+ * `offset >= total`. Returns an empty page (not an error) on network failure
+ * so the UI can fall back gracefully.
+ */
+export async function fetchCentersPage(
+  limit: number,
+  offset = 0,
+): Promise<PaginatedResult<CenterData>> {
+  const url = `/centers?limit=${Math.max(1, Math.floor(limit))}&offset=${Math.max(0, Math.floor(offset))}`
+  try {
+    const response = await apiFetch(url)
+    if (!response.ok) return { data: [], total: 0, limit, offset }
+    const data = await response.json()
+    return {
+      data: data.centers || [],
+      total: typeof data.total === 'number' ? data.total : 0,
+      limit: typeof data.limit === 'number' ? data.limit : limit,
+      offset: typeof data.offset === 'number' ? data.offset : offset,
+    }
+  } catch (err: any) {
+    if (__DEV__) console.warn('[fetchCentersPage]', err?.message || err)
+    return { data: [], total: 0, limit, offset }
+  }
+}
+
 // ── API methods ────────────────────────────────────────────────────────
 
 export async function fetchCenter(centerID: string): Promise<CenterData | null> {
@@ -310,6 +348,35 @@ export async function fetchAllEvents(): Promise<EventData[]> {
   } catch (err: any) {
     if (__DEV__) console.warn('[fetchAllEvents]', err?.message || err)
     return []
+  }
+}
+
+/**
+ * Paginated events fetch (#107). Sort order is date DESC (matches the
+ * unpaginated /fetchAllEvents). Image URLs are normalized to absolute,
+ * same as the unpaginated path.
+ */
+export async function fetchEventsPage(
+  limit: number,
+  offset = 0,
+): Promise<PaginatedResult<EventData>> {
+  const url = `/fetchAllEvents?limit=${Math.max(1, Math.floor(limit))}&offset=${Math.max(0, Math.floor(offset))}`
+  try {
+    const response = await apiFetch(url)
+    if (!response.ok) return { data: [], total: 0, limit, offset }
+    const data = await response.json()
+    const events = ((data.events || []) as EventData[]).map((e) =>
+      e.image && e.image.startsWith('/') ? { ...e, image: `${API_BASE_URL}${e.image}` } : e,
+    )
+    return {
+      data: events,
+      total: typeof data.total === 'number' ? data.total : 0,
+      limit: typeof data.limit === 'number' ? data.limit : limit,
+      offset: typeof data.offset === 'number' ? data.offset : offset,
+    }
+  } catch (err: any) {
+    if (__DEV__) console.warn('[fetchEventsPage]', err?.message || err)
+    return { data: [], total: 0, limit, offset }
   }
 }
 
