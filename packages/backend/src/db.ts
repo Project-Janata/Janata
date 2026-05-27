@@ -860,10 +860,15 @@ export async function listBoardPosts(
   // then everything else reverse-chronological. The
   // `pinned_at IS NOT NULL` predicate evaluates to 1 for pinned posts and 0
   // for non-pinned; DESC puts the 1s first.
+  // Exclude posts that are themselves replies (#205 threaded replies) — they
+  // belong under their parent in the reply panel, not at the top level of the
+  // board feed. Single-level threading is enforced in createBoardPostReply,
+  // so the NOT IN subquery is bounded and trivially indexed.
   const result = await db
     .prepare(
       `SELECT * FROM board_posts
        WHERE board_id = ?1 AND deleted_at IS NULL
+         AND id NOT IN (SELECT post_id FROM board_post_replies)
        ORDER BY (pinned_at IS NOT NULL) DESC, pinned_at DESC, created_at DESC
        LIMIT ?2 OFFSET ?3`,
     )
@@ -1085,4 +1090,111 @@ export async function unpinBoardPost(
     .run()
 
   return { ok: true, pinned: false }
+}
+
+export type CreateBoardPostReplyResult =
+  | { ok: true }
+  | {
+      ok: false
+      reason:
+        | 'parent_not_found'
+        | 'parent_deleted'
+        | 'parent_is_reply'
+        | 'insert_failed'
+    }
+
+/**
+ * Create a single-level reply to a top-level board post. Enforced rules:
+ *   - parent must exist (not deleted)
+ *   - parent must itself be a top-level post — replies-to-replies are
+ *     refused with `parent_is_reply` so threads can't deepen past one level
+ *   - reply lands on the same board as the parent (caller passes board_id
+ *     for the route's access gate, but we double-check here)
+ *
+ * Uses D1 batch() so the board_posts INSERT and the board_post_replies
+ * INSERT are atomic — no orphan top-level posts if either fails.
+ */
+export async function createBoardPostReply(
+  db: D1Database,
+  args: {
+    id: string
+    parent_post_id: string
+    board_id: string
+    author_id: string
+    body: string
+  },
+): Promise<CreateBoardPostReplyResult> {
+  const parent = await db
+    .prepare(`SELECT board_id, deleted_at FROM board_posts WHERE id = ?1`)
+    .bind(args.parent_post_id)
+    .first<{ board_id: string; deleted_at: string | null }>()
+  if (!parent) return { ok: false, reason: 'parent_not_found' }
+  if (parent.deleted_at) return { ok: false, reason: 'parent_deleted' }
+
+  // Treat board mismatch as not_found rather than leak info about which
+  // board the parent is on.
+  if (parent.board_id !== args.board_id) {
+    return { ok: false, reason: 'parent_not_found' }
+  }
+
+  // Single-level threading: parent can't itself be a reply.
+  const parentIsReply = await db
+    .prepare(`SELECT 1 FROM board_post_replies WHERE post_id = ?1`)
+    .bind(args.parent_post_id)
+    .first()
+  if (parentIsReply) return { ok: false, reason: 'parent_is_reply' }
+
+  const results = await db.batch([
+    db
+      .prepare(
+        `INSERT INTO board_posts (id, board_id, author_id, body, image_url)
+         VALUES (?1, ?2, ?3, ?4, NULL)`,
+      )
+      .bind(args.id, args.board_id, args.author_id, args.body),
+    db
+      .prepare(
+        `INSERT INTO board_post_replies (post_id, parent_post_id) VALUES (?1, ?2)`,
+      )
+      .bind(args.id, args.parent_post_id),
+  ])
+
+  return results.every((r) => r.success) ? { ok: true } : { ok: false, reason: 'insert_failed' }
+}
+
+/**
+ * List replies under a parent post in chronological order (oldest first —
+ * threads read top-to-bottom). Returns hydrated `BoardPostWithAuthor`
+ * shape so the route can pass them through `boardPostToApi` directly.
+ * Reply rows don't carry their own reactions or reply_count yet (v2 doesn't
+ * reply-to-reply, and reactions on replies are deferred per PRD).
+ */
+export async function listBoardPostReplies(
+  db: D1Database,
+  parentPostId: string,
+): Promise<BoardPostWithAuthor[]> {
+  const result = await db
+    .prepare(
+      `SELECT bp.* FROM board_posts bp
+       JOIN board_post_replies bpr ON bpr.post_id = bp.id
+       WHERE bpr.parent_post_id = ?1 AND bp.deleted_at IS NULL
+       ORDER BY bp.created_at ASC`,
+    )
+    .bind(parentPostId)
+    .all<BoardPostRow>()
+
+  const replies = result.results ?? []
+  const hydrated = await Promise.all(
+    replies.map(async (post) => {
+      const author = await getUserById(db, post.author_id)
+      return author
+        ? {
+            ...post,
+            author,
+            reactions: [] as BoardReactionCount[],
+            reply_count: 0,
+          }
+        : null
+    }),
+  )
+  return hydrated.filter((p): p is BoardPostWithAuthor => p !== null)
 }

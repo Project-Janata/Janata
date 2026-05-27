@@ -1249,6 +1249,135 @@ describe('board routes', () => {
       expect(list.posts[1].id).toBe(c.post.id)
     })
   })
+
+  // ── Replies (issue #205) ──────────────────────────────────────────────
+  describe('Replies: POST /api/boards/posts/:postId/replies + GET', () => {
+    let parentId: string
+
+    beforeEach(async () => {
+      const { body } = await jsonPost(
+        `/api/boards/center/${centerId}/posts`,
+        { body: 'parent post' },
+        authHeader(memberToken),
+      )
+      parentId = body.post.id
+    })
+
+    it('creates a reply on a parent post and lists it', async () => {
+      const { res: createRes, body: createBody } = await jsonPost(
+        `/api/boards/posts/${parentId}/replies`,
+        { body: 'first reply' },
+        authHeader(memberToken),
+      )
+      expect(createRes.status).toBe(201)
+      expect(createBody.reply.body).toBe('first reply')
+      expect(createBody.reply.author.username).toBe('boardmember')
+
+      const { res: listRes, body: listBody } = await fetchJSON(
+        `/api/boards/posts/${parentId}/replies`,
+        { headers: authHeader(memberToken) },
+      )
+      expect(listRes.status).toBe(200)
+      expect(listBody.replies).toHaveLength(1)
+      expect(listBody.replies[0].body).toBe('first reply')
+    })
+
+    it('excludes replies from the top-level board listing', async () => {
+      await jsonPost(
+        `/api/boards/posts/${parentId}/replies`,
+        { body: 'a reply that should not appear at top level' },
+        authHeader(memberToken),
+      )
+
+      const { body } = await fetchJSON(
+        `/api/boards/center/${centerId}`,
+        { headers: authHeader(memberToken) },
+      )
+      // Only the original parent post should be visible at top level.
+      expect(body.posts.map((p: { body: string }) => p.body)).toEqual(['parent post'])
+    })
+
+    it('increments parent replyCount in board listing', async () => {
+      await jsonPost(
+        `/api/boards/posts/${parentId}/replies`,
+        { body: 'r1' },
+        authHeader(memberToken),
+      )
+      await jsonPost(
+        `/api/boards/posts/${parentId}/replies`,
+        { body: 'r2' },
+        authHeader(memberToken),
+      )
+
+      const { body } = await fetchJSON(
+        `/api/boards/center/${centerId}`,
+        { headers: authHeader(memberToken) },
+      )
+      expect(body.posts[0].replyCount).toBe(2)
+    })
+
+    it('refuses reply-to-reply (single-level threading) with 409', async () => {
+      const { body: r1 } = await jsonPost(
+        `/api/boards/posts/${parentId}/replies`,
+        { body: 'first reply' },
+        authHeader(memberToken),
+      )
+
+      const { res } = await jsonPost(
+        `/api/boards/posts/${r1.reply.id}/replies`,
+        { body: 'reply to a reply' },
+        authHeader(memberToken),
+      )
+      expect(res.status).toBe(409)
+    })
+
+    it('rejects reply from a user without board access (403)', async () => {
+      const stranger = await registerAndLogin('boardstranger', 'password123')
+      const { res } = await jsonPost(
+        `/api/boards/posts/${parentId}/replies`,
+        { body: 'sneaky' },
+        authHeader(stranger.token),
+      )
+      expect(res.status).toBe(403)
+    })
+
+    it('rejects empty reply body (400)', async () => {
+      const { res } = await jsonPost(
+        `/api/boards/posts/${parentId}/replies`,
+        { body: '   ' },
+        authHeader(memberToken),
+      )
+      expect(res.status).toBe(400)
+    })
+
+    it('returns 404 when the parent does not exist', async () => {
+      const { res } = await fetchJSON(
+        `/api/boards/posts/no-such-post/replies`,
+        { headers: authHeader(memberToken) },
+      )
+      expect(res.status).toBe(404)
+    })
+
+    it('lists replies in chronological order (oldest first)', async () => {
+      await jsonPost(
+        `/api/boards/posts/${parentId}/replies`,
+        { body: 'first' },
+        authHeader(memberToken),
+      )
+      await new Promise((r) => setTimeout(r, 1100))
+      await jsonPost(
+        `/api/boards/posts/${parentId}/replies`,
+        { body: 'second' },
+        authHeader(memberToken),
+      )
+
+      const { body } = await fetchJSON(
+        `/api/boards/posts/${parentId}/replies`,
+        { headers: authHeader(memberToken) },
+      )
+      expect(body.replies.map((r: { body: string }) => r.body)).toEqual(['first', 'second'])
+    })
+  })
 })
 
 // ═══════════════════════════════════════════════════════════════════════

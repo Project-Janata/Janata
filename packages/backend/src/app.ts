@@ -1418,6 +1418,91 @@ app.post('/boards/posts/:postId/unpin', authMiddleware, async (c) => {
   return c.json({ ok: true, pinned: false })
 })
 
+// Single-level threaded replies (#205). Access gate: same as posting on the
+// parent's board. Replies inherit the parent's board so users RSVP'd or
+// center-verified for that board can reply.
+app.post('/boards/posts/:postId/replies', authMiddleware, async (c) => {
+  const user = c.get('user')
+  const parentPostId = c.req.param('postId')
+
+  const parent = await db.getBoardPostById(c.env.DB, parentPostId)
+  if (!parent) {
+    return c.json({ message: 'Board post not found' }, 404)
+  }
+  const board = await db.getBoardById(c.env.DB, parent.board_id)
+  if (!board) {
+    return c.json({ message: 'Board not found' }, 404)
+  }
+  const accessError = await verifyBoardAccess(c, board.type, board.parent_id, user)
+  if (accessError) return accessError
+
+  const body: { body?: string } = await c.req
+    .json<{ body?: string }>()
+    .catch(() => ({}))
+  const text = typeof body.body === 'string' ? body.body.trim() : ''
+  if (!text) {
+    return c.json({ message: 'Reply body is required' }, 400)
+  }
+  if (text.length > 2000) {
+    return c.json({ message: 'Reply body must be 2000 characters or fewer' }, 400)
+  }
+
+  const replyId = crypto.randomUUID()
+  const result = await db.createBoardPostReply(c.env.DB, {
+    id: replyId,
+    parent_post_id: parentPostId,
+    board_id: parent.board_id,
+    author_id: user.id,
+    body: text,
+  })
+
+  if (!result.ok) {
+    switch (result.reason) {
+      case 'parent_not_found':
+        return c.json({ message: 'Parent post not found' }, 404)
+      case 'parent_deleted':
+        return c.json({ message: 'Cannot reply to a deleted post' }, 410)
+      case 'parent_is_reply':
+        return c.json(
+          { message: 'Cannot reply to a reply — threads are single-level only in v2' },
+          409,
+        )
+      case 'insert_failed':
+        return c.json({ message: 'Failed to create reply' }, 500)
+    }
+  }
+
+  // Reload via the listBoardPostReplies path so the returned shape matches
+  // the GET endpoint and the frontend sees consistent fields.
+  const replies = await db.listBoardPostReplies(c.env.DB, parentPostId)
+  const created = replies.find((r) => r.id === replyId)
+  if (!created) {
+    return c.json({ message: 'Reply created but could not be loaded' }, 500)
+  }
+  return c.json({ reply: boardPostToApi(created) }, 201)
+})
+
+app.get('/boards/posts/:postId/replies', authMiddleware, async (c) => {
+  const user = c.get('user')
+  const parentPostId = c.req.param('postId')
+
+  const parent = await db.getBoardPostById(c.env.DB, parentPostId)
+  if (!parent) {
+    return c.json({ message: 'Board post not found' }, 404)
+  }
+  const board = await db.getBoardById(c.env.DB, parent.board_id)
+  if (!board) {
+    return c.json({ message: 'Board not found' }, 404)
+  }
+  const accessError = await verifyBoardAccess(c, board.type, board.parent_id, user)
+  if (accessError) return accessError
+
+  const replies = await db.listBoardPostReplies(c.env.DB, parentPostId)
+  return c.json({
+    replies: replies.map(boardPostToApi),
+  })
+})
+
 // ═══════════════════════════════════════════════════════════════════════
 // EVENT ROUTES
 // ═══════════════════════════════════════════════════════════════════════
