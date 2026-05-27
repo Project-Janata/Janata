@@ -201,7 +201,10 @@ export async function markNotificationAsRead(
   `)
 
   const result = await stmt.bind(now, now, notificationId, userId).run()
-  return result.success === true
+  // D1's `.success` is true even on 0-row updates. Check `meta.changes` so
+  // the route can return 404 when the notification didn't exist or didn't
+  // belong to this user (#127).
+  return result.success === true && (result.meta?.changes ?? 0) > 0
 }
 
 /**
@@ -237,7 +240,8 @@ export async function archiveNotification(
   `)
 
   const result = await stmt.bind(now, notificationId, userId).run()
-  return result.success === true
+  // Same meta.changes check as markNotificationAsRead (#127).
+  return result.success === true && (result.meta?.changes ?? 0) > 0
 }
 
 /**
@@ -254,7 +258,8 @@ export async function deleteNotification(
   `)
 
   const result = await stmt.bind(notificationId, userId).run()
-  return result.success === true
+  // Same meta.changes check as the update paths (#127).
+  return result.success === true && (result.meta?.changes ?? 0) > 0
 }
 
 /**

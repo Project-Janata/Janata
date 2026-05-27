@@ -1977,7 +1977,37 @@ app.get('/notifications/preferences', authMiddleware, async (c) => {
  */
 app.put('/notifications/preferences', authMiddleware, async (c) => {
   const user = c.get('user')
-  const body = await c.req.json()
+
+  // Body validation (#127). Reject malformed JSON, non-object bodies, and
+  // wrong types on known fields. Unknown keys are silently dropped — no need
+  // to 400 over forward-compatible extras.
+  let body: Record<string, unknown>
+  try {
+    const parsed = await c.req.json()
+    if (typeof parsed !== 'object' || parsed === null || Array.isArray(parsed)) {
+      return c.json({ message: 'Body must be a JSON object' }, 400)
+    }
+    body = parsed as Record<string, unknown>
+  } catch {
+    return c.json({ message: 'Invalid JSON body' }, 400)
+  }
+
+  const BOOL_KEYS = [
+    'inAppEnabled', 'pushEnabled', 'emailEnabled',
+    'eventReminders', 'eventCreated', 'eventCancelled', 'eventUpdated',
+    'attendeeJoined', 'centerAnnouncements', 'quietHoursEnabled',
+  ] as const
+  for (const k of BOOL_KEYS) {
+    if (body[k] !== undefined && typeof body[k] !== 'boolean') {
+      return c.json({ message: `${k} must be a boolean` }, 400)
+    }
+  }
+  const STRING_KEYS = ['quietHoursStart', 'quietHoursEnd'] as const
+  for (const k of STRING_KEYS) {
+    if (body[k] !== undefined && body[k] !== null && typeof body[k] !== 'string') {
+      return c.json({ message: `${k} must be a string or null` }, 400)
+    }
+  }
 
   // Convert from camelCase API format to snake_case DB format
   const updates: Partial<notifications.NotificationPreferenceRow> = {}
@@ -1991,8 +2021,8 @@ app.put('/notifications/preferences', authMiddleware, async (c) => {
   if (body.eventUpdated !== undefined) updates.event_updated = body.eventUpdated ? 1 : 0
   if (body.attendeeJoined !== undefined) updates.attendee_joined = body.attendeeJoined ? 1 : 0
   if (body.centerAnnouncements !== undefined) updates.center_announcements = body.centerAnnouncements ? 1 : 0
-  if (body.quietHoursStart !== undefined) updates.quiet_hours_start = body.quietHoursStart
-  if (body.quietHoursEnd !== undefined) updates.quiet_hours_end = body.quietHoursEnd
+  if (body.quietHoursStart !== undefined) updates.quiet_hours_start = body.quietHoursStart as string | null
+  if (body.quietHoursEnd !== undefined) updates.quiet_hours_end = body.quietHoursEnd as string | null
   if (body.quietHoursEnabled !== undefined) updates.quiet_hours_enabled = body.quietHoursEnabled ? 1 : 0
 
   const prefs = await notifications.updateNotificationPreferences(c.env, user.id, updates)
@@ -2104,14 +2134,41 @@ app.post('/admin/notifications/send', adminMiddleware, async (c) => {
   }
 
   if (body.broadcast) {
-    // Send to all users
+    // Broadcast to all users via batch insert. The old code looped
+    // sequentially calling createNotification per user — that hits the
+    // Workers CPU time limit (30s sustained) once the user table grows.
+    // Batch insert sends one round trip per chunk and reuses the prepared
+    // statement, taking us from O(N round-trips) to O(N/chunk).
     const users = await c.env.DB.prepare('SELECT id FROM users').all<{ id: string }>()
+    const userIds = (users.results || []).map((u) => u.id)
     let sent = 0
-    for (const user of users.results || []) {
-      await notifications.createNotification(c.env, user.id, body.typeId, body.title, body.message, {
-        actionUrl: body.actionUrl,
-      })
-      sent++
+    if (userIds.length > 0) {
+      const now = new Date().toISOString()
+      const stmt = c.env.DB.prepare(
+        `INSERT INTO notifications
+          (id, user_id, type_id, title, message, action_url, is_read, is_archived, created_at, updated_at)
+         VALUES (?, ?, ?, ?, ?, ?, 0, 0, ?, ?)`
+      )
+      // Chunk into batches of 50 — D1's batch size limit is 100ish in
+      // practice; 50 leaves headroom and bounds round-trip latency.
+      const CHUNK = 50
+      for (let i = 0; i < userIds.length; i += CHUNK) {
+        const slice = userIds.slice(i, i + CHUNK)
+        const statements = slice.map((uid) =>
+          stmt.bind(
+            crypto.randomUUID(),
+            uid,
+            body.typeId,
+            body.title,
+            body.message,
+            body.actionUrl ?? null,
+            now,
+            now,
+          ),
+        )
+        const results = await c.env.DB.batch(statements)
+        sent += results.reduce((acc, r) => acc + (r.success ? 1 : 0), 0)
+      }
     }
     return c.json({ message: `Notification sent to ${sent} users`, sent })
   }
@@ -2136,10 +2193,15 @@ app.delete('/admin/notifications/:id', adminMiddleware, async (c) => {
 
   const result = await c.env.DB.prepare('DELETE FROM notifications WHERE id = ?').bind(notifId).run()
 
-  if (result.success) {
-    return c.json({ message: 'Notification deleted' })
+  // Distinguish "didn't exist" (404) from a DB failure (500). `result.success`
+  // is true even on 0-row deletes, so use meta.changes for the 404 path (#127).
+  if (!result.success) {
+    return c.json({ message: 'Failed to delete notification' }, 500)
   }
-  return c.json({ message: 'Failed to delete notification' }, 500)
+  if ((result.meta?.changes ?? 0) === 0) {
+    return c.json({ message: 'Notification not found' }, 404)
+  }
+  return c.json({ message: 'Notification deleted' })
 })
 
 // ── Default export ────────────────────────────────────────────────────
