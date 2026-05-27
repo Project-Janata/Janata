@@ -30,6 +30,7 @@
     "d1:migrate:all": "bash scripts/db/migrate-all.sh",
     "db:snapshot": "bash scripts/db/snapshot.sh",
     "db:restore": "bash scripts/db/restore.sh",
+    "db:cutover-status": "bash scripts/db/cutover-status.sh",
     "android": "cd packages/frontend && npx expo run:android",
     "ios": "cd packages/frontend && npx expo run:ios",
     "test:frontend": "cd packages/frontend && npm run test",

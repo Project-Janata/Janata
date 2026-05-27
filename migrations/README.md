@@ -119,6 +119,18 @@ npm run db:restore -- data/snapshots/<utc-stamp>
 6. After merge, apply to prod manually — there's no auto-apply step in CI
    (deliberately, so no accidental schema changes ship without review)
 
+## When releasing v2 → main
+
+The recurring cutover workflow lives in **[`docs/release-cutover.md`](../docs/release-cutover.md)**.
+Before any release, run:
+
+```bash
+npm run db:cutover-status
+```
+
+It prints which migrations on `v2` aren't yet applied to prod D1, flags
+any canon-tier touches that need a snapshot, and emits the exact apply
+commands. Do NOT skip migration apply — CI does not run migrations.
 
 ## Pre-MSC ritual (~10 days before launch)
 
