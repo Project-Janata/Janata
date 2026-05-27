@@ -1,13 +1,13 @@
 import { View, Text, ScrollView } from 'react-native'
-import { useTheme } from '../components/contexts'
+import { useColors } from '../hooks/useColors'
 
 export default function TermsOfService() {
-  const { isDark } = useTheme()
-  const bg = isDark ? '#171717' : '#FAFAF7'
-  const heading = isDark ? '#F5F5F4' : '#1C1917'
-  const body = isDark ? '#D6D3D1' : '#44403C'
-  const muted = isDark ? '#A8A29E' : '#78716C'
-  const border = isDark ? '#262626' : '#E7E5E4'
+  const c = useColors()
+  const bg = c.surface
+  const heading = c.text
+  const body = c.textSecondary
+  const muted = c.textMuted
+  const border = c.border
 
   return (
     <ScrollView style={{ flex: 1, backgroundColor: bg }}>

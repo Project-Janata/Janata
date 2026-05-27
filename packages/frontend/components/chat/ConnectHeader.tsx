@@ -1,6 +1,6 @@
 import React from 'react'
 import { Pressable, Text, TextInput, View } from 'react-native'
-import { ArrowLeft, Search } from 'lucide-react-native'
+import { ArrowLeft, MagnifyingGlass } from 'phosphor-react-native'
 import type { AppColors } from '../../tokens'
 
 export function ConnectHeader({
@@ -51,7 +51,7 @@ export function ConnectHeader({
             gap: 10,
           }}
         >
-          <Search size={17} color={colors.textFaint} />
+          <MagnifyingGlass size={17} color={colors.textFaint} />
           <TextInput
             value={query}
             onChangeText={onChangeQuery}

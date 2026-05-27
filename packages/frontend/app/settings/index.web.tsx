@@ -10,7 +10,7 @@ import {
   useWindowDimensions,
 } from 'react-native'
 import { SafeAreaView } from 'react-native-safe-area-context'
-import { Eye, Shield, Info, ExternalLink, AlertTriangle } from 'lucide-react-native'
+import { Eye, Shield, Info, ArrowSquareOut, Warning } from 'phosphor-react-native'
 import { useUser, useTheme } from '../../components/contexts'
 import { useRouter } from 'expo-router'
 import { DestructiveButton, SecondaryButton, Text } from '../../components/ui'
@@ -134,7 +134,7 @@ export default function Preferences() {
               }}
             >
               <Text style={{ fontSize: 15, color: textColor }}>Privacy Policy</Text>
-              <ExternalLink size={18} color={iconColor} />
+              <ArrowSquareOut size={18} color={iconColor} />
             </Pressable>
             <Pressable
               style={{
@@ -151,7 +151,7 @@ export default function Preferences() {
               }}
             >
               <Text style={{ fontSize: 15, color: textColor }}>Terms of Service</Text>
-              <ExternalLink size={18} color={iconColor} />
+              <ArrowSquareOut size={18} color={iconColor} />
             </Pressable>
             <Pressable
               style={{
@@ -166,7 +166,7 @@ export default function Preferences() {
               }}
             >
               <Text style={{ fontSize: 15, color: textColor }}>Cookie Policy</Text>
-              <ExternalLink size={18} color={iconColor} />
+              <ArrowSquareOut size={18} color={iconColor} />
             </Pressable>
           </View>
         </View>
@@ -290,7 +290,7 @@ export default function Preferences() {
                   marginBottom: 12,
                 }}
               >
-                <AlertTriangle size={32} color="#DC2626" />
+                <Warning size={32} color="#DC2626" />
               </View>
               <Text
                 style={{

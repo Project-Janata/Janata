@@ -1,14 +1,16 @@
 import { View, Text, Pressable } from 'react-native'
 import { usePathname, useRouter } from 'expo-router'
-import { House, Compass, Newspaper } from 'lucide-react-native'
+import { House, Compass, Newspaper, Chat } from 'phosphor-react-native'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
-import { useUser, useTheme } from '../contexts'
+import { useUser } from '../contexts'
 import Avatar from './Avatar'
+import { useColors } from '../../hooks/useColors'
 
 const NAV_ITEMS = [
   { label: 'Home', href: '/', icon: House },
   { label: 'Explore', href: '/explore', icon: Compass },
   { label: 'Feed', href: '/feed', icon: Newspaper },
+  { label: 'Messages', href: '/chat', icon: Chat },
   { label: 'Profile', href: '/profile', icon: null },
 ] as const
 
@@ -16,7 +18,7 @@ export default function WebBottomNav() {
   const pathname = usePathname()
   const router = useRouter()
   const { user } = useUser()
-  const { isDark } = useTheme()
+  const c = useColors()
   const insets = useSafeAreaInsets()
 
   const isActive = (href: string) => {
@@ -24,16 +26,16 @@ export default function WebBottomNav() {
     return pathname === href || pathname.startsWith(`${href}/`)
   }
 
-  const ACTIVE = '#E8862A'
-  const inactive = isDark ? '#A8A29E' : '#78716C'
+  const ACTIVE = c.accent
+  const inactive = c.iconMuted
 
   return (
     <View
       style={{
         flexDirection: 'row',
         borderTopWidth: 1,
-        borderTopColor: isDark ? '#262626' : '#E7E5E4',
-        backgroundColor: isDark ? '#171717' : '#FFFFFF',
+        borderTopColor: c.border,
+        backgroundColor: c.rail,
         paddingTop: 8,
         paddingBottom: Math.max(insets.bottom, 8),
       }}

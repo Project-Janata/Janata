@@ -1,6 +1,6 @@
 import React from 'react'
 import { View, Text, Pressable, ScrollView, StyleSheet } from 'react-native'
-import { X } from 'lucide-react-native'
+import { X } from 'phosphor-react-native'
 import { useDetailColors } from '../../hooks/useDetailColors'
 
 type AdminDetailPanelProps = {

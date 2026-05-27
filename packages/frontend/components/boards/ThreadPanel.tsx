@@ -1,6 +1,6 @@
 import React, { useState } from 'react'
 import { Pressable, ScrollView, Text, TextInput, View } from 'react-native'
-import { Building2, CalendarDays, Lock, MessageCircle, MoreHorizontal, Send } from 'lucide-react-native'
+import { Buildings, CalendarDots, Lock, ChatCircle, DotsThree } from 'phosphor-react-native'
 import { Avatar } from '../ui'
 import type { BoardMessage } from './__mocks__/mockData'
 
@@ -203,7 +203,7 @@ function BoardComposer({
             borderRadius: 19,
             alignItems: 'center',
             justifyContent: 'center',
-            backgroundColor: canSubmit ? accent : colors.cardBg ?? colors.panelBg,
+            backgroundColor: canSubmit ? accent : (colors.cardBg ?? colors.panelBg),
             borderWidth: canSubmit ? 0 : 1,
             borderColor: colors.border,
             opacity: submitting ? 0.7 : 1,
@@ -304,9 +304,9 @@ export function BoardPostCard({
   const isFeedCard = showSource
   const sourceIcon =
     message.sourceKind === 'event' ? (
-      <CalendarDays size={11} color={accent} strokeWidth={2.4} />
+      <CalendarDots size={11} color={accent} />
     ) : (
-      <Building2 size={11} color={colors.textSecondary} strokeWidth={2.3} />
+      <Buildings size={11} color={colors.textSecondary} />
     )
 
   return (
@@ -420,7 +420,7 @@ export function BoardPostCard({
                 {message.timestamp}
               </Text>
             </View>
-            {!isFeedCard ? <MoreHorizontal size={18} color={colors.textMuted} /> : null}
+            {!isFeedCard ? <DotsThree size={18} color={colors.textMuted} /> : null}
           </View>
 
           <Text
@@ -492,7 +492,7 @@ export function BoardPostCard({
                 gap: 4,
               }}
             >
-              {isFeedCard ? <MessageCircle size={13} color={accent} strokeWidth={2.3} /> : null}
+              {isFeedCard ? <ChatCircle size={13} color={accent} /> : null}
               <Text style={{ fontFamily: 'Inclusive Sans', fontSize: 13, color: accent }}>
                 {replies} {replies === 1 ? 'reply' : 'replies'}
               </Text>
@@ -615,7 +615,7 @@ function LockedBoardState({
           marginBottom: 28,
         }}
       >
-        <Lock size={34} color={colors.textMuted} strokeWidth={1.8} />
+        <Lock size={34} color={colors.textMuted} />
       </View>
       <Text
         style={{
@@ -641,7 +641,9 @@ function LockedBoardState({
         {subtitle}
       </Text>
       {hasPrimaryAction || hasSecondaryAction ? (
-        <View style={{ flexDirection: 'row', gap: 10, marginTop: 34, width: '100%', maxWidth: 430 }}>
+        <View
+          style={{ flexDirection: 'row', gap: 10, marginTop: 34, width: '100%', maxWidth: 430 }}
+        >
           {hasPrimaryAction ? (
             <Pressable
               onPress={onPrimaryAction}
@@ -673,7 +675,9 @@ function LockedBoardState({
                 backgroundColor: colors.cardBg ?? colors.panelBg,
               }}
             >
-              <Text style={{ fontFamily: 'Inclusive Sans', fontSize: 15, color: colors.textSecondary }}>
+              <Text
+                style={{ fontFamily: 'Inclusive Sans', fontSize: 15, color: colors.textSecondary }}
+              >
                 {secondaryActionLabel}
               </Text>
             </Pressable>

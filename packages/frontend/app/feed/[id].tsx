@@ -2,9 +2,10 @@ import React, { useMemo } from 'react'
 import { View, Text, ScrollView, Pressable } from 'react-native'
 import { SafeAreaView } from 'react-native-safe-area-context'
 import { useLocalSearchParams, useRouter } from 'expo-router'
-import { ArrowLeft, Building2, CalendarDays, MessageCircle } from 'lucide-react-native'
-import { useTheme, useUser } from '../../components/contexts'
+import { ArrowLeft, Buildings, CalendarDots, ChatCircle } from 'phosphor-react-native'
+import { useUser } from '../../components/contexts'
 import { useMyEvents, useCenterList } from '../../hooks/useApiData'
+import { useColors } from '../../hooks/useColors'
 import { Avatar } from '../../components/ui'
 import type { DiscoverCenter } from '../../utils/api'
 import {
@@ -98,23 +99,23 @@ export default function FeedPostDetail() {
   const { id } = useLocalSearchParams<{ id: string }>()
   const router = useRouter()
   const { user } = useUser()
-  const { isDark } = useTheme()
+  const c = useColors()
   const { centers: allCenters } = useCenterList()
   const { events: myEvents } = useMyEvents(user?.username)
 
   const colors = useMemo(
     () => ({
-      page: isDark ? '#1A1A1A' : '#F5F5F4',
-      surface: isDark ? '#171717' : '#FFFFFF',
-      text: isDark ? '#FAFAF9' : '#1F1D1B',
-      textMuted: isDark ? '#A8A29E' : '#78716C',
-      textSecondary: isDark ? '#D6D3D1' : '#44403C',
-      border: isDark ? '#262626' : '#E7E5E4',
-      orange: '#E8862A',
-      orangeSoft: isDark ? 'rgba(232,134,42,0.15)' : '#FFF7ED',
-      panel: isDark ? '#1F1F1F' : '#F7F4EF',
+      page: c.bg,
+      surface: c.card,
+      text: c.text,
+      textMuted: c.textMuted,
+      textSecondary: c.textSecondary,
+      border: c.border,
+      orange: c.accent,
+      orangeSoft: c.accentSoft,
+      panel: c.panel,
     }),
-    [isDark]
+    [c]
   )
 
   const post = useMemo(
@@ -194,9 +195,9 @@ export default function FeedPostDetail() {
               }}
             >
               {post.sourceKind === 'event' ? (
-                <CalendarDays size={10} color={colors.orange} strokeWidth={2.4} />
+                <CalendarDots size={10} color={colors.orange} />
               ) : (
-                <Building2 size={10} color={colors.textMuted} strokeWidth={2.3} />
+                <Buildings size={10} color={colors.textMuted} />
               )}
             </View>
             <Text style={{ fontFamily: 'Inclusive Sans', fontSize: 12, color: colors.textMuted }}>
@@ -263,7 +264,7 @@ export default function FeedPostDetail() {
                   </View>
                 ))}
                 <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4 }}>
-                  <MessageCircle size={14} color={colors.textMuted} />
+                  <ChatCircle size={14} color={colors.textMuted} />
                   <Text style={{ fontSize: 13, color: colors.textMuted }}>
                     {replies.length} {replies.length === 1 ? 'reply' : 'replies'}
                   </Text>

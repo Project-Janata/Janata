@@ -5,10 +5,10 @@ import {
   Link as LinkIcon,
   Check,
   Clock,
-  MessageCircle,
-  Mail,
-  EllipsisIcon,
-} from 'lucide-react-native'
+  ChatCircle,
+  EnvelopeSimple,
+  DotsThree,
+} from 'phosphor-react-native'
 import { FontAwesome5 } from '@expo/vector-icons'
 import { useUser } from '../../components/contexts'
 import { StackHeader, GradientIconBadge, Card, IconBadge } from '../../components/ui'
@@ -61,7 +61,7 @@ export default function InviteScreen() {
         }}
       >
         <GradientIconBadge size={96}>
-          <UserPlus size={40} color="#fff" strokeWidth={2} />
+          <UserPlus size={40} color="#fff" />
         </GradientIconBadge>
         <Text style={{ fontFamily: 'Inclusive Sans', fontSize: 32, color: c.text, marginTop: 16 }}>
           Bring a friend
@@ -119,7 +119,7 @@ export default function InviteScreen() {
               }}
             >
               {copied ? (
-                <Check size={14} color={c.accent} strokeWidth={2.5} />
+                <Check size={14} color={c.accent} />
               ) : (
                 <Text style={{ fontSize: 13, color: '#fff', fontWeight: '600' }}>Share</Text>
               )}
@@ -149,7 +149,7 @@ export default function InviteScreen() {
         >
           <View style={{ gap: 8, alignItems: 'center' }}>
             <IconBadge size={56} color="#5ec26a">
-              <MessageCircle size={32} color="#fff" strokeWidth={2} />
+              <ChatCircle size={32} color="#fff" />
             </IconBadge>
             <Text style={{ fontSize: 12, color: c.text, fontWeight: '500' }}>Messages</Text>
           </View>
@@ -161,7 +161,7 @@ export default function InviteScreen() {
           </View>
           <View style={{ gap: 8, alignItems: 'center' }}>
             <IconBadge size={56} color="#4d81ee">
-              <Mail size={32} color="#fff" strokeWidth={2} />
+              <EnvelopeSimple size={32} color="#fff" />
             </IconBadge>
             <Text style={{ fontSize: 12, color: c.text, fontWeight: '500' }}>Email</Text>
           </View>
@@ -170,7 +170,7 @@ export default function InviteScreen() {
             onPress={() => Share.share({ message: inviteUrl ?? '' })}
           >
             <IconBadge size={56} color="#6c757d">
-              <EllipsisIcon size={32} color="#fff" strokeWidth={2} />
+              <DotsThree size={32} color="#fff" />
             </IconBadge>
             <Text style={{ fontSize: 12, color: c.text, fontWeight: '500' }}>Other</Text>
           </Pressable>

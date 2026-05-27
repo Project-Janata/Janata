@@ -3,8 +3,9 @@ import { useOnboarding } from '../contexts'
 import { useState, useEffect, useRef } from 'react'
 import { calculateDistance } from '../../utils/distance'
 import { fetchCenters, CenterData } from '../../utils/api'
-import { Check } from 'lucide-react-native'
+import { Check } from 'phosphor-react-native'
 import { StepLayout, StepHeading, OnboardingInput, StepError, StepFooter } from './shared'
+import { useColors } from '../../hooks/useColors'
 
 interface CenterWithDistance {
   id: string
@@ -16,6 +17,7 @@ interface CenterWithDistance {
 
 export default function Step3() {
   const { goToNextStep, setCenterID } = useOnboarding()
+  const c = useColors()
   const [searchInput, setSearchInput] = useState('')
   const [loading, setLoading] = useState(false)
   const [selectedCenter, setSelectedCenter] = useState<CenterWithDistance | null>(null)
@@ -118,7 +120,7 @@ export default function Step3() {
           />
           {loading && (
             <View className="absolute right-4 top-0 bottom-0 justify-center">
-              <ActivityIndicator size="small" color="#f97316" />
+              <ActivityIndicator size="small" color={c.accent} />
             </View>
           )}
 
@@ -159,7 +161,7 @@ export default function Step3() {
                         </Text>
                       </View>
                       {selectedCenter?.id === center.id && (
-                        <Check className="text-primary" size={20} strokeWidth={3} />
+                        <Check className="text-primary" size={20} />
                       )}
                     </View>
                   </Pressable>

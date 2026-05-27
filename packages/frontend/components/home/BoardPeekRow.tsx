@@ -1,6 +1,6 @@
 import React from 'react'
 import { Pressable, Text, View } from 'react-native'
-import { MessageCircle } from 'lucide-react-native'
+import { ChatCircle } from 'phosphor-react-native'
 import { Avatar } from '../ui'
 import { useColors } from '../../hooks/useColors'
 import type { BoardMessage } from '../boards'
@@ -47,7 +47,7 @@ export function BoardPeekRow({
         </View>
         <Text style={{ fontSize: 13, lineHeight: 18, color: c.textSecondary }} numberOfLines={2}>{post.body}</Text>
         <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4, marginTop: 2 }}>
-          <MessageCircle size={12} color={c.accent} strokeWidth={2.3} />
+          <ChatCircle size={12} color={c.accent} />
           <Text style={{ fontSize: 12, color: c.accent }}>
             {post.replyCount ?? 1} {(post.replyCount ?? 1) === 1 ? 'reply' : 'replies'}
           </Text>

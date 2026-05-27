@@ -1,7 +1,8 @@
 import { useEffect } from 'react'
 import { View, Text, Pressable, ScrollView, Modal, Platform } from 'react-native'
-import { Check } from 'lucide-react-native'
+import { Check } from 'phosphor-react-native'
 import { useDetailColors } from '../../hooks/useDetailColors'
+import { useColors } from '../../hooks/useColors'
 
 export type FilterPickerOption<V> = {
   value: V
@@ -30,6 +31,7 @@ export default function FilterPickerModal<V extends string | number>({
   onClose,
 }: FilterPickerModalProps<V>) {
   const colors = useDetailColors()
+  const c = useColors()
 
   useEffect(() => {
     if (Platform.OS !== 'web' || !visible) return
@@ -84,7 +86,7 @@ export default function FilterPickerModal<V extends string | number>({
             {opt.count}
           </Text>
         )}
-        {isSelected && <Check size={18} color="#E8862A" />}
+        {isSelected && <Check size={18} color={c.accent} />}
       </Pressable>
     )
   }
@@ -136,7 +138,7 @@ export default function FilterPickerModal<V extends string | number>({
             borderTopColor: colors.border,
           }}
         >
-          <Text style={{ fontSize: 14, color: '#E8862A', fontFamily: 'Inclusive Sans' }}>
+          <Text style={{ fontSize: 14, color: c.accent, fontFamily: 'Inclusive Sans' }}>
             Clear selection
           </Text>
         </Pressable>

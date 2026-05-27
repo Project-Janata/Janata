@@ -3,9 +3,11 @@ import { SafeAreaView } from 'react-native-safe-area-context'
 import { OnboardingProvider, useOnboarding } from '../components/contexts'
 import { useEffect, useRef } from 'react'
 import { Step1, Step2, Step3, Step4, Complete } from '../components/onboarding'
+import { useColors } from '../hooks/useColors'
 
 const OnboardingHeader = () => {
   const { currentStep, totalSteps } = useOnboarding()
+  const c = useColors()
   const progress = Math.min(((currentStep - 1) / totalSteps) * 100, 100) // Cap at 100%
   const animatedWidth = useRef(new Animated.Value(0)).current
 
@@ -28,7 +30,7 @@ const OnboardingHeader = () => {
                 outputRange: ['0%', '100%'],
               }),
               height: '100%',
-              backgroundColor: '#ea580c',
+              backgroundColor: c.accent,
             }}
             className="rounded-full"
           />

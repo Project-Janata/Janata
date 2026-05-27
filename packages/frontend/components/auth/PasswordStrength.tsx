@@ -1,6 +1,6 @@
 import React from 'react'
 import { View, Text } from 'react-native'
-import { Check, X } from 'lucide-react-native'
+import { Check, X } from 'phosphor-react-native'
 
 interface PasswordStrengthProps {
   password: string
@@ -229,11 +229,11 @@ export default function PasswordStrength({ password, show }: PasswordStrengthPro
           <View key={index} className="flex-row items-center gap-2">
             {req.met ? (
               <View className="w-4 h-4 rounded-full bg-green-500 items-center justify-center">
-                <Check size={12} color="white" strokeWidth={3} />
+                <Check size={12} color="white" />
               </View>
             ) : (
               <View className="w-4 h-4 rounded-full bg-gray-300 dark:bg-gray-600 items-center justify-center">
-                <X size={12} color="#9CA3AF" strokeWidth={2} />
+                <X size={12} color="#9CA3AF" />
               </View>
             )}
             <Text

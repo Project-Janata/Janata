@@ -11,10 +11,7 @@ import {
 import { useState, useEffect } from 'react'
 import { useUser, useTheme } from '../../components/contexts'
 import { HeaderActionProvider } from '../../components/contexts/HeaderActionContext'
-import { Plus, Bell } from 'lucide-react-native'
-import { Ionicons } from '@expo/vector-icons'
-import { Plus, Bell } from 'lucide-react-native'
-import { Ionicons } from '@expo/vector-icons'
+import { Plus, Bell, House, Compass, Newspaper, Chat } from 'phosphor-react-native'
 import SettingsPanel from '../../components/settings/SettingsPanel'
 import Logo from '../../components/ui/Logo'
 import TabHeader from '../../components/ui/TabHeader'
@@ -78,9 +75,9 @@ export default function TabLayout() {
           justifyContent: 'space-between',
           paddingHorizontal: 16,
           height: 56,
-          backgroundColor: isDark ? '#000000' : '#FFFFFF',
+          backgroundColor: c.card,
           borderBottomWidth: 1,
-          borderBottomColor: isDark ? '#262626' : '#E5E7EB',
+          borderBottomColor: c.border,
         }}
       >
         {/* Left: Logo + Nav */}
@@ -102,18 +99,14 @@ export default function TabLayout() {
                     paddingHorizontal: 12,
                     paddingVertical: 10,
                     borderRadius: 999,
-                    backgroundColor: active
-                      ? isDark
-                        ? 'rgba(232,134,42,0.16)'
-                        : '#FFF7ED'
-                      : 'transparent',
+                    backgroundColor: active ? c.accentSoft : 'transparent',
                   }}
                 >
                   <Text
                     style={{
                       fontFamily: active ? 'Inclusive Sans' : 'Inclusive Sans',
                       fontSize: 14,
-                      color: active ? '#E8862A' : isDark ? '#E7E5E4' : '#44403C',
+                      color: active ? c.accent : c.textSecondary,
                     }}
                   >
                     {label}
@@ -136,15 +129,15 @@ export default function TabLayout() {
                 alignItems: 'center',
                 gap: 6,
                 borderWidth: 1.5,
-                borderColor: '#E8862A',
+                borderColor: c.accent,
               }}
               onPress={() => {
                 posthog?.capture('nav_create_event')
                 router.push('/explore?action=create')
               }}
             >
-              <Plus size={16} color="#E8862A" />
-              <Text style={{ fontFamily: 'Inclusive Sans', fontSize: 13, color: '#E8862A' }}>
+              <Plus size={16} color={c.accent} />
+              <Text style={{ fontFamily: 'Inclusive Sans', fontSize: 13, color: c.accent }}>
                 Create Event
               </Text>
             </Pressable>
@@ -164,12 +157,12 @@ export default function TabLayout() {
                   width: 36,
                   height: 36,
                   borderRadius: 18,
-                  backgroundColor: '#C2410C',
+                  backgroundColor: c.accent,
                   alignItems: 'center',
                   justifyContent: 'center',
                 }}
               >
-                <Text style={{ color: '#fff', fontSize: 14, fontWeight: '600' }}>
+                <Text style={{ color: '#FFFFFF', fontSize: 14, fontWeight: '600' }}>
                   {getInitials()}
                 </Text>
               </View>
@@ -202,14 +195,14 @@ export default function TabLayout() {
             tabBarStyle: isWeb
               ? { display: 'none' }
               : {
-                  backgroundColor: isDark ? '#171717' : '#FFFFFF',
-                  borderTopColor: isDark ? '#262626' : '#E7E5E4',
+                  backgroundColor: c.rail,
+                  borderTopColor: c.border,
                   height: 84,
                   paddingTop: 8,
                   paddingBottom: 24,
                 },
-            tabBarActiveTintColor: '#E8862A',
-            tabBarInactiveTintColor: isDark ? '#A8A29E' : '#78716C',
+            tabBarActiveTintColor: c.accent,
+            tabBarInactiveTintColor: c.iconMuted,
             headerShown: true,
             headerShadowVisible: false,
           }}
@@ -223,10 +216,7 @@ export default function TabLayout() {
                 ? () => <WebHeader />
                 : () => <TabHeader showLogo action="notifications" />,
               tabBarIcon: ({ color, size, focused }) => (
-                <Ionicons name={focused ? 'home' : 'home-outline'} size={size} color={color} />
-              ),
-              tabBarIcon: ({ color, size, focused }) => (
-                <Ionicons name={focused ? 'home' : 'home-outline'} size={size} color={color} />
+                <House size={size} color={color} weight={focused ? 'fill' : 'regular'} />
               ),
             }}
           />
@@ -252,7 +242,9 @@ export default function TabLayout() {
                         : {})}
                     />
                   ),
-              tabBarIcon: ({ color, size }) => <Compass size={size} color={color} />,
+              tabBarIcon: ({ color, size, focused }) => (
+                <Compass size={size} color={color} weight={focused ? 'fill' : 'regular'} />
+              ),
             }}
           />
           <Tabs.Screen
@@ -264,18 +256,7 @@ export default function TabLayout() {
                 ? () => <WebHeader />
                 : () => <TabHeader title="Feed" action="create" />,
               tabBarIcon: ({ color, size, focused }) => (
-                <Ionicons
-                  name={focused ? 'newspaper' : 'newspaper-outline'}
-                  size={size}
-                  color={color}
-                />
-              ),
-              tabBarIcon: ({ color, size, focused }) => (
-                <Ionicons
-                  name={focused ? 'newspaper' : 'newspaper-outline'}
-                  size={size}
-                  color={color}
-                />
+                <Newspaper size={size} color={color} weight={focused ? 'fill' : 'regular'} />
               ),
             }}
           />
@@ -288,18 +269,7 @@ export default function TabLayout() {
                 ? () => <WebHeader />
                 : () => <TabHeader title="Chat" action="create" />,
               tabBarIcon: ({ color, size, focused }) => (
-                <Ionicons
-                  name={focused ? 'chatsquare' : 'chatsquare-outline'}
-                  size={size}
-                  color={color}
-                />
-              ),
-              tabBarIcon: ({ color, size, focused }) => (
-                <Ionicons
-                  name={focused ? 'chatsquare' : 'chatsquare-outline'}
-                  size={size}
-                  color={color}
-                />
+                <Chat size={size} color={color} weight={focused ? 'fill' : 'regular'} />
               ),
             }}
           />

@@ -2,7 +2,7 @@ import React, { useEffect, useState, useRef, useCallback, memo } from 'react'
 import { StyleSheet, View, Pressable, Platform } from 'react-native'
 import MapView, { Marker, Region, PROVIDER_GOOGLE } from 'react-native-maps'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
-import { Plus, Minus, Navigation } from 'lucide-react-native'
+import { Plus, Minus, NavigationArrow } from 'phosphor-react-native'
 import { getCurrentPosition } from '../../utils'
 import { useTheme } from '../contexts'
 
@@ -84,7 +84,7 @@ function MapControls({
           accessibilityLabel="Zoom in"
           accessibilityHint="Zooms the map in one step"
         >
-          <Plus size={18} color={iconColor} strokeWidth={2} />
+          <Plus size={18} color={iconColor} />
         </Pressable>
         <View style={{ height: 1, backgroundColor: isDark ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.08)' }} />
         <Pressable
@@ -96,7 +96,7 @@ function MapControls({
           accessibilityLabel="Zoom out"
           accessibilityHint="Zooms the map out one step"
         >
-          <Minus size={18} color={iconColor} strokeWidth={2} />
+          <Minus size={18} color={iconColor} />
         </Pressable>
       </View>
       <Pressable
@@ -108,7 +108,7 @@ function MapControls({
         accessibilityLabel="Show my location"
         accessibilityHint="Centers the map on your current location"
       >
-        <Navigation size={18} color={iconColor} strokeWidth={2} />
+        <NavigationArrow size={18} color={iconColor} />
       </Pressable>
     </View>
   )

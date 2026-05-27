@@ -2,7 +2,7 @@ import React from 'react'
 import { View, Pressable, StatusBar } from 'react-native'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
 import { useRouter } from 'expo-router'
-import { ChevronLeft } from 'lucide-react-native'
+import { CaretLeft } from 'phosphor-react-native'
 import { useColors } from '../../hooks/useColors'
 import { Text } from './Text'
 
@@ -40,7 +40,7 @@ export default function StackHeader({ title, onBack, right }: StackHeaderProps) 
           style={{ padding: 8, marginLeft: -8 }}
           hitSlop={8}
         >
-          <ChevronLeft size={22} color={c.icon} />
+          <CaretLeft size={22} color={c.icon} />
         </Pressable>
         <Text style={{ fontSize: 18, color: c.text, flex: 1, marginLeft: 4 }}>{title}</Text>
         {right ?? <View style={{ width: 36 }} />}

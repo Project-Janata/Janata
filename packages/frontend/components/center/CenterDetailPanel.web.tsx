@@ -1,6 +1,15 @@
 import React, { useMemo, useState } from 'react'
 import { View, Text, Image, ScrollView, Pressable, Linking } from 'react-native'
-import { MapPin, Globe, Phone, User, ChevronLeft, Navigation, BadgeCheck, Users } from 'lucide-react-native'
+import {
+  MapPin,
+  Globe,
+  Phone,
+  User,
+  CaretLeft,
+  NavigationArrow,
+  SealCheck,
+  Users,
+} from 'phosphor-react-native'
 import CopyLinkButton from '../ui/CopyLinkButton'
 import UnderlineTabBar from '../ui/UnderlineTabBar'
 import { useBoard, type CenterDisplay } from '../../hooks/useApiData'
@@ -22,9 +31,7 @@ type CenterDetailPanelProps = {
 
 function formatDateCallout(dateStr: string): { month: string; day: string } {
   const d = new Date(dateStr + 'T00:00:00')
-  const month = d
-    .toLocaleDateString('en-US', { month: 'short' })
-    .toUpperCase()
+  const month = d.toLocaleDateString('en-US', { month: 'short' }).toUpperCase()
   const day = String(d.getDate())
   return { month, day }
 }
@@ -47,9 +54,7 @@ export default function CenterDetailPanel({
   }
 
   const handleWebsitePress = () => {
-    const url = center.website.startsWith('http')
-      ? center.website
-      : `https://${center.website}`
+    const url = center.website.startsWith('http') ? center.website : `https://${center.website}`
     Linking.openURL(url)
   }
 
@@ -58,12 +63,14 @@ export default function CenterDetailPanel({
   }
 
   // Strip protocol for display
-  const displayWebsite = center.website
-    .replace(/^https?:\/\//, '')
-    .replace(/\/$/, '')
+  const displayWebsite = center.website.replace(/^https?:\/\//, '').replace(/\/$/, '')
   const canPostToThread =
     !!user && (user.centerID === center.id || (user.verificationLevel ?? 0) >= 107)
-  const { posts: boardPosts, refetch: refetchBoard } = useBoard('center', center.id, canPostToThread)
+  const { posts: boardPosts, refetch: refetchBoard } = useBoard(
+    'center',
+    center.id,
+    canPostToThread
+  )
   const boardMessages = useMemo(() => boardPosts.map(boardPostToMessage), [boardPosts])
 
   const handleCreateThreadPost = async (body: string) => {
@@ -95,13 +102,22 @@ export default function CenterDetailPanel({
         }}
       >
         {/* Top row: back + copy link */}
-        <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
+        <View
+          style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}
+        >
           <Pressable
             onPress={onClose}
-            style={{ flexDirection: 'row', alignItems: 'center', gap: 4, padding: 8, minHeight: 44, minWidth: 44 }}
+            style={{
+              flexDirection: 'row',
+              alignItems: 'center',
+              gap: 4,
+              padding: 8,
+              minHeight: 44,
+              minWidth: 44,
+            }}
             accessibilityLabel="Close panel"
           >
-            <ChevronLeft size={20} color={colors.iconHeader} />
+            <CaretLeft size={20} color={colors.iconHeader} />
             <Text
               style={{
                 fontFamily: 'Inclusive Sans',
@@ -149,7 +165,7 @@ export default function CenterDetailPanel({
             )}
             {center.isVerified && (
               <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4 }}>
-                <BadgeCheck size={13} color="#E8862A" />
+                <SealCheck size={13} color="#E8862A" />
                 <Text
                   style={{
                     fontFamily: 'Inclusive Sans',
@@ -187,177 +203,177 @@ export default function CenterDetailPanel({
         <View style={{ paddingHorizontal: 24, paddingTop: 20, paddingBottom: 32 }}>
           {activeTab === 'About' && (
             <>
-          {/* Point of contact subtitle */}
-          {center.pointOfContact ? (
-            <Text
-              style={{
-                fontFamily: 'Inclusive Sans',
-                fontSize: 13,
-                color: colors.textSecondary,
-                marginBottom: 16,
-              }}
-            >
-              Point of Contact: {center.pointOfContact}
-            </Text>
-          ) : null}
-
-          {/* ── Meta rows ────────────────────────────────────────── */}
-          <View style={{ gap: 16 }}>
-            {/* Address */}
-            {center.address ? (
-              <View style={{ flexDirection: 'row', alignItems: 'flex-start', gap: 12 }}>
-                <View
+              {/* Point of contact subtitle */}
+              {center.pointOfContact ? (
+                <Text
                   style={{
-                    width: 32,
-                    height: 32,
-                    borderRadius: 8,
-                    backgroundColor: colors.iconBoxBg,
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                    flexShrink: 0,
+                    fontFamily: 'Inclusive Sans',
+                    fontSize: 13,
+                    color: colors.textSecondary,
+                    marginBottom: 16,
                   }}
                 >
-                  <MapPin size={16} color="#E8862A" />
-                </View>
-                <View style={{ flex: 1, gap: 8 }}>
-                  <Text
-                    style={{
-                      fontFamily: 'Inclusive Sans',
-                      fontSize: 14,
-                      color: colors.text,
-                      lineHeight: 20,
-                    }}
-                  >
-                    {center.address}
-                  </Text>
+                  Point of Contact: {center.pointOfContact}
+                </Text>
+              ) : null}
+
+              {/* ── Meta rows ────────────────────────────────────────── */}
+              <View style={{ gap: 16 }}>
+                {/* Address */}
+                {center.address ? (
+                  <View style={{ flexDirection: 'row', alignItems: 'flex-start', gap: 12 }}>
+                    <View
+                      style={{
+                        width: 32,
+                        height: 32,
+                        borderRadius: 8,
+                        backgroundColor: colors.iconBoxBg,
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        flexShrink: 0,
+                      }}
+                    >
+                      <MapPin size={16} color="#E8862A" />
+                    </View>
+                    <View style={{ flex: 1, gap: 8 }}>
+                      <Text
+                        style={{
+                          fontFamily: 'Inclusive Sans',
+                          fontSize: 14,
+                          color: colors.text,
+                          lineHeight: 20,
+                        }}
+                      >
+                        {center.address}
+                      </Text>
+                      <Pressable
+                        onPress={handleAddressPress}
+                        style={{ alignSelf: 'flex-start', paddingVertical: 4 }}
+                        accessibilityLabel="Get directions"
+                      >
+                        <Text
+                          style={{
+                            fontFamily: 'Inclusive Sans',
+                            fontSize: 14,
+                            color: '#E8862A',
+                          }}
+                        >
+                          Get directions →
+                        </Text>
+                      </Pressable>
+                    </View>
+                  </View>
+                ) : null}
+
+                {/* Website */}
+                {center.website ? (
                   <Pressable
-                    onPress={handleAddressPress}
-                    style={{ alignSelf: 'flex-start', paddingVertical: 4 }}
-                    accessibilityLabel="Get directions"
+                    onPress={handleWebsitePress}
+                    style={{ flexDirection: 'row', alignItems: 'center', gap: 12, minHeight: 44 }}
                   >
+                    <View
+                      style={{
+                        width: 32,
+                        height: 32,
+                        borderRadius: 8,
+                        backgroundColor: colors.iconBoxBg,
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        flexShrink: 0,
+                      }}
+                    >
+                      <Globe size={16} color="#E8862A" />
+                    </View>
                     <Text
                       style={{
                         fontFamily: 'Inclusive Sans',
                         fontSize: 14,
                         color: '#E8862A',
+                        lineHeight: 20,
+                        flex: 1,
                       }}
+                      numberOfLines={1}
                     >
-                      Get directions →
+                      {displayWebsite}
                     </Text>
                   </Pressable>
-                </View>
-              </View>
-            ) : null}
+                ) : null}
 
-            {/* Website */}
-            {center.website ? (
-              <Pressable
-                onPress={handleWebsitePress}
-                style={{ flexDirection: 'row', alignItems: 'center', gap: 12, minHeight: 44 }}
-              >
-                <View
-                  style={{
-                    width: 32,
-                    height: 32,
-                    borderRadius: 8,
-                    backgroundColor: colors.iconBoxBg,
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                    flexShrink: 0,
-                  }}
-                >
-                  <Globe size={16} color="#E8862A" />
-                </View>
-                <Text
-                  style={{
-                    fontFamily: 'Inclusive Sans',
-                    fontSize: 14,
-                    color: '#E8862A',
-                    lineHeight: 20,
-                    flex: 1,
-                  }}
-                  numberOfLines={1}
-                >
-                  {displayWebsite}
-                </Text>
-              </Pressable>
-            ) : null}
-
-            {/* Phone */}
-            {center.phone ? (
-              <Pressable
-                onPress={handlePhonePress}
-                style={{ flexDirection: 'row', alignItems: 'center', gap: 12, minHeight: 44 }}
-              >
-                <View
-                  style={{
-                    width: 32,
-                    height: 32,
-                    borderRadius: 8,
-                    backgroundColor: colors.iconBoxBg,
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                    flexShrink: 0,
-                  }}
-                >
-                  <Phone size={16} color="#E8862A" />
-                </View>
-                <Text
-                  style={{
-                    fontFamily: 'Inclusive Sans',
-                    fontSize: 14,
-                    color: colors.text,
-                    lineHeight: 20,
-                    flex: 1,
-                  }}
-                >
-                  {center.phone}
-                </Text>
-              </Pressable>
-            ) : null}
-
-            {/* Acharya */}
-            {center.acharya ? (
-              <View style={{ flexDirection: 'row', alignItems: 'flex-start', gap: 12 }}>
-                <View
-                  style={{
-                    width: 32,
-                    height: 32,
-                    borderRadius: 8,
-                    backgroundColor: colors.iconBoxBg,
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                    flexShrink: 0,
-                  }}
-                >
-                  <User size={16} color="#E8862A" />
-                </View>
-                <View style={{ flex: 1, justifyContent: 'center' }}>
-                  <Text
-                    style={{
-                      fontFamily: 'Inclusive Sans',
-                      fontSize: 14,
-                      color: colors.text,
-                      lineHeight: 20,
-                    }}
+                {/* Phone */}
+                {center.phone ? (
+                  <Pressable
+                    onPress={handlePhonePress}
+                    style={{ flexDirection: 'row', alignItems: 'center', gap: 12, minHeight: 44 }}
                   >
-                    {center.acharya}
-                  </Text>
-                  <Text
-                    style={{
-                      fontFamily: 'Inclusive Sans',
-                      fontSize: 13,
-                      color: colors.textSecondary,
-                      lineHeight: 18,
-                      marginTop: 2,
-                    }}
-                  >
-                    Resident Acharya
-                  </Text>
-                </View>
+                    <View
+                      style={{
+                        width: 32,
+                        height: 32,
+                        borderRadius: 8,
+                        backgroundColor: colors.iconBoxBg,
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        flexShrink: 0,
+                      }}
+                    >
+                      <Phone size={16} color="#E8862A" />
+                    </View>
+                    <Text
+                      style={{
+                        fontFamily: 'Inclusive Sans',
+                        fontSize: 14,
+                        color: colors.text,
+                        lineHeight: 20,
+                        flex: 1,
+                      }}
+                    >
+                      {center.phone}
+                    </Text>
+                  </Pressable>
+                ) : null}
+
+                {/* Acharya */}
+                {center.acharya ? (
+                  <View style={{ flexDirection: 'row', alignItems: 'flex-start', gap: 12 }}>
+                    <View
+                      style={{
+                        width: 32,
+                        height: 32,
+                        borderRadius: 8,
+                        backgroundColor: colors.iconBoxBg,
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        flexShrink: 0,
+                      }}
+                    >
+                      <User size={16} color="#E8862A" />
+                    </View>
+                    <View style={{ flex: 1, justifyContent: 'center' }}>
+                      <Text
+                        style={{
+                          fontFamily: 'Inclusive Sans',
+                          fontSize: 14,
+                          color: colors.text,
+                          lineHeight: 20,
+                        }}
+                      >
+                        {center.acharya}
+                      </Text>
+                      <Text
+                        style={{
+                          fontFamily: 'Inclusive Sans',
+                          fontSize: 13,
+                          color: colors.textSecondary,
+                          lineHeight: 18,
+                          marginTop: 2,
+                        }}
+                      >
+                        Resident Acharya
+                      </Text>
+                    </View>
+                  </View>
+                ) : null}
               </View>
-            ) : null}
-          </View>
             </>
           )}
 
@@ -452,7 +468,8 @@ export default function CenterDetailPanel({
                               marginTop: 2,
                             }}
                           >
-                            {event.time} {event.attendees > 0 ? `\u00B7 ${event.attendees} attending` : ''}
+                            {event.time}{' '}
+                            {event.attendees > 0 ? `\u00B7 ${event.attendees} attending` : ''}
                           </Text>
                         </View>
                       </Pressable>
@@ -461,7 +478,13 @@ export default function CenterDetailPanel({
                 </View>
               ) : (
                 <View style={{ alignItems: 'center', paddingVertical: 32 }}>
-                  <Text style={{ fontFamily: 'Inclusive Sans', fontSize: 14, color: colors.textSecondary }}>
+                  <Text
+                    style={{
+                      fontFamily: 'Inclusive Sans',
+                      fontSize: 14,
+                      color: colors.textSecondary,
+                    }}
+                  >
                     No upcoming events yet
                   </Text>
                 </View>

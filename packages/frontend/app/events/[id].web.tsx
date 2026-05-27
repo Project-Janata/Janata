@@ -1,7 +1,25 @@
 import { useEffect, useMemo, useState, useRef } from 'react'
-import { View, Text, ScrollView, Pressable, ActivityIndicator, useWindowDimensions, Linking } from 'react-native'
+import {
+  View,
+  Text,
+  ScrollView,
+  Pressable,
+  ActivityIndicator,
+  useWindowDimensions,
+  Linking,
+} from 'react-native'
 import { useLocalSearchParams, useRouter } from 'expo-router'
-import { ChevronLeft, Share2, MapPin, Users, User, Clock, Lock, Pencil, Trash2 } from 'lucide-react-native'
+import {
+  CaretLeft,
+  ShareNetwork,
+  MapPin,
+  Users,
+  User,
+  Clock,
+  CheckCircle,
+  PencilSimple,
+  Trash,
+} from 'phosphor-react-native'
 import { useUser } from '../../components/contexts'
 import { useBoard, useEventDetail } from '../../hooks/useApiData'
 import { createBoardPost, removeEvent } from '../../utils/api'
@@ -76,7 +94,11 @@ function LockedComments({ colors }: { colors: DetailColors }) {
 function MobileEventDetail({ eventId }: { eventId: string }) {
   const router = useRouter()
   const { user } = useUser()
-  const { event, loading, toggleRegistration, isToggling, attendees, isCreator } = useEventDetail(eventId, user?.username, user?.id)
+  const { event, loading, toggleRegistration, isToggling, attendees, isCreator } = useEventDetail(
+    eventId,
+    user?.username,
+    user?.id
+  )
   const colors = useDetailColors()
   const appColors = useColors()
   const [showAuthPrompt, setShowAuthPrompt] = useState(false)
@@ -87,7 +109,11 @@ function MobileEventDetail({ eventId }: { eventId: string }) {
   const canEdit = !!user && (isSuperAdmin(user) || isCreator)
   const canAccessEventBoard =
     !!user && !!event?.id && (!!event.isRegistered || isCreator || isSuperAdmin(user))
-  const { posts: boardPosts, refetch: refetchBoard } = useBoard('event', event?.id, canAccessEventBoard)
+  const { posts: boardPosts, refetch: refetchBoard } = useBoard(
+    'event',
+    event?.id,
+    canAccessEventBoard
+  )
   const eventBoardMessages = useMemo(() => boardPosts.map(boardPostToMessage), [boardPosts])
 
   const handleCreateThreadPost = async (body: string) => {
@@ -113,7 +139,9 @@ function MobileEventDetail({ eventId }: { eventId: string }) {
 
   const handleDelete = async () => {
     if (!event) return
-    const ok = typeof window !== 'undefined' && window.confirm(`Delete "${event.title}"? This cannot be undone.`)
+    const ok =
+      typeof window !== 'undefined' &&
+      window.confirm(`Delete "${event.title}"? This cannot be undone.`)
     if (!ok) return
     try {
       setIsDeleting(true)
@@ -127,7 +155,14 @@ function MobileEventDetail({ eventId }: { eventId: string }) {
 
   if (loading) {
     return (
-      <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: colors.panelBg }}>
+      <View
+        style={{
+          flex: 1,
+          justifyContent: 'center',
+          alignItems: 'center',
+          backgroundColor: colors.panelBg,
+        }}
+      >
         <ActivityIndicator size="large" color="#E8862A" />
       </View>
     )
@@ -135,7 +170,14 @@ function MobileEventDetail({ eventId }: { eventId: string }) {
 
   if (!event) {
     return (
-      <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: colors.panelBg }}>
+      <View
+        style={{
+          flex: 1,
+          justifyContent: 'center',
+          alignItems: 'center',
+          backgroundColor: colors.panelBg,
+        }}
+      >
         <Text style={{ color: colors.textSecondary, fontSize: 16 }}>Event not found</Text>
         <Pressable onPress={() => router.back()} style={{ marginTop: 16 }}>
           <Text style={{ color: '#E8862A', fontSize: 16 }}>Go back</Text>
@@ -153,7 +195,13 @@ function MobileEventDetail({ eventId }: { eventId: string }) {
             onPress={closeThreadPost}
             accessibilityRole="button"
             accessibilityLabel="Back to board"
-            style={{ flexDirection: 'row', alignItems: 'center', gap: 6, paddingHorizontal: 16, paddingVertical: 10 }}
+            style={{
+              flexDirection: 'row',
+              alignItems: 'center',
+              gap: 6,
+              paddingHorizontal: 16,
+              paddingVertical: 10,
+            }}
           >
             <ChevronLeft size={20} color={appColors.accent} />
             <Text style={{ fontSize: 14, color: appColors.accent }}>Back to board</Text>
@@ -194,31 +242,52 @@ function MobileEventDetail({ eventId }: { eventId: string }) {
         jsonLd={eventJsonLd}
       />
       {/* Header */}
-      <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: 16, paddingTop: 16, paddingBottom: 8 }}>
+      <View
+        style={{
+          flexDirection: 'row',
+          alignItems: 'center',
+          justifyContent: 'space-between',
+          paddingHorizontal: 16,
+          paddingTop: 16,
+          paddingBottom: 8,
+        }}
+      >
         <Pressable
           onPress={() => router.back()}
-          accessibilityRole="button"
-          accessibilityLabel="Back"
           style={{ flexDirection: 'row', alignItems: 'center', gap: 4 }}
         >
-          <ChevronLeft size={20} color={colors.textSecondary} />
+          <CaretLeft size={20} color={colors.textSecondary} />
           <Text style={{ color: colors.textSecondary, fontSize: 16 }}>Back</Text>
         </Pressable>
         <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4 }}>
           {canEdit && !isPast && (
-            <Pressable onPress={() => router.push(`/events/form?id=${event.id}`)} style={{ padding: 8 }} accessibilityLabel="Edit event">
-              <Pencil size={18} color={colors.textSecondary} />
+            <Pressable
+              onPress={() => router.push(`/events/form?id=${event.id}`)}
+              style={{ padding: 8 }}
+              accessibilityLabel="Edit event"
+            >
+              <PencilSimple size={18} color={colors.textSecondary} />
             </Pressable>
           )}
           {canEdit && (
-            <Pressable onPress={handleDelete} disabled={isDeleting} style={{ padding: 8, opacity: isDeleting ? 0.5 : 1 }} accessibilityLabel="Delete event">
-              <Trash2 size={18} color="#DC2626" />
+            <Pressable
+              onPress={handleDelete}
+              disabled={isDeleting}
+              style={{ padding: 8, opacity: isDeleting ? 0.5 : 1 }}
+              accessibilityLabel="Delete event"
+            >
+              <Trash size={18} color="#DC2626" />
             </Pressable>
           )}
           <Pressable
             onPress={() => {
               if (typeof navigator !== 'undefined' && navigator.share) {
-                navigator.share({ title: event.title, text: `Check out ${event.title} on Chinmaya Janata!` }).catch(() => {})
+                navigator
+                  .share({
+                    title: event.title,
+                    text: `Check out ${event.title} on Chinmaya Janata!`,
+                  })
+                  .catch(() => {})
               } else if (typeof navigator !== 'undefined' && navigator.clipboard) {
                 navigator.clipboard.writeText(window.location.href)
               }
@@ -227,18 +296,37 @@ function MobileEventDetail({ eventId }: { eventId: string }) {
             accessibilityLabel="Share this event"
             style={{ padding: 8 }}
           >
-            <Share2 size={18} color={colors.textSecondary} />
+            <ShareNetwork size={18} color={colors.textSecondary} />
           </Pressable>
         </View>
       </View>
 
       {/* Title + Badge */}
-      <View style={{ flexDirection: 'row', alignItems: 'flex-start', justifyContent: 'space-between', paddingHorizontal: 16, paddingBottom: 12, gap: 10 }}>
-        <Text style={{ fontSize: 26, fontWeight: 'bold', color: colors.text, flex: 1 }}>{event.title}</Text>
-        {event.isRegistered && <View style={{ marginTop: 4 }}><Badge label="Going" variant="going" /></View>}
+      <View
+        style={{
+          flexDirection: 'row',
+          alignItems: 'flex-start',
+          justifyContent: 'space-between',
+          paddingHorizontal: 16,
+          paddingBottom: 12,
+          gap: 10,
+        }}
+      >
+        <Text style={{ fontSize: 26, fontWeight: 'bold', color: colors.text, flex: 1 }}>
+          {event.title}
+        </Text>
+        {event.isRegistered && (
+          <View style={{ marginTop: 4 }}>
+            <Badge label="Going" variant="going" />
+          </View>
+        )}
       </View>
 
-      <ScrollView style={{ flex: 1 }} contentContainerStyle={{ paddingBottom: 24 }} keyboardShouldPersistTaps="handled">
+      <ScrollView
+        style={{ flex: 1 }}
+        contentContainerStyle={{ paddingBottom: 24 }}
+        keyboardShouldPersistTaps="handled"
+      >
         {/* DETAILS */}
         <DetailSection title="Details" first>
           <View style={{ gap: 16 }}>
@@ -246,7 +334,11 @@ function MobileEventDetail({ eventId }: { eventId: string }) {
               <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10 }}>
                 <Clock size={18} color="#E8862A" />
                 <Text style={{ color: colors.text, fontSize: 15 }}>
-                  {new Date(event.date + 'T00:00:00').toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' })}
+                  {new Date(event.date + 'T00:00:00').toLocaleDateString('en-US', {
+                    weekday: 'short',
+                    month: 'short',
+                    day: 'numeric',
+                  })}
                   {event.time ? ` · ${event.time}` : ''}
                 </Text>
               </View>
@@ -262,12 +354,18 @@ function MobileEventDetail({ eventId }: { eventId: string }) {
             {event.pointOfContact && (
               <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10 }}>
                 <User size={18} color="#E8862A" />
-                <Text style={{ color: colors.text, fontSize: 15 }}>Contact: {event.pointOfContact}</Text>
+                <Text style={{ color: colors.text, fontSize: 15 }}>
+                  Contact: {event.pointOfContact}
+                </Text>
               </View>
             )}
 
             {event.description && (
-              <Text style={{ color: colors.textSecondary, fontSize: 15, lineHeight: 22, marginTop: 2 }}>{event.description}</Text>
+              <Text
+                style={{ color: colors.textSecondary, fontSize: 15, lineHeight: 22, marginTop: 2 }}
+              >
+                {event.description}
+              </Text>
             )}
           </View>
         </DetailSection>
@@ -277,22 +375,38 @@ function MobileEventDetail({ eventId }: { eventId: string }) {
           <DetailSection title="Attendees" count={event.attendees} contentStyle={{ gap: 4 }}>
             {attendees.length > 0 ? (
               attendees.map((a) => (
-                <View key={a.name} style={{ flexDirection: 'row', alignItems: 'center', gap: 12, paddingVertical: 8 }}>
+                <View
+                  key={a.name}
+                  style={{
+                    flexDirection: 'row',
+                    alignItems: 'center',
+                    gap: 12,
+                    paddingVertical: 8,
+                  }}
+                >
                   <Avatar name={a.name} size={40} image={a.image} />
                   <Text style={{ color: colors.text, fontSize: 15, flex: 1 }}>{a.name}</Text>
                 </View>
               ))
             ) : (
-              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10, paddingVertical: 4 }}>
+              <View
+                style={{ flexDirection: 'row', alignItems: 'center', gap: 10, paddingVertical: 4 }}
+              >
                 <Users size={18} color={colors.textMuted} />
-                <Text style={{ color: colors.textSecondary, fontSize: 14 }}>No attendees yet — be the first to RSVP.</Text>
+                <Text style={{ color: colors.textSecondary, fontSize: 14 }}>
+                  No attendees yet — be the first to RSVP.
+                </Text>
               </View>
             )}
           </DetailSection>
         )}
 
         {/* COMMENTS */}
-        <DetailSection title="Comments" count={canAccessEventBoard ? eventBoardMessages.length : undefined} contentStyle={{ paddingHorizontal: 0 }}>
+        <DetailSection
+          title="Comments"
+          count={canAccessEventBoard ? eventBoardMessages.length : undefined}
+          contentStyle={{ paddingHorizontal: 0 }}
+        >
           {canAccessEventBoard ? (
             <ThreadPanel
               messages={eventBoardMessages}
@@ -321,7 +435,11 @@ function MobileEventDetail({ eventId }: { eventId: string }) {
           {event.signupUrl && event.allowJanataSignup ? (
             <>
               {event.isRegistered ? (
-                <DestructiveButton onPress={() => user?.username && toggleRegistration(user.username)} disabled={isToggling} loading={isToggling}>
+                <DestructiveButton
+                  onPress={() => user?.username && toggleRegistration(user.username)}
+                  disabled={isToggling}
+                  loading={isToggling}
+                >
                   Cancel Registration
                 </DestructiveButton>
               ) : (
@@ -351,12 +469,24 @@ function MobileEventDetail({ eventId }: { eventId: string }) {
               <PrimaryButton onPress={() => Linking.openURL(event.signupUrl!)}>
                 Sign up at {hostnameOf(event.signupUrl)}
               </PrimaryButton>
-              <Text style={{ fontFamily: 'Inclusive Sans', fontSize: 12, color: colors.textSecondary, textAlign: 'center', marginTop: 4 }}>
+              <Text
+                style={{
+                  fontFamily: 'Inclusive Sans',
+                  fontSize: 12,
+                  color: colors.textSecondary,
+                  textAlign: 'center',
+                  marginTop: 4,
+                }}
+              >
                 Registration handled on the official site
               </Text>
             </>
           ) : event.isRegistered ? (
-            <DestructiveButton onPress={() => user?.username && toggleRegistration(user.username)} disabled={isToggling} loading={isToggling}>
+            <DestructiveButton
+              onPress={() => user?.username && toggleRegistration(user.username)}
+              disabled={isToggling}
+              loading={isToggling}
+            >
               Cancel Registration
             </DestructiveButton>
           ) : (

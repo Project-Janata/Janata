@@ -11,11 +11,12 @@ import {
 } from 'react-native'
 import { SafeAreaView } from 'react-native-safe-area-context'
 import { useLocalSearchParams, useRouter } from 'expo-router'
-import { ChevronLeft, ChevronDown } from 'lucide-react-native'
+import { CaretLeft, CaretDown } from 'phosphor-react-native'
 import DateTimePicker from '@react-native-community/datetimepicker'
 import { usePostHog } from 'posthog-react-native'
 import { PrimaryButton } from '../../components/ui'
 import { useDetailColors, type DetailColors } from '../../hooks/useDetailColors'
+import { useColors } from '../../hooks/useColors'
 import {
   fetchEvent,
   fetchCenters,
@@ -87,7 +88,7 @@ function HeaderBar({
           onPress={onBack}
           style={{ flexDirection: 'row', alignItems: 'center', gap: 4, padding: 8, minHeight: 44, minWidth: 44 }}
         >
-          <ChevronLeft size={20} color={colors.iconHeader} />
+          <CaretLeft size={20} color={colors.iconHeader} />
           <Text style={{ fontFamily: 'Inclusive Sans', fontSize: 14, color: colors.iconHeader }}>
             Back
           </Text>
@@ -125,6 +126,7 @@ function FieldRow({
   hint?: string
   children: React.ReactNode
 }) {
+  const c = useColors()
   return (
     <View style={{ gap: 6 }}>
       <Text
@@ -137,7 +139,7 @@ function FieldRow({
         }}
       >
         {label}
-        {required ? <Text style={{ color: '#E8862A' }}> *</Text> : null}
+        {required ? <Text style={{ color: c.accent }}> *</Text> : null}
       </Text>
       {hint && !error ? (
         <Text style={{ fontFamily: 'Inclusive Sans', fontSize: 12, color: colors.textMuted }}>
@@ -146,7 +148,7 @@ function FieldRow({
       ) : null}
       {children}
       {error ? (
-        <Text style={{ fontFamily: 'Inclusive Sans', fontSize: 12, color: '#DC2626' }}>
+        <Text style={{ fontFamily: 'Inclusive Sans', fontSize: 12, color: c.error }}>
           {error}
         </Text>
       ) : null}
@@ -162,6 +164,7 @@ export default function EventFormPage() {
   const isEdit = !!eventId
   const router = useRouter()
   const colors = useDetailColors()
+  const c = useColors()
   const posthog = usePostHog()
   const today = todayLocalISODate()
 
@@ -361,7 +364,7 @@ export default function EventFormPage() {
     return (
       <SafeAreaView style={{ flex: 1, backgroundColor: colors.panelBg }}>
         <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center' }}>
-          <ActivityIndicator size="large" color="#E8862A" />
+          <ActivityIndicator size="large" color={c.accent} />
         </View>
       </SafeAreaView>
     )
@@ -390,11 +393,11 @@ export default function EventFormPage() {
               padding: 12,
               borderRadius: 10,
               borderWidth: 1,
-              borderColor: '#DC2626',
-              backgroundColor: 'rgba(220,38,38,0.08)',
+              borderColor: c.error,
+              backgroundColor: c.errorSoft,
             }}
           >
-            <Text style={{ fontFamily: 'Inclusive Sans', fontSize: 13, color: '#DC2626' }}>
+            <Text style={{ fontFamily: 'Inclusive Sans', fontSize: 13, color: c.error }}>
               {errors.submit}
             </Text>
           </View>
@@ -442,7 +445,7 @@ export default function EventFormPage() {
             >
               {date ? formatDateLabel(date) : 'Select a date'}
             </Text>
-            <ChevronDown size={16} color={colors.textMuted} />
+            <CaretDown size={16} color={colors.textMuted} />
           </Pressable>
           {showDatePicker && (
             <DateTimePicker
@@ -468,7 +471,7 @@ export default function EventFormPage() {
               onPress={() => setShowDatePicker(false)}
               style={{ alignSelf: 'flex-end', paddingHorizontal: 8, paddingVertical: 6 }}
             >
-              <Text style={{ fontFamily: 'Inclusive Sans', fontSize: 14, color: '#E8862A' }}>
+              <Text style={{ fontFamily: 'Inclusive Sans', fontSize: 14, color: c.accent }}>
                 Done
               </Text>
             </Pressable>
@@ -491,7 +494,7 @@ export default function EventFormPage() {
             >
               {time ? formatTimeLabel(time) : 'Select a time'}
             </Text>
-            <ChevronDown size={16} color={colors.textMuted} />
+            <CaretDown size={16} color={colors.textMuted} />
           </Pressable>
           {showTimePicker && (
             <DateTimePicker
@@ -515,7 +518,7 @@ export default function EventFormPage() {
               onPress={() => setShowTimePicker(false)}
               style={{ alignSelf: 'flex-end', paddingHorizontal: 8, paddingVertical: 6 }}
             >
-              <Text style={{ fontFamily: 'Inclusive Sans', fontSize: 14, color: '#E8862A' }}>
+              <Text style={{ fontFamily: 'Inclusive Sans', fontSize: 14, color: c.accent }}>
                 Done
               </Text>
             </Pressable>
@@ -537,7 +540,7 @@ export default function EventFormPage() {
             >
               {centerName || 'Select a center...'}
             </Text>
-            <ChevronDown
+            <CaretDown
               size={16}
               color={colors.textMuted}
               style={{ transform: [{ rotate: showCenterPicker ? '180deg' : '0deg' }] }}
@@ -565,14 +568,14 @@ export default function EventFormPage() {
                       paddingVertical: 12,
                       borderBottomWidth: 1,
                       borderBottomColor: colors.border,
-                      backgroundColor: center.centerID === centerID ? 'rgba(232,134,42,0.1)' : 'transparent',
+                      backgroundColor: center.centerID === centerID ? c.accentSoft : 'transparent',
                     }}
                   >
                     <Text
                       style={{
                         fontFamily: center.centerID === centerID ? 'Inclusive Sans' : 'Inclusive Sans',
                         fontSize: 14,
-                        color: center.centerID === centerID ? '#E8862A' : colors.text,
+                        color: center.centerID === centerID ? c.accent : colors.text,
                       }}
                     >
                       {center.name}
@@ -702,7 +705,7 @@ export default function EventFormPage() {
               <Switch
                 value={allowJanataSignup}
                 onValueChange={setAllowJanataSignup}
-                trackColor={{ true: '#E8862A', false: colors.border }}
+                trackColor={{ true: c.accent, false: colors.border }}
                 thumbColor="#FFFFFF"
                 ios_backgroundColor={colors.border}
               />
@@ -717,7 +720,7 @@ export default function EventFormPage() {
             style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}
             accessibilityLabel="Toggle advanced location options"
           >
-            <ChevronDown
+            <CaretDown
               size={12}
               color={colors.textMuted}
               style={{ transform: [{ rotate: showAdvanced ? '0deg' : '-90deg' }] }}
@@ -734,7 +737,7 @@ export default function EventFormPage() {
               Advanced location
             </Text>
             {(errors.latitude || errors.longitude) ? (
-              <Text style={{ fontFamily: 'Inclusive Sans', fontSize: 11, color: '#DC2626' }}>
+              <Text style={{ fontFamily: 'Inclusive Sans', fontSize: 11, color: c.error }}>
                 · check coordinates
               </Text>
             ) : null}
@@ -783,7 +786,7 @@ export default function EventFormPage() {
                     borderRadius: 100,
                     minHeight: 40,
                     justifyContent: 'center',
-                    backgroundColor: selected ? '#E8862A' : colors.iconBoxBg,
+                    backgroundColor: selected ? c.accent : colors.iconBoxBg,
                   }}
                 >
                   <Text

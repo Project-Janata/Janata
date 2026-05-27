@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useCallback } from 'react'
 import { View, Text, Pressable, ActivityIndicator, TextInput, ScrollView } from 'react-native'
-import { Bell, Send, Trash2, ChevronDown } from 'lucide-react-native'
+import { Bell, PaperPlaneTilt, Trash, CaretDown } from 'phosphor-react-native'
 import AdminTable, { type Column } from './AdminTable'
 import AdminSearchInput from './AdminSearchInput'
 import ConfirmDialog from './ConfirmDialog'
@@ -313,7 +313,7 @@ export default function NotificationsTab() {
               borderRadius: 8,
             }}
           >
-            <Send size={14} color="#fff" />
+            <PaperPlaneTilt size={14} color="#fff" />
             <Text style={{ fontFamily: 'Inclusive Sans', fontSize: 13, color: '#fff' }}>Send</Text>
           </Pressable>
         </View>
@@ -480,7 +480,7 @@ export default function NotificationsTab() {
                 {sending ? (
                   <ActivityIndicator size="small" color="#fff" />
                 ) : (
-                  <Send size={14} color="#fff" />
+                  <PaperPlaneTilt size={14} color="#fff" />
                 )}
                 <Text style={{ fontFamily: 'Inclusive Sans', fontSize: 13, color: '#fff' }}>
                   {sending ? 'Sending...' : sendBroadcast ? 'Send to All' : 'Send'}
@@ -623,7 +623,7 @@ export default function NotificationsTab() {
                     borderRadius: 8,
                   }}
                 >
-                  <Trash2 size={14} color={isDark ? '#F87171' : '#DC2626'} />
+                  <Trash size={14} color={isDark ? '#F87171' : '#DC2626'} />
                   <Text style={{ fontFamily: 'Inclusive Sans', fontSize: 12, color: isDark ? '#F87171' : '#DC2626' }}>
                     Delete
                   </Text>

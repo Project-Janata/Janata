@@ -7,7 +7,8 @@
  */
 import React, { useState, useCallback } from 'react'
 import { Pressable, Text, View } from 'react-native'
-import { Link2, Check } from 'lucide-react-native'
+import { Link, Check } from 'phosphor-react-native'
+import { useColors } from '../../hooks/useColors'
 
 const FALLBACK_ORIGIN = 'https://chinmayajanata.org'
 
@@ -28,8 +29,10 @@ type CopyLinkButtonProps = {
   variant?: 'icon' | 'inline'
 }
 
-export default function CopyLinkButton({ path, color = '#78716C', variant = 'inline' }: CopyLinkButtonProps) {
+export default function CopyLinkButton({ path, color, variant = 'inline' }: CopyLinkButtonProps) {
   const [copied, setCopied] = useState(false)
+  const c = useColors()
+  const resolvedColor = color ?? c.textMuted
 
   const handlePress = useCallback(async () => {
     const url = buildShareUrl(path)
@@ -70,7 +73,7 @@ export default function CopyLinkButton({ path, color = '#78716C', variant = 'inl
         }}
         accessibilityLabel={copied ? 'Link copied' : 'Copy link'}
       >
-        {copied ? <Check size={18} color="#16A34A" /> : <Link2 size={18} color={color} />}
+        {copied ? <Check size={18} color={c.success} /> : <Link size={18} color={resolvedColor} />}
       </Pressable>
     )
   }
@@ -91,13 +94,13 @@ export default function CopyLinkButton({ path, color = '#78716C', variant = 'inl
     >
       {copied ? (
         <>
-          <Check size={14} color="#16A34A" />
-          <Text style={{ fontSize: 13, color: '#16A34A' }}>Copied</Text>
+          <Check size={14} color={c.success} />
+          <Text style={{ fontSize: 13, color: c.success }}>Copied</Text>
         </>
       ) : (
         <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
-          <Link2 size={14} color={color} />
-          <Text style={{ fontSize: 13, color }}>Copy link</Text>
+          <Link size={14} color={resolvedColor} />
+          <Text style={{ fontSize: 13, color: resolvedColor }}>Copy link</Text>
         </View>
       )}
     </Pressable>

@@ -1,6 +1,6 @@
 import React from 'react'
 import { View, TextInput, StyleSheet } from 'react-native'
-import { Search } from 'lucide-react-native'
+import { MagnifyingGlass } from 'phosphor-react-native'
 import { useDetailColors } from '../../hooks/useDetailColors'
 
 type AdminSearchInputProps = {
@@ -18,7 +18,7 @@ export default function AdminSearchInput({
 
   return (
     <View style={[styles.container, { backgroundColor: colors.iconBoxBg }]}>
-      <Search size={16} color={colors.textMuted} style={styles.icon} />
+      <MagnifyingGlass size={16} color={colors.textMuted} style={styles.icon} />
       <TextInput
         value={value}
         onChangeText={onChangeText}

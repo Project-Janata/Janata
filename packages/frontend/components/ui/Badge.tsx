@@ -1,6 +1,6 @@
 import React from 'react'
 import { View, Text } from 'react-native'
-import { Check } from 'lucide-react-native'
+import { Check } from 'phosphor-react-native'
 import { useColors } from '../../hooks/useColors'
 
 type BadgeVariant = 'going' | 'member' | 'upcoming' | 'past' | 'host'
@@ -35,7 +35,7 @@ export default function Badge({ label, variant }: BadgeProps) {
         gap: 3,
       }}
     >
-      {showCheck && <Check size={11} color={text} strokeWidth={3} />}
+      {showCheck && <Check size={11} color={text} />}
       <Text style={{ fontWeight: '500', fontSize: 11, lineHeight: 14, color: text }}>
         {label}
       </Text>

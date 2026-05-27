@@ -3,6 +3,7 @@ import { View, Text, TextInput, Pressable, type TextInputProps } from 'react-nat
 import { SafeAreaView } from 'react-native-safe-area-context'
 import { PrimaryButton } from '../ui'
 import { useOnboarding } from '../contexts'
+import { useColors } from '../../hooks/useColors'
 
 // ── StepLayout ───────────────────────────────────────────────────────────────
 // Outer shell shared by all onboarding steps.
@@ -47,6 +48,7 @@ export function OnboardingInput({
 }: TextInputProps & { focused?: boolean }) {
   const [internalFocused, setInternalFocused] = useState(false)
   const isFocused = focused ?? internalFocused
+  const c = useColors()
 
   return (
     <TextInput
@@ -54,7 +56,7 @@ export function OnboardingInput({
         isFocused ? 'border-primary' : 'border-transparent'
       } placeholder:text-gray-400 dark:placeholder:text-gray-500`}
       style={{ fontSize: 16 }}
-      placeholderTextColor="#9ca3af"
+      placeholderTextColor={c.textFaint}
       onFocus={(e) => {
         setInternalFocused(true)
         props.onFocus?.(e)

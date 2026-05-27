@@ -1,6 +1,7 @@
 import React, { useState } from 'react'
 import { View, Text, Pressable, ScrollView, StyleSheet } from 'react-native'
 import { useDetailColors } from '../../hooks/useDetailColors'
+import { useColors } from '../../hooks/useColors'
 
 export type Column<T> = {
   key: string
@@ -29,10 +30,11 @@ function AdminTableRow<T>({
   onPress: () => void
 }) {
   const colors = useDetailColors()
+  const c = useColors()
   const [hovered, setHovered] = useState(false)
 
   let rowBg = colors.panelBg
-  if (isSelected) rowBg = 'rgba(232,134,42,0.06)'
+  if (isSelected) rowBg = c.accentSoft
   else if (hovered) rowBg = colors.cardBg
 
   return (
@@ -45,7 +47,7 @@ function AdminTableRow<T>({
         {
           backgroundColor: rowBg,
           borderBottomColor: colors.border,
-          borderLeftColor: isSelected ? '#E8862A' : 'transparent',
+          borderLeftColor: isSelected ? c.accent : 'transparent',
           borderLeftWidth: 2,
         },
       ]}

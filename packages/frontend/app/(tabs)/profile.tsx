@@ -1,8 +1,8 @@
 import React, { useState, useEffect } from 'react'
 import { ScrollView, View, Pressable, Image, Share } from 'react-native'
-import { BadgeCheck, Building2 } from 'lucide-react-native'
+import { SealCheck, Buildings } from 'phosphor-react-native'
 import { Badge, useRouter } from 'expo-router'
-import { useUser, useTheme } from '../../components/contexts'
+import { useUser } from '../../components/contexts'
 import { Section, Text } from '../../components/ui'
 import TabHeader from '../../components/ui/TabHeader'
 import {
@@ -12,11 +12,12 @@ import {
   fetchUserPosts,
   CenterData,
 } from '../../utils/api'
+import { useColors } from '../../hooks/useColors'
 
 export default function ProfileNative() {
   const router = useRouter()
   const { user, refreshUser } = useUser()
-  const { isDark } = useTheme()
+  const c = useColors()
   const [allCenters, setAllCenters] = useState<CenterData[]>([])
   const [postCount, setPostCount] = useState(0)
   const [eventCount, setEventCount] = useState(0)
@@ -96,11 +97,11 @@ export default function ProfileNative() {
     }
   }
 
-  const textColor = isDark ? '#FAFAFA' : '#1C1917'
-  const mutedTextColor = isDark ? '#A8A29E' : '#78716C'
-  const borderColor = isDark ? '#262626' : '#ECE7DE'
-  const cardBg = isDark ? '#262626' : '#FFFFFF'
-  const chipBg = isDark ? '#333333' : '#F0EFED'
+  const textColor = c.text
+  const mutedTextColor = c.textMuted
+  const borderColor = c.border
+  const cardBg = c.card
+  const chipBg = c.surface
 
   const centerName = allCenters.find((c) => c.centerID === user?.centerID)?.name
   const interests = user?.interests || []
@@ -108,7 +109,7 @@ export default function ProfileNative() {
 
   return (
     <View style={{ flex: 1 }}>
-      <ScrollView style={{ flex: 1, backgroundColor: isDark ? '#1A1A1A' : '#F5F5F4' }}>
+      <ScrollView style={{ flex: 1, backgroundColor: c.bg }}>
         {/* Profile header */}
         <View style={{ paddingTop: 28, paddingHorizontal: 20, gap: 12 }}>
           <View style={{ flexDirection: 'row', alignItems: 'flex-start', gap: 16 }}>
@@ -122,7 +123,7 @@ export default function ProfileNative() {
                   borderRadius: 44,
                   borderWidth: 3,
                   borderColor: cardBg,
-                  backgroundColor: '#D6D3D1',
+                  backgroundColor: c.borderStrong,
                 }}
               />
             ) : (
@@ -194,7 +195,7 @@ export default function ProfileNative() {
               ) : null}
               {user?.isVerified ? (
                 <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4, marginTop: 2 }}>
-                  <BadgeCheck size={14} color="#C2410C" />
+                  <SealCheck size={14} color="#C2410C" />
                   <Text
                     style={{
                       fontFamily: 'Inclusive Sans',
@@ -452,7 +453,7 @@ export default function ProfileNative() {
                         justifyContent: 'center',
                       }}
                     >
-                      <Building2 size={16} color="#C2410C" />
+                      <Buildings size={16} color="#C2410C" />
                     </View>
                     <View style={{ flex: 1 }}>
                       <Text

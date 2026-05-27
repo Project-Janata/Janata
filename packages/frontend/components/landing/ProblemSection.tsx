@@ -1,14 +1,14 @@
 import React from 'react'
 import { View, Text, useWindowDimensions } from 'react-native'
-import type { LucideIcon } from 'lucide-react-native'
-import { MapPin, Megaphone } from 'lucide-react-native'
+import type { Icon } from 'phosphor-react-native'
+import { MapPin, Megaphone } from 'phosphor-react-native'
 
 interface PersonaCardProps {
   role: string
   headline: string
   situation: string
   quote: string
-  Icon: LucideIcon
+  Icon: Icon
   accent: string
   isMobile: boolean
 }
@@ -54,7 +54,7 @@ function PersonaCard({
             justifyContent: 'center',
           }}
         >
-          <Icon size={26} color={accent} strokeWidth={1.75} />
+          <Icon size={26} color={accent} />
         </View>
         <Text
           style={{

@@ -1,17 +1,19 @@
 import React, { useEffect, useRef, useState } from 'react'
 import { Animated, Text, Pressable, View, Image, Easing } from 'react-native'
 import { useUser, useTheme } from '../contexts'
-import { Settings, LogOut, Sun, Moon, User, Monitor, Shield } from 'lucide-react-native'
+import { GearSix, SignOut, Sun, Moon, User, Monitor, Shield } from 'phosphor-react-native'
 import { router, usePathname } from 'expo-router'
 import ThemeSelector from './ThemeSelector'
 import { Avatar } from '../ui'
 import { isSuperAdmin } from '../../utils/admin'
+import { useColors } from '../../hooks/useColors'
 
 function SettingsPanel({ visible, onClose, onLogout }) {
   const opacityAnim = useRef(new Animated.Value(0)).current
   const translateYAnim = useRef(new Animated.Value(-20)).current
   const { user } = useUser()
   const { preference: themePreference, setPreference: setThemePreference, isDark } = useTheme()
+  const c = useColors()
   const pathname = usePathname()
   const themeOptions = ['light', 'dark', 'system']
   const optionWidth = 70
@@ -131,8 +133,8 @@ function SettingsPanel({ visible, onClose, onLogout }) {
           right: 16,
           zIndex: 100,
           width: 248,
-          backgroundColor: isDark ? '#171717' : '#fff',
-          borderColor: isDark ? '#262626' : '#E5E7EB',
+          backgroundColor: c.surface,
+          borderColor: c.border,
           borderWidth: 1,
           borderRadius: 16,
           shadowColor: '#000',
@@ -183,7 +185,7 @@ function SettingsPanel({ visible, onClose, onLogout }) {
         >
           <User
             size={16}
-            color={pathname === '/settings/profile' ? '#fff' : isDark ? '#fff' : '#374151'}
+            color={pathname === '/settings/profile' ? '#fff' : c.text}
             className="mr-3"
           />
           <Text
@@ -207,9 +209,9 @@ function SettingsPanel({ visible, onClose, onLogout }) {
             router.push('/settings/preferences')
           }}
         >
-          <Settings
+          <GearSix
             size={16}
-            color={pathname === '/settings/preferences' ? '#fff' : isDark ? '#fff' : '#374151'}
+            color={pathname === '/settings/preferences' ? '#fff' : c.text}
             className="mr-3"
           />
           <Text
@@ -230,8 +232,8 @@ function SettingsPanel({ visible, onClose, onLogout }) {
               router.push('/admin' as any)
             }}
           >
-            <Shield size={16} color="#E8862A" className="mr-3" />
-            <Text style={{ fontFamily: 'Inclusive Sans', color: '#E8862A' }}>Admin Dashboard</Text>
+            <Shield size={16} color={c.accent} className="mr-3" />
+            <Text style={{ fontFamily: 'Inclusive Sans', color: c.accent }}>Admin Dashboard</Text>
           </Pressable>
         )}
 
@@ -257,7 +259,7 @@ function SettingsPanel({ visible, onClose, onLogout }) {
           onPress={onLogout}
           className="flex-row items-center p-2 rounded-lg hover:bg-red-50 dark:hover:bg-red-900/20"
         >
-          <LogOut size={16} color={isDark ? '#ef4444' : '#dc2626'} className="mr-3" />
+          <SignOut size={16} color={c.error} className="mr-3" />
           <Text className="text-red-600 dark:text-red-400 font-sans">Log Out</Text>
         </Pressable>
       </Animated.View>

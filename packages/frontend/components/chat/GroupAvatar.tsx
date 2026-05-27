@@ -1,6 +1,6 @@
 import React from 'react'
 import { Text, View } from 'react-native'
-import { Building2, CalendarDays } from 'lucide-react-native'
+import { Buildings, CalendarDots } from 'phosphor-react-native'
 import { Avatar } from '../ui'
 import type { AppColors } from '../../tokens'
 import type { GroupKind, PersonSummary } from '../boards'
@@ -80,9 +80,9 @@ export function GroupIcon({
       }}
     >
       {kind === 'center' ? (
-        <Building2 size={19} color={active ? '#FFFFFF' : colors.accent} />
+        <Buildings size={19} color={active ? '#FFFFFF' : colors.accent} />
       ) : (
-        <CalendarDays size={19} color={active ? '#FFFFFF' : colors.accent} />
+        <CalendarDots size={19} color={active ? '#FFFFFF' : colors.accent} />
       )}
     </View>
   )
