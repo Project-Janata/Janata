@@ -1,5 +1,5 @@
 import React, { useState } from 'react'
-import { ActivityIndicator, Pressable, Text } from 'react-native'
+import { ActivityIndicator, Pressable, Text, type StyleProp, type ViewStyle } from 'react-native'
 import { useColors } from '../../../hooks/useColors'
 
 interface PrimaryButtonProps {
@@ -26,10 +26,7 @@ export default function PrimaryButton({
 }: PrimaryButtonProps) {
   const isDisabled = disabled || loading
   const [pressed, setPressed] = useState(false)
-<<<<<<< HEAD
   const c = useColors()
-=======
->>>>>>> da32827 (feat: refactor onboarding steps to use shared components and improve structure)
 
   return (
     <Pressable

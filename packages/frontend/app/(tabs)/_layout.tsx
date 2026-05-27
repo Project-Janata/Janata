@@ -292,7 +292,7 @@ export default function TabLayout() {
                   size={size + 4}
                   style={{
                     borderWidth: focused ? 2 : 0,
-                    borderColor: c.primary,
+                    borderColor: c.accent,
                   }}
                 />
               ),

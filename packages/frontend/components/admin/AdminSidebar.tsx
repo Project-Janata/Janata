@@ -1,6 +1,6 @@
 import React from 'react'
 import { View, Text, Pressable } from 'react-native'
-import { Bell, Buildings, CalendarDots, Users, Ticket } from 'phosphor-react-native'
+import { Bell, Buildings, CalendarDots, Users, Ticket, ShieldAlert } from 'phosphor-react-native'
 import type { Icon } from 'phosphor-react-native'
 import { useColors } from '../../hooks/useColors'
 
