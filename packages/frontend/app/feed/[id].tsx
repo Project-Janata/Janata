@@ -164,7 +164,12 @@ export default function FeedPostDetail() {
           borderBottomColor: colors.border,
         }}
       >
-        <Pressable onPress={() => router.back()} hitSlop={10}>
+        <Pressable
+          onPress={() => router.back()}
+          accessibilityRole="button"
+          accessibilityLabel="Back"
+          hitSlop={10}
+        >
           <ArrowLeft size={22} color={colors.orange} />
         </Pressable>
         <View style={{ flex: 1 }}>

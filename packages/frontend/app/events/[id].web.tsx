@@ -131,7 +131,12 @@ function MobileEventDetail({ eventId }: { eventId: string }) {
       />
       {/* Header */}
       <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: 16, paddingTop: 16, paddingBottom: 8 }}>
-        <Pressable onPress={() => router.back()} style={{ flexDirection: 'row', alignItems: 'center', gap: 4 }}>
+        <Pressable
+          onPress={() => router.back()}
+          accessibilityRole="button"
+          accessibilityLabel="Back"
+          style={{ flexDirection: 'row', alignItems: 'center', gap: 4 }}
+        >
           <ChevronLeft size={20} color={colors.textSecondary} />
           <Text style={{ color: colors.textSecondary, fontSize: 16 }}>Back</Text>
         </Pressable>
@@ -163,6 +168,8 @@ function MobileEventDetail({ eventId }: { eventId: string }) {
                 navigator.clipboard.writeText(window.location.href)
               }
             }}
+            accessibilityRole="button"
+            accessibilityLabel="Share this event"
             style={{ padding: 8 }}
           >
             <Share2 size={18} color={colors.textSecondary} />

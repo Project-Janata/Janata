@@ -131,7 +131,12 @@ export default function ChatConversationDetail() {
           borderBottomColor: colors.border,
         }}
       >
-        <Pressable onPress={() => router.back()} hitSlop={10}>
+        <Pressable
+          onPress={() => router.back()}
+          accessibilityRole="button"
+          accessibilityLabel="Back"
+          hitSlop={10}
+        >
           <ArrowLeft size={22} color={colors.orange} />
         </Pressable>
         {conversation.type === 'dm' ? (
