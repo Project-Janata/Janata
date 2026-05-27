@@ -1,9 +1,29 @@
 import React, { Component, type ErrorInfo, type ReactNode } from 'react'
 import { ScrollView, View, Text, Pressable } from 'react-native'
+import { usePostHog } from 'posthog-react-native'
+
+/**
+ * Minimal shape of the PostHog client we actually use. Typed loosely so a
+ * null/missing client never trips us up — error reporting must never crash
+ * the error reporter.
+ */
+type PosthogLike =
+  | { capture: (event: string, props?: Record<string, unknown>) => void }
+  | null
+  | undefined
 
 interface Props {
   children: ReactNode
   fallback?: ReactNode
+  /**
+   * Optional PostHog client. Passed in by `ErrorBoundaryWithAnalytics`
+   * (function-component wrapper) so this class component can forward to
+   * PostHog's `$exception` capture from `componentDidCatch`.
+   *
+   * When absent (PostHog not configured), errors still log to console and
+   * `window.__lastErrorInfo` — the friendly fallback UI is identical.
+   */
+  posthog?: PosthogLike
 }
 
 interface State {
@@ -37,6 +57,22 @@ export class ErrorBoundary extends Component<Props, State> {
         stack: error?.stack,
         componentStack: info.componentStack,
       }
+    }
+    // Forward to PostHog as an Error Tracking event (#105).
+    // PostHog's $exception event maps to its Error Tracking UI when the
+    // standard property keys ($exception_message / _type / _stack_trace_raw)
+    // are present. Conservative — no PII captured, just the error itself
+    // and the React component stack so we know where it rendered.
+    try {
+      this.props.posthog?.capture('$exception', {
+        $exception_message: error?.message ?? '(no message)',
+        $exception_type: error?.name ?? 'Error',
+        $exception_stack_trace_raw: error?.stack ?? '(no stack)',
+        component_stack: info.componentStack ?? '(no component stack)',
+        url: typeof window !== 'undefined' ? window.location?.href : undefined,
+      })
+    } catch {
+      // Error reporter must never crash the app — swallow any PostHog hiccup.
     }
     this.setState({ componentStack: info.componentStack ?? null })
   }
@@ -247,4 +283,20 @@ export class ErrorBoundary extends Component<Props, State> {
 
     return this.props.children
   }
+}
+
+/**
+ * Function-component wrapper that injects PostHog into the class-based
+ * ErrorBoundary via props. Use this in app/_layout.tsx instead of bare
+ * `<ErrorBoundary>` so component-tree crashes get forwarded to PostHog's
+ * Error Tracking (#105).
+ *
+ * The hook can't live inside the class component, so the standard pattern
+ * is: hook here → prop into the class. When PostHog isn't configured
+ * (no EXPO_PUBLIC_POSTHOG_KEY), `usePostHog()` returns `undefined` and
+ * the class component handles the absence gracefully.
+ */
+export function ErrorBoundaryWithAnalytics(props: Omit<Props, 'posthog'>) {
+  const posthog = usePostHog()
+  return <ErrorBoundary {...props} posthog={posthog as PosthogLike} />
 }
