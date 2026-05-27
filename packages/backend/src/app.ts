@@ -61,6 +61,8 @@ function boardPostToApi(post: db.BoardPostWithAuthor): BoardPostApiResponse {
     createdAt: post.created_at,
     updatedAt: post.updated_at,
     deletedAt: post.deleted_at,
+    pinnedAt: post.pinned_at,
+    pinnedBy: post.pinned_by,
     author: userRowToApi(post.author),
     reactions: post.reactions,
     replyCount: post.reply_count,
@@ -1333,6 +1335,87 @@ app.delete('/boards/posts/:postId', authMiddleware, async (c) => {
   }
 
   return c.json({ ok: true })
+})
+
+// Pin a board post. Per PRD §5.2 + #205: "Posts can be pinned by board
+// admins (sevak / center admin); pinned posts sort first." Gate: caller
+// must be SEVAK or higher (which includes Brahmachari and Admin tiers),
+// OR a global admin. listBoardPosts ORDER BY puts pinned first.
+app.post('/boards/posts/:postId/pin', authMiddleware, async (c) => {
+  const user = c.get('user')
+  const postId = c.req.param('postId')
+
+  const post = await db.getBoardPostById(c.env.DB, postId)
+  if (!post) {
+    return c.json({ message: 'Board post not found' }, 404)
+  }
+  const board = await db.getBoardById(c.env.DB, post.board_id)
+  if (!board) {
+    return c.json({ message: 'Board not found' }, 404)
+  }
+
+  // Read-side gate (must have access to the board at all)
+  const accessError = await verifyBoardAccess(c, board.type, board.parent_id, user)
+  if (accessError) return accessError
+
+  // Pin authority gate
+  if (user.verification_level < SEVAK && !isAdmin(user)) {
+    return c.json(
+      { message: 'Only sevaks, brahmacharis, or admins can pin posts' },
+      403,
+    )
+  }
+
+  const result = await db.pinBoardPost(c.env.DB, postId, user.id)
+  if (!result.ok) {
+    switch (result.reason) {
+      case 'not_found':
+        return c.json({ message: 'Board post not found' }, 404)
+      case 'deleted':
+        return c.json({ message: 'Cannot pin a deleted post' }, 410)
+      case 'already_pinned':
+        return c.json({ message: 'Post is already pinned' }, 409)
+    }
+  }
+
+  return c.json({ ok: true, pinned: true })
+})
+
+app.post('/boards/posts/:postId/unpin', authMiddleware, async (c) => {
+  const user = c.get('user')
+  const postId = c.req.param('postId')
+
+  const post = await db.getBoardPostById(c.env.DB, postId)
+  if (!post) {
+    return c.json({ message: 'Board post not found' }, 404)
+  }
+  const board = await db.getBoardById(c.env.DB, post.board_id)
+  if (!board) {
+    return c.json({ message: 'Board not found' }, 404)
+  }
+  const accessError = await verifyBoardAccess(c, board.type, board.parent_id, user)
+  if (accessError) return accessError
+
+  if (user.verification_level < SEVAK && !isAdmin(user)) {
+    return c.json(
+      { message: 'Only sevaks, brahmacharis, or admins can unpin posts' },
+      403,
+    )
+  }
+
+  const result = await db.unpinBoardPost(c.env.DB, postId)
+  if (!result.ok) {
+    switch (result.reason) {
+      case 'not_found':
+        return c.json({ message: 'Board post not found' }, 404)
+      case 'deleted':
+        return c.json({ message: 'Cannot unpin a deleted post' }, 410)
+      case 'not_pinned':
+        return c.json({ message: 'Post is not currently pinned' }, 409)
+    }
+  }
+
+  return c.json({ ok: true, pinned: false })
 })
 
 // ═══════════════════════════════════════════════════════════════════════

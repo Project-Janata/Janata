@@ -856,11 +856,15 @@ export async function listBoardPosts(
 ): Promise<BoardPostWithAuthor[]> {
   const limit = Math.min(Math.max(opts.limit ?? 50, 1), 100)
   const offset = Math.max(opts.offset ?? 0, 0)
+  // Order: pinned first (most-recently pinned at top of pinned section),
+  // then everything else reverse-chronological. The
+  // `pinned_at IS NOT NULL` predicate evaluates to 1 for pinned posts and 0
+  // for non-pinned; DESC puts the 1s first.
   const result = await db
     .prepare(
       `SELECT * FROM board_posts
        WHERE board_id = ?1 AND deleted_at IS NULL
-       ORDER BY created_at DESC
+       ORDER BY (pinned_at IS NOT NULL) DESC, pinned_at DESC, created_at DESC
        LIMIT ?2 OFFSET ?3`,
     )
     .bind(boardId, limit, offset)
@@ -1018,4 +1022,67 @@ export async function softDeleteBoardPost(
     .run()
 
   return { ok: true }
+}
+
+export type BoardPostPinResult =
+  | { ok: true; pinned: boolean }
+  | { ok: false; reason: 'not_found' | 'deleted' | 'already_pinned' | 'not_pinned' }
+
+/**
+ * Pin a post. Pinned posts sort first in `listBoardPosts`. Caller authority
+ * (sevak / center admin / global admin) is enforced at the route level —
+ * this helper does the DB work and idempotency check only.
+ *
+ * Soft-deleted posts can't be pinned (you'd be promoting a hidden post).
+ */
+export async function pinBoardPost(
+  db: D1Database,
+  postId: string,
+  pinnedByUserId: string,
+): Promise<BoardPostPinResult> {
+  const post = await db
+    .prepare(`SELECT pinned_at, deleted_at FROM board_posts WHERE id = ?1`)
+    .bind(postId)
+    .first<{ pinned_at: string | null; deleted_at: string | null }>()
+
+  if (!post) return { ok: false, reason: 'not_found' }
+  if (post.deleted_at) return { ok: false, reason: 'deleted' }
+  if (post.pinned_at) return { ok: false, reason: 'already_pinned' }
+
+  await db
+    .prepare(
+      `UPDATE board_posts
+       SET pinned_at = datetime('now'), pinned_by = ?1
+       WHERE id = ?2`,
+    )
+    .bind(pinnedByUserId, postId)
+    .run()
+
+  return { ok: true, pinned: true }
+}
+
+/** Unpin a previously pinned post. Idempotent failure: `not_pinned`. */
+export async function unpinBoardPost(
+  db: D1Database,
+  postId: string,
+): Promise<BoardPostPinResult> {
+  const post = await db
+    .prepare(`SELECT pinned_at, deleted_at FROM board_posts WHERE id = ?1`)
+    .bind(postId)
+    .first<{ pinned_at: string | null; deleted_at: string | null }>()
+
+  if (!post) return { ok: false, reason: 'not_found' }
+  if (post.deleted_at) return { ok: false, reason: 'deleted' }
+  if (!post.pinned_at) return { ok: false, reason: 'not_pinned' }
+
+  await db
+    .prepare(
+      `UPDATE board_posts
+       SET pinned_at = NULL, pinned_by = NULL
+       WHERE id = ?1`,
+    )
+    .bind(postId)
+    .run()
+
+  return { ok: true, pinned: false }
 }

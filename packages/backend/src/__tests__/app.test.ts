@@ -1113,6 +1113,142 @@ describe('board routes', () => {
       expect([undefined, { emoji: '🙏', count: 1 }]).toContainEqual(ownReaction)
     })
   })
+
+  // ── Pinning (issue #205) ──────────────────────────────────────────────
+  describe('POST /api/boards/posts/:postId/pin and /unpin', () => {
+    let postId: string
+    let sevakToken: string
+
+    beforeEach(async () => {
+      const { body: createBody } = await jsonPost(
+        `/api/boards/center/${centerId}/posts`,
+        { body: 'Will be pinned' },
+        authHeader(memberToken),
+      )
+      postId = createBody.post.id
+
+      // Promote a separate user to SEVAK (verification_level = 54 per
+      // constants.ts) so we can prove the verification gate.
+      const sevak = await registerAndLogin('boardsevak', 'password123')
+      sevakToken = sevak.token
+      await env.DB.prepare(
+        'UPDATE users SET center_id = ?, verification_level = 54 WHERE username = ?',
+      )
+        .bind(centerId, 'boardsevak')
+        .run()
+    })
+
+    it('lets a sevak pin a post', async () => {
+      const { res, body } = await jsonPost(
+        `/api/boards/posts/${postId}/pin`,
+        {},
+        authHeader(sevakToken),
+      )
+      expect(res.status).toBe(200)
+      expect(body.pinned).toBe(true)
+
+      const { body: list } = await fetchJSON(
+        `/api/boards/center/${centerId}`,
+        { headers: authHeader(memberToken) },
+      )
+      expect(list.posts[0].id).toBe(postId)
+      expect(list.posts[0].pinnedAt).toBeTruthy()
+    })
+
+    it('rejects pin from a basic (non-sevak) user with 403', async () => {
+      const { res, body } = await jsonPost(
+        `/api/boards/posts/${postId}/pin`,
+        {},
+        authHeader(memberToken),
+      )
+      expect(res.status).toBe(403)
+      expect(body.message).toMatch(/sevak|admin/i)
+    })
+
+    it('lets an admin pin a post', async () => {
+      // Admin needs board access — place admin at this center.
+      await env.DB.prepare('UPDATE users SET center_id = ? WHERE username = ?')
+        .bind(centerId, 'chinmayajanata@gmail.com')
+        .run()
+
+      const { res } = await jsonPost(
+        `/api/boards/posts/${postId}/pin`,
+        {},
+        authHeader(adminToken),
+      )
+      expect(res.status).toBe(200)
+    })
+
+    it('returns 409 on already-pinned', async () => {
+      await jsonPost(`/api/boards/posts/${postId}/pin`, {}, authHeader(sevakToken))
+      const { res } = await jsonPost(
+        `/api/boards/posts/${postId}/pin`,
+        {},
+        authHeader(sevakToken),
+      )
+      expect(res.status).toBe(409)
+    })
+
+    it('unpins a pinned post', async () => {
+      await jsonPost(`/api/boards/posts/${postId}/pin`, {}, authHeader(sevakToken))
+      const { res, body } = await jsonPost(
+        `/api/boards/posts/${postId}/unpin`,
+        {},
+        authHeader(sevakToken),
+      )
+      expect(res.status).toBe(200)
+      expect(body.pinned).toBe(false)
+
+      const { body: list } = await fetchJSON(
+        `/api/boards/center/${centerId}`,
+        { headers: authHeader(memberToken) },
+      )
+      const target = list.posts.find((p: { id: string }) => p.id === postId)
+      expect(target?.pinnedAt).toBeNull()
+    })
+
+    it('returns 409 on unpin when not pinned', async () => {
+      const { res } = await jsonPost(
+        `/api/boards/posts/${postId}/unpin`,
+        {},
+        authHeader(sevakToken),
+      )
+      expect(res.status).toBe(409)
+    })
+
+    it('sorts pinned posts above unpinned in listing', async () => {
+      const { body: a } = await jsonPost(
+        `/api/boards/center/${centerId}/posts`,
+        { body: 'older' },
+        authHeader(memberToken),
+      )
+      // Give SQLite's datetime('now') a tick so the timestamps differ.
+      await new Promise((r) => setTimeout(r, 1100))
+      await jsonPost(
+        `/api/boards/center/${centerId}/posts`,
+        { body: 'middle' },
+        authHeader(memberToken),
+      )
+      await new Promise((r) => setTimeout(r, 1100))
+      const { body: c } = await jsonPost(
+        `/api/boards/center/${centerId}/posts`,
+        { body: 'newest' },
+        authHeader(memberToken),
+      )
+
+      // Pin the oldest — it should jump to the top despite being oldest.
+      await jsonPost(`/api/boards/posts/${a.post.id}/pin`, {}, authHeader(sevakToken))
+
+      const { body: list } = await fetchJSON(
+        `/api/boards/center/${centerId}`,
+        { headers: authHeader(memberToken) },
+      )
+      // posts[0] = pinned (a); the rest in reverse-chronological (newest first).
+      expect(list.posts[0].id).toBe(a.post.id)
+      expect(list.posts[0].pinnedAt).toBeTruthy()
+      expect(list.posts[1].id).toBe(c.post.id)
+    })
+  })
 })
 
 // ═══════════════════════════════════════════════════════════════════════

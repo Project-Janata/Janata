@@ -160,6 +160,8 @@ export interface BoardPostRow {
   created_at: string
   updated_at: string
   deleted_at: string | null
+  pinned_at: string | null
+  pinned_by: string | null
 }
 
 export interface BoardReactionCount {
@@ -257,6 +259,8 @@ export interface BoardPostApiResponse {
   createdAt: string
   updatedAt: string
   deletedAt: string | null
+  pinnedAt: string | null
+  pinnedBy: string | null
   author: UserApiResponse
   reactions: BoardReactionCount[]
   replyCount: number
