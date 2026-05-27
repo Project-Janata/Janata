@@ -139,6 +139,10 @@ function RootLayoutNav({ onAuthReady }: { onAuthReady: () => void }) {
         inLandingPage ||
         pathname === '/' ||
         pathname.startsWith('/(tabs)') ||
+        pathname === '/explore' ||
+        pathname.startsWith('/explore/') ||
+        pathname === '/feed' ||
+        pathname.startsWith('/feed/') ||
         pathname.startsWith('/events/') ||
         pathname.startsWith('/center/') ||
         pathname.startsWith('/privacy') ||

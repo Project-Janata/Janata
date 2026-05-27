@@ -1,12 +1,12 @@
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import { View, Text, ScrollView, Image, Pressable, ActivityIndicator, Linking, useWindowDimensions } from 'react-native'
 import { useLocalSearchParams, useRouter } from 'expo-router'
 import { ChevronLeft, Share2, MapPin, Globe, Phone, User, Navigation, BadgeCheck, Users } from 'lucide-react-native'
-import { useCenterDetail } from '../../hooks/useApiData'
+import { useBoard, useCenterDetail } from '../../hooks/useApiData'
 import { useDetailColors } from '../../hooks/useDetailColors'
-import type { EventDisplay } from '../../utils/api'
+import { createBoardPost, type EventDisplay } from '../../utils/api'
 import UnderlineTabBar from '../../components/ui/UnderlineTabBar'
-import { buildCenterBoard, ThreadPanel } from '../../components/boards'
+import { ThreadPanel, boardPostToMessage } from '../../components/boards'
 import { useUser } from '../../components/contexts'
 
 export default function CenterDetailWeb() {
@@ -51,6 +51,16 @@ function MobileCenterDetail({ centerId }: { centerId: string }) {
   const { center, events, loading } = useCenterDetail(centerId)
   const colors = useDetailColors()
   const [activeTab, setActiveTab] = useState('About')
+  const canPostToThread =
+    !!user && (user.centerID === center?.id || (user.verificationLevel ?? 0) >= 107)
+  const { posts: boardPosts, refetch: refetchBoard } = useBoard('center', center?.id, canPostToThread)
+  const boardMessages = useMemo(() => boardPosts.map(boardPostToMessage), [boardPosts])
+
+  const handleCreateThreadPost = async (body: string) => {
+    if (!center?.id) return
+    await createBoardPost('center', center.id, body)
+    await refetchBoard()
+  }
 
   const handleShare = () => {
     if (typeof navigator !== 'undefined' && navigator.share) {
@@ -100,13 +110,6 @@ function MobileCenterDetail({ centerId }: { centerId: string }) {
   }
 
   const displayWebsite = (center.website ?? '').replace(/^https?:\/\//, '').replace(/\/$/, '')
-  const board = buildCenterBoard({
-    id: center.id,
-    centerName: center.name,
-    subtitle: `Ask about rides, seva, and announcements for ${center.name}.`,
-  })
-  const canPostToThread = !!user?.isVerified
-
   return (
     <View style={{ flex: 1, backgroundColor: colors.panelBg }}>
       {/* Header */}
@@ -155,7 +158,7 @@ function MobileCenterDetail({ centerId }: { centerId: string }) {
             tabs={['About', 'Thread', 'Events']}
             activeTab={activeTab}
             onTabChange={setActiveTab}
-            counts={{ Thread: board.messages.length, Events: events.length }}
+            counts={{ Thread: boardMessages.length, Events: events.length }}
           />
         </View>
 
@@ -219,12 +222,13 @@ function MobileCenterDetail({ centerId }: { centerId: string }) {
 
           {activeTab === 'Thread' && (
             <ThreadPanel
-              messages={board.messages}
+              messages={boardMessages}
               colors={colors}
               emptyTitle="Be the first to post"
               emptySubtitle={`Ask about rides, what to bring, or anything else for ${center.name}.`}
               composerPlaceholder="Write to the board..."
               composerState={canPostToThread ? 'open' : 'locked'}
+              onSubmitPost={handleCreateThreadPost}
             />
           )}
 

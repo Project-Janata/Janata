@@ -1,6 +1,6 @@
-import React from 'react'
+import React, { useState } from 'react'
 import { Pressable, ScrollView, Text, TextInput, View } from 'react-native'
-import { Building2, CalendarDays, Lock, MessageCircle, MoreHorizontal } from 'lucide-react-native'
+import { Building2, CalendarDays, Lock, MessageCircle, MoreHorizontal, Send } from 'lucide-react-native'
 import { Avatar } from '../ui'
 import type { BoardMessage } from './__mocks__/mockData'
 
@@ -37,6 +37,7 @@ export function ThreadPanel({
   bottomInset = 0,
   visibleLabel,
   onMessagePress,
+  onSubmitPost,
   showComposer = true,
   showSource = false,
 }: {
@@ -56,6 +57,7 @@ export function ThreadPanel({
   bottomInset?: number
   visibleLabel?: string
   onMessagePress?: (message: BoardMessage) => void
+  onSubmitPost?: (body: string) => Promise<void> | void
   showComposer?: boolean
   showSource?: boolean
 }) {
@@ -63,13 +65,13 @@ export function ThreadPanel({
     return (
       <LockedBoardState
         colors={colors}
-        title={lockedTitle || 'For verified members'}
+        title={lockedTitle || 'Member board'}
         subtitle={
           lockedSubtitle ||
-          "Boards are conversations between verified CHYKs at a center. Get verified and you're in."
+          'Join this center or register for this event to participate in the board.'
         }
-        primaryActionLabel={primaryActionLabel || 'Redeem invite'}
-        secondaryActionLabel={secondaryActionLabel || 'Apply'}
+        primaryActionLabel={primaryActionLabel || 'Explore'}
+        secondaryActionLabel={secondaryActionLabel || 'Back'}
         onPrimaryAction={onPrimaryAction}
         onSecondaryAction={onSecondaryAction}
         bottomInset={bottomInset}
@@ -84,6 +86,7 @@ export function ThreadPanel({
           colors={colors}
           placeholder={composerPlaceholder}
           visibleLabel={visibleLabel}
+          onSubmit={onSubmitPost}
         />
       ) : null}
 
@@ -127,11 +130,34 @@ function BoardComposer({
   colors,
   placeholder,
   visibleLabel,
+  onSubmit,
 }: {
   colors: ThreadPanelColors
   placeholder: string
   visibleLabel?: string
+  onSubmit?: (body: string) => Promise<void> | void
 }) {
+  const [body, setBody] = useState('')
+  const [submitting, setSubmitting] = useState(false)
+  const [error, setError] = useState<string | null>(null)
+  const canSubmit = !!onSubmit && body.trim().length > 0 && !submitting
+  const accent = colors.accent ?? '#E8862A'
+
+  const handleSubmit = async () => {
+    if (!canSubmit || !onSubmit) return
+    const nextBody = body.trim()
+    try {
+      setError(null)
+      setSubmitting(true)
+      await onSubmit(nextBody)
+      setBody('')
+    } catch (err: any) {
+      setError(err?.message || 'Could not create post.')
+    } finally {
+      setSubmitting(false)
+    }
+  }
+
   return (
     <View style={{ paddingHorizontal: 20, paddingTop: 18, paddingBottom: visibleLabel ? 16 : 10 }}>
       <View
@@ -140,24 +166,51 @@ function BoardComposer({
           borderRadius: 16,
           backgroundColor: colors.iconBoxBg,
           flexDirection: 'row',
-          alignItems: 'center',
+          alignItems: 'flex-end',
           paddingHorizontal: 16,
+          paddingVertical: 10,
           gap: 12,
         }}
       >
-        <Avatar name="Aditi Mehta" initials="AM" size={36} backgroundColor="#0478A5" />
+        <Avatar name="You" initials="YO" size={36} backgroundColor="#0478A5" />
         <TextInput
-          editable={false}
-          value=""
+          editable={!!onSubmit && !submitting}
+          multiline
+          value={body}
+          onChangeText={setBody}
           placeholder={placeholder}
           placeholderTextColor={colors.textMuted}
           style={{
             flex: 1,
+            minHeight: 38,
+            maxHeight: 120,
+            paddingTop: 8,
+            paddingBottom: 8,
             fontFamily: 'Inclusive Sans',
             fontSize: 16,
-            color: colors.textSecondary,
+            lineHeight: 22,
+            color: colors.text,
+            textAlignVertical: 'top',
           }}
         />
+        <Pressable
+          accessibilityLabel="Post to board"
+          disabled={!canSubmit}
+          onPress={handleSubmit}
+          style={{
+            width: 38,
+            height: 38,
+            borderRadius: 19,
+            alignItems: 'center',
+            justifyContent: 'center',
+            backgroundColor: canSubmit ? accent : colors.cardBg ?? colors.panelBg,
+            borderWidth: canSubmit ? 0 : 1,
+            borderColor: colors.border,
+            opacity: submitting ? 0.7 : 1,
+          }}
+        >
+          <Send size={17} color={canSubmit ? '#FFFFFF' : colors.textMuted} strokeWidth={2.3} />
+        </Pressable>
       </View>
       {visibleLabel ? (
         <Text
@@ -170,6 +223,19 @@ function BoardComposer({
           }}
         >
           {visibleLabel}
+        </Text>
+      ) : null}
+      {error ? (
+        <Text
+          style={{
+            marginTop: 10,
+            fontFamily: 'Inclusive Sans',
+            fontSize: 13,
+            color: '#DC2626',
+            lineHeight: 19,
+          }}
+        >
+          {error}
         </Text>
       ) : null}
     </View>
@@ -231,13 +297,8 @@ export function BoardPostCard({
   onPress?: () => void
   showSource?: boolean
 }) {
-  const replies = message.replyCount ?? Math.max(1, message.author.verification === 'sevak' ? 1 : 2)
-  const reactions = message.reactions ?? [
-    {
-      emoji: message.author.verification === 'sevak' ? '🪔' : '🙏',
-      count: message.author.verification === 'sevak' ? 6 : 2,
-    },
-  ]
+  const replies = message.replyCount ?? 0
+  const reactions = message.reactions ?? []
   const accent = colors.accent ?? '#E8862A'
   const accentSoft = colors.accentSoft ?? '#FFF7ED'
   const isFeedCard = showSource
@@ -528,6 +589,8 @@ function LockedBoardState({
   bottomInset: number
 }) {
   const accent = colors.accent ?? '#E8862A'
+  const hasPrimaryAction = !!onPrimaryAction
+  const hasSecondaryAction = !!onSecondaryAction
 
   return (
     <View
@@ -577,40 +640,46 @@ function LockedBoardState({
       >
         {subtitle}
       </Text>
-      <View style={{ flexDirection: 'row', gap: 10, marginTop: 34, width: '100%', maxWidth: 430 }}>
-        <Pressable
-          onPress={onPrimaryAction}
-          style={{
-            flex: 1,
-            minHeight: 50,
-            borderRadius: 999,
-            backgroundColor: accent,
-            alignItems: 'center',
-            justifyContent: 'center',
-          }}
-        >
-          <Text style={{ fontFamily: 'Inclusive Sans', fontSize: 15, color: '#FFFFFF' }}>
-            {primaryActionLabel}
-          </Text>
-        </Pressable>
-        <Pressable
-          onPress={onSecondaryAction}
-          style={{
-            flex: 1,
-            minHeight: 50,
-            borderRadius: 999,
-            borderWidth: 1,
-            borderColor: colors.border,
-            alignItems: 'center',
-            justifyContent: 'center',
-            backgroundColor: colors.cardBg ?? colors.panelBg,
-          }}
-        >
-          <Text style={{ fontFamily: 'Inclusive Sans', fontSize: 15, color: colors.textSecondary }}>
-            {secondaryActionLabel}
-          </Text>
-        </Pressable>
-      </View>
+      {hasPrimaryAction || hasSecondaryAction ? (
+        <View style={{ flexDirection: 'row', gap: 10, marginTop: 34, width: '100%', maxWidth: 430 }}>
+          {hasPrimaryAction ? (
+            <Pressable
+              onPress={onPrimaryAction}
+              style={{
+                flex: 1,
+                minHeight: 50,
+                borderRadius: 999,
+                backgroundColor: accent,
+                alignItems: 'center',
+                justifyContent: 'center',
+              }}
+            >
+              <Text style={{ fontFamily: 'Inclusive Sans', fontSize: 15, color: '#FFFFFF' }}>
+                {primaryActionLabel}
+              </Text>
+            </Pressable>
+          ) : null}
+          {hasSecondaryAction ? (
+            <Pressable
+              onPress={onSecondaryAction}
+              style={{
+                flex: 1,
+                minHeight: 50,
+                borderRadius: 999,
+                borderWidth: 1,
+                borderColor: colors.border,
+                alignItems: 'center',
+                justifyContent: 'center',
+                backgroundColor: colors.cardBg ?? colors.panelBg,
+              }}
+            >
+              <Text style={{ fontFamily: 'Inclusive Sans', fontSize: 15, color: colors.textSecondary }}>
+                {secondaryActionLabel}
+              </Text>
+            </Pressable>
+          ) : null}
+        </View>
+      ) : null}
     </View>
   )
 }

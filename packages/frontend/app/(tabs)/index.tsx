@@ -6,16 +6,8 @@ import { useUser } from '../../components/contexts'
 import { useColors } from '../../hooks/useColors'
 import { useDiscoverData, useMyEvents } from '../../hooks/useApiData'
 import type { EventDisplay } from '../../utils/api'
-import { centerBoards, eventBoards, featuredHomeEvent } from '../../components/boards'
 import { FeaturedEventCard, type FeaturedSource } from '../../components/home/FeaturedEventCard'
-import { BoardPeekRow, type HomeBoardPost } from '../../components/home/BoardPeekRow'
 import { MiniEventRow, type WeekItem } from '../../components/home/MiniEventRow'
-
-const FALLBACK_WEEK_ITEMS: WeekItem[] = [
-  { id: 'mock-week-1', month: 'MAY', day: '8',  title: 'Gurudev Jayanti, Annual Music',  subtitle: '5:00 PM · Chinmaya-Saaket',   highlight: false },
-  { id: 'mock-week-2', month: 'MAY', day: '9',  title: 'Chinmaya Gita Samarpanam',       subtitle: '9:00 AM · Online',             highlight: true  },
-  { id: 'mock-week-3', month: 'MAY', day: '10', title: "Mother's Day Celebration",        subtitle: '9:20 AM · Chinmaya Mission',   highlight: false },
-]
 
 function formatDatePill(dateStr: string): { month: string; day: string } {
   const parsed = new Date(`${dateStr}T00:00:00`)
@@ -87,21 +79,21 @@ export default function HomeScreen() {
     [allEvents]
   )
 
-  const featured = useMemo<FeaturedSource>(() => {
+  const featured = useMemo<FeaturedSource | null>(() => {
     const source = signedUpEvents[0] || upcomingExploreEvents[0]
     if (source) {
       const centerName = allCenters.find((item) => item.id === source.centerId)?.name
       return { kind: 'live', event: source, centerName }
     }
-    return { kind: 'mock', event: featuredHomeEvent }
+    return null
   }, [allCenters, signedUpEvents, upcomingExploreEvents])
 
   const weekItems = useMemo<WeekItem[]>(() => {
-    const featuredId = featured.kind === 'live' ? featured.event.id : null
+    const featuredId = featured?.event.id ?? null
     const pool = (signedUpEvents.length > 0 ? signedUpEvents : upcomingExploreEvents).filter(
       (e) => e.id !== featuredId
     )
-    if (pool.length === 0) return FALLBACK_WEEK_ITEMS
+    if (pool.length === 0) return []
     return pool.slice(0, 4).map((event) =>
       liveEventToWeekItem(event, () => {
         posthog?.capture('home_event_pressed', { eventId: event.id, source: 'this_week' })
@@ -109,13 +101,6 @@ export default function HomeScreen() {
       })
     )
   }, [featured, posthog, router, signedUpEvents, upcomingExploreEvents])
-
-  const latestBoardPosts = useMemo<HomeBoardPost[]>(() => {
-    const eventPosts = eventBoards.flatMap((b) => b.messages.map((m) => ({ ...m, sourceTitle: b.title, sourceKind: 'event' as const })))
-    const centerPosts = centerBoards.flatMap((b) => b.messages.map((m) => ({ ...m, sourceTitle: b.centerName, sourceKind: 'center' as const })))
-    const ordered = [eventPosts[0], centerPosts[0]].filter(Boolean) as HomeBoardPost[]
-    return ordered.length > 0 ? ordered : [...eventPosts, ...centerPosts].slice(0, 2)
-  }, [])
 
   const greetingName = user?.firstName || user?.username || 'friend'
   const todayLabel = new Date().toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric' })
@@ -147,40 +132,31 @@ export default function HomeScreen() {
         </View>
 
         <SectionHeader eyebrow="UP NEXT FOR YOU" trailing="See all" accentColor={c.accent} faintColor={c.textFaint} onTrailingPress={() => router.push('/' as never)}>
-          <FeaturedEventCard
-            featured={featured}
-            onPress={() => {
-              if (featured.kind === 'live') {
+          {featured ? (
+            <FeaturedEventCard
+              featured={featured}
+              onPress={() => {
                 posthog?.capture('home_featured_event_pressed', { eventId: featured.event.id })
                 router.push(`/events/${featured.event.id}`)
-              }
-            }}
-          />
-        </SectionHeader>
-
-        {latestBoardPosts.length > 0 && (
-          <SectionHeader
-            eyebrow="LATEST ON YOUR BOARDS"
-            trailing="Open Feed"
-            accentColor={c.accent}
-            faintColor={c.textFaint}
-            onTrailingPress={() => router.push('/(tabs)/connect' as never)}
-          >
-            <View style={{ borderRadius: 18, borderWidth: 1, borderColor: c.border, backgroundColor: c.card, overflow: 'hidden' }}>
-              {latestBoardPosts.map((post, index) => (
-                <BoardPeekRow
-                  key={`${post.sourceTitle}-${post.id}`}
-                  post={post}
-                  showDivider={index < latestBoardPosts.length - 1}
-                  onPress={() => {
-                    posthog?.capture('home_board_peek_pressed', { sourceTitle: post.sourceTitle })
-                    router.push('/(tabs)/connect' as never)
-                  }}
-                />
-              ))}
+              }}
+            />
+          ) : (
+            <View style={{ borderRadius: 18, borderWidth: 1, borderColor: c.border, backgroundColor: c.card, padding: 16, gap: 10 }}>
+              <View style={{ gap: 4 }}>
+                <Text style={{ fontFamily: 'Inclusive Sans', fontSize: 17, color: c.text }}>No upcoming events at your center yet</Text>
+                <Text style={{ fontSize: 14, lineHeight: 20, color: c.textMuted }}>
+                  Explore other CHYK events while your center's calendar fills in.
+                </Text>
+              </View>
+              <Pressable
+                onPress={() => router.push('/explore' as never)}
+                style={{ alignSelf: 'flex-start', paddingVertical: 8, paddingHorizontal: 12, borderRadius: 999, backgroundColor: c.accentSoft }}
+              >
+                <Text style={{ fontFamily: 'Inclusive Sans', fontSize: 13, color: c.accent }}>Explore</Text>
+              </Pressable>
             </View>
-          </SectionHeader>
-        )}
+          )}
+        </SectionHeader>
 
         <SectionHeader
           eyebrow={signedUpEvents.length > 0 ? 'THIS WEEK' : 'COMING UP'}

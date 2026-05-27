@@ -123,6 +123,31 @@ export interface InviteCodeRow {
   uses_count: number
 }
 
+export type BoardType = 'center' | 'event'
+
+export interface BoardRow {
+  id: string
+  type: BoardType
+  parent_id: string
+  created_at: string
+}
+
+export interface BoardPostRow {
+  id: string
+  board_id: string
+  author_id: string
+  body: string
+  image_url: string | null
+  created_at: string
+  updated_at: string
+  deleted_at: string | null
+}
+
+export interface BoardReactionCount {
+  emoji: string
+  count: number
+}
+
 // ── API response types ────────────────────────────────────────────────
 
 export type SafeUser = Omit<UserRow, 'password'>
@@ -187,6 +212,26 @@ export interface EventApiResponse {
   allowJanataSignup: boolean
   createdAt: string
   updatedAt: string
+}
+
+export interface BoardApiResponse {
+  id: string
+  type: BoardType
+  parentId: string
+  createdAt: string
+}
+
+export interface BoardPostApiResponse {
+  id: string
+  boardId: string
+  body: string
+  imageUrl: string | null
+  createdAt: string
+  updatedAt: string
+  deletedAt: string | null
+  author: UserApiResponse
+  reactions: BoardReactionCount[]
+  replyCount: number
 }
 
 // ── Utility helpers ───────────────────────────────────────────────────
@@ -270,6 +315,15 @@ export function eventRowToApi(row: EventRow): EventApiResponse {
     allowJanataSignup: row.allow_janata_signup === 1,
     createdAt: row.created_at,
     updatedAt: row.updated_at,
+  }
+}
+
+export function boardRowToApi(row: BoardRow): BoardApiResponse {
+  return {
+    id: row.id,
+    type: row.type,
+    parentId: row.parent_id,
+    createdAt: row.created_at,
   }
 }
 

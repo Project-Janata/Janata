@@ -7,6 +7,7 @@ import {
   fetchEventsByCenter,
   fetchAllEvents,
   fetchEventUsers,
+  fetchBoard,
   attendEvent,
   unattendEvent,
   getUserEvents,
@@ -20,6 +21,8 @@ import {
   DiscoverCenter,
   DiscoverItem,
   DiscoverFilter,
+  BoardPostData,
+  BoardType,
   DISCOVER_SAMPLE_EVENTS,
   DISCOVER_SAMPLE_CENTERS,
   AttendeeInfo,
@@ -526,24 +529,23 @@ export function useMyEvents(username: string | undefined) {
 
   const load = useCallback(async () => {
     if (!username) {
+      setEvents([])
+      setIsLive(false)
       setLoading(false)
       return
     }
-    const key = `myEvents:${username}`
 
     try {
       setError(null)
-      const apiEvents = await cachedFetch(key, () => getUserEvents(username))
-
-      if (apiEvents.length > 0) {
-        setEvents(
-          apiEvents.map((e) => ({
-            ...apiEventToDisplay(e, username),
-            isRegistered: true,
-          }))
-        )
-        setIsLive(true)
-      }
+      setLoading(true)
+      const apiEvents = await getUserEvents(username)
+      setEvents(
+        apiEvents.map((e) => ({
+          ...apiEventToDisplay(e, username),
+          isRegistered: true,
+        }))
+      )
+      setIsLive(apiEvents.length > 0)
     } catch (err: any) {
       const message = err?.message || 'Failed to load your events'
       setError(message)
@@ -558,6 +560,42 @@ export function useMyEvents(username: string | undefined) {
   }, [load])
 
   return { events, loading, isLive, error, refetch: load }
+}
+
+// ── Board hook ────────────────────────────────────────────────────────
+
+export function useBoard(type: BoardType, parentId: string | undefined, enabled = true) {
+  const [posts, setPosts] = useState<BoardPostData[]>([])
+  const [loading, setLoading] = useState(!!parentId && enabled)
+  const [error, setError] = useState<string | null>(null)
+
+  const load = useCallback(async () => {
+    if (!parentId || !enabled) {
+      setPosts([])
+      setLoading(false)
+      return
+    }
+
+    try {
+      setError(null)
+      setLoading(true)
+      const data = await fetchBoard(type, parentId)
+      setPosts(data.posts)
+    } catch (err: any) {
+      const message = err?.message || 'Failed to load board'
+      setError(message)
+      if (__DEV__) console.warn('[useBoard]', message)
+      setPosts([])
+    } finally {
+      setLoading(false)
+    }
+  }, [enabled, parentId, type])
+
+  useEffect(() => {
+    load()
+  }, [load])
+
+  return { posts, loading, error, refetch: load }
 }
 
 // ── Discover hooks ──────────────────────────────────────────────────

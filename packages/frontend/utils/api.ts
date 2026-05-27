@@ -74,6 +74,28 @@ export interface MapPoint {
   longitude: number
 }
 
+export type BoardType = 'center' | 'event'
+
+export interface BoardData {
+  id: string
+  type: BoardType
+  parentId: string
+  createdAt: string
+}
+
+export interface BoardPostData {
+  id: string
+  boardId: string
+  body: string
+  imageUrl: string | null
+  createdAt: string
+  updatedAt: string
+  deletedAt: string | null
+  author: UserData
+  reactions: Array<{ emoji: string; count: number }>
+  replyCount: number
+}
+
 // ── Discover-specific types ─────────────────────────────────────────────
 
 export interface AttendeeInfo {
@@ -400,6 +422,59 @@ export async function getUserEvents(username: string): Promise<EventData[]> {
     if (__DEV__) console.warn('[getUserEvents]', err?.message || err)
     return []
   }
+}
+
+// ── Boards endpoints ──────────────────────────────────────────────────
+
+export async function fetchBoard(
+  type: BoardType,
+  parentId: string
+): Promise<{ board: BoardData | null; posts: BoardPostData[] }> {
+  try {
+    const response = await authFetch(`/boards/${type}/${encodeURIComponent(parentId)}`)
+    if (!response.ok) return { board: null, posts: [] }
+    const data = await response.json()
+    return {
+      board: data.board ?? null,
+      posts: data.posts ?? [],
+    }
+  } catch (err: any) {
+    if (__DEV__) console.warn('[fetchBoard]', err?.message || err)
+    return { board: null, posts: [] }
+  }
+}
+
+export async function createBoardPost(
+  type: BoardType,
+  parentId: string,
+  body: string,
+  imageUrl?: string | null
+): Promise<BoardPostData> {
+  const response = await authFetch(`/boards/${type}/${encodeURIComponent(parentId)}/posts`, {
+    method: 'POST',
+    body: JSON.stringify({ body, imageUrl: imageUrl ?? null }),
+  })
+  if (!response.ok) {
+    const err = await response.json().catch(() => ({ message: 'Failed to create board post' }))
+    throw new Error(err.message || 'Failed to create board post')
+  }
+  const data = await response.json()
+  return data.post
+}
+
+export async function toggleBoardPostReaction(
+  postId: string,
+  emoji: string
+): Promise<{ active: boolean; reactions: Array<{ emoji: string; count: number }> }> {
+  const response = await authFetch(`/boards/posts/${encodeURIComponent(postId)}/reactions`, {
+    method: 'POST',
+    body: JSON.stringify({ emoji }),
+  })
+  if (!response.ok) {
+    const err = await response.json().catch(() => ({ message: 'Failed to update reaction' }))
+    throw new Error(err.message || 'Failed to update reaction')
+  }
+  return response.json()
 }
 
 // ── Profile endpoints ─────────────────────────────────────────────────

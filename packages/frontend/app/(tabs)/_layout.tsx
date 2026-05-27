@@ -3,7 +3,7 @@ import { Platform, View, Text, Pressable, Image, StatusBar, useWindowDimensions 
 import { useState, useEffect } from 'react'
 import { useUser, useTheme } from '../../components/contexts'
 import { HeaderActionProvider } from '../../components/contexts/HeaderActionContext'
-import { House, MessageSquare, Newspaper, Compass, Plus, Bell } from 'lucide-react-native'
+import { House, Newspaper, Compass, Plus } from 'lucide-react-native'
 import SettingsPanel from '../../components/settings/SettingsPanel'
 import Logo from '../../components/ui/Logo'
 import TabHeader from '../../components/ui/TabHeader'
@@ -38,7 +38,6 @@ export default function TabLayout() {
     { label: 'Home', href: '/' },
     { label: 'Explore', href: '/explore' },
     { label: 'Feed', href: '/feed' },
-    { label: 'Messages', href: '/chat' },
   ] as const
 
   const isRouteActive = (href: (typeof navItems)[number]['href']) => {
@@ -247,12 +246,12 @@ export default function TabLayout() {
           <Tabs.Screen
             name="chat"
             options={{
+              href: null,
               tabBarShowLabel: false,
               title: 'Chat',
               header: isDesktopWeb
                 ? () => <WebHeader />
                 : () => <TabHeader title="Chat" action="create" />,
-              tabBarIcon: ({ color, size }) => <MessageSquare size={size} color={color} />,
             }}
           />
           <Tabs.Screen

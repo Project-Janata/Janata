@@ -1,4 +1,4 @@
-import React, { useState } from 'react'
+import React, { useMemo, useState } from 'react'
 import { View, Text, Image, ScrollView, Pressable, ActivityIndicator, Linking } from 'react-native'
 import { MapPin, Users, User, Clock, CheckCircle, ChevronLeft, Pencil, ExternalLink, Trash2 } from 'lucide-react-native'
 import CopyLinkButton from '../ui/CopyLinkButton'
@@ -8,7 +8,9 @@ import Avatar from '../ui/Avatar'
 import PrimaryButton from '../ui/buttons/PrimaryButton'
 import DestructiveButton from '../ui/buttons/DestructiveButton'
 import { useDetailColors, type DetailColors } from '../../hooks/useDetailColors'
-import { buildEventBoard, ThreadPanel } from '../boards'
+import { useBoard } from '../../hooks/useApiData'
+import { createBoardPost } from '../../utils/api'
+import { ThreadPanel, boardPostToMessage, type BoardMessage } from '../boards'
 import { useUser } from '../contexts'
 
 // ---------------------------------------------------------------------------
@@ -651,20 +653,17 @@ function RegisteredContent({
   attendees,
   colors,
   canPostToThread,
+  boardMessages,
+  onSubmitPost,
 }: {
   event: EventDetailPanelProps['event']
   attendees: Attendee[]
   colors: DetailColors
   canPostToThread: boolean
+  boardMessages: BoardMessage[]
+  onSubmitPost: (body: string) => Promise<void>
 }) {
   const [activeTab, setActiveTab] = useState('Details')
-  const eventBoard = buildEventBoard({
-    id: event.id,
-    title: event.title,
-    dateLabel: formatEventDateLabel(event.date),
-    centerLabel: event.location,
-    attendeesLabel: `${event.attendees} going`,
-  })
 
   return (
     <View style={{ flex: 1 }}>
@@ -673,7 +672,7 @@ function RegisteredContent({
           tabs={['Details', 'Thread', 'People']}
           activeTab={activeTab}
           onTabChange={setActiveTab}
-          counts={{ Thread: eventBoard.messages.length }}
+          counts={{ Thread: boardMessages.length }}
         />
       </View>
 
@@ -713,12 +712,13 @@ function RegisteredContent({
 
         {activeTab === 'Thread' && (
           <ThreadPanel
-            messages={eventBoard.messages}
+            messages={boardMessages}
             colors={colors}
             emptyTitle="Be the first to post"
             emptySubtitle={`Ask about carpooling, what to bring, or anything else for the ${event.attendees} people going.`}
             composerPlaceholder="Write to the group..."
             composerState={canPostToThread ? 'open' : 'locked'}
+            onSubmitPost={onSubmitPost}
           />
         )}
 
@@ -921,7 +921,14 @@ export default function EventDetailPanel({
   const colors = useDetailColors()
   const { user } = useUser()
   const isRegistered = event.isRegistered && !isPast
-  const canPostToThread = !!user?.isVerified
+  const canPostToThread = !!user && (!!isRegistered || !!isAdmin)
+  const { posts: boardPosts, refetch: refetchBoard } = useBoard('event', event.id, canPostToThread)
+  const boardMessages = useMemo(() => boardPosts.map(boardPostToMessage), [boardPosts])
+
+  const handleCreateThreadPost = async (body: string) => {
+    await createBoardPost('event', event.id, body)
+    await refetchBoard()
+  }
 
   return (
     <View
@@ -954,6 +961,8 @@ export default function EventDetailPanel({
           attendees={attendees}
           colors={colors}
           canPostToThread={canPostToThread}
+          boardMessages={boardMessages}
+          onSubmitPost={handleCreateThreadPost}
         />
       ) : (
         <DefaultContent
