@@ -7,6 +7,10 @@
   ],
   "scripts": {
     "setup": "npm install && npm run d1:migrate:local && npm run d1:seed",
+    "ralph:setup": "bash scripts/ralph/setup-local.sh",
+    "ralph:status": "ralph-loop status",
+    "ralph:run-one": "ralph-loop run --one",
+    "ralph:run": "ralph-loop run",
     "postinstall": "node scripts/patch-css.cjs",
     "dev": "pkill -f wrangler 2>/dev/null; pkill -f expo 2>/dev/null; pkill -f react-native 2>/dev/null; sleep 1; concurrently -n api,web -c blue,green \"npm run dev:backend\" \"npm run dev:frontend\"",
     "dev:backend": "cd packages/backend && npm run dev",

@@ -57,6 +57,12 @@ lerna-debug.log*
 *.sublime-workspace
 .claude/
 
+# Local agent/runtime state. These are intentionally machine-local and must
+# not be pushed from the Mac Mini Ralph runner.
+.context/
+.ralph/
+local-notes/
+
 # OS
 .DS_Store
 .DS_Store?
@@ -128,6 +134,12 @@ docs/plans/2026-02-27-auth-page-redesign.md
 /playwright/.cache/
 /playwright/.auth/
 /.playwright-mcp/
+
+# Ralph runner evidence videos/screenshots are posted to Slack and linked from
+# PRs; keep raw local captures out of Git.
+evidence/
+*.mov
+*.mp4
 
 .wrangler/
 
