@@ -158,6 +158,30 @@ export default function HomeScreen() {
           )}
         </SectionHeader>
 
+        {/*
+          Boards peek (#199). Static empty state for now — when the Boards
+          backend (#205) lands in v2 and the user's center has posts, wire
+          this to fetch 1-2 latest from `useBoard('center', user.centerID)`
+          and render them as small cards. Keep this section visible even
+          when empty so the user knows where to look once posts arrive.
+        */}
+        <SectionHeader
+          eyebrow="LATEST ON YOUR BOARDS"
+          trailing="Open Feed"
+          accentColor={c.accent}
+          faintColor={c.textFaint}
+          onTrailingPress={() => router.push('/feed' as never)}
+        >
+          <View style={{ borderRadius: 16, borderWidth: 1, borderColor: c.border, backgroundColor: c.card, padding: 16, gap: 6 }}>
+            <Text style={{ fontFamily: 'Inclusive Sans', fontSize: 16, color: c.text }}>
+              No posts yet on your boards
+            </Text>
+            <Text style={{ fontSize: 14, lineHeight: 20, color: c.textMuted }}>
+              Conversations from your center and events you've joined will appear here. Head to the Feed to see what's new across the network.
+            </Text>
+          </View>
+        </SectionHeader>
+
         <SectionHeader
           eyebrow={signedUpEvents.length > 0 ? 'THIS WEEK' : 'COMING UP'}
           trailing="See all"
