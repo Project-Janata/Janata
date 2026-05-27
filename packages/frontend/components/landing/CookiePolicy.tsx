@@ -86,7 +86,7 @@ export function CookiePolicy() {
           6. Third-Party Cookies
         </Text>
         <Text style={{ fontSize: 15, color: '#44403C', lineHeight: 24 }}>
-          We do not use third-party advertising cookies. Our analytics are provided through Cloudflare, which collects limited anonymous data for security and performance purposes.
+          We do not use third-party advertising cookies. We use analytics cookies to understand how the Service is used: Cloudflare for security and performance, PostHog for product analytics, and Google Analytics for search and referrer tracking. Google Analytics is configured with IP anonymization. None of these analytics partners receive your phone number, address, or other directly identifying personal data.
         </Text>
 
         <Text style={{ fontSize: 18, fontWeight: '600', marginTop: 24, marginBottom: 12, color: '#1C1917' }}>

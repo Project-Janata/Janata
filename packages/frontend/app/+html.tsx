@@ -5,6 +5,12 @@ import { ScrollViewStyleReset } from 'expo-router/html'
 // The contents of this function only run in Node.js environments and
 // do not have access to the DOM or browser APIs.
 export default function Root({ children }: { children: React.ReactNode }) {
+  // Google Analytics 4 (#213 follow-up). Set EXPO_PUBLIC_GA_MEASUREMENT_ID
+  // in the build environment (CF Pages → production env vars, same pattern
+  // as EXPO_PUBLIC_POSTHOG_KEY) to enable. When unset (dev, PR previews,
+  // any build without the secret) the tags are not emitted — the page stays
+  // GA-free and dev/preview traffic doesn't pollute the production property.
+  const gaId = process.env.EXPO_PUBLIC_GA_MEASUREMENT_ID
   return (
     <html lang="en">
       <head>
@@ -68,6 +74,23 @@ export default function Root({ children }: { children: React.ReactNode }) {
           href="https://fonts.googleapis.com/css2?family=Inclusive+Sans:ital,wght@0,300;0,400;0,500;0,600;0,700;1,300;1,400;1,500;1,600;1,700&display=swap"
           rel="stylesheet"
         />
+
+        {/* Google Analytics 4 — only emitted when EXPO_PUBLIC_GA_MEASUREMENT_ID is set.
+            anonymize_ip: 'IP anonymization' keeps the last octet zeroed for EU/GDPR.
+            No PII is sent — just standard pageview + click events. PostHog
+            remains the source of truth for product analytics; GA is purely
+            for SEO / Search Console / referrer tracking. */}
+        {gaId ? (
+          <>
+            <link rel="preconnect" href="https://www.googletagmanager.com" />
+            <script async src={`https://www.googletagmanager.com/gtag/js?id=${gaId}`} />
+            <script
+              dangerouslySetInnerHTML={{
+                __html: `window.dataLayer=window.dataLayer||[];function gtag(){dataLayer.push(arguments);}gtag('js',new Date());gtag('config','${gaId}',{anonymize_ip:true});`,
+              }}
+            />
+          </>
+        ) : null}
       </head>
       <body>
         {children}
