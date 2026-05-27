@@ -26,7 +26,7 @@ import {
 import { usePostHog } from 'posthog-react-native'
 import { useBoard, useCenterDetail } from '../../hooks/useApiData'
 import { Badge, UnderlineTabBar } from '../../components/ui'
-import type { EventDisplay } from '../../utils/api'
+import { createBoardPost, type EventDisplay } from '../../utils/api'
 import { useDetailColors, type DetailColors } from '../../hooks/useDetailColors'
 import { ThreadPanel, boardPostToMessage } from '../../components/boards'
 import { useUser } from '../../components/contexts'
@@ -198,7 +198,7 @@ export default function CenterDetailPage() {
   const [activeTab, setActiveTab] = useState('About')
   const canPostToThread =
     !!user && (user.centerID === center?.id || (user.verificationLevel ?? 0) >= 107)
-  const { posts: boardPosts } = useBoard('center', center?.id, canPostToThread)
+  const { posts: boardPosts, refetch: refetchBoard } = useBoard('center', center?.id, canPostToThread)
   const boardMessages = useMemo(() => boardPosts.map(boardPostToMessage), [boardPosts])
 
   useEffect(() => {
@@ -210,6 +210,12 @@ export default function CenterDetailPage() {
   const handleEventPress = (event: EventDisplay) => {
     posthog?.capture('center_event_pressed', { centerId: id, eventId: event.id })
     router.push(`/events/${event.id}`)
+  }
+
+  const handleCreateThreadPost = async (body: string) => {
+    if (!center?.id) return
+    await createBoardPost('center', center.id, body)
+    await refetchBoard()
   }
 
   const handleShare = async () => {
@@ -451,6 +457,7 @@ export default function CenterDetailPage() {
               emptySubtitle={`Ask about rides, what to bring, or anything else for ${center.name}.`}
               composerPlaceholder="Write to the board..."
               composerState={canPostToThread ? 'open' : 'locked'}
+              onSubmitPost={handleCreateThreadPost}
             />
           )}
 

@@ -529,24 +529,23 @@ export function useMyEvents(username: string | undefined) {
 
   const load = useCallback(async () => {
     if (!username) {
+      setEvents([])
+      setIsLive(false)
       setLoading(false)
       return
     }
-    const key = `myEvents:${username}`
 
     try {
       setError(null)
-      const apiEvents = await cachedFetch(key, () => getUserEvents(username))
-
-      if (apiEvents.length > 0) {
-        setEvents(
-          apiEvents.map((e) => ({
-            ...apiEventToDisplay(e, username),
-            isRegistered: true,
-          }))
-        )
-        setIsLive(true)
-      }
+      setLoading(true)
+      const apiEvents = await getUserEvents(username)
+      setEvents(
+        apiEvents.map((e) => ({
+          ...apiEventToDisplay(e, username),
+          isRegistered: true,
+        }))
+      )
+      setIsLive(apiEvents.length > 0)
     } catch (err: any) {
       const message = err?.message || 'Failed to load your events'
       setError(message)

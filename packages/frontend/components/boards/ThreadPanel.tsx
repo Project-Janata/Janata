@@ -1,6 +1,6 @@
-import React from 'react'
+import React, { useState } from 'react'
 import { Pressable, ScrollView, Text, TextInput, View } from 'react-native'
-import { Building2, CalendarDays, Lock, MessageCircle, MoreHorizontal } from 'lucide-react-native'
+import { Building2, CalendarDays, Lock, MessageCircle, MoreHorizontal, Send } from 'lucide-react-native'
 import { Avatar } from '../ui'
 import type { BoardMessage } from './__mocks__/mockData'
 
@@ -37,6 +37,7 @@ export function ThreadPanel({
   bottomInset = 0,
   visibleLabel,
   onMessagePress,
+  onSubmitPost,
   showComposer = true,
   showSource = false,
 }: {
@@ -56,6 +57,7 @@ export function ThreadPanel({
   bottomInset?: number
   visibleLabel?: string
   onMessagePress?: (message: BoardMessage) => void
+  onSubmitPost?: (body: string) => Promise<void> | void
   showComposer?: boolean
   showSource?: boolean
 }) {
@@ -84,6 +86,7 @@ export function ThreadPanel({
           colors={colors}
           placeholder={composerPlaceholder}
           visibleLabel={visibleLabel}
+          onSubmit={onSubmitPost}
         />
       ) : null}
 
@@ -127,11 +130,34 @@ function BoardComposer({
   colors,
   placeholder,
   visibleLabel,
+  onSubmit,
 }: {
   colors: ThreadPanelColors
   placeholder: string
   visibleLabel?: string
+  onSubmit?: (body: string) => Promise<void> | void
 }) {
+  const [body, setBody] = useState('')
+  const [submitting, setSubmitting] = useState(false)
+  const [error, setError] = useState<string | null>(null)
+  const canSubmit = !!onSubmit && body.trim().length > 0 && !submitting
+  const accent = colors.accent ?? '#E8862A'
+
+  const handleSubmit = async () => {
+    if (!canSubmit || !onSubmit) return
+    const nextBody = body.trim()
+    try {
+      setError(null)
+      setSubmitting(true)
+      await onSubmit(nextBody)
+      setBody('')
+    } catch (err: any) {
+      setError(err?.message || 'Could not create post.')
+    } finally {
+      setSubmitting(false)
+    }
+  }
+
   return (
     <View style={{ paddingHorizontal: 20, paddingTop: 18, paddingBottom: visibleLabel ? 16 : 10 }}>
       <View
@@ -140,24 +166,51 @@ function BoardComposer({
           borderRadius: 16,
           backgroundColor: colors.iconBoxBg,
           flexDirection: 'row',
-          alignItems: 'center',
+          alignItems: 'flex-end',
           paddingHorizontal: 16,
+          paddingVertical: 10,
           gap: 12,
         }}
       >
         <Avatar name="You" initials="YO" size={36} backgroundColor="#0478A5" />
         <TextInput
-          editable={false}
-          value=""
+          editable={!!onSubmit && !submitting}
+          multiline
+          value={body}
+          onChangeText={setBody}
           placeholder={placeholder}
           placeholderTextColor={colors.textMuted}
           style={{
             flex: 1,
+            minHeight: 38,
+            maxHeight: 120,
+            paddingTop: 8,
+            paddingBottom: 8,
             fontFamily: 'Inclusive Sans',
             fontSize: 16,
-            color: colors.textSecondary,
+            lineHeight: 22,
+            color: colors.text,
+            textAlignVertical: 'top',
           }}
         />
+        <Pressable
+          accessibilityLabel="Post to board"
+          disabled={!canSubmit}
+          onPress={handleSubmit}
+          style={{
+            width: 38,
+            height: 38,
+            borderRadius: 19,
+            alignItems: 'center',
+            justifyContent: 'center',
+            backgroundColor: canSubmit ? accent : colors.cardBg ?? colors.panelBg,
+            borderWidth: canSubmit ? 0 : 1,
+            borderColor: colors.border,
+            opacity: submitting ? 0.7 : 1,
+          }}
+        >
+          <Send size={17} color={canSubmit ? '#FFFFFF' : colors.textMuted} strokeWidth={2.3} />
+        </Pressable>
       </View>
       {visibleLabel ? (
         <Text
@@ -170,6 +223,19 @@ function BoardComposer({
           }}
         >
           {visibleLabel}
+        </Text>
+      ) : null}
+      {error ? (
+        <Text
+          style={{
+            marginTop: 10,
+            fontFamily: 'Inclusive Sans',
+            fontSize: 13,
+            color: '#DC2626',
+            lineHeight: 19,
+          }}
+        >
+          {error}
         </Text>
       ) : null}
     </View>

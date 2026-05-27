@@ -4,7 +4,7 @@ import { useLocalSearchParams, useRouter } from 'expo-router'
 import { ChevronLeft, Share2, MapPin, Globe, Phone, User, Navigation, BadgeCheck, Users } from 'lucide-react-native'
 import { useBoard, useCenterDetail } from '../../hooks/useApiData'
 import { useDetailColors } from '../../hooks/useDetailColors'
-import type { EventDisplay } from '../../utils/api'
+import { createBoardPost, type EventDisplay } from '../../utils/api'
 import UnderlineTabBar from '../../components/ui/UnderlineTabBar'
 import { ThreadPanel, boardPostToMessage } from '../../components/boards'
 import { useUser } from '../../components/contexts'
@@ -53,8 +53,14 @@ function MobileCenterDetail({ centerId }: { centerId: string }) {
   const [activeTab, setActiveTab] = useState('About')
   const canPostToThread =
     !!user && (user.centerID === center?.id || (user.verificationLevel ?? 0) >= 107)
-  const { posts: boardPosts } = useBoard('center', center?.id, canPostToThread)
+  const { posts: boardPosts, refetch: refetchBoard } = useBoard('center', center?.id, canPostToThread)
   const boardMessages = useMemo(() => boardPosts.map(boardPostToMessage), [boardPosts])
+
+  const handleCreateThreadPost = async (body: string) => {
+    if (!center?.id) return
+    await createBoardPost('center', center.id, body)
+    await refetchBoard()
+  }
 
   const handleShare = () => {
     if (typeof navigator !== 'undefined' && navigator.share) {
@@ -222,6 +228,7 @@ function MobileCenterDetail({ centerId }: { centerId: string }) {
               emptySubtitle={`Ask about rides, what to bring, or anything else for ${center.name}.`}
               composerPlaceholder="Write to the board..."
               composerState={canPostToThread ? 'open' : 'locked'}
+              onSubmitPost={handleCreateThreadPost}
             />
           )}
 

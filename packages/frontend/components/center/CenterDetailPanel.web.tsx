@@ -1,12 +1,12 @@
-import React, { useState } from 'react'
+import React, { useMemo, useState } from 'react'
 import { View, Text, Image, ScrollView, Pressable, Linking } from 'react-native'
 import { MapPin, Globe, Phone, User, ChevronLeft, Navigation, BadgeCheck, Users } from 'lucide-react-native'
 import CopyLinkButton from '../ui/CopyLinkButton'
 import UnderlineTabBar from '../ui/UnderlineTabBar'
-import type { CenterDisplay } from '../../hooks/useApiData'
-import type { EventDisplay } from '../../utils/api'
+import { useBoard, type CenterDisplay } from '../../hooks/useApiData'
+import { createBoardPost, type EventDisplay } from '../../utils/api'
 import { useDetailColors } from '../../hooks/useDetailColors'
-import { buildCenterBoard, ThreadPanel } from '../boards'
+import { ThreadPanel, boardPostToMessage } from '../boards'
 import { useUser } from '../contexts'
 
 // ── Props ────────────────────────────────────────────────────────────────
@@ -61,12 +61,15 @@ export default function CenterDetailPanel({
   const displayWebsite = center.website
     .replace(/^https?:\/\//, '')
     .replace(/\/$/, '')
-  const board = buildCenterBoard({
-    id: center.id,
-    centerName: center.name,
-    subtitle: `Ask about rides, seva, and announcements for ${center.name}.`,
-  })
-  const canPostToThread = !!user?.isVerified
+  const canPostToThread =
+    !!user && (user.centerID === center.id || (user.verificationLevel ?? 0) >= 107)
+  const { posts: boardPosts, refetch: refetchBoard } = useBoard('center', center.id, canPostToThread)
+  const boardMessages = useMemo(() => boardPosts.map(boardPostToMessage), [boardPosts])
+
+  const handleCreateThreadPost = async (body: string) => {
+    await createBoardPost('center', center.id, body)
+    await refetchBoard()
+  }
 
   return (
     <View
@@ -360,12 +363,13 @@ export default function CenterDetailPanel({
 
           {activeTab === 'Thread' && (
             <ThreadPanel
-              messages={board.messages}
+              messages={boardMessages}
               colors={colors}
               emptyTitle="Be the first to post"
               emptySubtitle={`Ask about rides, what to bring, or anything else for ${center.name}.`}
               composerPlaceholder="Write to the board..."
               composerState={canPostToThread ? 'open' : 'locked'}
+              onSubmitPost={handleCreateThreadPost}
             />
           )}
 

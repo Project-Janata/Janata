@@ -4,7 +4,7 @@ import { useLocalSearchParams, useRouter } from 'expo-router'
 import { ChevronLeft, Share2, MapPin, Users, User, Clock, CheckCircle, Pencil, Trash2 } from 'lucide-react-native'
 import { useUser } from '../../components/contexts'
 import { useBoard, useEventDetail } from '../../hooks/useApiData'
-import { removeEvent } from '../../utils/api'
+import { createBoardPost, removeEvent } from '../../utils/api'
 import { isSuperAdmin } from '../../utils/admin'
 import Avatar from '../../components/ui/Avatar'
 import Badge from '../../components/ui/Badge'
@@ -67,8 +67,14 @@ function MobileEventDetail({ eventId }: { eventId: string }) {
   const canAccessEventBoard =
     !!user && !!event?.id && (!!event.isRegistered || isCreator || isSuperAdmin(user))
   const canPostToThread = canAccessEventBoard
-  const { posts: boardPosts } = useBoard('event', event?.id, canAccessEventBoard)
+  const { posts: boardPosts, refetch: refetchBoard } = useBoard('event', event?.id, canAccessEventBoard)
   const eventBoardMessages = useMemo(() => boardPosts.map(boardPostToMessage), [boardPosts])
+
+  const handleCreateThreadPost = async (body: string) => {
+    if (!event?.id) return
+    await createBoardPost('event', event.id, body)
+    await refetchBoard()
+  }
 
   const handleDelete = async () => {
     if (!event) return
@@ -217,6 +223,7 @@ function MobileEventDetail({ eventId }: { eventId: string }) {
             emptySubtitle={`Ask about carpooling, what to bring, or anything else for the ${event.attendees} people going.`}
             composerPlaceholder="Write to the group..."
             composerState={canPostToThread ? 'open' : 'locked'}
+            onSubmitPost={handleCreateThreadPost}
           />
         ) : (
           <>

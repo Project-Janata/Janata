@@ -19,7 +19,7 @@ import { useBoard, useEventDetail } from '../../hooks/useApiData'
 import { useUser } from '../../components/contexts'
 import { Badge, UnderlineTabBar, Avatar, PrimaryButton, DestructiveButton } from '../../components/ui'
 import { useDetailColors, type DetailColors } from '../../hooks/useDetailColors'
-import { removeEvent } from '../../utils/api'
+import { createBoardPost, removeEvent } from '../../utils/api'
 import { ThreadPanel, boardPostToMessage } from '../../components/boards'
 
 const ADMIN_EMAIL = 'chinmayajanata@gmail.com'
@@ -566,7 +566,7 @@ export default function EventDetailPage() {
   const isPast = event?.date ? new Date(event.date + 'T23:59:59') < new Date() : false
   const canAccessEventBoard =
     !!user && !!event?.id && (!!event.isRegistered || isCreator || isAdmin)
-  const { posts: boardPosts } = useBoard('event', event?.id, canAccessEventBoard)
+  const { posts: boardPosts, refetch: refetchBoard } = useBoard('event', event?.id, canAccessEventBoard)
   const eventBoardMessages = useMemo(() => boardPosts.map(boardPostToMessage), [boardPosts])
 
   // Track event viewed
@@ -626,6 +626,12 @@ export default function EventDetailPage() {
         Alert.alert('Error', 'Failed to update registration. Please try again.')
       }
     }
+  }
+
+  const handleCreateThreadPost = async (body: string) => {
+    if (!event?.id) return
+    await createBoardPost('event', event.id, body)
+    await refetchBoard()
   }
 
   // ── Loading state ────────────────────────────────────────────────────
@@ -796,6 +802,7 @@ export default function EventDetailPage() {
               emptySubtitle={`Ask about carpooling, what to bring, or anything else for the ${event.attendees} people going.`}
               composerPlaceholder="Write to the group..."
               composerState={canPostToThread ? 'open' : 'locked'}
+              onSubmitPost={handleCreateThreadPost}
             />
           )}
 
@@ -905,6 +912,7 @@ export default function EventDetailPage() {
             emptySubtitle={`Ask about carpooling, what to bring, or anything else for the ${event.attendees} people going.`}
             composerPlaceholder="Write to the group..."
             composerState={canPostToThread ? 'open' : 'locked'}
+            onSubmitPost={handleCreateThreadPost}
           />
         )}
 
