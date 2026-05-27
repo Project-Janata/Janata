@@ -2,33 +2,39 @@ import React from 'react'
 import { View } from 'react-native'
 import { EmptyPanel, ThreadPanel, type ThreadPanelColors } from '../boards'
 import type { AppColors } from '../../tokens'
-import type { FeedPost } from './types'
+import type { FeedPost, GroupBoard } from './types'
 import { FeedList } from './FeedList'
 import { PostThread } from './PostThread'
 
 export function FeedWorkspace({
   posts,
+  groups,
   selectedPost,
   colors,
   threadColors,
   isDesktop,
+  hasQuery,
   canAccessBoards,
   isSignedIn,
   nativeDetailOpen,
   mobilePostOpen,
   onRequestAccess,
+  onOpenGroup,
   onSelectPost,
 }: {
   posts: FeedPost[]
+  groups: GroupBoard[]
   selectedPost?: FeedPost
   colors: AppColors
   threadColors: ThreadPanelColors
   isDesktop: boolean
+  hasQuery: boolean
   canAccessBoards: boolean
   isSignedIn: boolean
   nativeDetailOpen: boolean
   mobilePostOpen: boolean
   onRequestAccess: () => void
+  onOpenGroup: (group: GroupBoard) => void
   onSelectPost: (id: string) => void
 }) {
   if (!canAccessBoards) {
@@ -60,16 +66,33 @@ export function FeedWorkspace({
         <View style={{ flex: 1.05, minWidth: 0 }}>
           <FeedList
             posts={posts}
+            groups={groups}
             colors={threadColors}
             feedColors={colors}
+            hasQuery={hasQuery}
+            onOpenGroup={onOpenGroup}
             onSelectPost={onSelectPost}
           />
         </View>
         <View style={{ flex: 0.95, minWidth: 0 }}>
           {selectedPost ? (
             <PostThread post={selectedPost} colors={colors} />
+          ) : groups.length > 0 && !hasQuery ? (
+            <EmptyPanel
+              title="Open a board"
+              subtitle="Choose your center or event board to start the conversation."
+              colors={colors}
+            />
           ) : (
-            <EmptyPanel title="No posts found" subtitle="Try a different search." colors={colors} />
+            <EmptyPanel
+              title={hasQuery ? 'No posts found' : 'No posts yet'}
+              subtitle={
+                hasQuery
+                  ? 'Try a different search.'
+                  : 'No posts yet. Be the first to share something on your boards.'
+              }
+              colors={colors}
+            />
           )}
         </View>
       </View>
@@ -81,6 +104,14 @@ export function FeedWorkspace({
   }
 
   return (
-    <FeedList posts={posts} colors={threadColors} feedColors={colors} onSelectPost={onSelectPost} />
+    <FeedList
+      posts={posts}
+      groups={groups}
+      colors={threadColors}
+      feedColors={colors}
+      hasQuery={hasQuery}
+      onOpenGroup={onOpenGroup}
+      onSelectPost={onSelectPost}
+    />
   )
 }

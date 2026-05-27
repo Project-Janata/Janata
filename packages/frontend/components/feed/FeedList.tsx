@@ -1,43 +1,62 @@
-import React, { useCallback, useEffect, useState } from 'react'
-import { Text, View } from 'react-native'
+import React, { useEffect, useState } from 'react'
+import { Pressable, Text, View } from 'react-native'
+import { Building2, CalendarDays, ChevronRight } from 'lucide-react-native'
 import type { ThreadPanelColors } from '../boards'
 import type { AppColors } from '../../tokens'
-import type { FeedPost } from './types'
+import type { FeedPost, GroupBoard } from './types'
 import { FeedPostCard } from './FeedPostCard'
 
 export function FeedList({
   posts,
+  groups,
   colors,
   feedColors,
+  hasQuery = false,
+  onOpenGroup,
   onSelectPost,
 }: {
   posts: FeedPost[]
+  groups: GroupBoard[]
   colors: ThreadPanelColors
   feedColors: AppColors
+  hasQuery?: boolean
+  onOpenGroup: (group: GroupBoard) => void
   onSelectPost: (id: string) => void
 }) {
   const [visibleCount, setVisibleCount] = useState(25)
   const visiblePosts = posts.slice(0, visibleCount)
   const hasMore = visibleCount < posts.length
 
-  const loadMore = useCallback(() => {
-    if (hasMore) {
-      setVisibleCount((prev) => Math.min(prev + 25, posts.length))
-    }
-  }, [hasMore, posts.length])
-
   useEffect(() => {
     setVisibleCount(25)
   }, [posts])
 
+  if (posts.length === 0 && groups.length > 0 && !hasQuery) {
+    return (
+      <View style={{ paddingTop: 4, gap: 10 }}>
+        <Text style={{ fontSize: 13, lineHeight: 19, color: colors.textMuted }}>
+          No posts yet. Be the first to share something on your boards.
+        </Text>
+        {groups.map((group) => (
+          <BoardEmptyRow
+            key={group.id}
+            group={group}
+            colors={feedColors}
+            onPress={() => onOpenGroup(group)}
+          />
+        ))}
+      </View>
+    )
+  }
+
   if (posts.length === 0) {
     return (
       <View style={{ paddingVertical: 40, alignItems: 'center', gap: 8 }}>
-        <Text style={{ fontSize: 16, color: colors.text }}>
-          No posts found
-        </Text>
-        <Text style={{ fontSize: 13, color: colors.textMuted }}>
-          Try a different search or check back after your next event.
+        <Text style={{ fontSize: 16, color: colors.text }}>No posts yet</Text>
+        <Text style={{ fontSize: 13, color: colors.textMuted, textAlign: 'center' }}>
+          {hasQuery
+            ? 'No board posts match that search.'
+            : 'No posts yet. Be the first to share something on your boards.'}
         </Text>
       </View>
     )
@@ -61,5 +80,62 @@ export function FeedList({
         </View>
       ) : null}
     </View>
+  )
+}
+
+function BoardEmptyRow({
+  group,
+  colors,
+  onPress,
+}: {
+  group: GroupBoard
+  colors: AppColors
+  onPress: () => void
+}) {
+  const Icon = group.kind === 'event' ? CalendarDays : Building2
+
+  return (
+    <Pressable
+      onPress={onPress}
+      style={{
+        borderWidth: 1,
+        borderColor: colors.border,
+        borderRadius: 14,
+        backgroundColor: colors.card,
+        padding: 14,
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: 12,
+      }}
+    >
+      <View
+        style={{
+          width: 38,
+          height: 38,
+          borderRadius: 12,
+          backgroundColor: group.kind === 'event' ? colors.accentSoft : colors.panel,
+          alignItems: 'center',
+          justifyContent: 'center',
+        }}
+      >
+        <Icon
+          size={18}
+          color={group.kind === 'event' ? colors.accent : colors.textMuted}
+          strokeWidth={2.3}
+        />
+      </View>
+      <View style={{ flex: 1, minWidth: 0, gap: 3 }}>
+        <Text style={{ fontFamily: 'Inclusive Sans', fontSize: 15, color: colors.text }} numberOfLines={1}>
+          {group.title}
+        </Text>
+        <Text style={{ fontSize: 12, color: colors.textFaint }} numberOfLines={1}>
+          {group.eyebrow}
+        </Text>
+        <Text style={{ fontSize: 13, lineHeight: 18, color: colors.textMuted }} numberOfLines={2}>
+          No posts yet. Open this board to start the conversation.
+        </Text>
+      </View>
+      <ChevronRight size={18} color={colors.textFaint} />
+    </Pressable>
   )
 }

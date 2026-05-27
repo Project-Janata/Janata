@@ -11,6 +11,7 @@ export type GroupBoard = {
   unreadCount: number
   messages: BoardMessage[]
   distanceMi?: number
+  routeHref?: string
 }
 
 export type FeedPost = BoardMessage & {

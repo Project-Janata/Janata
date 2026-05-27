@@ -18,17 +18,7 @@ import { toThreadColors } from '../../tokens'
 import { useHeaderAction } from '../../components/contexts/HeaderActionContext'
 import { useCenterList, useMyEvents } from '../../hooks/useApiData'
 import { extractCityState } from '../../utils/addressParsing'
-import {
-  buildCenterBoard,
-  buildEventBoard,
-  centerBoards,
-  eventBoards,
-  SignInCallout,
-  CreatePostSheet,
-  type BoardMessage,
-  type CenterBoard,
-  type EventBoard,
-} from '../../components/boards'
+import { SignInCallout, CreatePostSheet } from '../../components/boards'
 import {
   FeedHeader,
   NativeChatHeader,
@@ -63,16 +53,6 @@ function sortUpcomingEvents(events: EventDisplay[]) {
     })
 }
 
-function eventToBoard(event: EventDisplay, fallbackCenterName?: string): EventBoard {
-  return buildEventBoard({
-    id: `event-${event.id}`,
-    title: event.title,
-    dateLabel: formatEventDateLabel(event.date),
-    centerLabel: fallbackCenterName || event.location || 'Event group',
-    attendeesLabel: `${event.attendees || 0} going`,
-  })
-}
-
 function haversineMiles(
   from?: { latitude?: number | null; longitude?: number | null } | null,
   to?: { latitude?: number | null; longitude?: number | null } | null
@@ -105,58 +85,39 @@ function formatDistance(distanceMi?: number) {
   return `${Math.round(distanceMi)} mi`
 }
 
-function centerToGroup(board: CenterBoard, distanceMi?: number): GroupBoard {
-  const latest = board.messages[0]
+function centerToGroup(center: DiscoverCenter, distanceMi?: number): GroupBoard {
   const distanceLabel = formatDistance(distanceMi)
-  return {
-    id: board.id,
-    kind: 'center',
-    title: board.centerName,
-    eyebrow: 'Center board',
-    subtitle: board.subtitle,
-    meta: distanceLabel ? `${distanceLabel} away` : `${board.messages.length} posts`,
-    preview: latest?.body || 'No posts yet.',
-    unreadCount: 2,
-    messages: board.messages,
-    distanceMi,
-  }
-}
-
-function eventToGroup(board: EventBoard, distanceMi?: number): GroupBoard {
-  const distanceLabel = formatDistance(distanceMi)
-  return {
-    id: board.id,
-    kind: 'event',
-    title: board.title,
-    eyebrow: board.dateLabel,
-    subtitle: `${board.centerLabel} - ${board.attendeesLabel}`,
-    meta: distanceLabel ? `${distanceLabel} away` : `${board.messages.length} posts`,
-    preview: board.preview,
-    unreadCount: board.messages.length > 2 ? 1 : 0,
-    messages: board.messages,
-    distanceMi,
-  }
-}
-
-function centerToNearbyGroup(
-  center: DiscoverCenter,
-  anchor?: { latitude?: number | null; longitude?: number | null } | null
-) {
-  const distanceMi = haversineMiles(anchor, center)
   const locationLabel = extractCityState(center.address) || center.address || 'Center board'
-  const distanceLabel = formatDistance(distanceMi)
-  const subtitle = [locationLabel, distanceLabel ? `${distanceLabel} away` : null]
-    .filter(Boolean)
-    .join(' - ')
+  return {
+    id: `center-${center.id}`,
+    kind: 'center',
+    title: center.name,
+    eyebrow: 'Center board',
+    subtitle: [locationLabel, distanceLabel ? `${distanceLabel} away` : null].filter(Boolean).join(' - '),
+    meta: 'No posts yet',
+    preview: 'No posts yet. Be the first to share something on your boards.',
+    unreadCount: 0,
+    messages: [],
+    distanceMi,
+    routeHref: `/center/${center.id}`,
+  }
+}
 
-  return centerToGroup(
-    buildCenterBoard({
-      id: `center-${center.id}`,
-      centerName: center.name,
-      subtitle,
-    }),
-    distanceMi
-  )
+function eventToGroup(event: EventDisplay, fallbackCenterName?: string, distanceMi?: number): GroupBoard {
+  const distanceLabel = formatDistance(distanceMi)
+  return {
+    id: `event-${event.id}`,
+    kind: 'event',
+    title: event.title,
+    eyebrow: formatEventDateLabel(event.date),
+    subtitle: `${fallbackCenterName || event.location || 'Event board'} - ${event.attendees || 0} going`,
+    meta: distanceLabel ? `${distanceLabel} away` : 'No posts yet',
+    preview: 'No posts yet. Be the first to share something on your boards.',
+    unreadCount: 0,
+    messages: [],
+    distanceMi,
+    routeHref: `/events/${event.id}`,
+  }
 }
 
 function sortGroupsByDistance(groups: GroupBoard[]) {
@@ -216,7 +177,6 @@ export default function FeedScreen() {
   const isDesktop = width >= 980
   const [query, setQuery] = useState('')
   const [selectedPostId, setSelectedPostId] = useState('')
-  const [demoVerified, setDemoVerified] = useState(false)
   const [createPostOpen, setCreatePostOpen] = useState(false)
   const { setCreateHandler } = useHeaderAction()
 
@@ -234,7 +194,7 @@ export default function FeedScreen() {
 
   const threadColors = toThreadColors(colors)
 
-  const isVerifiedMember = user?.isVerified === true || demoVerified
+  const isVerifiedMember = user?.isVerified === true
   const canAccessBoards = !!user && isVerifiedMember
   const userCenter = allCenters.find((item) => item.id === user?.centerID)
   const groups = useMemo<GroupBoard[]>(() => {
@@ -242,22 +202,8 @@ export default function FeedScreen() {
 
     const nextGroups: GroupBoard[] = []
 
-    if (user && isVerifiedMember) {
-      const sorted = userCenter
-        ? [...allCenters].sort((a, b) => {
-            const da = haversineMiles(userCenter, a) ?? Infinity
-            const db = haversineMiles(userCenter, b) ?? Infinity
-            return da - db
-          })
-        : allCenters
-
-      for (const item of sorted) {
-        nextGroups.push(centerToNearbyGroup(item, userCenter))
-      }
-    } else if (!user) {
-      for (const board of centerBoards) {
-        nextGroups.push(centerToGroup(board))
-      }
+    if (user && isVerifiedMember && userCenter) {
+      nextGroups.push(centerToGroup(userCenter, 0))
     }
 
     const registeredEvents = sortUpcomingEvents(myEvents)
@@ -268,15 +214,12 @@ export default function FeedScreen() {
               latitude: event.latitude,
               longitude: event.longitude,
             })
-            return eventToGroup(eventToBoard(event), eventDistance)
+            const centerName = allCenters.find((item) => item.id === event.centerId)?.name
+            return eventToGroup(event, centerName, eventDistance)
           })
         : []
 
-    if (liveEventGroups.length > 0) {
-      nextGroups.push(...liveEventGroups)
-    } else {
-      nextGroups.push(...eventBoards.map(eventToGroup))
-    }
+    nextGroups.push(...liveEventGroups)
 
     return sortGroupsByDistance(nextGroups)
   }, [allCenters, isVerifiedMember, myEvents, user, userCenter])
@@ -305,10 +248,6 @@ export default function FeedScreen() {
     paddingTop: 8,
     paddingBottom: 18,
   }
-
-  useEffect(() => {
-    setDemoVerified(false)
-  }, [user?.id])
 
   useEffect(() => {
     if (Platform.OS === 'web') return
@@ -355,8 +294,8 @@ export default function FeedScreen() {
       router.push('/auth')
       return
     }
-    posthog?.capture('connect_demo_verified')
-    setDemoVerified(true)
+    posthog?.capture('connect_redeem_invite_pressed', { source: 'feed_cta' })
+    router.push('/auth' as never)
   }
 
   const closeDetail = () => {
@@ -385,6 +324,12 @@ export default function FeedScreen() {
     } else {
       router.push(`/feed/${id}`)
     }
+  }
+
+  const openGroup = (group: GroupBoard) => {
+    if (!group.routeHref) return
+    posthog?.capture('connect_empty_board_opened', { groupId: group.id, kind: group.kind })
+    router.push(group.routeHref as never)
   }
 
   return (
@@ -488,12 +433,15 @@ export default function FeedScreen() {
             colors={colors}
             threadColors={threadColors}
             isDesktop={isDesktop}
+            hasQuery={query.trim().length > 0}
             canAccessBoards={canAccessBoards}
             isSignedIn={!!user}
             nativeDetailOpen={nativeDetailOpen}
             mobilePostOpen={mobilePostOpen}
             onRequestAccess={handleBoardAccessCta}
+            onOpenGroup={openGroup}
             onSelectPost={openPost}
+            groups={groups}
           />
         )}
       </ScrollView>
