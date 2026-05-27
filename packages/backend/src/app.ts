@@ -10,8 +10,8 @@
  */
 import { Hono } from 'hono'
 import { cors } from 'hono/cors'
-import type { Env, UserRow, EventRow, CenterRow } from './types'
-import { userRowToApi, centerRowToApi, eventRowToApi } from './types'
+import type { Env, UserRow, EventRow, CenterRow, BoardPostApiResponse, BoardType } from './types'
+import { userRowToApi, centerRowToApi, eventRowToApi, boardRowToApi } from './types'
 import {
   hashPassword,
   verifyPassword,
@@ -44,6 +44,67 @@ export const app = new Hono<HonoEnv>().basePath('/api')
 
 function isAdmin(user: { email: string | null; verification_level: number }): boolean {
   return user.email === ADMIN_EMAIL || user.verification_level >= ADMIN_CUTOFF
+}
+
+const BOARD_REACTIONS = new Set(['🙏', '👍', '🪔', '❤️', '🚗', '🌾'])
+
+function isBoardType(value: string): value is BoardType {
+  return value === 'center' || value === 'event'
+}
+
+function boardPostToApi(post: db.BoardPostWithAuthor): BoardPostApiResponse {
+  return {
+    id: post.id,
+    boardId: post.board_id,
+    body: post.body,
+    imageUrl: post.image_url,
+    createdAt: post.created_at,
+    updatedAt: post.updated_at,
+    deletedAt: post.deleted_at,
+    author: userRowToApi(post.author),
+    reactions: post.reactions,
+    replyCount: post.reply_count,
+  }
+}
+
+async function verifyBoardAccess(
+  c: any,
+  type: BoardType,
+  parentId: string,
+  user: UserRow,
+): Promise<Response | null> {
+  if (!parentId) {
+    return c.json({ message: 'Board parent ID is required' }, 400)
+  }
+
+  const userIsAdmin = isAdmin(user)
+  if (!userIsAdmin && user.verification_level < NORMAL_USER) {
+    return c.json({ message: 'Verified member access required' }, 403)
+  }
+
+  if (type === 'center') {
+    const center = await db.getCenterById(c.env.DB, parentId)
+    if (!center) {
+      return c.json({ message: 'Center not found' }, 404)
+    }
+    if (!userIsAdmin && user.center_id !== parentId) {
+      return c.json({ message: 'You do not have access to this center board' }, 403)
+    }
+    return null
+  }
+
+  const event = await db.getEventById(c.env.DB, parentId)
+  if (!event) {
+    return c.json({ message: 'Event not found' }, 404)
+  }
+
+  const isCreator = event.created_by === user.id
+  const isAttending = await db.isUserAttending(c.env.DB, parentId, user.id)
+  if (!userIsAdmin && !isCreator && !isAttending) {
+    return c.json({ message: 'You do not have access to this event board' }, 403)
+  }
+
+  return null
 }
 
 // ── Admin middleware ─────────────────────────────────────────────────
@@ -1017,6 +1078,111 @@ app.get('/profile/:username/groups', authMiddleware, async (c) => {
 app.get('/profile/:username/messages', authMiddleware, async (_c) => {
   // Messaging not yet implemented — reserved for future use
   return _c.json({ messages: [], total: 0 })
+})
+
+// ═══════════════════════════════════════════════════════════════════════
+// BOARD ROUTES
+// ═══════════════════════════════════════════════════════════════════════
+
+app.get('/boards/:type/:id', authMiddleware, async (c) => {
+  const user = c.get('user')
+  const typeParam = c.req.param('type')
+  const parentId = c.req.param('id')
+
+  if (!isBoardType(typeParam)) {
+    return c.json({ message: 'Board type must be center or event' }, 400)
+  }
+
+  const accessError = await verifyBoardAccess(c, typeParam, parentId, user)
+  if (accessError) return accessError
+
+  const limit = Number.parseInt(c.req.query('limit') || '50', 10)
+  const offset = Number.parseInt(c.req.query('offset') || '0', 10)
+  const board = await db.ensureBoard(c.env.DB, typeParam, parentId)
+  const posts = await db.listBoardPosts(c.env.DB, board.id, { limit, offset })
+
+  return c.json({
+    board: boardRowToApi(board),
+    posts: posts.map(boardPostToApi),
+  })
+})
+
+app.post('/boards/:type/:id/posts', authMiddleware, async (c) => {
+  const user = c.get('user')
+  const typeParam = c.req.param('type')
+  const parentId = c.req.param('id')
+
+  if (!isBoardType(typeParam)) {
+    return c.json({ message: 'Board type must be center or event' }, 400)
+  }
+
+  const accessError = await verifyBoardAccess(c, typeParam, parentId, user)
+  if (accessError) return accessError
+
+  const body: { body?: string; imageUrl?: string | null } = await c.req
+    .json<{ body?: string; imageUrl?: string | null }>()
+    .catch(() => ({}))
+  const text = typeof body.body === 'string' ? body.body.trim() : ''
+  if (!text) {
+    return c.json({ message: 'Post body is required' }, 400)
+  }
+  if (text.length > 2000) {
+    return c.json({ message: 'Post body must be 2000 characters or fewer' }, 400)
+  }
+
+  const imageUrl = body.imageUrl ?? null
+  const validImageUrl = validate.url(imageUrl || undefined)
+  if (validImageUrl === false) {
+    return c.json({ message: 'Image URL is invalid' }, 400)
+  }
+
+  const board = await db.ensureBoard(c.env.DB, typeParam, parentId)
+  const postId = crypto.randomUUID()
+  const created = await db.createBoardPost(c.env.DB, {
+    id: postId,
+    board_id: board.id,
+    author_id: user.id,
+    body: text,
+    image_url: validImageUrl ?? null,
+  })
+
+  if (!created.success) {
+    console.error('createBoardPost error:', created.error)
+    return c.json({ message: 'Failed to create board post' }, 500)
+  }
+
+  const posts = await db.listBoardPosts(c.env.DB, board.id, { limit: 1 })
+  const post = posts.find((candidate) => candidate.id === postId)
+  if (!post) {
+    return c.json({ message: 'Board post created but could not be loaded' }, 500)
+  }
+
+  return c.json({ post: boardPostToApi(post) }, 201)
+})
+
+app.post('/boards/posts/:postId/reactions', authMiddleware, async (c) => {
+  const user = c.get('user')
+  const postId = c.req.param('postId')
+  const post = await db.getBoardPostById(c.env.DB, postId)
+  if (!post) {
+    return c.json({ message: 'Board post not found' }, 404)
+  }
+
+  const board = await db.getBoardById(c.env.DB, post.board_id)
+  if (!board) {
+    return c.json({ message: 'Board not found' }, 404)
+  }
+
+  const accessError = await verifyBoardAccess(c, board.type, board.parent_id, user)
+  if (accessError) return accessError
+
+  const body: { emoji?: string } = await c.req.json<{ emoji?: string }>().catch(() => ({}))
+  if (!body.emoji || !BOARD_REACTIONS.has(body.emoji)) {
+    return c.json({ message: 'Reaction emoji is not allowed' }, 400)
+  }
+
+  const result = await db.toggleBoardPostReaction(c.env.DB, post.id, user.id, body.emoji)
+  return c.json(result)
 })
 
 // ═══════════════════════════════════════════════════════════════════════

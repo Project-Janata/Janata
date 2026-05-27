@@ -8,6 +8,7 @@ type GroupOption = {
   id: string
   kind: 'center' | 'event'
   title: string
+  parentId: string
 }
 
 export function CreatePostSheet({
@@ -15,15 +16,18 @@ export function CreatePostSheet({
   colors,
   groups,
   onClose,
+  onSubmit,
 }: {
   visible: boolean
   colors: AppColors
   groups: GroupOption[]
   onClose: () => void
+  onSubmit?: (group: GroupOption, body: string) => Promise<void> | void
 }) {
   const [body, setBody] = useState('')
   const [groupId, setGroupId] = useState<string | undefined>()
   const [groupPickerOpen, setGroupPickerOpen] = useState(false)
+  const [submitting, setSubmitting] = useState(false)
 
   const sortedGroups = useMemo(
     () => [...groups].sort((a, b) => (a.kind !== b.kind ? (a.kind === 'center' ? -1 : 1) : a.title.localeCompare(b.title))),
@@ -36,7 +40,19 @@ export function CreatePostSheet({
     if (!groupId && sortedGroups[0]) setGroupId(sortedGroups[0].id)
   }, [visible, groupId, sortedGroups])
 
-  const canPost = body.trim().length > 0 && !!selectedGroup
+  const canPost = body.trim().length > 0 && !!selectedGroup && !submitting
+
+  const handleSubmit = async () => {
+    if (!canPost || !selectedGroup) return
+    try {
+      setSubmitting(true)
+      await onSubmit?.(selectedGroup, body.trim())
+      setBody('')
+      onClose()
+    } finally {
+      setSubmitting(false)
+    }
+  }
 
   return (
     <Modal
@@ -56,8 +72,10 @@ export function CreatePostSheet({
             <X size={22} color={colors.textMuted} />
           </Pressable>
           <Text style={{ fontFamily: 'Inclusive Sans', fontSize: 16, color: colors.text }}>New post</Text>
-          <Pressable disabled={!canPost} onPress={onClose} hitSlop={8} style={{ minWidth: 64, alignItems: 'flex-end', opacity: canPost ? 1 : 0.4 }}>
-            <Text style={{ fontWeight: '500', fontSize: 15, color: colors.accent }}>Post</Text>
+          <Pressable disabled={!canPost} onPress={handleSubmit} hitSlop={8} style={{ minWidth: 64, alignItems: 'flex-end', opacity: canPost ? 1 : 0.4 }}>
+            <Text style={{ fontWeight: '500', fontSize: 15, color: colors.accent }}>
+              {submitting ? 'Posting' : 'Post'}
+            </Text>
           </Pressable>
         </View>
 

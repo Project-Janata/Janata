@@ -13,6 +13,10 @@ import type {
   EventRow,
   EventAttendeeRow,
   EventEndorserRow,
+  BoardRow,
+  BoardPostRow,
+  BoardReactionCount,
+  BoardType,
 } from './types'
 
 // ═══════════════════════════════════════════════════════════════════════
@@ -584,4 +588,191 @@ export async function getEventEndorsers(
     .bind(eventId)
     .all<UserRow>()
   return result.results ?? []
+}
+
+// ═══════════════════════════════════════════════════════════════════════
+// BOARDS
+// ═══════════════════════════════════════════════════════════════════════
+
+export type BoardPostWithAuthor = BoardPostRow & {
+  author: UserRow
+  reactions: BoardReactionCount[]
+  reply_count: number
+}
+
+export async function getBoardByTypeAndParent(
+  db: D1Database,
+  type: BoardType,
+  parentId: string,
+): Promise<BoardRow | null> {
+  const result = await db
+    .prepare('SELECT * FROM boards WHERE type = ?1 AND parent_id = ?2')
+    .bind(type, parentId)
+    .first<BoardRow>()
+  return result ?? null
+}
+
+export async function ensureBoard(
+  db: D1Database,
+  type: BoardType,
+  parentId: string,
+): Promise<BoardRow> {
+  const existing = await getBoardByTypeAndParent(db, type, parentId)
+  if (existing) return existing
+
+  const now = new Date().toISOString()
+  const id = crypto.randomUUID()
+  await db
+    .prepare(
+      `INSERT OR IGNORE INTO boards (id, type, parent_id, created_at)
+       VALUES (?1, ?2, ?3, ?4)`,
+    )
+    .bind(id, type, parentId, now)
+    .run()
+
+  const board = await getBoardByTypeAndParent(db, type, parentId)
+  if (!board) {
+    throw new Error('Failed to create board')
+  }
+  return board
+}
+
+export async function createBoardPost(
+  db: D1Database,
+  post: Pick<BoardPostRow, 'id' | 'board_id' | 'author_id' | 'body'> &
+    Partial<Pick<BoardPostRow, 'image_url'>>,
+): Promise<{ success: boolean; id?: string; error?: string }> {
+  try {
+    const now = new Date().toISOString()
+    await db
+      .prepare(
+        `INSERT INTO board_posts
+          (id, board_id, author_id, body, image_url, created_at, updated_at)
+         VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7)`,
+      )
+      .bind(
+        post.id,
+        post.board_id,
+        post.author_id,
+        post.body,
+        post.image_url ?? null,
+        now,
+        now,
+      )
+      .run()
+    return { success: true, id: post.id }
+  } catch (err: any) {
+    return { success: false, error: err?.message ?? 'Unknown error' }
+  }
+}
+
+export async function getBoardPostById(
+  db: D1Database,
+  postId: string,
+): Promise<BoardPostRow | null> {
+  const result = await db
+    .prepare('SELECT * FROM board_posts WHERE id = ?1 AND deleted_at IS NULL')
+    .bind(postId)
+    .first<BoardPostRow>()
+  return result ?? null
+}
+
+export async function getBoardById(
+  db: D1Database,
+  boardId: string,
+): Promise<BoardRow | null> {
+  const result = await db.prepare('SELECT * FROM boards WHERE id = ?1').bind(boardId).first<BoardRow>()
+  return result ?? null
+}
+
+export async function getBoardPostReactionCounts(
+  db: D1Database,
+  postId: string,
+): Promise<BoardReactionCount[]> {
+  const result = await db
+    .prepare(
+      `SELECT emoji, COUNT(*) as count
+       FROM board_post_reactions
+       WHERE post_id = ?1
+       GROUP BY emoji
+       ORDER BY MIN(created_at) ASC`,
+    )
+    .bind(postId)
+    .all<BoardReactionCount>()
+  return result.results ?? []
+}
+
+export async function listBoardPosts(
+  db: D1Database,
+  boardId: string,
+  opts: { limit?: number; offset?: number } = {},
+): Promise<BoardPostWithAuthor[]> {
+  const limit = Math.min(Math.max(opts.limit ?? 50, 1), 100)
+  const offset = Math.max(opts.offset ?? 0, 0)
+  const result = await db
+    .prepare(
+      `SELECT * FROM board_posts
+       WHERE board_id = ?1 AND deleted_at IS NULL
+       ORDER BY created_at DESC
+       LIMIT ?2 OFFSET ?3`,
+    )
+    .bind(boardId, limit, offset)
+    .all<BoardPostRow>()
+
+  const posts = result.results ?? []
+  const hydrated = await Promise.all(
+    posts.map(async (post) => {
+      const author = await getUserById(db, post.author_id)
+      const reactions = await getBoardPostReactionCounts(db, post.id)
+      const replyCount = await db
+        .prepare('SELECT COUNT(*) as count FROM board_post_replies WHERE parent_post_id = ?1')
+        .bind(post.id)
+        .first<{ count: number }>()
+      return author
+        ? {
+            ...post,
+            author,
+            reactions,
+            reply_count: replyCount?.count ?? 0,
+          }
+        : null
+    }),
+  )
+
+  return hydrated.filter((post): post is BoardPostWithAuthor => post !== null)
+}
+
+export async function toggleBoardPostReaction(
+  db: D1Database,
+  postId: string,
+  userId: string,
+  emoji: string,
+): Promise<{ active: boolean; reactions: BoardReactionCount[] }> {
+  const existing = await db
+    .prepare(
+      `SELECT 1 FROM board_post_reactions
+       WHERE post_id = ?1 AND user_id = ?2 AND emoji = ?3`,
+    )
+    .bind(postId, userId, emoji)
+    .first()
+
+  if (existing) {
+    await db
+      .prepare(
+        `DELETE FROM board_post_reactions
+         WHERE post_id = ?1 AND user_id = ?2 AND emoji = ?3`,
+      )
+      .bind(postId, userId, emoji)
+      .run()
+    return { active: false, reactions: await getBoardPostReactionCounts(db, postId) }
+  }
+
+  await db
+    .prepare(
+      `INSERT INTO board_post_reactions (post_id, user_id, emoji, created_at)
+       VALUES (?1, ?2, ?3, ?4)`,
+    )
+    .bind(postId, userId, emoji, new Date().toISOString())
+    .run()
+  return { active: true, reactions: await getBoardPostReactionCounts(db, postId) }
 }

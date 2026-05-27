@@ -18,7 +18,8 @@ import { toThreadColors } from '../../tokens'
 import { useHeaderAction } from '../../components/contexts/HeaderActionContext'
 import { useCenterList, useMyEvents } from '../../hooks/useApiData'
 import { extractCityState } from '../../utils/addressParsing'
-import { SignInCallout, CreatePostSheet } from '../../components/boards'
+import { SignInCallout, CreatePostSheet, boardPostToMessage, type BoardMessage } from '../../components/boards'
+import { createBoardPost, fetchBoard } from '../../utils/api'
 import {
   FeedHeader,
   NativeChatHeader,
@@ -98,6 +99,7 @@ function centerToGroup(center: DiscoverCenter, distanceMi?: number): GroupBoard 
     preview: 'No posts yet. Be the first to share something on your boards.',
     unreadCount: 0,
     messages: [],
+    parentId: center.id,
     distanceMi,
     routeHref: `/center/${center.id}`,
   }
@@ -115,6 +117,7 @@ function eventToGroup(event: EventDisplay, fallbackCenterName?: string, distance
     preview: 'No posts yet. Be the first to share something on your boards.',
     unreadCount: 0,
     messages: [],
+    parentId: event.id,
     distanceMi,
     routeHref: `/events/${event.id}`,
   }
@@ -178,6 +181,8 @@ export default function FeedScreen() {
   const [query, setQuery] = useState('')
   const [selectedPostId, setSelectedPostId] = useState('')
   const [createPostOpen, setCreatePostOpen] = useState(false)
+  const [boardMessagesByGroup, setBoardMessagesByGroup] = useState<Record<string, BoardMessage[]>>({})
+  const [boardsLoading, setBoardsLoading] = useState(false)
   const { setCreateHandler } = useHeaderAction()
 
   useFocusEffect(
@@ -224,7 +229,46 @@ export default function FeedScreen() {
     return sortGroupsByDistance(nextGroups)
   }, [allCenters, isVerifiedMember, myEvents, user, userCenter])
 
-  const feedPosts = useMemo(() => buildFeedPosts(groups), [groups])
+  const groupBoardKey = useMemo(
+    () => groups.map((group) => `${group.id}:${group.kind}:${group.parentId}`).join('|'),
+    [groups]
+  )
+
+  const loadBoards = useCallback(async () => {
+    if (!canAccessBoards || groups.length === 0) {
+      setBoardMessagesByGroup({})
+      setBoardsLoading(false)
+      return
+    }
+
+    setBoardsLoading(true)
+    try {
+      const entries = await Promise.all(
+        groups.map(async (group) => {
+          const data = await fetchBoard(group.kind, group.parentId)
+          return [group.id, data.posts.map(boardPostToMessage)] as const
+        })
+      )
+      setBoardMessagesByGroup(Object.fromEntries(entries))
+    } finally {
+      setBoardsLoading(false)
+    }
+  }, [canAccessBoards, groupBoardKey])
+
+  useEffect(() => {
+    loadBoards()
+  }, [loadBoards])
+
+  const groupsWithMessages = useMemo<GroupBoard[]>(
+    () =>
+      groups.map((group) => ({
+        ...group,
+        messages: boardMessagesByGroup[group.id] ?? [],
+      })),
+    [boardMessagesByGroup, groups]
+  )
+
+  const feedPosts = useMemo(() => buildFeedPosts(groupsWithMessages), [groupsWithMessages])
 
   const filteredFeedPosts = useMemo(() => {
     if (!query.trim()) return feedPosts
@@ -240,7 +284,7 @@ export default function FeedScreen() {
   const mobilePostOpen = !isDesktop && !!selectedPostId
   const nativeDetailOpen = Platform.OS !== 'web' && mobilePostOpen
   const listTopPadding = Platform.OS === 'web' ? 20 : 8
-  const isLoading = user ? myEventsLoading || centersLoading : false
+  const isLoading = user ? myEventsLoading || centersLoading || boardsLoading : false
   const nativeTabBarStyle = {
     backgroundColor: colors.surface,
     borderTopColor: colors.border,
@@ -318,18 +362,22 @@ export default function FeedScreen() {
 
   const openPost = (id: string) => {
     posthog?.capture('connect_feed_post_selected', { postId: id })
-    if (Platform.OS === 'web' && isDesktop) {
-      primeNativeDetailTransition()
-      setSelectedPostId(id)
-    } else {
-      router.push(`/feed/${id}`)
-    }
+    primeNativeDetailTransition()
+    setSelectedPostId(id)
   }
 
   const openGroup = (group: GroupBoard) => {
     if (!group.routeHref) return
     posthog?.capture('connect_empty_board_opened', { groupId: group.id, kind: group.kind })
     router.push(group.routeHref as never)
+  }
+
+  const handleCreatePost = async (
+    group: { kind: 'center' | 'event'; parentId: string },
+    body: string
+  ) => {
+    await createBoardPost(group.kind, group.parentId, body)
+    await loadBoards()
   }
 
   return (
@@ -441,7 +489,7 @@ export default function FeedScreen() {
             onRequestAccess={handleBoardAccessCta}
             onOpenGroup={openGroup}
             onSelectPost={openPost}
-            groups={groups}
+            groups={groupsWithMessages}
           />
         )}
       </ScrollView>
@@ -487,8 +535,9 @@ export default function FeedScreen() {
       <CreatePostSheet
         visible={createPostOpen}
         colors={colors}
-        groups={groups}
+        groups={groupsWithMessages}
         onClose={() => setCreatePostOpen(false)}
+        onSubmit={handleCreatePost}
       />
     </View>
   )

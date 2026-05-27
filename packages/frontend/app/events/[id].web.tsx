@@ -1,9 +1,9 @@
-import { useEffect, useState, useRef } from 'react'
+import { useEffect, useMemo, useState, useRef } from 'react'
 import { View, Text, ScrollView, Pressable, ActivityIndicator, useWindowDimensions, Linking } from 'react-native'
 import { useLocalSearchParams, useRouter } from 'expo-router'
 import { ChevronLeft, Share2, MapPin, Users, User, Clock, CheckCircle, Pencil, Trash2 } from 'lucide-react-native'
 import { useUser } from '../../components/contexts'
-import { useEventDetail } from '../../hooks/useApiData'
+import { useBoard, useEventDetail } from '../../hooks/useApiData'
 import { removeEvent } from '../../utils/api'
 import { isSuperAdmin } from '../../utils/admin'
 import Avatar from '../../components/ui/Avatar'
@@ -13,7 +13,7 @@ import PrimaryButton from '../../components/ui/buttons/PrimaryButton'
 import DestructiveButton from '../../components/ui/buttons/DestructiveButton'
 import AuthPromptModal from '../../components/ui/AuthPromptModal'
 import { useDetailColors } from '../../hooks/useDetailColors'
-import { buildEventBoard, ThreadPanel } from '../../components/boards'
+import { ThreadPanel, boardPostToMessage } from '../../components/boards'
 
 function formatEventDateLabel(dateStr: string): string {
   const d = new Date(`${dateStr}T00:00:00`)
@@ -64,7 +64,11 @@ function MobileEventDetail({ eventId }: { eventId: string }) {
 
   const isPast = event?.date ? new Date(event.date + 'T23:59:59') < new Date() : false
   const canEdit = !!user && (isSuperAdmin(user) || isCreator)
-  const canPostToThread = !!user?.isVerified
+  const canAccessEventBoard =
+    !!user?.isVerified && !!event?.id && (!!event.isRegistered || isCreator || isSuperAdmin(user))
+  const canPostToThread = canAccessEventBoard
+  const { posts: boardPosts } = useBoard('event', event?.id, canAccessEventBoard)
+  const eventBoardMessages = useMemo(() => boardPosts.map(boardPostToMessage), [boardPosts])
 
   const handleDelete = async () => {
     if (!event) return
@@ -98,14 +102,6 @@ function MobileEventDetail({ eventId }: { eventId: string }) {
       </View>
     )
   }
-
-  const eventBoard = buildEventBoard({
-    id: event.id,
-    title: event.title,
-    dateLabel: formatEventDateLabel(event.date),
-    centerLabel: event.location,
-    attendeesLabel: `${event.attendees} going`,
-  })
 
   return (
     <View style={{ flex: 1, backgroundColor: colors.panelBg }}>
@@ -161,7 +157,7 @@ function MobileEventDetail({ eventId }: { eventId: string }) {
         tabs={['Details', 'Thread', 'People']}
         activeTab={activeTab}
         onTabChange={setActiveTab}
-        counts={{ Thread: eventBoard.messages.length }}
+        counts={{ Thread: eventBoardMessages.length }}
       />
 
       <ScrollView style={{ flex: 1 }} contentContainerStyle={{ padding: 16, gap: 16 }}>
@@ -215,7 +211,7 @@ function MobileEventDetail({ eventId }: { eventId: string }) {
           </>
         ) : activeTab === 'Thread' ? (
           <ThreadPanel
-            messages={eventBoard.messages}
+            messages={eventBoardMessages}
             colors={colors}
             emptyTitle="Be the first to post"
             emptySubtitle={`Ask about carpooling, what to bring, or anything else for the ${event.attendees} people going.`}

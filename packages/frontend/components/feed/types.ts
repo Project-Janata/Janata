@@ -10,6 +10,7 @@ export type GroupBoard = {
   preview: string
   unreadCount: number
   messages: BoardMessage[]
+  parentId: string
   distanceMi?: number
   routeHref?: string
 }

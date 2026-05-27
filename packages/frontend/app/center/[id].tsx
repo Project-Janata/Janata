@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react'
+import React, { useEffect, useMemo, useState } from 'react'
 import { DetailSkeleton } from '../../components/ui/Skeleton'
 import {
   View,
@@ -24,11 +24,11 @@ import {
   Users,
 } from 'lucide-react-native'
 import { usePostHog } from 'posthog-react-native'
-import { useCenterDetail } from '../../hooks/useApiData'
+import { useBoard, useCenterDetail } from '../../hooks/useApiData'
 import { Badge, UnderlineTabBar } from '../../components/ui'
 import type { EventDisplay } from '../../utils/api'
 import { useDetailColors, type DetailColors } from '../../hooks/useDetailColors'
-import { buildCenterBoard, ThreadPanel } from '../../components/boards'
+import { ThreadPanel, boardPostToMessage } from '../../components/boards'
 import { useUser } from '../../components/contexts'
 
 // ── Helpers ─────────────────────────────────────────────────────────────
@@ -196,6 +196,10 @@ export default function CenterDetailPage() {
   const { center, events, loading } = useCenterDetail(id as string)
   const colors = useDetailColors()
   const [activeTab, setActiveTab] = useState('About')
+  const canPostToThread =
+    !!user?.isVerified && (user.centerID === center?.id || (user.verificationLevel ?? 0) >= 107)
+  const { posts: boardPosts } = useBoard('center', center?.id, canPostToThread)
+  const boardMessages = useMemo(() => boardPosts.map(boardPostToMessage), [boardPosts])
 
   useEffect(() => {
     if (!loading && center) {
@@ -281,13 +285,6 @@ export default function CenterDetailPage() {
 
   // Strip protocol for website display
   const displayWebsite = (center.website ?? '').replace(/^https?:\/\//, '').replace(/\/$/, '')
-  const board = buildCenterBoard({
-    id: center.id,
-    centerName: center.name,
-    subtitle: `Ask about rides, seva, and announcements for ${center.name}.`,
-  })
-  const canPostToThread = !!user?.isVerified
-
   return (
     <SafeAreaView style={{ flex: 1, backgroundColor: colors.panelBg }} edges={['top']}>
       <HeaderBar
@@ -318,7 +315,7 @@ export default function CenterDetailPage() {
             tabs={['About', 'Thread', 'Events']}
             activeTab={activeTab}
             onTabChange={setActiveTab}
-            counts={{ Thread: board.messages.length, Events: events.length }}
+            counts={{ Thread: boardMessages.length, Events: events.length }}
           />
         </View>
 
@@ -448,7 +445,7 @@ export default function CenterDetailPage() {
 
           {activeTab === 'Thread' && (
             <ThreadPanel
-              messages={board.messages}
+              messages={boardMessages}
               colors={colors}
               emptyTitle="Be the first to post"
               emptySubtitle={`Ask about rides, what to bring, or anything else for ${center.name}.`}

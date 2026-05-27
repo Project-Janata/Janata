@@ -795,6 +795,136 @@ describe('POST /api/removeUser (admin only)', () => {
 })
 
 // ═══════════════════════════════════════════════════════════════════════
+// BOARDS
+// ═══════════════════════════════════════════════════════════════════════
+
+describe('board routes', () => {
+  let adminToken: string
+  let memberToken: string
+  let centerId: string
+
+  beforeEach(async () => {
+    adminToken = await createAdmin()
+    const member = await registerAndLogin('boardmember', 'password123')
+    memberToken = member.token
+
+    const { body } = await jsonPost(
+      '/api/addCenter',
+      {
+        centerName: 'Board Center',
+        latitude: 37.0,
+        longitude: -121.0,
+      },
+      authHeader(adminToken),
+    )
+    centerId = body.id
+
+    await env.DB.prepare('UPDATE users SET verification_level = 45, center_id = ? WHERE username = ?')
+      .bind(centerId, 'boardmember')
+      .run()
+  })
+
+  it('returns an empty center board for a verified center member', async () => {
+    const { res, body } = await fetchJSON(
+      `/api/boards/center/${centerId}`,
+      { headers: authHeader(memberToken) },
+    )
+
+    expect(res.status).toBe(200)
+    expect(body.board.type).toBe('center')
+    expect(body.board.parentId).toBe(centerId)
+    expect(body.posts).toEqual([])
+  })
+
+  it('creates and lists center board posts', async () => {
+    const { res: createRes, body: createBody } = await jsonPost(
+      `/api/boards/center/${centerId}/posts`,
+      { body: 'Who is driving from South Bay?' },
+      authHeader(memberToken),
+    )
+
+    expect(createRes.status).toBe(201)
+    expect(createBody.post.body).toBe('Who is driving from South Bay?')
+    expect(createBody.post.author.username).toBe('boardmember')
+
+    const { body } = await fetchJSON(
+      `/api/boards/center/${centerId}`,
+      { headers: authHeader(memberToken) },
+    )
+
+    expect(body.posts).toHaveLength(1)
+    expect(body.posts[0].body).toBe('Who is driving from South Bay?')
+  })
+
+  it('rejects center board access for verified users at another center', async () => {
+    const other = await registerAndLogin('othermember', 'password123')
+    await env.DB.prepare('UPDATE users SET verification_level = 45 WHERE username = ?')
+      .bind('othermember')
+      .run()
+
+    const { res } = await fetchJSON(
+      `/api/boards/center/${centerId}`,
+      { headers: authHeader(other.token) },
+    )
+
+    expect(res.status).toBe(403)
+  })
+
+  it('allows event board access for attendees', async () => {
+    const { body: eventBody } = await jsonPost(
+      '/api/addEvent',
+      {
+        title: 'Board Event',
+        date: '2026-06-01T10:00:00Z',
+        latitude: 37.0,
+        longitude: -121.0,
+        centerID: centerId,
+      },
+      authHeader(adminToken),
+    )
+
+    const { res: beforeAttend } = await fetchJSON(
+      `/api/boards/event/${eventBody.id}`,
+      { headers: authHeader(memberToken) },
+    )
+    expect(beforeAttend.status).toBe(403)
+
+    await jsonPost('/api/attendEvent', { eventID: eventBody.id }, authHeader(memberToken))
+
+    const { res, body } = await fetchJSON(
+      `/api/boards/event/${eventBody.id}`,
+      { headers: authHeader(memberToken) },
+    )
+    expect(res.status).toBe(200)
+    expect(body.board.type).toBe('event')
+  })
+
+  it('toggles allowed reactions and rejects unknown emoji', async () => {
+    const { body: createBody } = await jsonPost(
+      `/api/boards/center/${centerId}/posts`,
+      { body: 'Please bring flowers.' },
+      authHeader(memberToken),
+    )
+
+    const { res: badReaction } = await jsonPost(
+      `/api/boards/posts/${createBody.post.id}/reactions`,
+      { emoji: '🙋' },
+      authHeader(memberToken),
+    )
+    expect(badReaction.status).toBe(400)
+
+    const { res, body } = await jsonPost(
+      `/api/boards/posts/${createBody.post.id}/reactions`,
+      { emoji: '🙏' },
+      authHeader(memberToken),
+    )
+    expect(res.status).toBe(200)
+    expect(body.active).toBe(true)
+    expect(body.reactions).toEqual([{ emoji: '🙏', count: 1 }])
+  })
+})
+
+// ═══════════════════════════════════════════════════════════════════════
 // EVENTS
 // ═══════════════════════════════════════════════════════════════════════
 

@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react'
+import React, { useMemo, useState, useEffect, useRef } from 'react'
 import { View, Text, ScrollView, Image, Pressable, ActivityIndicator, Alert, Share, Linking } from 'react-native'
 import { DetailSkeleton } from '../../components/ui/Skeleton'
 import { SafeAreaView } from 'react-native-safe-area-context'
@@ -15,12 +15,12 @@ import {
   Trash2,
 } from 'lucide-react-native'
 import { usePostHog } from 'posthog-react-native'
-import { useEventDetail } from '../../hooks/useApiData'
+import { useBoard, useEventDetail } from '../../hooks/useApiData'
 import { useUser } from '../../components/contexts'
 import { Badge, UnderlineTabBar, Avatar, PrimaryButton, DestructiveButton } from '../../components/ui'
 import { useDetailColors, type DetailColors } from '../../hooks/useDetailColors'
 import { removeEvent } from '../../utils/api'
-import { buildEventBoard, ThreadPanel } from '../../components/boards'
+import { ThreadPanel, boardPostToMessage } from '../../components/boards'
 
 const ADMIN_EMAIL = 'chinmayajanata@gmail.com'
 
@@ -564,6 +564,10 @@ export default function EventDetailPage() {
   const canEdit = isAdmin || isCreator
 
   const isPast = event?.date ? new Date(event.date + 'T23:59:59') < new Date() : false
+  const canAccessEventBoard =
+    !!user?.isVerified && !!event?.id && (!!event.isRegistered || isCreator || isAdmin)
+  const { posts: boardPosts } = useBoard('event', event?.id, canAccessEventBoard)
+  const eventBoardMessages = useMemo(() => boardPosts.map(boardPostToMessage), [boardPosts])
 
   // Track event viewed
   useEffect(() => {
@@ -668,14 +672,7 @@ export default function EventDetailPage() {
   // ── Derived state ────────────────────────────────────────────────────
 
   const isRegistered = !!event?.isRegistered && !isPast
-  const canPostToThread = !!user?.isVerified
-  const eventBoard = buildEventBoard({
-    id: event.id,
-    title: event.title,
-    dateLabel: formatEventDateLabel(event.date),
-    centerLabel: event.location,
-    attendeesLabel: `${event.attendees} going`,
-  })
+  const canPostToThread = canAccessEventBoard
 
   // ── Registered state (with tabs) ─────────────────────────────────────
 
@@ -699,7 +696,7 @@ export default function EventDetailPage() {
             tabs={['Details', 'Thread', 'People']}
             activeTab={activeTab}
             onTabChange={handleTabChange}
-            counts={{ Thread: eventBoard.messages.length }}
+            counts={{ Thread: eventBoardMessages.length }}
           />
         </View>
 
@@ -793,7 +790,7 @@ export default function EventDetailPage() {
 
           {activeTab === 'Thread' && (
             <ThreadPanel
-              messages={eventBoard.messages}
+              messages={eventBoardMessages}
               colors={colors}
               emptyTitle="Be the first to post"
               emptySubtitle={`Ask about carpooling, what to bring, or anything else for the ${event.attendees} people going.`}
@@ -865,7 +862,7 @@ export default function EventDetailPage() {
           tabs={['Details', 'Thread', 'Attendees']}
           activeTab={activeTab}
           onTabChange={handleTabChange}
-          counts={{ Thread: eventBoard.messages.length }}
+          counts={{ Thread: eventBoardMessages.length }}
         />
       </View>
 
@@ -902,7 +899,7 @@ export default function EventDetailPage() {
 
         {activeTab === 'Thread' && (
           <ThreadPanel
-            messages={eventBoard.messages}
+            messages={eventBoardMessages}
             colors={colors}
             emptyTitle="Be the first to post"
             emptySubtitle={`Ask about carpooling, what to bring, or anything else for the ${event.attendees} people going.`}
