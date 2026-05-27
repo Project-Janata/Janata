@@ -180,9 +180,14 @@ export class ErrorBoundary extends Component<Props, State> {
             </Pressable>
           )}
 
-          {/* Beta-phase debug panel: shown to every user so a screenshot is
-              enough to triage. Remove or gate behind a flag at public launch. */}
-          {this.state.error && (
+          {/* Beta-phase debug panel: full error message + stack trace + Copy
+              details button. Useful for triaging phone-only crashes during
+              beta/dev. Hidden in production builds (env unset on prod →
+              undefined !== 'true').
+
+              Devs can opt in by setting EXPO_PUBLIC_SHOW_DEBUG_DETAILS=true
+              in `packages/frontend/.env` — see `.env.example`. */}
+          {process.env.EXPO_PUBLIC_SHOW_DEBUG_DETAILS === 'true' && this.state.error && (
             <View
               style={{
                 marginTop: 32,
