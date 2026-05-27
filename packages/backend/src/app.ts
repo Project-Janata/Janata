@@ -724,6 +724,11 @@ app.put('/auth/update-profile', authMiddleware, async (c) => {
     phoneNumber?: string
     interests?: string[]
     dateOfBirth?: string
+    // Minimal profile fields (#210)
+    school?: string
+    work?: string
+    region?: string
+    lookingFor?: string[]
   }>()
 
   const updates: Partial<UserRow> = {}
@@ -738,6 +743,14 @@ app.put('/auth/update-profile', authMiddleware, async (c) => {
   if (body.bio !== undefined) updates.bio = body.bio || null
   if (body.phoneNumber !== undefined) updates.phone_number = body.phoneNumber
   if (body.interests !== undefined) updates.interests = JSON.stringify(body.interests)
+  // Minimal profile fields. Empty strings become null so the API never
+  // exposes a field the user didn't fill in.
+  if (body.school !== undefined) updates.school = body.school?.trim() || null
+  if (body.work !== undefined) updates.work = body.work?.trim() || null
+  if (body.region !== undefined) updates.region = body.region?.trim() || null
+  if (body.lookingFor !== undefined) {
+    updates.looking_for = body.lookingFor.length > 0 ? JSON.stringify(body.lookingFor) : null
+  }
 
   const result = await db.updateUser(c.env.DB, user.id, updates)
 

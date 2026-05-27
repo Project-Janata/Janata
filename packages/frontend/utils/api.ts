@@ -62,6 +62,11 @@ export interface UserData {
   isActive: boolean
   profileComplete: boolean
   interests: string[] | null
+  // Minimal profile fields (#210)
+  school?: string | null
+  work?: string | null
+  region?: string | null
+  lookingFor?: string[] | null
   createdAt?: string
   updatedAt?: string
 }

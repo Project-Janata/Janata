@@ -104,6 +104,7 @@ export default function ProfileNative() {
 
   const centerName = allCenters.find((c) => c.centerID === user?.centerID)?.name
   const interests = user?.interests || []
+  const lookingFor = user?.lookingFor || []
 
   return (
     <View style={{ flex: 1 }}>
@@ -221,6 +222,21 @@ export default function ProfileNative() {
             >
               {user.bio}
             </Text>
+          ) : null}
+
+          {/* About — minimal profile fields (#210). Empty fields don't render. */}
+          {(user?.work || user?.school || user?.region) ? (
+            <View style={{ marginTop: 12, gap: 4 }}>
+              {user?.work ? (
+                <Text style={{ fontSize: 14, color: textColor }}>{user.work}</Text>
+              ) : null}
+              {user?.school ? (
+                <Text style={{ fontSize: 14, color: mutedTextColor }}>{user.school}</Text>
+              ) : null}
+              {user?.region ? (
+                <Text style={{ fontSize: 14, color: mutedTextColor }}>{user.region}</Text>
+              ) : null}
+            </View>
           ) : null}
         </View>
 
@@ -362,6 +378,41 @@ export default function ProfileNative() {
                 </Text>
               </View>
             ))}
+          </View>
+        ) : null}
+
+        {/* Looking for — multi-select chips (#210). Same UX as Interests. */}
+        {lookingFor.length > 0 ? (
+          <View style={{ paddingHorizontal: 20, marginTop: 16 }}>
+            <Text
+              style={{
+                fontFamily: 'Inclusive Sans',
+                fontSize: 11,
+                color: mutedTextColor,
+                letterSpacing: 0.4,
+                textTransform: 'uppercase',
+                marginBottom: 8,
+              }}
+            >
+              Looking for
+            </Text>
+            <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8 }}>
+              {lookingFor.map((option) => (
+                <View
+                  key={option}
+                  style={{
+                    paddingHorizontal: 14,
+                    paddingVertical: 7,
+                    borderRadius: 100,
+                    backgroundColor: chipBg,
+                  }}
+                >
+                  <Text style={{ fontFamily: 'Inclusive Sans', fontSize: 13, color: mutedTextColor }}>
+                    {option}
+                  </Text>
+                </View>
+              ))}
+            </View>
           </View>
         ) : null}
 

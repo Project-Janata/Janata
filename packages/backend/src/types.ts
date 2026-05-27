@@ -52,6 +52,11 @@ export interface UserRow {
   interests: string | null // JSON array
   invite_code: string | null // Invite code used for signup
   email_verified_at: string | null // ISO timestamp; NULL until email verified
+  // Minimal profile fields (#210, migration 0021)
+  school: string | null
+  work: string | null
+  region: string | null
+  looking_for: string | null // JSON array
   created_at: string
   updated_at: string
 }
@@ -169,6 +174,11 @@ export interface UserApiResponse {
   isActive: boolean
   profileComplete: boolean
   interests: string[] | null
+  // Minimal profile fields (#210)
+  school: string | null
+  work: string | null
+  region: string | null
+  lookingFor: string[] | null
   createdAt: string
   updatedAt: string
 }
@@ -268,6 +278,10 @@ export function userRowToApi(row: UserRow): UserApiResponse {
     isActive: row.is_active === 1,
     profileComplete: row.profile_complete === 1,
     interests: safeParseJsonArray(row.interests),
+    school: row.school,
+    work: row.work,
+    region: row.region,
+    lookingFor: safeParseJsonArray(row.looking_for),
     createdAt: row.created_at,
     updatedAt: row.updated_at,
   }
