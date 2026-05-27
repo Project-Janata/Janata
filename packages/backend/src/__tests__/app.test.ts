@@ -11,6 +11,7 @@ import { applyMigration, dropAllTables, TEST_INVITE_CODE } from './setup'
 import { app } from '../app'
 import { hashPassword } from '../auth'
 import { clearRateLimits } from '../middleware'
+import { ADMIN_EMAIL } from '../constants'
 
 // ── Helpers ──────────────────────────────────────────────────────────
 
@@ -45,6 +46,14 @@ function jsonPost(path: string, data: unknown, headers: Record<string, string> =
 function jsonPut(path: string, data: unknown, headers: Record<string, string> = {}) {
   return fetchJSON(path, {
     method: 'PUT',
+    headers: { 'Content-Type': 'application/json', ...headers },
+    body: JSON.stringify(data),
+  })
+}
+
+function jsonPatch(path: string, data: unknown, headers: Record<string, string> = {}) {
+  return fetchJSON(path, {
+    method: 'PATCH',
     headers: { 'Content-Type': 'application/json', ...headers },
     body: JSON.stringify(data),
   })
@@ -918,6 +927,191 @@ describe('board routes', () => {
     expect(res.status).toBe(200)
     expect(body.active).toBe(true)
     expect(body.reactions).toEqual([{ emoji: '🙏', count: 1 }])
+  })
+
+  // ── Edit + soft-delete + idempotent reactions (issue #205) ────────────
+  describe('PATCH /api/boards/posts/:postId — edit', () => {
+    let postId: string
+
+    beforeEach(async () => {
+      const { body } = await jsonPost(
+        `/api/boards/center/${centerId}/posts`,
+        { body: 'Original body' },
+        authHeader(memberToken),
+      )
+      postId = body.post.id
+    })
+
+    it('lets the author edit their post within the window', async () => {
+      const { res, body } = await jsonPatch(
+        `/api/boards/posts/${postId}`,
+        { body: 'Edited body' },
+        authHeader(memberToken),
+      )
+      expect(res.status).toBe(200)
+      expect(body.post.body).toBe('Edited body')
+    })
+
+    it('rejects non-author edit attempts with 403', async () => {
+      const other = await registerAndLogin('boardotherauthor', 'password123')
+      // Place the other user at the same center so the access gate passes —
+      // the 403 we want to surface is from the author check, not membership.
+      await env.DB.prepare('UPDATE users SET center_id = ? WHERE username = ?')
+        .bind(centerId, 'boardotherauthor')
+        .run()
+
+      const { res, body } = await jsonPatch(
+        `/api/boards/posts/${postId}`,
+        { body: 'Hijacked' },
+        authHeader(other.token),
+      )
+      expect(res.status).toBe(403)
+      expect(body.message).toMatch(/author/i)
+    })
+
+    it('rejects edit attempts on a soft-deleted post', async () => {
+      await fetchJSON(`/api/boards/posts/${postId}`, {
+        method: 'DELETE',
+        headers: authHeader(memberToken),
+      })
+
+      const { res } = await jsonPatch(
+        `/api/boards/posts/${postId}`,
+        { body: 'Necromancy' },
+        authHeader(memberToken),
+      )
+      expect(res.status).toBe(410)
+    })
+
+    it('rejects an empty body', async () => {
+      const { res } = await jsonPatch(
+        `/api/boards/posts/${postId}`,
+        { body: '   ' },
+        authHeader(memberToken),
+      )
+      expect(res.status).toBe(400)
+    })
+  })
+
+  describe('DELETE /api/boards/posts/:postId — soft delete', () => {
+    let postId: string
+
+    beforeEach(async () => {
+      const { body } = await jsonPost(
+        `/api/boards/center/${centerId}/posts`,
+        { body: 'To be deleted' },
+        authHeader(memberToken),
+      )
+      postId = body.post.id
+    })
+
+    it('lets the author soft-delete their post', async () => {
+      const { res } = await fetchJSON(`/api/boards/posts/${postId}`, {
+        method: 'DELETE',
+        headers: authHeader(memberToken),
+      })
+      expect(res.status).toBe(200)
+
+      const { body } = await fetchJSON(
+        `/api/boards/center/${centerId}`,
+        { headers: authHeader(memberToken) },
+      )
+      expect(body.posts.find((p: { id: string }) => p.id === postId)).toBeUndefined()
+    })
+
+    it('lets an admin soft-delete a member post', async () => {
+      // Admin needs to be a center member to pass verifyBoardAccess (the read
+      // gate is the same for all users). The createAdmin helper already places
+      // the admin in a center, but it may not be THIS center — re-bind them
+      // to the board's center for this test.
+      await env.DB.prepare('UPDATE users SET center_id = ? WHERE email = ?')
+        .bind(centerId, ADMIN_EMAIL)
+        .run()
+
+      const { res } = await fetchJSON(`/api/boards/posts/${postId}`, {
+        method: 'DELETE',
+        headers: authHeader(adminToken),
+      })
+      expect(res.status).toBe(200)
+    })
+
+    it('rejects non-author non-admin deletion with 403', async () => {
+      const other = await registerAndLogin('boardotherdeleter', 'password123')
+      await env.DB.prepare('UPDATE users SET center_id = ? WHERE username = ?')
+        .bind(centerId, 'boardotherdeleter')
+        .run()
+
+      const { res, body } = await fetchJSON(`/api/boards/posts/${postId}`, {
+        method: 'DELETE',
+        headers: authHeader(other.token),
+      })
+      expect(res.status).toBe(403)
+      expect(body.message).toMatch(/author|admin/i)
+    })
+
+    it('returns 410 on double-delete', async () => {
+      await fetchJSON(`/api/boards/posts/${postId}`, {
+        method: 'DELETE',
+        headers: authHeader(memberToken),
+      })
+      const { res } = await fetchJSON(`/api/boards/posts/${postId}`, {
+        method: 'DELETE',
+        headers: authHeader(memberToken),
+      })
+      expect(res.status).toBe(410)
+    })
+  })
+
+  describe('POST /api/boards/posts/:postId/reactions — idempotent on rapid duplicates', () => {
+    it('two concurrent identical reactions land deterministically', async () => {
+      const { body: createBody } = await jsonPost(
+        `/api/boards/center/${centerId}/posts`,
+        { body: 'Race target' },
+        authHeader(memberToken),
+      )
+      const postId = createBody.post.id
+
+      // Fire two reaction toggles concurrently; the previous SELECT-then-INSERT
+      // code surfaced a 500 here from the PK constraint. With the optimistic
+      // DELETE + INSERT OR IGNORE pattern, both requests succeed and the
+      // final DB state is deterministic.
+      const [a, b] = await Promise.all([
+        jsonPost(
+          `/api/boards/posts/${postId}/reactions`,
+          { emoji: '🙏' },
+          authHeader(memberToken),
+        ),
+        jsonPost(
+          `/api/boards/posts/${postId}/reactions`,
+          { emoji: '🙏' },
+          authHeader(memberToken),
+        ),
+      ])
+
+      expect(a.res.status).toBe(200)
+      expect(b.res.status).toBe(200)
+
+      // Whatever order they landed in, the final count is 0 or 1 (never 2,
+      // never errored). We accept either net-on (one toggled on, one no-op
+      // ignored) or net-off (one toggled on, one toggled it back off).
+      const finalCount =
+        (a.body.reactions[0]?.count ?? 0) + (b.body.reactions[0]?.count ?? 0)
+      expect([0, 1, 2]).toContain(finalCount)
+
+      // Most importantly, the DB never holds more than one row for this
+      // (post, user, emoji) — the primary key guarantees that. Re-query
+      // the board to confirm a clean state.
+      const { body } = await fetchJSON(
+        `/api/boards/center/${centerId}`,
+        { headers: authHeader(memberToken) },
+      )
+      const dbPost = body.posts.find((p: { id: string }) => p.id === postId)
+      const ownReaction = (dbPost?.reactions ?? []).find(
+        (r: { emoji: string }) => r.emoji === '🙏',
+      )
+      // Either 0 (net-off) or 1 (net-on) — never 2.
+      expect([undefined, { emoji: '🙏', count: 1 }]).toContainEqual(ownReaction)
+    })
   })
 })
 

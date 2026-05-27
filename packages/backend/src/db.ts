@@ -677,6 +677,22 @@ export async function getBoardPostById(
   return result ?? null
 }
 
+/**
+ * Like getBoardPostById but ALSO returns soft-deleted rows. Used by edit /
+ * delete routes that need to distinguish "never existed" (404) from
+ * "previously existed but is gone" (410 Gone).
+ */
+export async function getBoardPostByIdIncludingDeleted(
+  db: D1Database,
+  postId: string,
+): Promise<BoardPostRow | null> {
+  const result = await db
+    .prepare('SELECT * FROM board_posts WHERE id = ?1')
+    .bind(postId)
+    .first<BoardPostRow>()
+  return result ?? null
+}
+
 export async function getBoardById(
   db: D1Database,
   boardId: string,
@@ -748,31 +764,127 @@ export async function toggleBoardPostReaction(
   userId: string,
   emoji: string,
 ): Promise<{ active: boolean; reactions: BoardReactionCount[] }> {
-  const existing = await db
+  // Race-safe toggle. The previous SELECT-then-INSERT pattern threw 500 on
+  // rapid duplicate clicks because the second INSERT collided with the
+  // (post_id, user_id, emoji) primary key. We now:
+  //   1. Optimistically DELETE — succeeds if the reaction existed, else no-op
+  //   2. If something was deleted, the toggle is OFF
+  //   3. Else INSERT OR IGNORE — if a concurrent click already inserted, this
+  //      is a deterministic no-op and the reaction stays ON
+  const del = await db
     .prepare(
-      `SELECT 1 FROM board_post_reactions
+      `DELETE FROM board_post_reactions
        WHERE post_id = ?1 AND user_id = ?2 AND emoji = ?3`,
     )
     .bind(postId, userId, emoji)
-    .first()
+    .run()
 
-  if (existing) {
-    await db
-      .prepare(
-        `DELETE FROM board_post_reactions
-         WHERE post_id = ?1 AND user_id = ?2 AND emoji = ?3`,
-      )
-      .bind(postId, userId, emoji)
-      .run()
+  if ((del.meta?.changes ?? 0) > 0) {
     return { active: false, reactions: await getBoardPostReactionCounts(db, postId) }
   }
 
   await db
     .prepare(
-      `INSERT INTO board_post_reactions (post_id, user_id, emoji, created_at)
+      `INSERT OR IGNORE INTO board_post_reactions (post_id, user_id, emoji, created_at)
        VALUES (?1, ?2, ?3, ?4)`,
     )
     .bind(postId, userId, emoji, new Date().toISOString())
     .run()
   return { active: true, reactions: await getBoardPostReactionCounts(db, postId) }
+}
+
+// Window during which a post author can edit their own post (milliseconds).
+// Per PRD §5.2 + #205 acceptance criteria — TBD with team; default 5 min.
+export const BOARD_POST_EDIT_WINDOW_MS = 5 * 60 * 1000
+
+export type BoardPostEditResult =
+  | { ok: true }
+  | { ok: false; reason: 'not_found' | 'deleted' | 'not_author' | 'window_expired' }
+
+/**
+ * Edit a board post body in place. Caller must be the author and the post
+ * must be within the edit window. Soft-deleted posts are not editable.
+ *
+ * Returns a discriminated union so the route layer can map reasons to
+ * appropriate HTTP statuses without inspecting raw DB state.
+ */
+export async function editBoardPost(
+  db: D1Database,
+  postId: string,
+  authorId: string,
+  body: string,
+): Promise<BoardPostEditResult> {
+  const post = await db
+    .prepare(
+      `SELECT author_id, deleted_at, created_at FROM board_posts WHERE id = ?1`,
+    )
+    .bind(postId)
+    .first<{ author_id: string; deleted_at: string | null; created_at: string }>()
+
+  if (!post) return { ok: false, reason: 'not_found' }
+  if (post.deleted_at) return { ok: false, reason: 'deleted' }
+  if (post.author_id !== authorId) return { ok: false, reason: 'not_author' }
+
+  // SQLite's datetime('now') returns 'YYYY-MM-DD HH:MM:SS' (space separator,
+  // UTC). Normalize to ISO 8601 before parsing so engines reliably treat it
+  // as UTC. Plain `new Date('YYYY-MM-DD HH:MM:SS')` may parse as local time.
+  const isoCreated = post.created_at.includes('T')
+    ? post.created_at + (post.created_at.endsWith('Z') ? '' : 'Z')
+    : post.created_at.replace(' ', 'T') + 'Z'
+  const createdMs = new Date(isoCreated).getTime()
+  if (!Number.isFinite(createdMs)) {
+    // Fallback: if the timestamp can't be parsed, fail closed.
+    return { ok: false, reason: 'window_expired' }
+  }
+  if (Date.now() - createdMs > BOARD_POST_EDIT_WINDOW_MS) {
+    return { ok: false, reason: 'window_expired' }
+  }
+
+  await db
+    .prepare(
+      `UPDATE board_posts
+       SET body = ?1, updated_at = datetime('now')
+       WHERE id = ?2`,
+    )
+    .bind(body, postId)
+    .run()
+
+  return { ok: true }
+}
+
+export type BoardPostDeleteResult =
+  | { ok: true }
+  | { ok: false; reason: 'not_found' | 'already_deleted' | 'forbidden' }
+
+/**
+ * Soft-delete a board post. The author OR an admin may delete. The post
+ * stays in the table (deleted_at set) so moderation can still inspect it
+ * via the admin queue.
+ */
+export async function softDeleteBoardPost(
+  db: D1Database,
+  postId: string,
+  actor: { id: string; isAdmin: boolean },
+): Promise<BoardPostDeleteResult> {
+  const post = await db
+    .prepare(`SELECT author_id, deleted_at FROM board_posts WHERE id = ?1`)
+    .bind(postId)
+    .first<{ author_id: string; deleted_at: string | null }>()
+
+  if (!post) return { ok: false, reason: 'not_found' }
+  if (post.deleted_at) return { ok: false, reason: 'already_deleted' }
+  if (post.author_id !== actor.id && !actor.isAdmin) {
+    return { ok: false, reason: 'forbidden' }
+  }
+
+  await db
+    .prepare(
+      `UPDATE board_posts
+       SET deleted_at = datetime('now')
+       WHERE id = ?1`,
+    )
+    .bind(postId)
+    .run()
+
+  return { ok: true }
 }
