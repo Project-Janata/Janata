@@ -26,7 +26,7 @@ import {
   ThemeProvider as CustomThemeProvider,
   useTheme,
 } from '../components/contexts'
-import { ErrorBoundary } from '../components/ui/ErrorBoundary'
+import { ErrorBoundary, ErrorBoundaryWithAnalytics } from '../components/ui/ErrorBoundary'
 import WebBottomNav from '../components/ui/WebBottomNav'
 import '../globals.css'
 
@@ -85,13 +85,13 @@ export default function RootLayout() {
 
   return posthogEnabled ? (
     <PostHogProvider apiKey={posthogKey!.trim()} options={{ host: posthogHost }}>
-      <ErrorBoundary>
+      <ErrorBoundaryWithAnalytics>
         <CustomThemeProvider>
           <UserProvider>
             <RootLayoutNav onAuthReady={handleAuthReady} />
           </UserProvider>
         </CustomThemeProvider>
-      </ErrorBoundary>
+      </ErrorBoundaryWithAnalytics>
     </PostHogProvider>
   ) : (
     <ErrorBoundary>
