@@ -1,0 +1,932 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Janata MSC 2026 Sprint Plan Dashboard</title>
+  <style>
+    :root {
+      --ink: #201d19;
+      --muted: #6f655d;
+      --faint: #9a9087;
+      --line: #e8e0d8;
+      --paper: #fbf8f4;
+      --surface: #ffffff;
+      --panel: #f2ece5;
+      --orange: #e8862a;
+      --orange-soft: #fff0df;
+      --teal: #19706d;
+      --teal-soft: #e5f4f1;
+      --blue: #315f9d;
+      --blue-soft: #e8f0fb;
+      --rose: #b84a52;
+      --rose-soft: #fae8e9;
+      --violet: #684da6;
+      --violet-soft: #eee9fb;
+      --green: #427a32;
+      --green-soft: #e8f4e3;
+      --shadow: 0 18px 50px rgba(64, 45, 24, 0.10);
+    }
+
+    * { box-sizing: border-box; }
+
+    body {
+      margin: 0;
+      font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      background: var(--paper);
+      color: var(--ink);
+      line-height: 1.45;
+    }
+
+    a { color: inherit; }
+
+    .shell {
+      width: min(1440px, 100%);
+      margin: 0 auto;
+      padding: 28px;
+    }
+
+    .hero {
+      display: grid;
+      grid-template-columns: minmax(0, 1.2fr) minmax(360px, 0.8fr);
+      gap: 18px;
+      align-items: stretch;
+    }
+
+    .hero-main,
+    .hero-side,
+    .section,
+    .board-column,
+    .card,
+    .risk-card,
+    .source-card {
+      background: var(--surface);
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      box-shadow: var(--shadow);
+    }
+
+    .hero-main {
+      padding: 30px;
+      min-height: 330px;
+      display: flex;
+      flex-direction: column;
+      justify-content: space-between;
+      overflow: hidden;
+      position: relative;
+    }
+
+    .hero-main::before {
+      content: "";
+      position: absolute;
+      inset: 0;
+      background:
+        linear-gradient(120deg, rgba(232,134,42,0.10), transparent 38%),
+        radial-gradient(circle at 96% 8%, rgba(25,112,109,0.12), transparent 28%);
+      pointer-events: none;
+    }
+
+    .hero-main > * { position: relative; z-index: 1; }
+
+    .eyebrow {
+      display: inline-flex;
+      width: fit-content;
+      align-items: center;
+      gap: 8px;
+      padding: 6px 10px;
+      border: 1px solid rgba(232,134,42,0.28);
+      background: var(--orange-soft);
+      border-radius: 999px;
+      color: #7a3f09;
+      font-size: 12px;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.06em;
+    }
+
+    h1 {
+      margin: 18px 0 12px;
+      max-width: 920px;
+      font-size: clamp(38px, 5vw, 68px);
+      line-height: 0.98;
+      letter-spacing: 0;
+    }
+
+    .lead {
+      max-width: 760px;
+      margin: 0;
+      color: var(--muted);
+      font-size: 18px;
+    }
+
+    .hero-metrics {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 10px;
+      margin-top: 28px;
+    }
+
+    .metric {
+      padding: 14px;
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      background: rgba(255,255,255,0.78);
+    }
+
+    .metric strong {
+      display: block;
+      font-size: 22px;
+      line-height: 1;
+    }
+
+    .metric span {
+      display: block;
+      margin-top: 7px;
+      color: var(--muted);
+      font-size: 12px;
+    }
+
+    .hero-side {
+      padding: 20px;
+      display: grid;
+      gap: 14px;
+      align-content: start;
+    }
+
+    .gate {
+      display: grid;
+      grid-template-columns: 96px 1fr;
+      gap: 12px;
+      align-items: start;
+      padding: 14px;
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      background: var(--paper);
+    }
+
+    .gate-date {
+      font-weight: 800;
+      color: var(--orange);
+      line-height: 1.15;
+    }
+
+    .gate-title {
+      font-weight: 800;
+      margin-bottom: 4px;
+    }
+
+    .gate-copy {
+      color: var(--muted);
+      font-size: 13px;
+    }
+
+    .section {
+      margin-top: 18px;
+      padding: 22px;
+      overflow: hidden;
+    }
+
+    .section-head {
+      display: flex;
+      align-items: end;
+      justify-content: space-between;
+      gap: 16px;
+      margin-bottom: 18px;
+    }
+
+    h2 {
+      margin: 0;
+      font-size: 24px;
+      letter-spacing: 0;
+    }
+
+    .section-note {
+      max-width: 680px;
+      margin: 6px 0 0;
+      color: var(--muted);
+      font-size: 14px;
+    }
+
+    .tag-row {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+    }
+
+    .tag {
+      display: inline-flex;
+      align-items: center;
+      min-height: 28px;
+      padding: 5px 9px;
+      border-radius: 999px;
+      border: 1px solid var(--line);
+      color: var(--muted);
+      background: #fff;
+      font-size: 12px;
+      font-weight: 650;
+      white-space: nowrap;
+    }
+
+    .tag.hot { color: #8a3008; background: var(--orange-soft); border-color: #f0cfad; }
+    .tag.ok { color: #285d28; background: var(--green-soft); border-color: #cde3c5; }
+    .tag.risk { color: #8e3038; background: var(--rose-soft); border-color: #edc5c9; }
+    .tag.info { color: #224f83; background: var(--blue-soft); border-color: #c9d8ef; }
+
+    .gantt-wrap {
+      overflow-x: auto;
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      background: #fff;
+    }
+
+    .gantt {
+      min-width: 1120px;
+      display: grid;
+      grid-template-columns: 235px repeat(10, 1fr);
+      align-items: stretch;
+    }
+
+    .gantt > div {
+      border-right: 1px solid var(--line);
+      border-bottom: 1px solid var(--line);
+      min-height: 44px;
+    }
+
+    .gantt .corner,
+    .gantt .week {
+      background: var(--panel);
+      font-weight: 800;
+      color: var(--ink);
+      font-size: 12px;
+      padding: 10px;
+    }
+
+    .gantt .week span {
+      display: block;
+      color: var(--muted);
+      font-weight: 600;
+      margin-top: 2px;
+    }
+
+    .row-label {
+      padding: 12px;
+      font-weight: 800;
+      background: #fff;
+    }
+
+    .row-label small {
+      display: block;
+      margin-top: 3px;
+      color: var(--muted);
+      font-weight: 600;
+    }
+
+    .lane {
+      position: relative;
+      background:
+        linear-gradient(90deg, rgba(232,224,216,0.6) 1px, transparent 1px) 0 0 / 10% 100%;
+    }
+
+    .bar {
+      position: absolute;
+      top: 10px;
+      height: 24px;
+      border-radius: 6px;
+      padding: 4px 8px;
+      color: #fff;
+      font-size: 11px;
+      font-weight: 800;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+
+    .bar.orange { background: var(--orange); }
+    .bar.teal { background: var(--teal); }
+    .bar.blue { background: var(--blue); }
+    .bar.violet { background: var(--violet); }
+    .bar.green { background: var(--green); }
+    .bar.rose { background: var(--rose); }
+
+    .w0 { left: 1%; width: 8%; }
+    .w0-1 { left: 1%; width: 18%; }
+    .w1-2 { left: 11%; width: 18%; }
+    .w1-3 { left: 11%; width: 28%; }
+    .w2-4 { left: 21%; width: 28%; }
+    .w3-6 { left: 31%; width: 38%; }
+    .w4-7 { left: 41%; width: 38%; }
+    .w5-8 { left: 51%; width: 38%; }
+    .w6-9 { left: 61%; width: 38%; }
+    .w7-8 { left: 71%; width: 18%; }
+    .w8-9 { left: 81%; width: 18%; }
+    .w9 { left: 91%; width: 8%; }
+
+    .board {
+      display: grid;
+      grid-template-columns: repeat(4, minmax(230px, 1fr));
+      gap: 14px;
+      align-items: start;
+    }
+
+    .board-column {
+      padding: 12px;
+      box-shadow: none;
+      background: #fcfaf8;
+    }
+
+    .column-head {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 8px;
+      margin-bottom: 12px;
+    }
+
+    .column-head h3 {
+      margin: 0;
+      font-size: 14px;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+    }
+
+    .count {
+      min-width: 26px;
+      height: 24px;
+      padding: 3px 8px;
+      border-radius: 999px;
+      background: var(--panel);
+      color: var(--muted);
+      font-size: 12px;
+      font-weight: 800;
+      text-align: center;
+    }
+
+    .card {
+      box-shadow: none;
+      padding: 12px;
+      margin-bottom: 10px;
+      background: #fff;
+    }
+
+    .card h4 {
+      margin: 0 0 7px;
+      font-size: 14px;
+    }
+
+    .card p {
+      margin: 0 0 10px;
+      color: var(--muted);
+      font-size: 13px;
+    }
+
+    .mini-meta {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 6px;
+      color: var(--faint);
+      font-size: 11px;
+      font-weight: 700;
+    }
+
+    .swimlanes {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 14px;
+    }
+
+    .lane-card {
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      overflow: hidden;
+      background: #fff;
+    }
+
+    .lane-card h3 {
+      margin: 0;
+      padding: 14px;
+      font-size: 16px;
+      background: var(--panel);
+      border-bottom: 1px solid var(--line);
+    }
+
+    .lane-card ul {
+      margin: 0;
+      padding: 14px 18px 16px 32px;
+      color: var(--muted);
+      font-size: 13px;
+    }
+
+    .lane-card li { margin: 8px 0; }
+
+    .risk-grid,
+    .source-grid {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 14px;
+    }
+
+    .risk-card,
+    .source-card {
+      padding: 14px;
+      box-shadow: none;
+    }
+
+    .risk-card h3,
+    .source-card h3 {
+      margin: 0 0 8px;
+      font-size: 15px;
+    }
+
+    .risk-card p,
+    .source-card p {
+      margin: 0;
+      color: var(--muted);
+      font-size: 13px;
+    }
+
+    .launch-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 14px;
+    }
+
+    .checklist {
+      margin: 0;
+      padding: 0;
+      list-style: none;
+      display: grid;
+      gap: 10px;
+    }
+
+    .checklist li {
+      display: grid;
+      grid-template-columns: 22px 1fr;
+      gap: 9px;
+      color: var(--muted);
+      font-size: 13px;
+    }
+
+    .box {
+      width: 18px;
+      height: 18px;
+      margin-top: 1px;
+      border: 2px solid var(--orange);
+      border-radius: 4px;
+      background: var(--orange-soft);
+    }
+
+    .presentation {
+      display: grid;
+      grid-template-columns: 1fr 1fr 1fr;
+      gap: 14px;
+    }
+
+    .talk-card {
+      padding: 16px;
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      background: #fff;
+    }
+
+    .talk-card .time {
+      color: var(--orange);
+      font-size: 12px;
+      font-weight: 900;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+    }
+
+    .talk-card h3 {
+      margin: 8px 0 8px;
+      font-size: 16px;
+    }
+
+    .talk-card p {
+      margin: 0;
+      color: var(--muted);
+      font-size: 13px;
+    }
+
+    .footer {
+      margin-top: 18px;
+      padding: 18px 0 6px;
+      color: var(--muted);
+      font-size: 12px;
+      text-align: center;
+    }
+
+    @media (max-width: 1040px) {
+      .hero,
+      .launch-grid,
+      .swimlanes,
+      .risk-grid,
+      .source-grid,
+      .presentation {
+        grid-template-columns: 1fr;
+      }
+
+      .hero-metrics,
+      .board {
+        grid-template-columns: repeat(2, 1fr);
+      }
+    }
+
+    @media (max-width: 640px) {
+      .shell { padding: 14px; }
+      .hero-main { padding: 20px; }
+      .hero-metrics,
+      .board {
+        grid-template-columns: 1fr;
+      }
+      .gate { grid-template-columns: 1fr; }
+      .section-head { display: block; }
+      .tag-row { margin-top: 12px; }
+    }
+  </style>
+</head>
+<body>
+  <main class="shell">
+    <section class="hero">
+      <div class="hero-main">
+        <div>
+          <div class="eyebrow">Janata MSC 2026 Launch Program</div>
+          <h1>From v2 stabilization to a credible Mahasamadhi launch demo.</h1>
+          <p class="lead">
+            A combined product, engineering, beta, iOS submission, and presentation plan
+            for the May 27 to Aug 4 runway. This uses local sprint docs, GitHub issue/PR
+            state, Notion launch notes, and Slack channel search results.
+          </p>
+        </div>
+
+        <div class="hero-metrics" aria-label="program metrics">
+          <div class="metric">
+            <strong>66</strong>
+            <span>days from May 27 to MSC presentation</span>
+          </div>
+          <div class="metric">
+            <strong>Jul 30-Aug 4</strong>
+            <span>MSC launch window from Notion PRD</span>
+          </div>
+          <div class="metric">
+            <strong>Aug 1</strong>
+            <span>8:30-8:45 PM formal release slot</span>
+          </div>
+          <div class="metric">
+            <strong>200</strong>
+            <span>target MSC signups from founder memo</span>
+          </div>
+        </div>
+      </div>
+
+      <aside class="hero-side" aria-label="launch gates">
+        <div class="gate">
+          <div class="gate-date">Now<br>May 27</div>
+          <div>
+            <div class="gate-title">Reality check</div>
+            <div class="gate-copy">v2 includes PR #241. Quebec branch is not merge-ready: unsafe migration, missing reply composer, incomplete web actions.</div>
+          </div>
+        </div>
+        <div class="gate">
+          <div class="gate-date">Early<br>June</div>
+          <div>
+            <div class="gate-title">San Jose pilot</div>
+            <div class="gate-copy">Notion calls out SJ pilot with Sid as the first real-world proof point and the critical path that agent leverage cannot compress.</div>
+          </div>
+        </div>
+        <div class="gate">
+          <div class="gate-date">July<br>30</div>
+          <div>
+            <div class="gate-title">MSC launch opens</div>
+            <div class="gate-copy">Product must be boringly reliable before camp. Any risky feature not stable by mid-July becomes presentation-only or post-MSC.</div>
+          </div>
+        </div>
+        <div class="gate">
+          <div class="gate-date">Aug 1<br>8:30 PM</div>
+          <div>
+            <div class="gate-title">Formal release talk</div>
+            <div class="gate-copy">5-7 minute pitch-deck walkthrough, live iOS app demo, and operational ask for CHYK coordinators.</div>
+          </div>
+        </div>
+      </aside>
+    </section>
+
+    <section class="section">
+      <div class="section-head">
+        <div>
+          <h2>Executive Path</h2>
+          <p class="section-note">The plan is intentionally gate-based: do not advance beta or submission until the previous gate has evidence.</p>
+        </div>
+        <div class="tag-row">
+          <span class="tag hot">Target: MSC 2026</span>
+          <span class="tag info">Base branch: v2</span>
+          <span class="tag risk">Current branch: needs work</span>
+          <span class="tag ok">CCMT Apple account approved</span>
+        </div>
+      </div>
+
+      <div class="gantt-wrap">
+        <div class="gantt" role="img" aria-label="Gantt chart from May 27 to August 4, 2026">
+          <div class="corner">Workstream</div>
+          <div class="week">W0<span>May 27-31</span></div>
+          <div class="week">W1<span>Jun 1-7</span></div>
+          <div class="week">W2<span>Jun 8-14</span></div>
+          <div class="week">W3<span>Jun 15-21</span></div>
+          <div class="week">W4<span>Jun 22-28</span></div>
+          <div class="week">W5<span>Jun 29-Jul 5</span></div>
+          <div class="week">W6<span>Jul 6-12</span></div>
+          <div class="week">W7<span>Jul 13-19</span></div>
+          <div class="week">W8<span>Jul 20-26</span></div>
+          <div class="week">W9<span>Jul 27-Aug 4</span></div>
+
+          <div class="row-label">v2 hardening<small>make mainline trustworthy</small></div>
+          <div class="lane" style="grid-column: span 10;"><div class="bar rose w0-1">fix blockers + merge safe slices</div></div>
+
+          <div class="row-label">Feed / Public posts<small>Quebec sprint scope</small></div>
+          <div class="lane" style="grid-column: span 10;"><div class="bar orange w0-1">repair migration + detail routes</div><div class="bar teal w1-2">web plus actions + reply composer</div></div>
+
+          <div class="row-label">Verification + invites<small>camp-critical trust loop</small></div>
+          <div class="lane" style="grid-column: span 10;"><div class="bar blue w1-3">close #201 #202 #204 evidence gaps</div></div>
+
+          <div class="row-label">iOS submission<small>TestFlight, CCMT, App Review</small></div>
+          <div class="lane" style="grid-column: span 10;"><div class="bar violet w1-2">EAS + signing dry run</div><div class="bar violet w4-7">TestFlight cohorts + App Review prep</div></div>
+
+          <div class="row-label">Beta testing<small>SJ first, then broader CHYK</small></div>
+          <div class="lane" style="grid-column: span 10;"><div class="bar green w1-3">San Jose pilot</div><div class="bar green w3-6">structured beta feedback loops</div><div class="bar green w6-9">launch-candidate beta</div></div>
+
+          <div class="row-label">Presentation<small>deck, live demo, backup plan</small></div>
+          <div class="lane" style="grid-column: span 10;"><div class="bar blue w3-6">narrative + metrics</div><div class="bar blue w7-8">rehearsals + backup video</div><div class="bar orange w9">MSC release</div></div>
+
+          <div class="row-label">Post-MSC<small>do not overload launch week</small></div>
+          <div class="lane" style="grid-column: span 10;"><div class="bar teal w9">triage, retention, v2 to main after MSC</div></div>
+        </div>
+      </div>
+    </section>
+
+    <section class="section">
+      <div class="section-head">
+        <div>
+          <h2>Asana-Style Program Board</h2>
+          <p class="section-note">Use this board as the operating view. The goal is not to finish every GitHub issue; the goal is to protect the MSC demo and beta learning loop.</p>
+        </div>
+      </div>
+
+      <div class="board">
+        <div class="board-column">
+          <div class="column-head"><h3>Backlog</h3><span class="count">8</span></div>
+          <div class="card">
+            <h4>Messages + requests</h4>
+            <p>GitHub #211 / #212 are useful, but not launch-blocking unless the MSC narrative depends on one-to-one coordination.</p>
+            <div class="mini-meta"><span>S4+</span><span>backend/frontend</span></div>
+          </div>
+          <div class="card">
+            <h4>SEO push</h4>
+            <p>Useful for public web discovery after launch, but not required for the 5-7 minute formal release.</p>
+            <div class="mini-meta"><span>#213</span><span>post-beta</span></div>
+          </div>
+          <div class="card">
+            <h4>Push notifications</h4>
+            <p>Do not force this into MSC unless APNs/permissions are already proven. Use email/invite fallback.</p>
+            <div class="mini-meta"><span>#102</span><span>launch-blocker label, but high risk</span></div>
+          </div>
+        </div>
+
+        <div class="board-column">
+          <div class="column-head"><h3>This Sprint</h3><span class="count">7</span></div>
+          <div class="card">
+            <h4>Stabilize Quebec work</h4>
+            <p>Fix unsafe migration, FeedList prop crash, missing ReplyComposer, desktop global Create Event, and live post detail lookup.</p>
+            <div class="mini-meta"><span>branch: redesign-web-nav</span><span>merge gate</span></div>
+          </div>
+          <div class="card">
+            <h4>App Store/TestFlight dry run</h4>
+            <p>Issue #103 remains the submission spine: EAS build, signing, App Store metadata, TestFlight group, review notes.</p>
+            <div class="mini-meta"><span>iOS</span><span>launch-blocker</span></div>
+          </div>
+          <div class="card">
+            <h4>Verification and invites QA</h4>
+            <p>GitHub #201, #202, #204 remain open but v2 has merged related work. Convert them into acceptance checks and close accurately.</p>
+            <div class="mini-meta"><span>camp-critical</span><span>trust loop</span></div>
+          </div>
+        </div>
+
+        <div class="board-column">
+          <div class="column-head"><h3>In Flight</h3><span class="count">6</span></div>
+          <div class="card">
+            <h4>v2 merged baseline</h4>
+            <p>PR #241 is merged into v2. Treat v2 as the product baseline and stop reviewing Davis as pending work.</p>
+            <div class="mini-meta"><span>PR #241</span><span>merged</span></div>
+          </div>
+          <div class="card">
+            <h4>Public posts + feed redesign</h4>
+            <p>Partially implemented, but not shippable. It should merge only after the migration and route gaps are fixed.</p>
+            <div class="mini-meta"><span>Phase 0/1</span><span>needs repair</span></div>
+          </div>
+          <div class="card">
+            <h4>CCMT Apple path</h4>
+            <p>Notion says publishing under CCMT's existing org Apple Developer account is approved; remaining step is transfer/fresh build logistics.</p>
+            <div class="mini-meta"><span>Notion</span><span>owner needed</span></div>
+          </div>
+        </div>
+
+        <div class="board-column">
+          <div class="column-head"><h3>Release Gate</h3><span class="count">5</span></div>
+          <div class="card">
+            <h4>Beta signal threshold</h4>
+            <p>Do not call it launch-ready until 10-20 CHYKs complete onboarding, join/redeem, find an event/center, and submit feedback.</p>
+            <div class="mini-meta"><span>SJ pilot</span><span>early June</span></div>
+          </div>
+          <div class="card">
+            <h4>MSC demo script lock</h4>
+            <p>By July 19, freeze the exact live-demo path and record a fallback video. No last-minute demo-only branches.</p>
+            <div class="mini-meta"><span>presentation</span><span>Aug 1</span></div>
+          </div>
+          <div class="card">
+            <h4>Production launch checklist</h4>
+            <p>Crash reporting, privacy metadata, debug panel flag, app transfer, universal links, invite QR, support inbox, and rollback path.</p>
+            <div class="mini-meta"><span>ship</span><span>no surprises</span></div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section class="section">
+      <div class="section-head">
+        <div>
+          <h2>Product Development Lanes</h2>
+          <p class="section-note">Keep product scope small enough that beta feedback changes behavior, not just backlog priority.</p>
+        </div>
+      </div>
+
+      <div class="swimlanes">
+        <div class="lane-card">
+          <h3>1. Trust and access</h3>
+          <ul>
+            <li>Verification tiers, email verification, invite redemption, and clear unverified states.</li>
+            <li>Make invite generation usable by real CHYK coordinators; test with cross-device links.</li>
+            <li>Turn GitHub #201, #202, #204 into explicit QA scripts rather than leaving them as broad feature issues.</li>
+          </ul>
+        </div>
+        <div class="lane-card">
+          <h3>2. Discovery and participation</h3>
+          <ul>
+            <li>Explore must make local centers and events obvious without demo narration.</li>
+            <li>Feed should show public posts and board posts reliably, but public posting must not risk data loss in migration.</li>
+            <li>Presentation demo should show: find center, find event, join, post, reply, invite another CHYK.</li>
+          </ul>
+        </div>
+        <div class="lane-card">
+          <h3>3. Operations and moderation</h3>
+          <ul>
+            <li>Moderation/admin tools can be minimal, but there must be a credible response path for bad posts.</li>
+            <li>Support inbox/alias is required before broader TestFlight distribution.</li>
+            <li>Metrics should capture signup source, invite conversion, center joins, event taps, and retained beta users.</li>
+          </ul>
+        </div>
+      </div>
+    </section>
+
+    <section class="section">
+      <div class="section-head">
+        <div>
+          <h2>iOS Submission Plan</h2>
+          <p class="section-note">Notion says the Apple account path is resolved through CCMT; treat that as a coordination task, not an excuse to delay build readiness.</p>
+        </div>
+      </div>
+
+      <div class="launch-grid">
+        <div class="lane-card">
+          <h3>Submission checklist</h3>
+          <ul class="checklist">
+            <li><span class="box"></span><span>Confirm bundle identifier and ownership path: current app id is <strong>com.theabhiramr.project-janata</strong>; decide transfer vs fresh CCMT app.</span></li>
+            <li><span class="box"></span><span>Run EAS production build under the account that will own TestFlight distribution.</span></li>
+            <li><span class="box"></span><span>Prepare App Store metadata: description, screenshots, privacy nutrition labels, support URL, age rating, contact.</span></li>
+            <li><span class="box"></span><span>Configure universal links / associated domains if invite links are part of the beta path.</span></li>
+            <li><span class="box"></span><span>Submit TestFlight build early enough for beta review and external tester approval.</span></li>
+          </ul>
+        </div>
+
+        <div class="lane-card">
+          <h3>Beta feedback loop</h3>
+          <ul class="checklist">
+            <li><span class="box"></span><span>Start with San Jose pilot in early June: one center, one coordinator, one invite cohort.</span></li>
+            <li><span class="box"></span><span>Collect feedback in three buckets: unable to sign in, unable to find/join, unclear why to return.</span></li>
+            <li><span class="box"></span><span>Weekly beta build cadence: Monday triage, Tuesday fixes, Wednesday internal QA, Thursday TestFlight, weekend observation.</span></li>
+            <li><span class="box"></span><span>By July 13, only fix launch-blocking issues; move feature requests to post-MSC.</span></li>
+            <li><span class="box"></span><span>Prepare a fallback web demo in case App Review timing slips.</span></li>
+          </ul>
+        </div>
+      </div>
+    </section>
+
+    <section class="section">
+      <div class="section-head">
+        <div>
+          <h2>Mahasamadhi Presentation</h2>
+          <p class="section-note">Notion context says the format is pitch deck walkthrough → live iOS app demo → logistics discussion. The slot is Friday Aug 1, 2026, 8:30-8:45 PM, with 5-7 minutes for the formal release.</p>
+        </div>
+      </div>
+
+      <div class="presentation">
+        <div class="talk-card">
+          <div class="time">0:00-1:00</div>
+          <h3>The problem CHYKs feel</h3>
+          <p>Events are fragmented, centers are hard to discover, and community connections disappear after camp. Tie this to the CHYK coordinator workflow.</p>
+        </div>
+        <div class="talk-card">
+          <div class="time">1:00-3:30</div>
+          <h3>Live iOS demo</h3>
+          <p>Open Janata, find a center, find an event, join, view feed, post publicly or to a board, and show invite/redeem flow.</p>
+        </div>
+        <div class="talk-card">
+          <div class="time">3:30-5:30</div>
+          <h3>Launch ask</h3>
+          <p>Ask CHYK coordinators to post MSC events, join their center room, invite their local CHYKs, and use Janata as the camp participation layer.</p>
+        </div>
+        <div class="talk-card">
+          <div class="time">5:30-6:30</div>
+          <h3>Proof points</h3>
+          <p>Show beta counts: active users, invite conversion, center joins, posts, and qualitative quotes from the San Jose pilot.</p>
+        </div>
+        <div class="talk-card">
+          <div class="time">6:30-7:00</div>
+          <h3>QR and next step</h3>
+          <p>End with a QR code to TestFlight/App Store/web beta plus one sentence: "Join your center and bring your CHYK group in."</p>
+        </div>
+        <div class="talk-card">
+          <div class="time">Backup</div>
+          <h3>No-network mode</h3>
+          <p>Record a 90-second app walkthrough and export deck as PDF. If live app fails, play video and keep the ask unchanged.</p>
+        </div>
+      </div>
+    </section>
+
+    <section class="section">
+      <div class="section-head">
+        <div>
+          <h2>Risk Register</h2>
+          <p class="section-note">These are the issues most likely to threaten the MSC moment if not resolved in order.</p>
+        </div>
+      </div>
+      <div class="risk-grid">
+        <div class="risk-card">
+          <span class="tag risk">High</span>
+          <h3>Unsafe board-post migration</h3>
+          <p>Current Quebec migration rebuilds `board_posts` by dropping the old table. Fix before merge to avoid losing replies/reactions.</p>
+        </div>
+        <div class="risk-card">
+          <span class="tag risk">High</span>
+          <h3>iOS timeline dependency</h3>
+          <p>App Review and CCMT transfer/fresh-build logistics cannot be compressed at the end. Submit TestFlight early.</p>
+        </div>
+        <div class="risk-card">
+          <span class="tag hot">Medium</span>
+          <h3>Too much launch scope</h3>
+          <p>Messages, push notifications, moderation, and SEO are all useful. Only trust/invite/discovery/feed/demo reliability are required for MSC.</p>
+        </div>
+        <div class="risk-card">
+          <span class="tag hot">Medium</span>
+          <h3>Demo data mismatch</h3>
+          <p>Feed detail still uses mock board data in the current Quebec branch. Live/public posts need a real lookup path before beta.</p>
+        </div>
+        <div class="risk-card">
+          <span class="tag info">Process</span>
+          <h3>GitHub issues are stale</h3>
+          <p>Many v2 sprint issues remain open even when related PRs have merged. Convert issue status to acceptance status.</p>
+        </div>
+        <div class="risk-card">
+          <span class="tag info">Comms</span>
+          <h3>Slack context unavailable</h3>
+          <p>Slack channel searches for Janata, MSC, and Mahasamadhi returned no relevant channels. Keep launch coordination in Notion/GitHub unless a channel is identified.</p>
+        </div>
+      </div>
+    </section>
+
+    <section class="section">
+      <div class="section-head">
+        <div>
+          <h2>Context Used</h2>
+          <p class="section-note">This dashboard separates source-backed facts from planning recommendations.</p>
+        </div>
+      </div>
+      <div class="source-grid">
+        <div class="source-card">
+          <h3>GitHub</h3>
+          <p>Repository: Project-Janata/Janata. v2 PRs #214-#241 mostly merged; #229 remains open/draft/blocked. Open issues include #101-#108, #125, #127, #174, #187, #191-#213.</p>
+        </div>
+        <div class="source-card">
+          <h3>Notion</h3>
+          <p>Found Sprint Plan - MSC 2026, PRD - MSC 2026, iOS Builds & TestFlight, Ram ji launch notes, and Pitch Deck. Key dates: MSC Jul 30-Aug 4; release slot Aug 1, 8:30-8:45 PM.</p>
+        </div>
+        <div class="source-card">
+          <h3>Slack</h3>
+          <p>Channel searches for "janata", "mahasamadhi", and "msc" returned no relevant results in available Slack tooling, so no Slack-specific commitments are included.</p>
+        </div>
+      </div>
+    </section>
+
+    <div class="footer">
+      Generated May 27, 2026 from local sprint docs, GitHub CLI/API context, Notion search highlights, and Slack channel search results.
+    </div>
+  </main>
+</body>
+</html>
