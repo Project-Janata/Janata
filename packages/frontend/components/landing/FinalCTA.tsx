@@ -1,6 +1,7 @@
 import React from 'react'
 import { View, Text, Pressable, useWindowDimensions, Linking } from 'react-native'
 import { useRouter } from 'expo-router'
+import { usePostHog } from 'posthog-react-native'
 
 const CONTACT_EMAIL = 'projectjanatha@gmail.com'
 
@@ -107,6 +108,7 @@ function AskCard({
 
 export function FinalCTA() {
   const router = useRouter()
+  const posthog = usePostHog()
   const { width } = useWindowDimensions()
   const isMobile = width < 768
   const isTablet = width >= 768 && width < 1024
@@ -206,7 +208,10 @@ export function FinalCTA() {
             headline="Post your next event on Janata."
             description="It takes a minute per event, and CHYKs who aren't in your WhatsApp group can finally find you. We'll personally help you migrate your RSVP flow."
             ctaLabel="Get set up"
-            onPress={() => openMail('Coordinator — getting set up on Janata')}
+            onPress={() => {
+              posthog?.capture('landing_ask_pressed', { audience: 'coordinator' })
+              openMail('Coordinator — getting set up on Janata')
+            }}
             isMobile={isMobile}
           />
           <AskCard
@@ -214,7 +219,10 @@ export function FinalCTA() {
             headline="Join the team."
             description="Volunteer-led across dev, design, product, and outreach. Async over Slack, as much or as little time as you can give. A great opportunity for seva."
             ctaLabel="Get in touch"
-            onPress={() => openMail('Joining the Janata team')}
+            onPress={() => {
+              posthog?.capture('landing_ask_pressed', { audience: 'contributor' })
+              openMail('Joining the Janata team')
+            }}
             isMobile={isMobile}
           />
           <AskCard
@@ -222,7 +230,10 @@ export function FinalCTA() {
             headline="Bless this & introduce us."
             description="Designed to be run entirely by CHYKs — nothing added to your plate. Connect us with the coordinators at your center and spread the word to your CHYKs."
             ctaLabel="Connect with us"
-            onPress={() => openMail('Acharya introduction — Janata')}
+            onPress={() => {
+              posthog?.capture('landing_ask_pressed', { audience: 'acharya' })
+              openMail('Acharya introduction — Janata')
+            }}
             isMobile={isMobile}
           />
         </View>
@@ -247,7 +258,10 @@ export function FinalCTA() {
             Just here to look around?
           </Text>
           <Pressable
-            onPress={() => router.push('/(tabs)')}
+            onPress={() => {
+              posthog?.capture('landing_cta_pressed', { variant: 'final', label: 'browse_events' })
+              router.push('/(tabs)')
+            }}
             className="bg-primary active:bg-primary-press rounded-full"
             style={{
               paddingHorizontal: 28,

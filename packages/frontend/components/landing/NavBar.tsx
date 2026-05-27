@@ -1,6 +1,7 @@
 import React, { useState } from 'react'
 import { View, Text, Pressable, useWindowDimensions, Platform } from 'react-native'
 import { useRouter } from 'expo-router'
+import { usePostHog } from 'posthog-react-native'
 import { User } from 'lucide-react-native'
 import Logo from '../ui/Logo'
 
@@ -24,6 +25,7 @@ const NAV_LINKS: string[] = []
 
 export function NavBar() {
   const router = useRouter()
+  const posthog = usePostHog()
   const { width } = useWindowDimensions()
   const isMobile = width < 768
   const isTablet = width >= 768 && width < 1024
@@ -76,7 +78,10 @@ export function NavBar() {
 
           <Pressable
             accessibilityLabel="Sign in or sign up"
-            onPress={() => router.push('/auth')}
+            onPress={() => {
+              posthog?.capture('landing_signin_pressed', { source: 'navbar' })
+              router.push('/auth')
+            }}
             style={{
               width: 36,
               height: 36,

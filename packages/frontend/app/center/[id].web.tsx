@@ -10,6 +10,7 @@ import { ThreadPanel, boardPostToMessage } from '../../components/boards'
 import { useUser } from '../../components/contexts'
 import { SeoHead } from '../../components/seo/SeoHead'
 import { buildCenterJsonLd } from '../../components/seo/jsonLd'
+import { usePostHog } from 'posthog-react-native'
 
 export default function CenterDetailWeb() {
   const { id: rawId } = useLocalSearchParams()
@@ -50,9 +51,22 @@ function formatDateCallout(dateStr: string): { month: string; day: string } {
 function MobileCenterDetail({ centerId }: { centerId: string }) {
   const router = useRouter()
   const { user } = useUser()
+  const posthog = usePostHog()
   const { center, events, loading } = useCenterDetail(centerId)
   const colors = useDetailColors()
   const [activeTab, setActiveTab] = useState('About')
+
+  // Fire center_viewed once per center load. Mirrors the native page's
+  // event so web traffic isn't missing from PostHog. (#analytics)
+  useEffect(() => {
+    if (!loading && center?.id) {
+      posthog?.capture('center_viewed', {
+        centerId: center.id,
+        name: center.name,
+        source: 'web_detail',
+      })
+    }
+  }, [loading, center?.id, center?.name, posthog])
   const canPostToThread =
     !!user && (user.centerID === center?.id || (user.verificationLevel ?? 0) >= 107)
   const { posts: boardPosts, refetch: refetchBoard } = useBoard('center', center?.id, canPostToThread)
@@ -65,6 +79,7 @@ function MobileCenterDetail({ centerId }: { centerId: string }) {
   }
 
   const handleShare = () => {
+    posthog?.capture('center_shared', { centerId: center?.id, source: 'web_detail' })
     if (typeof navigator !== 'undefined' && navigator.share) {
       navigator.share({ title: center?.name || 'Center', text: `Check out ${center?.name} on Chinmaya Janata!` }).catch(() => {})
     } else if (typeof navigator !== 'undefined' && navigator.clipboard) {
@@ -74,21 +89,25 @@ function MobileCenterDetail({ centerId }: { centerId: string }) {
 
   const handleAddressPress = () => {
     if (!center?.address) return
+    posthog?.capture('center_address_pressed', { centerId: center.id, source: 'web_detail' })
     Linking.openURL(`https://maps.google.com/?q=${encodeURIComponent(center.address)}`)
   }
 
   const handleWebsitePress = () => {
     if (!center?.website) return
+    posthog?.capture('center_website_pressed', { centerId: center.id, source: 'web_detail' })
     const url = center.website.startsWith('http') ? center.website : `https://${center.website}`
     Linking.openURL(url)
   }
 
   const handlePhonePress = () => {
     if (!center?.phone) return
+    posthog?.capture('center_phone_pressed', { centerId: center.id, source: 'web_detail' })
     Linking.openURL(`tel:${center.phone}`)
   }
 
   const handleEventPress = (event: EventDisplay) => {
+    posthog?.capture('center_event_pressed', { centerId: center?.id, eventId: event.id, source: 'web_detail' })
     router.push(`/events/${event.id}`)
   }
 
