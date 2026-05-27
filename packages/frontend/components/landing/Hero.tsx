@@ -1,6 +1,7 @@
 import React, { useEffect, useMemo, useRef } from 'react'
 import { View, Text, Pressable, Platform, useWindowDimensions, ScrollView, Image } from 'react-native'
 import { useRouter } from 'expo-router'
+import { usePostHog } from 'posthog-react-native'
 import { useEventList, useCenterList } from '../../hooks/useApiData'
 import type { EventDisplay, DiscoverCenter } from '../../utils/api'
 
@@ -498,6 +499,7 @@ function HorizontalScrollRow({ cards }: { cards: CardData[] }) {
 
 export function Hero() {
   const router = useRouter()
+  const posthog = usePostHog()
   const { width } = useWindowDimensions()
   const isMobile = width < 768
   const isTablet = width >= 768 && width < 1024
@@ -670,7 +672,10 @@ export function Hero() {
           }}
         >
           <Pressable
-            onPress={() => router.push('/(tabs)')}
+            onPress={() => {
+              posthog?.capture('landing_cta_pressed', { variant: 'hero', label: 'start_exploring' })
+              router.push('/(tabs)')
+            }}
             className="bg-primary active:bg-primary-press rounded-full"
             style={{
               paddingHorizontal: 28,
