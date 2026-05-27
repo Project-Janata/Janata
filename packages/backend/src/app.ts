@@ -948,6 +948,21 @@ app.post('/fetchCenter', async (c) => {
   return c.json({ message: 'Success', center: centerRowToApi(center) })
 })
 
+// GET alias of /fetchCenter (#125). Cloudflare only edge-caches GET, so
+// adding the alias lets the same data be served from 300+ POPs with 30s
+// staleness. POST stays for backward compat with existing clients.
+app.get('/fetchCenter', cacheControl(30), async (c) => {
+  const centerID = c.req.query('centerID')
+  if (!centerID) {
+    return c.json({ message: 'Malformed centerID' }, 400)
+  }
+  const center = await db.getCenterById(c.env.DB, centerID)
+  if (!center) {
+    return c.json({ message: 'Center not found' }, 404)
+  }
+  return c.json({ message: 'Success', center: centerRowToApi(center) })
+})
+
 // ═══════════════════════════════════════════════════════════════════════
 // USER ROUTES
 // ═══════════════════════════════════════════════════════════════════════
@@ -1373,6 +1388,18 @@ app.post('/fetchEvent', async (c) => {
   return c.json({ message: 'Success', event: eventRowToApi(event) })
 })
 
+// GET alias of /fetchEvent (#125). See /fetchCenter alias above for the
+// edge-cache rationale.
+app.get('/fetchEvent', cacheControl(30), async (c) => {
+  const id = c.req.query('id') ?? c.req.query('eventID')
+  if (!id) return c.json({ message: 'Malformed id' }, 400)
+  const event = await db.getEventById(c.env.DB, id)
+  if (!event) {
+    return c.json({ message: 'Event not found' }, 404)
+  }
+  return c.json({ message: 'Success', event: eventRowToApi(event) })
+})
+
 app.post('/updateEvent', authMiddleware, async (c) => {
   const user = c.get('user')
 
@@ -1496,6 +1523,17 @@ app.post('/unattendEvent', authMiddleware, async (c) => {
 
 app.post('/fetchEventsByCenter', async (c) => {
   const { centerID } = await c.req.json<{ centerID: string }>()
+  const events = await db.getEventsByCenterId(c.env.DB, centerID)
+  return c.json({
+    message: 'Success',
+    events: events.map(eventRowToApi),
+  })
+})
+
+// GET alias of /fetchEventsByCenter (#125).
+app.get('/fetchEventsByCenter', cacheControl(30), async (c) => {
+  const centerID = c.req.query('centerID')
+  if (!centerID) return c.json({ message: 'Malformed centerID' }, 400)
   const events = await db.getEventsByCenterId(c.env.DB, centerID)
   return c.json({
     message: 'Success',
