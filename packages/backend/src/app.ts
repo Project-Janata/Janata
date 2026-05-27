@@ -133,19 +133,24 @@ app.use(
   cors({
     origin: (origin) => {
       if (!origin) return '*'
+      // Canonical frontend = chinmayajanata.org (CNAME → project-janatha.pages.dev).
+      // The chinmaya-janata.pages.dev entries are the OLD Pages project — frozen,
+      // doesn't receive deploys, but kept in the allowlist as a safety net in case
+      // a stale link out there still routes there. See #165.
       const allowed = [
-        'https://chinmaya-janata.pages.dev',
         'https://chinmayajanata.org',
         'https://www.chinmayajanata.org',
+        'https://project-janatha.pages.dev',
         'https://main.project-janatha.pages.dev',
+        'https://chinmaya-janata.pages.dev', // legacy frozen project
         'http://localhost:8081',
         'http://localhost:8787',
         'http://localhost:19006',
       ]
       if (allowed.includes(origin)) return origin
       if (origin.startsWith('http://localhost:')) return origin
-      if (origin.endsWith('.chinmaya-janata.pages.dev')) return origin
       if (origin.endsWith('.project-janatha.pages.dev')) return origin
+      if (origin.endsWith('.chinmaya-janata.pages.dev')) return origin // legacy
       return ''
     },
     allowMethods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
