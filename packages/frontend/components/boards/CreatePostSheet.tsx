@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useMemo } from 'react'
 import { KeyboardAvoidingView, Modal, Platform, Pressable, ScrollView, Text, TextInput, View } from 'react-native'
-import { Building2, CalendarDays, ChevronDown, X } from 'lucide-react-native'
+import { Buildings, CalendarDots, CaretDown, X } from 'phosphor-react-native'
 import { Avatar } from '../ui'
 import type { AppColors } from '../../tokens'
 
@@ -73,8 +73,8 @@ export function CreatePostSheet({
             >
               <View style={{ width: 28, height: 28, borderRadius: 9, backgroundColor: colors.accentSoft, alignItems: 'center', justifyContent: 'center' }}>
                 {selectedGroup?.kind === 'event'
-                  ? <CalendarDays size={14} color={colors.accent} strokeWidth={2.4} />
-                  : <Building2 size={14} color={colors.accent} strokeWidth={2.4} />}
+                  ? <CalendarDots size={14} color={colors.accent} />
+                  : <Buildings size={14} color={colors.accent} />}
               </View>
               <View style={{ flex: 1, minWidth: 0 }}>
                 <Text style={{ fontFamily: 'Inclusive Sans', fontSize: 14, color: colors.text }} numberOfLines={1}>
@@ -86,7 +86,7 @@ export function CreatePostSheet({
                   </Text>
                 )}
               </View>
-              <ChevronDown size={16} color={colors.textFaint} />
+              <CaretDown size={16} color={colors.textFaint} />
             </Pressable>
 
             {groupPickerOpen && (
@@ -101,8 +101,8 @@ export function CreatePostSheet({
                     >
                       <View style={{ width: 24, height: 24, borderRadius: 7, backgroundColor: colors.panel, alignItems: 'center', justifyContent: 'center' }}>
                         {group.kind === 'event'
-                          ? <CalendarDays size={12} color={colors.textMuted} strokeWidth={2.3} />
-                          : <Building2 size={12} color={colors.textMuted} strokeWidth={2.3} />}
+                          ? <CalendarDots size={12} color={colors.textMuted} />
+                          : <Buildings size={12} color={colors.textMuted} />}
                       </View>
                       <Text style={{ flex: 1, fontFamily: 'Inclusive Sans', fontSize: 14, color: colors.text }} numberOfLines={1}>
                         {group.title}

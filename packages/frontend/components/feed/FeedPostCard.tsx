@@ -1,6 +1,6 @@
 import React from 'react'
 import { Pressable, Text, View } from 'react-native'
-import { Building2, CalendarDays, MessageCircle } from 'lucide-react-native'
+import { Buildings, CalendarDots, ChatCircle } from 'phosphor-react-native'
 import { Avatar } from '../ui'
 import type { AppColors } from '../../tokens'
 import type { FeedPost } from './types'
@@ -38,9 +38,9 @@ export function FeedPostCard({
           }}
         >
           {post.sourceKind === 'event' ? (
-            <CalendarDays size={10} color={colors.accent} strokeWidth={2.4} />
+            <CalendarDots size={10} color={colors.accent} />
           ) : (
-            <Building2 size={10} color={colors.textMuted} strokeWidth={2.3} />
+            <Buildings size={10} color={colors.textMuted} />
           )}
         </View>
         <Text style={{ fontSize: 12, color: colors.textMuted }} numberOfLines={1}>
@@ -104,7 +104,7 @@ export function FeedPostCard({
               </View>
             ))}
             <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4 }}>
-              <MessageCircle size={13} color={colors.textMuted} />
+              <ChatCircle size={13} color={colors.textMuted} />
               <Text style={{ fontFamily: 'Inclusive Sans', fontSize: 12, color: colors.textMuted }}>
                 {replies}
               </Text>

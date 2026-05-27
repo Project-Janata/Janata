@@ -1,6 +1,6 @@
 import React, { useState } from 'react'
 import { View, Text, Image, ScrollView, Pressable, Linking } from 'react-native'
-import { MapPin, Globe, Phone, User, ChevronLeft, Navigation, BadgeCheck, Users } from 'lucide-react-native'
+import { MapPin, Globe, Phone, User, CaretLeft, NavigationArrow, SealCheck, Users } from 'phosphor-react-native'
 import CopyLinkButton from '../ui/CopyLinkButton'
 import UnderlineTabBar from '../ui/UnderlineTabBar'
 import type { CenterDisplay } from '../../hooks/useApiData'
@@ -98,7 +98,7 @@ export default function CenterDetailPanel({
             style={{ flexDirection: 'row', alignItems: 'center', gap: 4, padding: 8, minHeight: 44, minWidth: 44 }}
             accessibilityLabel="Close panel"
           >
-            <ChevronLeft size={20} color={colors.iconHeader} />
+            <CaretLeft size={20} color={colors.iconHeader} />
             <Text
               style={{
                 fontFamily: 'Inclusive Sans',
@@ -146,7 +146,7 @@ export default function CenterDetailPanel({
             )}
             {center.isVerified && (
               <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4 }}>
-                <BadgeCheck size={13} color="#E8862A" />
+                <SealCheck size={13} color="#E8862A" />
                 <Text
                   style={{
                     fontFamily: 'Inclusive Sans',

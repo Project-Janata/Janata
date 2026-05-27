@@ -13,16 +13,16 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context'
 import { useLocalSearchParams, useRouter } from 'expo-router'
 import {
-  ChevronLeft,
-  Share as ShareIcon,
+  CaretLeft,
+  ShareNetwork as ShareIcon,
   MapPin,
   Globe,
   Phone,
   User,
-  Navigation,
-  BadgeCheck,
+  NavigationArrow,
+  SealCheck,
   Users,
-} from 'lucide-react-native'
+} from 'phosphor-react-native'
 import { usePostHog } from 'posthog-react-native'
 import { useCenterDetail } from '../../hooks/useApiData'
 import { Badge, UnderlineTabBar } from '../../components/ui'
@@ -30,6 +30,7 @@ import type { EventDisplay } from '../../utils/api'
 import { useDetailColors, type DetailColors } from '../../hooks/useDetailColors'
 import { buildCenterBoard, ThreadPanel } from '../../components/boards'
 import { useUser } from '../../components/contexts'
+import { useColors } from '../../hooks/useColors'
 
 // ── Helpers ─────────────────────────────────────────────────────────────
 
@@ -86,6 +87,7 @@ function HeaderBar({
   memberCount?: number
   isVerified?: boolean
 }) {
+  const appColors = useColors()
   return (
     <View
       style={{
@@ -110,7 +112,7 @@ function HeaderBar({
             minWidth: 44,
           }}
         >
-          <ChevronLeft size={20} color={colors.iconHeader} />
+          <CaretLeft size={20} color={colors.iconHeader} />
           <Text
             style={{
               fontSize: 14,
@@ -168,11 +170,11 @@ function HeaderBar({
           )}
           {isVerified && (
             <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4 }}>
-              <BadgeCheck size={13} color="#E8862A" />
+              <SealCheck size={13} color={appColors.accent} />
               <Text
                 style={{
                   fontSize: 13,
-                  color: '#E8862A',
+                  color: appColors.accent,
                 }}
               >
                 Verified
@@ -195,6 +197,7 @@ export default function CenterDetailPage() {
   const { user } = useUser()
   const { center, events, loading } = useCenterDetail(id as string)
   const colors = useDetailColors()
+  const c = useColors()
   const [activeTab, setActiveTab] = useState('About')
 
   useEffect(() => {
@@ -270,7 +273,7 @@ export default function CenterDetailPage() {
             onPress={() => router.back()}
             style={{ marginTop: 8, minHeight: 44, justifyContent: 'center' }}
           >
-            <Text style={{ fontSize: 16, fontFamily: 'Inclusive Sans', color: '#E8862A' }}>
+            <Text style={{ fontSize: 16, fontFamily: 'Inclusive Sans', color: c.accent }}>
               Go Back
             </Text>
           </Pressable>
@@ -345,7 +348,7 @@ export default function CenterDetailPage() {
                 {/* Address */}
                 {center.address ? (
                   <View style={{ flexDirection: 'row', alignItems: 'flex-start', gap: 12 }}>
-                    <MetaIcon icon={MapPin} color="#E8862A" colors={colors} />
+                    <MetaIcon icon={MapPin} color={c.accent} colors={colors} />
                     <View style={{ flex: 1, gap: 8 }}>
                       <Text
                         style={{
@@ -364,7 +367,7 @@ export default function CenterDetailPage() {
                         <Text
                           style={{
                             fontSize: 14,
-                            color: '#E8862A',
+                            color: c.accent,
                           }}
                         >
                           Get directions →
@@ -380,11 +383,11 @@ export default function CenterDetailPage() {
                     onPress={handleWebsitePress}
                     style={{ flexDirection: 'row', alignItems: 'center', gap: 12, minHeight: 44 }}
                   >
-                    <MetaIcon icon={Globe} color="#E8862A" colors={colors} />
+                    <MetaIcon icon={Globe} color={c.accent} colors={colors} />
                     <Text
                       style={{
                         fontSize: 14,
-                        color: '#E8862A',
+                        color: c.accent,
                         lineHeight: 20,
                         flex: 1,
                       }}
@@ -401,7 +404,7 @@ export default function CenterDetailPage() {
                     onPress={handlePhonePress}
                     style={{ flexDirection: 'row', alignItems: 'center', gap: 12, minHeight: 44 }}
                   >
-                    <MetaIcon icon={Phone} color="#E8862A" colors={colors} />
+                    <MetaIcon icon={Phone} color={c.accent} colors={colors} />
                     <Text
                       style={{
                         fontSize: 14,
@@ -418,7 +421,7 @@ export default function CenterDetailPage() {
                 {/* Acharya */}
                 {center.acharya ? (
                   <View style={{ flexDirection: 'row', alignItems: 'flex-start', gap: 12 }}>
-                    <MetaIcon icon={User} color="#E8862A" colors={colors} />
+                    <MetaIcon icon={User} color={c.accent} colors={colors} />
                     <View style={{ flex: 1, justifyContent: 'center' }}>
                       <Text
                         style={{
@@ -489,7 +492,7 @@ export default function CenterDetailPage() {
                             style={{
                               fontFamily: 'Inclusive Sans',
                               fontSize: 11,
-                              color: '#E8862A',
+                              color: c.accent,
                               textTransform: 'uppercase',
                               lineHeight: 14,
                             }}

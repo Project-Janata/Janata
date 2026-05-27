@@ -1,5 +1,6 @@
 import React from 'react'
 import { ActivityIndicator, Pressable, Text } from 'react-native'
+import { useColors } from '../../../hooks/useColors'
 
 interface DestructiveButtonProps {
   children: React.ReactNode
@@ -11,6 +12,7 @@ interface DestructiveButtonProps {
 
 export default function DestructiveButton({ children, onPress, disabled, loading, style }: DestructiveButtonProps) {
   const isDisabled = disabled || loading
+  const c = useColors()
 
   return (
     <Pressable
@@ -18,7 +20,7 @@ export default function DestructiveButton({ children, onPress, disabled, loading
       disabled={isDisabled}
       style={({ pressed }) => [
         {
-          backgroundColor: pressed ? '#B91C1C' : '#DC2626',
+          backgroundColor: c.error,
           paddingHorizontal: 16,
           paddingVertical: 14,
           borderRadius: 999,

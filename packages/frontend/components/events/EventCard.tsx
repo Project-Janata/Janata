@@ -1,6 +1,6 @@
 import React from 'react'
 import { View, Text } from 'react-native'
-import { MapPin, ThumbsUp, MessageCircle } from 'lucide-react-native'
+import { MapPin, ThumbsUp, ChatCircle } from 'phosphor-react-native'
 import { Card } from '../ui'
 
 export interface EventCardData {
@@ -49,7 +49,7 @@ export function EventCard({ event, onPress, variant = 'compact' }: EventCardProp
             </Text>
           </View>
           <View className="flex-row items-center gap-2">
-            <MessageCircle size={18} color="#a1a1aa" />
+            <ChatCircle size={18} color="#a1a1aa" />
             <Text className="text-content dark:text-content-dark font-sans text-sm font-medium">
               {event.comments}
             </Text>
@@ -82,7 +82,7 @@ export function EventCard({ event, onPress, variant = 'compact' }: EventCardProp
           </Text>
         </View>
         <View className="flex-row items-center gap-1">
-          <MessageCircle size={16} color="#a1a1aa" />
+          <ChatCircle size={16} color="#a1a1aa" />
           <Text className="text-content dark:text-content-dark font-sans text-sm">
             {event.comments}
           </Text>

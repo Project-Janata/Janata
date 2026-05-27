@@ -1,6 +1,6 @@
 import React from 'react'
 import { Modal, View, Text, Pressable, StyleSheet } from 'react-native'
-import { useTheme } from '../contexts'
+import { useColors } from '../../hooks/useColors'
 
 type ConfirmDialogProps = {
   visible: boolean
@@ -19,16 +19,9 @@ export default function ConfirmDialog({
   onConfirm,
   onCancel,
 }: ConfirmDialogProps) {
-  const { isDark } = useTheme()
+  const c = useColors()
 
   if (!visible) return null
-
-  const dialogBg = isDark ? '#1a1a1a' : '#fff'
-  const dialogBorder = isDark ? '#262626' : '#E7E5E4'
-  const textColor = isDark ? '#F3F4F6' : '#1C1917'
-  const secondaryText = isDark ? '#9CA3AF' : '#78716C'
-  const cancelBg = isDark ? '#262626' : '#F5F5F4'
-  const cancelText = isDark ? '#D6D3D1' : '#44403C'
 
   return (
     <Modal transparent animationType="fade" visible={visible} onRequestClose={onCancel}>
@@ -37,26 +30,26 @@ export default function ConfirmDialog({
           style={[
             styles.dialog,
             {
-              backgroundColor: dialogBg,
-              borderColor: dialogBorder,
+              backgroundColor: c.card,
+              borderColor: c.border,
             },
           ]}
           onPress={(e) => e.stopPropagation()}
         >
-          <Text style={[styles.title, { color: textColor }]}>{title}</Text>
-          <Text style={[styles.message, { color: secondaryText }]}>{message}</Text>
+          <Text style={[styles.title, { color: c.text }]}>{title}</Text>
+          <Text style={[styles.message, { color: c.textMuted }]}>{message}</Text>
 
           <View style={styles.actions}>
             <Pressable
               onPress={onCancel}
-              style={[styles.button, { backgroundColor: cancelBg }]}
+              style={[styles.button, { backgroundColor: c.surface }]}
             >
-              <Text style={[styles.buttonText, { color: cancelText }]}>Cancel</Text>
+              <Text style={[styles.buttonText, { color: c.textSecondary }]}>Cancel</Text>
             </Pressable>
 
             <Pressable
               onPress={onConfirm}
-              style={[styles.button, styles.confirmButton]}
+              style={[styles.button, { backgroundColor: c.error }]}
             >
               <Text style={[styles.buttonText, { color: '#fff' }]}>{confirmLabel}</Text>
             </Pressable>
@@ -105,9 +98,6 @@ const styles = StyleSheet.create({
     paddingVertical: 10,
     paddingHorizontal: 18,
     borderRadius: 8,
-  },
-  confirmButton: {
-    backgroundColor: '#ef4444',
   },
   buttonText: {
     fontFamily: 'Inclusive Sans',

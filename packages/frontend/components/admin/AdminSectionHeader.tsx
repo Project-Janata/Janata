@@ -1,6 +1,7 @@
 import React from 'react'
 import { View, Text, Pressable } from 'react-native'
 import { useDetailColors } from '../../hooks/useDetailColors'
+import { useColors } from '../../hooks/useColors'
 
 type SectionHeaderProps = {
   label: string
@@ -10,6 +11,7 @@ type SectionHeaderProps = {
 }
 
 export default function AdminSectionHeader({ label, actionLabel, onAction, colors }: SectionHeaderProps) {
+  const c = useColors()
   return (
     <View
       style={{
@@ -37,7 +39,7 @@ export default function AdminSectionHeader({ label, actionLabel, onAction, color
             style={{
               fontFamily: 'Inclusive Sans',
               fontSize: 11,
-              color: '#E8862A',
+              color: c.accent,
             }}
           >
             {actionLabel}

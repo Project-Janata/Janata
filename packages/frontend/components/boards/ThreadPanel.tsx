@@ -1,6 +1,6 @@
 import React from 'react'
 import { Pressable, ScrollView, Text, TextInput, View } from 'react-native'
-import { Building2, CalendarDays, Lock, MessageCircle, MoreHorizontal } from 'lucide-react-native'
+import { Buildings, CalendarDots, Lock, ChatCircle, DotsThree } from 'phosphor-react-native'
 import { Avatar } from '../ui'
 import type { BoardMessage } from './__mocks__/mockData'
 
@@ -243,9 +243,9 @@ export function BoardPostCard({
   const isFeedCard = showSource
   const sourceIcon =
     message.sourceKind === 'event' ? (
-      <CalendarDays size={11} color={accent} strokeWidth={2.4} />
+      <CalendarDots size={11} color={accent} />
     ) : (
-      <Building2 size={11} color={colors.textSecondary} strokeWidth={2.3} />
+      <Buildings size={11} color={colors.textSecondary} />
     )
 
   return (
@@ -359,7 +359,7 @@ export function BoardPostCard({
                 {message.timestamp}
               </Text>
             </View>
-            {!isFeedCard ? <MoreHorizontal size={18} color={colors.textMuted} /> : null}
+            {!isFeedCard ? <DotsThree size={18} color={colors.textMuted} /> : null}
           </View>
 
           <Text
@@ -431,7 +431,7 @@ export function BoardPostCard({
                 gap: 4,
               }}
             >
-              {isFeedCard ? <MessageCircle size={13} color={accent} strokeWidth={2.3} /> : null}
+              {isFeedCard ? <ChatCircle size={13} color={accent} /> : null}
               <Text style={{ fontFamily: 'Inclusive Sans', fontSize: 13, color: accent }}>
                 {replies} {replies === 1 ? 'reply' : 'replies'}
               </Text>
@@ -552,7 +552,7 @@ function LockedBoardState({
           marginBottom: 28,
         }}
       >
-        <Lock size={34} color={colors.textMuted} strokeWidth={1.8} />
+        <Lock size={34} color={colors.textMuted} />
       </View>
       <Text
         style={{

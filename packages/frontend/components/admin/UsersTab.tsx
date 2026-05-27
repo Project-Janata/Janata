@@ -1,6 +1,6 @@
 import React, { useMemo, useState, useEffect, useCallback } from 'react'
 import { View, Text, Pressable, StyleSheet, ActivityIndicator } from 'react-native'
-import { Building2, Calendar, Shield } from 'lucide-react-native'
+import { Buildings, Calendar, Shield } from 'phosphor-react-native'
 import AdminTable, { type Column } from './AdminTable'
 import AdminDetailPanel from './AdminDetailPanel'
 import AdminSearchInput from './AdminSearchInput'
@@ -214,7 +214,7 @@ export default function UsersTab() {
         <View style={{ marginTop: 16 }}>
           <View style={infoStyles.row}>
             <View style={[infoStyles.iconBox, { backgroundColor: colors.iconBoxBg }]}>
-              <Building2 size={14} color={colors.iconHeader} />
+              <Buildings size={14} color={colors.iconHeader} />
             </View>
             <Text style={[infoStyles.text, { color: colors.textSecondary }]}>
               {u.centerID || 'No center'}

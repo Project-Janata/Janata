@@ -1,7 +1,7 @@
 import React from 'react'
 import { View, Text, Pressable, Platform } from 'react-native'
 import { useRouter } from 'expo-router'
-import { Plus, Settings, Bell } from 'lucide-react-native'
+import { Plus, GearSix, Bell } from 'phosphor-react-native'
 import { usePostHog } from 'posthog-react-native'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
 import { useUser } from '../contexts'
@@ -63,11 +63,11 @@ export default function TabHeader({
     if (!action) return null
     switch (action) {
       case 'create':
-        return <Plus {...actionIconProps} strokeWidth={2} />
+        return <Plus {...actionIconProps} />
       case 'notifications':
         return <Bell {...actionIconProps} />
       case 'settings':
-        return <Settings {...actionIconProps} />
+        return <GearSix {...actionIconProps} />
     }
   }
 

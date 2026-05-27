@@ -4,21 +4,22 @@ import { DetailSkeleton } from '../../components/ui/Skeleton'
 import { SafeAreaView } from 'react-native-safe-area-context'
 import { useLocalSearchParams, useRouter } from 'expo-router'
 import {
-  ChevronLeft,
-  Share2,
+  CaretLeft,
+  ShareNetwork,
   MapPin,
   Users,
   User,
   Clock,
   CheckCircle,
-  Pencil,
-  Trash2,
-} from 'lucide-react-native'
+  PencilSimple,
+  Trash,
+} from 'phosphor-react-native'
 import { usePostHog } from 'posthog-react-native'
 import { useEventDetail } from '../../hooks/useApiData'
 import { useUser } from '../../components/contexts'
 import { Badge, UnderlineTabBar, Avatar, PrimaryButton, DestructiveButton } from '../../components/ui'
 import { useDetailColors, type DetailColors } from '../../hooks/useDetailColors'
+import { useColors } from '../../hooks/useColors'
 import { removeEvent } from '../../utils/api'
 import { buildEventBoard, ThreadPanel } from '../../components/boards'
 
@@ -189,7 +190,7 @@ function HeaderBar({
             minWidth: 44,
           }}
         >
-          <ChevronLeft size={20} color={colors.iconHeader} />
+          <CaretLeft size={20} color={colors.iconHeader} />
           <Text
             style={{
               fontFamily: 'Inclusive Sans',
@@ -217,7 +218,7 @@ function HeaderBar({
               }}
               accessibilityLabel="Edit event"
             >
-              <Pencil size={18} color={colors.iconHeader} />
+              <PencilSimple size={18} color={colors.iconHeader} />
             </Pressable>
           )}
           {eventId && isAdmin && onDelete && (
@@ -232,7 +233,7 @@ function HeaderBar({
               }}
               accessibilityLabel="Delete event"
             >
-              <Trash2 size={18} color="#DC2626" />
+              <Trash size={18} color="#DC2626" />
             </Pressable>
           )}
           {!isPast && (
@@ -252,7 +253,7 @@ function HeaderBar({
                 justifyContent: 'center',
               }}
             >
-              <Share2 size={18} color={colors.iconHeader} />
+              <ShareNetwork size={18} color={colors.iconHeader} />
             </Pressable>
           )}
         </View>
@@ -294,7 +295,8 @@ function MetaSection({
   isPast?: boolean
   colors: DetailColors
 }) {
-  const iconColor = isPast ? colors.textMuted : '#E8862A'
+  const appColors = useColors()
+  const iconColor = isPast ? colors.textMuted : appColors.accent
   const attendLabel = `${event.attendees} on Janata`
 
   return (
@@ -387,6 +389,7 @@ function AboutSection({ description, colors }: { description?: string; colors: D
 // ── Attended banner ──────────────────────────────────────────────────────
 
 function AttendedBanner({ count, colors }: { count: number; colors: DetailColors }) {
+  const appColors = useColors()
   return (
     <View
       style={{
@@ -398,14 +401,14 @@ function AttendedBanner({ count, colors }: { count: number; colors: DetailColors
       }}
     >
       <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
-        <CheckCircle size={18} color="#059669" />
-        <Text style={{ fontFamily: 'Inclusive Sans', fontSize: 14, color: '#059669' }}>
+        <CheckCircle size={18} color={appColors.success} />
+        <Text style={{ fontFamily: 'Inclusive Sans', fontSize: 14, color: appColors.success }}>
           You attended this event
         </Text>
       </View>
       {count > 1 && (
         <Text
-          style={{ fontFamily: 'Inclusive Sans', fontSize: 12, color: '#059669', marginLeft: 26 }}
+          style={{ fontFamily: 'Inclusive Sans', fontSize: 12, color: appColors.success, marginLeft: 26 }}
         >
           Along with {count - 1} others
         </Text>
@@ -453,6 +456,7 @@ function ActionBar({
   allowJanataSignup?: boolean
   colors: DetailColors
 }) {
+  const appColors = useColors()
   if (isPast) return null
 
   const wrapperStyle = {
@@ -483,7 +487,7 @@ function ActionBar({
           style={{ paddingVertical: 12, alignItems: 'center', justifyContent: 'center' }}
           accessibilityLabel={`Sign up at ${hostnameOf(signupUrl)}`}
         >
-          <Text style={{ fontFamily: 'Inclusive Sans', fontSize: 14, color: '#E8862A' }}>
+          <Text style={{ fontFamily: 'Inclusive Sans', fontSize: 14, color: appColors.accent }}>
             Or sign up at {hostnameOf(signupUrl)}
           </Text>
         </Pressable>
@@ -558,6 +562,7 @@ export default function EventDetailPage() {
   const { event, attendees, loading, toggleRegistration, isToggling, isCreator } =
     useEventDetail(id as string, username, userId)
   const colors = useDetailColors()
+  const c = useColors()
   const hasTrackedView = useRef(false)
 
   const isAdmin = user?.email === ADMIN_EMAIL || (user?.verificationLevel !== undefined && user.verificationLevel >= 107)
@@ -656,7 +661,7 @@ export default function EventDetailPage() {
             onPress={() => router.back()}
             style={{ marginTop: 8, minHeight: 44, justifyContent: 'center' }}
           >
-            <Text style={{ fontSize: 16, fontFamily: 'Inclusive Sans', color: '#E8862A' }}>
+            <Text style={{ fontSize: 16, fontFamily: 'Inclusive Sans', color: c.accent }}>
               Go Back
             </Text>
           </Pressable>
@@ -712,7 +717,7 @@ export default function EventDetailPage() {
             <View style={{ paddingHorizontal: 20, paddingTop: 20, paddingBottom: 24, gap: 20 }}>
               {/* Date & time */}
               <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12 }}>
-                <MetaIcon icon={Clock} color="#E8862A" colors={colors} />
+                <MetaIcon icon={Clock} color={c.accent} colors={colors} />
                 <Text style={{ fontFamily: 'Inclusive Sans', fontSize: 14, color: colors.text }}>
                   {formatRelativeDateTime(event.date, event.time)}
                 </Text>
@@ -886,7 +891,7 @@ export default function EventDetailPage() {
 
             {/* Date & time */}
             <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12 }}>
-              <MetaIcon icon={Clock} color={isPast ? colors.textMuted : '#E8862A'} colors={colors} />
+              <MetaIcon icon={Clock} color={isPast ? colors.textMuted : c.accent} colors={colors} />
               <Text style={{ fontFamily: 'Inclusive Sans', fontSize: 14, color: colors.text }}>
                 {formatRelativeDateTime(event.date, event.time)}
               </Text>

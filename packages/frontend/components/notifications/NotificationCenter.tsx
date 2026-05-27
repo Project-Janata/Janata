@@ -5,7 +5,7 @@
  */
 
 import React, { useEffect, useState } from 'react'
-import { View, Text, FlatList, StyleSheet, ActivityIndicator, TouchableOpacity, Alert } from 'react-native'
+import { View, Text, FlatList, ActivityIndicator, TouchableOpacity, Alert } from 'react-native'
 import type { Notification } from '../../utils/notificationService'
 import {
   getNotifications,
@@ -15,6 +15,7 @@ import {
   deleteNotification,
 } from '../../utils/notificationService'
 import { NotificationItem } from './NotificationItem'
+import { useColors } from '../../hooks/useColors'
 
 interface NotificationCenterProps {
   onNotificationPress?: (notification: Notification) => void
@@ -26,6 +27,7 @@ export const NotificationCenter: React.FC<NotificationCenterProps> = ({ onNotifi
   const [hasMore, setHasMore] = useState(true)
   const [offset, setOffset] = useState(0)
   const [filter, setFilter] = useState<'all' | 'unread'>('all')
+  const c = useColors()
 
   useEffect(() => {
     loadNotifications()
@@ -122,54 +124,54 @@ export const NotificationCenter: React.FC<NotificationCenterProps> = ({ onNotifi
   const unreadCount = notifications.filter((n) => !n.isRead).length
 
   return (
-    <View style={styles.container}>
+    <View style={{ flex: 1, backgroundColor: c.card }}>
       {/* Header */}
-      <View style={styles.header}>
-        <Text style={styles.headerTitle}>Notifications</Text>
+      <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingVertical: 16, paddingHorizontal: 16, borderBottomWidth: 1, borderBottomColor: c.border }}>
+        <Text style={{ fontSize: 20, fontWeight: 'bold', color: c.text }}>Notifications</Text>
         {unreadCount > 0 && (
-          <View style={styles.badge}>
-            <Text style={styles.badgeText}>{unreadCount}</Text>
+          <View style={{ backgroundColor: c.accent, borderRadius: 12, width: 24, height: 24, justifyContent: 'center', alignItems: 'center' }}>
+            <Text style={{ color: '#fff', fontSize: 12, fontWeight: 'bold' }}>{unreadCount}</Text>
           </View>
         )}
       </View>
 
       {/* Filters */}
-      <View style={styles.filterContainer}>
+      <View style={{ flexDirection: 'row', paddingHorizontal: 16, paddingVertical: 8, gap: 8, borderBottomWidth: 1, borderBottomColor: c.border, alignItems: 'center' }}>
         <TouchableOpacity
-          style={[styles.filterButton, filter === 'all' && styles.filterButtonActive]}
+          style={{ paddingHorizontal: 12, paddingVertical: 6, borderRadius: 16, backgroundColor: filter === 'all' ? c.accent : c.surface }}
           onPress={() => setFilter('all')}
         >
-          <Text style={[styles.filterText, filter === 'all' && styles.filterTextActive]}>
+          <Text style={{ fontSize: 12, color: filter === 'all' ? '#fff' : c.textMuted, fontWeight: '500' }}>
             All
           </Text>
         </TouchableOpacity>
         <TouchableOpacity
-          style={[styles.filterButton, filter === 'unread' && styles.filterButtonActive]}
+          style={{ paddingHorizontal: 12, paddingVertical: 6, borderRadius: 16, backgroundColor: filter === 'unread' ? c.accent : c.surface }}
           onPress={() => setFilter('unread')}
         >
-          <Text style={[styles.filterText, filter === 'unread' && styles.filterTextActive]}>
+          <Text style={{ fontSize: 12, color: filter === 'unread' ? '#fff' : c.textMuted, fontWeight: '500' }}>
             Unread ({unreadCount})
           </Text>
         </TouchableOpacity>
         {unreadCount > 0 && (
           <TouchableOpacity
-            style={styles.markAllButton}
+            style={{ marginLeft: 'auto' as any, paddingHorizontal: 12, paddingVertical: 6 }}
             onPress={handleMarkAllAsRead}
           >
-            <Text style={styles.markAllText}>Mark all as read</Text>
+            <Text style={{ fontSize: 12, color: c.accent, fontWeight: '500' }}>Mark all as read</Text>
           </TouchableOpacity>
         )}
       </View>
 
       {/* Content */}
       {loading && notifications.length === 0 ? (
-        <View style={styles.centerContent}>
-          <ActivityIndicator size="large" color="#007AFF" />
-          <Text style={styles.loadingText}>Loading notifications...</Text>
+        <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center' }}>
+          <ActivityIndicator size="large" color={c.accent} />
+          <Text style={{ marginTop: 12, fontSize: 14, color: c.textMuted }}>Loading notifications...</Text>
         </View>
       ) : notifications.length === 0 ? (
-        <View style={styles.centerContent}>
-          <Text style={styles.emptyText}>
+        <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center' }}>
+          <Text style={{ fontSize: 16, color: c.textFaint }}>
             {filter === 'unread' ? 'No unread notifications' : 'No notifications yet'}
           </Text>
         </View>
@@ -189,97 +191,10 @@ export const NotificationCenter: React.FC<NotificationCenterProps> = ({ onNotifi
           onEndReached={loadMore}
           onEndReachedThreshold={0.3}
           ListFooterComponent={
-            hasMore ? <ActivityIndicator size="small" color="#007AFF" style={styles.footer} /> : null
+            hasMore ? <ActivityIndicator size="small" color={c.accent} style={{ paddingVertical: 16 }} /> : null
           }
         />
       )}
     </View>
   )
 }
-
-const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: '#fff',
-  },
-  header: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    paddingVertical: 16,
-    paddingHorizontal: 16,
-    borderBottomWidth: 1,
-    borderBottomColor: '#f0f0f0',
-  },
-  headerTitle: {
-    fontSize: 20,
-    fontWeight: 'bold',
-    color: '#000',
-  },
-  badge: {
-    backgroundColor: '#007AFF',
-    borderRadius: 12,
-    width: 24,
-    height: 24,
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  badgeText: {
-    color: '#fff',
-    fontSize: 12,
-    fontWeight: 'bold',
-  },
-  filterContainer: {
-    flexDirection: 'row',
-    paddingHorizontal: 16,
-    paddingVertical: 8,
-    gap: 8,
-    borderBottomWidth: 1,
-    borderBottomColor: '#f0f0f0',
-    alignItems: 'center',
-  },
-  filterButton: {
-    paddingHorizontal: 12,
-    paddingVertical: 6,
-    borderRadius: 16,
-    backgroundColor: '#f0f0f0',
-  },
-  filterButtonActive: {
-    backgroundColor: '#007AFF',
-  },
-  filterText: {
-    fontSize: 12,
-    color: '#666',
-    fontWeight: '500',
-  },
-  filterTextActive: {
-    color: '#fff',
-  },
-  markAllButton: {
-    marginLeft: 'auto',
-    paddingHorizontal: 12,
-    paddingVertical: 6,
-  },
-  markAllText: {
-    fontSize: 12,
-    color: '#007AFF',
-    fontWeight: '500',
-  },
-  centerContent: {
-    flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  loadingText: {
-    marginTop: 12,
-    fontSize: 14,
-    color: '#666',
-  },
-  emptyText: {
-    fontSize: 16,
-    color: '#999',
-  },
-  footer: {
-    paddingVertical: 16,
-  },
-})

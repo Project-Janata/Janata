@@ -5,35 +5,36 @@ import {
   Shield,
   Info,
   FileText,
-  ChevronRight,
-  LogOut,
-  AlertTriangle,
+  CaretRight,
+  SignOut,
+  Warning,
   UserPlus,
-} from 'lucide-react-native'
-import { useUser, useTheme } from '../../components/contexts'
+} from 'phosphor-react-native'
+import { useUser } from '../../components/contexts'
 import { Avatar, Text, Section, StackHeader } from '../../components/ui'
 import ThemeSelector from '../../components/settings/ThemeSelector'
 import { usePostHog } from 'posthog-react-native'
 import Constants from 'expo-constants'
+import { useColors } from '../../hooks/useColors'
 
 const APP_VERSION = Constants.expoConfig?.version || '0.2.0'
 
 export default function PreferencesNative() {
   const router = useRouter()
   const { user, logout } = useUser()
-  const { isDark } = useTheme()
   const { deleteAccount } = useUser()
   const posthog = usePostHog()
+  const c = useColors()
   const [isDeleting, setIsDeleting] = useState(false)
   const [showDeleteModal, setShowDeleteModal] = useState(false)
   const currentYear = new Date().getFullYear()
 
-  const textColor = isDark ? '#FAFAFA' : '#1C1917'
-  const mutedTextColor = isDark ? '#A8A29E' : '#78716C'
-  const faintColor = isDark ? '#737373' : '#A8A29E'
-  const borderColor = isDark ? '#262626' : '#ECE7DE'
-  const cardBg = isDark ? '#262626' : '#FFFFFF'
-  const pageBg = isDark ? '#1A1A1A' : '#F5F5F4'
+  const textColor = c.text
+  const mutedTextColor = c.textMuted
+  const faintColor = c.textFaint
+  const borderColor = c.border
+  const cardBg = c.card
+  const pageBg = c.bg
 
   const handleLogout = async () => {
     posthog?.capture('nav_logout')
@@ -82,7 +83,7 @@ export default function PreferencesNative() {
       onPress={onPress}
     >
       {children}
-      {showArrow && <ChevronRight size={20} color={textColor} />}
+      {showArrow && <CaretRight size={20} color={textColor} />}
     </Pressable>
   )
 
@@ -261,8 +262,8 @@ export default function PreferencesNative() {
           >
             <MenuRow onPress={handleLogout} showArrow={false}>
               <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12 }}>
-                <LogOut size={20} color="#ef4444" />
-                <Text style={{ fontSize: 15, color: '#ef4444', fontWeight: '600' }}>Log Out</Text>
+                <SignOut size={20} color={c.error} />
+                <Text style={{ fontSize: 15, color: c.error, fontWeight: '600' }}>Log Out</Text>
               </View>
             </MenuRow>
             <MenuRow
@@ -273,8 +274,8 @@ export default function PreferencesNative() {
               showArrow={false}
             >
               <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12 }}>
-                <AlertTriangle size={20} color="#dc2626" />
-                <Text style={{ fontSize: 15, color: '#dc2626', fontWeight: '600' }}>
+                <Warning size={20} color={c.error} />
+                <Text style={{ fontSize: 15, color: c.error, fontWeight: '600' }}>
                   Delete Account
                 </Text>
               </View>
@@ -318,13 +319,13 @@ export default function PreferencesNative() {
                   width: 64,
                   height: 64,
                   borderRadius: 32,
-                  backgroundColor: isDark ? 'rgba(220,38,38,0.15)' : '#FEE2E2',
+                  backgroundColor: c.errorSoft,
                   alignItems: 'center',
                   justifyContent: 'center',
                   marginBottom: 12,
                 }}
               >
-                <AlertTriangle size={32} color="#DC2626" />
+                <Warning size={32} color={c.error} />
               </View>
               <Text
                 style={{
@@ -351,7 +352,7 @@ export default function PreferencesNative() {
                   flex: 1,
                   paddingVertical: 14,
                   borderRadius: 12,
-                  backgroundColor: isDark ? '#1c1c1c' : '#f3f4f6',
+                  backgroundColor: c.surface,
                   alignItems: 'center',
                 }}
               >
@@ -364,7 +365,7 @@ export default function PreferencesNative() {
                   flex: 1,
                   paddingVertical: 14,
                   borderRadius: 12,
-                  backgroundColor: '#DC2626',
+                  backgroundColor: c.error,
                   alignItems: 'center',
                 }}
               >

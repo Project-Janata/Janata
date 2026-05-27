@@ -1,6 +1,6 @@
 import React, { useState } from 'react'
 import { View, Text, Image, ScrollView, Pressable, ActivityIndicator, Linking } from 'react-native'
-import { MapPin, Users, User, Clock, CheckCircle, ChevronLeft, Pencil, ExternalLink, Trash2 } from 'lucide-react-native'
+import { MapPin, Users, User, Clock, CheckCircle, CaretLeft, PencilSimple, ArrowSquareOut, Trash } from 'phosphor-react-native'
 import CopyLinkButton from '../ui/CopyLinkButton'
 import Badge from '../ui/Badge'
 import UnderlineTabBar from '../ui/UnderlineTabBar'
@@ -215,7 +215,7 @@ function HeaderBar({
           style={{ gap: 4, padding: 8, minHeight: 44, minWidth: 44 }}
           accessibilityLabel="Close panel"
         >
-          <ChevronLeft size={20} color={colors.iconHeader} />
+          <CaretLeft size={20} color={colors.iconHeader} />
           <Text
             style={{
               fontFamily: 'Inclusive Sans',
@@ -235,7 +235,7 @@ function HeaderBar({
               style={{ padding: 8, minHeight: 44, minWidth: 44, alignItems: 'center', justifyContent: 'center' }}
               accessibilityLabel="Edit event"
             >
-              <Pencil size={18} color={colors.iconHeader} />
+              <PencilSimple size={18} color={colors.iconHeader} />
             </Pressable>
           )}
           {eventId && onDelete && (
@@ -244,7 +244,7 @@ function HeaderBar({
               style={{ padding: 8, minHeight: 44, minWidth: 44, alignItems: 'center', justifyContent: 'center' }}
               accessibilityLabel="Delete event"
             >
-              <Trash2 size={18} color="#DC2626" />
+              <Trash size={18} color="#DC2626" />
             </Pressable>
           )}
         </View>
@@ -420,7 +420,7 @@ function MetaSection({
           className="flex-row items-center"
           style={{ gap: 12, minHeight: 44 }}
         >
-          <MetaIcon icon={ExternalLink} color={iconColor} colors={colors} />
+          <MetaIcon icon={ArrowSquareOut} color={iconColor} colors={colors} />
           <Text
             style={{
               fontFamily: 'Inclusive Sans',

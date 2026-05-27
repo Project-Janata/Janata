@@ -2,8 +2,8 @@ import React from 'react'
 import { View, Text, Pressable, ScrollView, Platform, useWindowDimensions } from 'react-native'
 import { SafeAreaView } from 'react-native-safe-area-context'
 import { useRouter, usePathname, Slot, Stack } from 'expo-router'
-import { ArrowLeft, User, Settings as SettingsIcon } from 'lucide-react-native'
-import { useTheme } from '../../components/contexts'
+import { ArrowLeft, User, GearSix as SettingsIcon } from 'phosphor-react-native'
+import { useColors } from '../../hooks/useColors'
 
 const SETTINGS_TABS = [
   { id: 'profile', label: 'Profile', icon: User, path: '/settings/profile' },
@@ -13,7 +13,7 @@ const SETTINGS_TABS = [
 export default function SettingsLayout() {
   const router = useRouter()
   const pathname = usePathname()
-  const { isDark } = useTheme()
+  const c = useColors()
   const { width } = useWindowDimensions()
 
   const showSidebar = Platform.OS === 'web' && width >= 768
@@ -41,7 +41,7 @@ export default function SettingsLayout() {
     <>
       <Stack.Screen options={{ headerShown: false }} />
       <SafeAreaView
-        style={{ flex: 1, backgroundColor: isDark ? '#171717' : '#FFFFFF' }}
+        style={{ flex: 1, backgroundColor: c.rail }}
         edges={['bottom']}
       >
         <View style={{ flex: 1, flexDirection: 'row' }}>
@@ -50,15 +50,15 @@ export default function SettingsLayout() {
               style={{
                 width: 256,
                 borderRightWidth: 1,
-                borderRightColor: isDark ? '#44403C' : '#E7E5E4',
-                backgroundColor: isDark ? '#1C1917' : '#FAFAF9',
+                borderRightColor: c.border,
+                backgroundColor: c.panel,
               }}
             >
               <View
                 style={{
                   padding: 24,
                   borderBottomWidth: 1,
-                  borderBottomColor: isDark ? '#44403C' : '#E7E5E4',
+                  borderBottomColor: c.border,
                 }}
               >
                 <View
@@ -78,13 +78,13 @@ export default function SettingsLayout() {
                       alignItems: 'center',
                     }}
                   >
-                    <ArrowLeft size={20} color={isDark ? '#a1a1aa' : '#71717a'} />
+                    <ArrowLeft size={20} color={c.iconMuted} />
                   </Pressable>
                   <Text
                     style={{
                       fontFamily: 'Inclusive Sans',
                       fontSize: 24,
-                      color: isDark ? '#FAFAF9' : '#1C1917',
+                      color: c.text,
                     }}
                   >
                     Settings
@@ -109,17 +109,17 @@ export default function SettingsLayout() {
                         borderRadius: 12,
                         marginBottom: 4,
                         minHeight: 44,
-                        backgroundColor: isActive ? '#E8862A' : 'transparent',
+                        backgroundColor: isActive ? c.accent : 'transparent',
                       }}
                     >
                       <Icon
                         size={20}
-                        color={isActive ? '#FFFFFF' : isDark ? '#A8A29E' : '#78716C'}
+                        color={isActive ? '#FFFFFF' : c.iconMuted}
                       />
                       <Text
                         style={{
                           fontSize: 16,
-                          color: isActive ? '#FFFFFF' : isDark ? '#FAFAF9' : '#1C1917',
+                          color: isActive ? '#FFFFFF' : c.text,
                         }}
                       >
                         {tab.label}

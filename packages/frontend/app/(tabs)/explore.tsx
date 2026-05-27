@@ -15,14 +15,15 @@ import {
 } from 'react-native'
 import {
   MapPin,
-  Search,
-  Building2,
-  ChevronUp,
-  ChevronDown,
-} from 'lucide-react-native'
+  MagnifyingGlass,
+  Buildings,
+  CaretUp,
+  CaretDown,
+} from 'phosphor-react-native'
 import { useRouter, useFocusEffect, useNavigation } from 'expo-router'
 import { usePostHog } from 'posthog-react-native'
 import { useTheme } from '../../components/contexts'
+import { useColors } from '../../hooks/useColors'
 import { Badge, UnderlineTabBar, Avatar, FilterChip } from '../../components/ui'
 import FilterPickerModal, { type FilterPickerOption } from '../../components/ui/FilterPickerModal'
 import { useUser } from '../../components/contexts/UserContext'
@@ -125,6 +126,7 @@ function EventItem({
   onPress: () => void
   centerName?: string
 }) {
+  const c = useColors()
   const { month, day } = event.date ? formatDatePill(event.date) : { month: '', day: '' }
   const todayLabel = event.date ? isToday(event.date) : false
 
@@ -139,7 +141,7 @@ function EventItem({
     >
       {/* Date pill */}
       <View className="w-12 h-14 rounded-xl items-center justify-center bg-stone-100 dark:bg-neutral-800">
-        <Text className="text-[10px] font-sans" style={{ color: '#E8862A' }}>
+        <Text className="text-[10px] font-sans" style={{ color: c.accent }}>
           {month}
         </Text>
         <Text className="text-base font-sans text-content dark:text-content-dark">
@@ -164,7 +166,7 @@ function EventItem({
           </Text>
         )}
         <View className="flex-row items-center gap-1 mt-0.5">
-          <MapPin size={12} color="#E8862A" />
+          <MapPin size={12} color={c.accent} />
           <Text className="text-stone-500 dark:text-stone-400 font-sans text-xs flex-1" numberOfLines={1}>
             {event.location}
           </Text>
@@ -201,7 +203,7 @@ function CenterItem({ center, onPress, isMyCenter }: { center: DiscoverCenter; o
         {center.image ? (
           <Image source={{ uri: center.image }} style={{ width: 48, height: 56 }} resizeMode="cover" />
         ) : (
-          <Building2 size={20} color="#9A3412" />
+          <Buildings size={20} color="#9A3412" />
         )}
       </View>
 
@@ -232,6 +234,7 @@ function CenterItem({ center, onPress, isMyCenter }: { center: DiscoverCenter; o
 export default function DiscoverScreen() {
   const router = useRouter()
   const { isDark } = useTheme()
+  const c = useColors()
   const posthog = usePostHog()
   const [activeFilter, setActiveFilter] = useState<DiscoverFilter>('Events')
   const [searchQuery, setSearchQuery] = useState('')
@@ -470,8 +473,8 @@ export default function DiscoverScreen() {
           style={[
             styles.sheetInner,
             {
-              backgroundColor: isDark ? '#171717' : '#fff',
-              borderTopColor: isDark ? '#262626' : '#E5E7EB',
+              backgroundColor: c.rail,
+              borderTopColor: c.border,
             },
           ]}
         >
@@ -482,7 +485,7 @@ export default function DiscoverScreen() {
               <View
                 style={[
                   styles.handle,
-                  { backgroundColor: isDark ? '#525252' : '#D1D5DB' },
+                  { backgroundColor: c.borderStrong },
                 ]}
               />
             </View>
@@ -492,15 +495,15 @@ export default function DiscoverScreen() {
               className="flex-row items-center mx-4 mb-3 px-3 rounded-xl"
               style={{
                 minHeight: 44,
-                backgroundColor: isDark ? '#262626' : '#F3F4F6',
+                backgroundColor: c.surface,
               }}
             >
-              <Search size={16} color="#9CA3AF" />
+              <MagnifyingGlass size={16} color={c.textFaint} />
               <TextInput
                 className="flex-1 ml-2 text-sm font-sans"
-                style={{ color: isDark ? '#E5E7EB' : '#1F2937', paddingVertical: 8 }}
+                style={{ color: c.text, paddingVertical: 8 }}
                 placeholder="Search events and centers..."
-                placeholderTextColor="#9CA3AF"
+                placeholderTextColor={c.textFaint}
                 value={searchQuery}
                 onChangeText={setSearchQuery}
                 onEndEditing={() => {
@@ -597,7 +600,7 @@ export default function DiscoverScreen() {
                       <Text className="text-xs font-sans text-stone-500 dark:text-stone-400 uppercase" style={{ letterSpacing: 0.6 }}>
                         {label}
                       </Text>
-                      {isCollapsed ? <ChevronDown size={16} color="#a8a29e" /> : <ChevronUp size={16} color="#a8a29e" />}
+                      {isCollapsed ? <CaretDown size={16} color={c.iconMuted} /> : <CaretUp size={16} color={c.iconMuted} />}
                     </View>
                   </Pressable>
                 )

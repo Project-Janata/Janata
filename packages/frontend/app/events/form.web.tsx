@@ -10,7 +10,7 @@ import {
   useWindowDimensions,
 } from 'react-native'
 import { useLocalSearchParams, useRouter } from 'expo-router'
-import { ChevronLeft, ChevronDown } from 'lucide-react-native'
+import { CaretLeft, CaretDown } from 'phosphor-react-native'
 import { useTheme } from '../../components/contexts'
 import { useDetailColors, type DetailColors } from '../../hooks/useDetailColors'
 import { PrimaryButton, SecondaryButton } from '../../components/ui'
@@ -346,7 +346,7 @@ export default function EventFormPage() {
             onPress={() => router.back()}
             style={{ flexDirection: 'row', alignItems: 'center', gap: 4, marginBottom: 8 }}
           >
-            <ChevronLeft size={18} color={colors.iconHeader} />
+            <CaretLeft size={18} color={colors.iconHeader} />
             <Text style={{ fontFamily: 'Inclusive Sans', fontSize: 14, color: colors.iconHeader }}>
               Back
             </Text>
@@ -466,7 +466,7 @@ export default function EventFormPage() {
             >
               {centerName || 'Select a center...'}
             </Text>
-            <ChevronDown
+            <CaretDown
               size={16}
               color={colors.textMuted}
               style={{ transform: [{ rotate: showCenterPicker ? '180deg' : '0deg' }] }}
@@ -677,7 +677,7 @@ export default function EventFormPage() {
             style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}
             accessibilityLabel="Toggle advanced location options"
           >
-            <ChevronDown
+            <CaretDown
               size={14}
               color={colors.textMuted}
               style={{ transform: [{ rotate: showAdvanced ? '0deg' : '-90deg' }] }}

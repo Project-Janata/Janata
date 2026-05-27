@@ -1,6 +1,6 @@
 import React from 'react'
 import { Pressable, Text, View } from 'react-native'
-import { ChevronRight } from 'lucide-react-native'
+import { CaretRight } from 'phosphor-react-native'
 import { Avatar } from '../ui'
 import { connectionRequests } from '../boards'
 import type { PersonSummary } from '../boards'
@@ -69,7 +69,7 @@ export function RequestsBanner({ colors }: { colors: AppColors }) {
           {subtitle}
         </Text>
       </View>
-      <ChevronRight size={18} color={colors.textFaint} />
+      <CaretRight size={18} color={colors.textFaint} />
     </Pressable>
   )
 }

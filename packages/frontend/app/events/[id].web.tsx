@@ -1,7 +1,7 @@
 import { useEffect, useState, useRef } from 'react'
 import { View, Text, ScrollView, Pressable, ActivityIndicator, useWindowDimensions, Linking } from 'react-native'
 import { useLocalSearchParams, useRouter } from 'expo-router'
-import { ChevronLeft, Share2, MapPin, Users, User, Clock, CheckCircle, Pencil, Trash2 } from 'lucide-react-native'
+import { CaretLeft, ShareNetwork, MapPin, Users, User, Clock, CheckCircle, PencilSimple, Trash } from 'phosphor-react-native'
 import { useUser } from '../../components/contexts'
 import { useEventDetail } from '../../hooks/useApiData'
 import { removeEvent } from '../../utils/api'
@@ -112,7 +112,7 @@ function MobileEventDetail({ eventId }: { eventId: string }) {
       {/* Header */}
       <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: 16, paddingTop: 16, paddingBottom: 8 }}>
         <Pressable onPress={() => router.back()} style={{ flexDirection: 'row', alignItems: 'center', gap: 4 }}>
-          <ChevronLeft size={20} color={colors.textSecondary} />
+          <CaretLeft size={20} color={colors.textSecondary} />
           <Text style={{ color: colors.textSecondary, fontSize: 16 }}>Back</Text>
         </Pressable>
         <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4 }}>
@@ -122,7 +122,7 @@ function MobileEventDetail({ eventId }: { eventId: string }) {
               style={{ padding: 8 }}
               accessibilityLabel="Edit event"
             >
-              <Pencil size={18} color={colors.textSecondary} />
+              <PencilSimple size={18} color={colors.textSecondary} />
             </Pressable>
           )}
           {canEdit && (
@@ -132,7 +132,7 @@ function MobileEventDetail({ eventId }: { eventId: string }) {
               style={{ padding: 8, opacity: isDeleting ? 0.5 : 1 }}
               accessibilityLabel="Delete event"
             >
-              <Trash2 size={18} color="#DC2626" />
+              <Trash size={18} color="#DC2626" />
             </Pressable>
           )}
           <Pressable
@@ -145,7 +145,7 @@ function MobileEventDetail({ eventId }: { eventId: string }) {
             }}
             style={{ padding: 8 }}
           >
-            <Share2 size={18} color={colors.textSecondary} />
+            <ShareNetwork size={18} color={colors.textSecondary} />
           </Pressable>
         </View>
       </View>

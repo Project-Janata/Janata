@@ -21,8 +21,9 @@ let ImageManipulator: typeof import('expo-image-manipulator') | null = null
 try {
   ImageManipulator = require('expo-image-manipulator')
 } catch {}
-import { Camera, ChevronRight } from 'lucide-react-native'
-import { useUser, useTheme } from '../components/contexts'
+import { Camera, CaretRight } from 'phosphor-react-native'
+import { useUser } from '../components/contexts'
+import { useColors } from '../hooks/useColors'
 import { Text, Section, StackHeader } from '../components/ui'
 import BirthdatePicker from '../components/profile/BirthdatePicker'
 import { fetchCenters, CenterData } from '../utils/api'
@@ -40,7 +41,7 @@ const INTEREST_OPTIONS = [
 export default function EditProfileScreen() {
   const router = useRouter()
   const { user, updateProfile, setUser } = useUser()
-  const { isDark } = useTheme()
+  const c = useColors()
 
   const [name, setName] = useState('')
   const [bio, setBio] = useState('')
@@ -178,12 +179,12 @@ export default function EditProfileScreen() {
     return n[0].toUpperCase()
   }
 
-  const textColor = isDark ? '#FAFAFA' : '#1C1917'
-  const mutedColor = isDark ? '#A8A29E' : '#78716C'
-  const faintColor = isDark ? '#737373' : '#A8A29E'
-  const borderColor = isDark ? '#262626' : '#ECE7DE'
-  const cardBg = isDark ? '#262626' : '#FFFFFF'
-  const pageBg = isDark ? '#1A1A1A' : '#F5F5F4'
+  const textColor = c.text
+  const mutedColor = c.textMuted
+  const faintColor = c.textFaint
+  const borderColor = c.border
+  const cardBg = c.card
+  const pageBg = c.bg
 
   const inputStyle = {
     fontSize: 15,
@@ -233,7 +234,7 @@ export default function EditProfileScreen() {
                   {profileImage ? (
                     <Image
                       source={{ uri: profileImage }}
-                      style={{ width: 88, height: 88, borderRadius: 44, backgroundColor: '#D6D3D1' }}
+                      style={{ width: 88, height: 88, borderRadius: 44, backgroundColor: c.borderStrong }}
                     />
                   ) : (
                     <View
@@ -294,7 +295,7 @@ export default function EditProfileScreen() {
                   autoComplete="name"
                 />
                 {errors.name ? (
-                  <Text style={{ fontSize: 12, color: '#DC2626', marginTop: 4 }}>
+                  <Text style={{ fontSize: 12, color: c.error, marginTop: 4 }}>
                     {errors.name}
                   </Text>
                 ) : null}
@@ -330,7 +331,7 @@ export default function EditProfileScreen() {
                   <Text style={{ fontSize: 15, color: selectedCenterName ? textColor : faintColor, flex: 1 }}>
                     {selectedCenterName || 'Select a center'}
                   </Text>
-                  <ChevronRight size={18} color={faintColor} />
+                  <CaretRight size={18} color={faintColor} />
                 </View>
               </Pressable>
             </View>
@@ -372,7 +373,7 @@ export default function EditProfileScreen() {
           </Section>
 
           {errors.form ? (
-            <Text style={{ fontSize: 13, color: '#DC2626', textAlign: 'center', marginBottom: 12 }}>
+            <Text style={{ fontSize: 13, color: c.error, textAlign: 'center', marginBottom: 12 }}>
               {errors.form}
             </Text>
           ) : null}

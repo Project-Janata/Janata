@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from 'react'
 import { View, Text, ScrollView, Image, Pressable, ActivityIndicator, Linking, useWindowDimensions } from 'react-native'
 import { useLocalSearchParams, useRouter } from 'expo-router'
-import { ChevronLeft, Share2, MapPin, Globe, Phone, User, Navigation, BadgeCheck, Users } from 'lucide-react-native'
+import { CaretLeft, ShareNetwork, MapPin, Globe, Phone, User, NavigationArrow, SealCheck, Users } from 'phosphor-react-native'
 import { useCenterDetail } from '../../hooks/useApiData'
 import { useDetailColors } from '../../hooks/useDetailColors'
 import type { EventDisplay } from '../../utils/api'
@@ -113,11 +113,11 @@ function MobileCenterDetail({ centerId }: { centerId: string }) {
       <View style={{ paddingHorizontal: 16, paddingTop: 16, paddingBottom: 8, gap: 10 }}>
         <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
           <Pressable onPress={() => router.back()} style={{ flexDirection: 'row', alignItems: 'center', gap: 4 }}>
-            <ChevronLeft size={20} color={colors.textSecondary} />
+            <CaretLeft size={20} color={colors.textSecondary} />
             <Text style={{ color: colors.textSecondary, fontSize: 16 }}>Back</Text>
           </Pressable>
           <Pressable onPress={handleShare} style={{ padding: 8 }}>
-            <Share2 size={18} color={colors.textSecondary} />
+            <ShareNetwork size={18} color={colors.textSecondary} />
           </Pressable>
         </View>
         <Text style={{ fontSize: 22, fontWeight: 'bold', color: colors.text }}>{center.name}</Text>
@@ -136,7 +136,7 @@ function MobileCenterDetail({ centerId }: { centerId: string }) {
             )}
             {center.isVerified && (
               <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4 }}>
-                <BadgeCheck size={13} color="#E8862A" />
+                <SealCheck size={13} color="#E8862A" />
                 <Text style={{ fontSize: 13, color: '#E8862A' }}>Verified</Text>
               </View>
             )}

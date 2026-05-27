@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useCallback } from 'react'
 import { View, Text, ScrollView, TextInput, Pressable, ActivityIndicator, Switch } from 'react-native'
-import { ChevronLeft, ChevronDown } from 'lucide-react-native'
+import { CaretLeft, CaretDown } from 'phosphor-react-native'
 import { useDetailColors, type DetailColors } from '../../hooks/useDetailColors'
 import { useTheme } from '../contexts'
 import PrimaryButton from '../ui/buttons/PrimaryButton'
@@ -390,7 +390,7 @@ export default function EventFormPanel({ eventId, onClose, onSaved }: EventFormP
             style={{ gap: 4, padding: 8, minHeight: 44, minWidth: 44 }}
             accessibilityLabel="Close panel"
           >
-            <ChevronLeft size={20} color={colors.iconHeader} />
+            <CaretLeft size={20} color={colors.iconHeader} />
             <Text
               style={{
                 fontFamily: 'Inclusive Sans',
@@ -528,7 +528,7 @@ export default function EventFormPanel({ eventId, onClose, onSaved }: EventFormP
             >
               {centerName || 'Select a center...'}
             </Text>
-            <ChevronDown
+            <CaretDown
               size={14}
               color={colors.textMuted}
               style={{ transform: [{ rotate: showCenterPicker ? '180deg' : '0deg' }] }}
@@ -694,7 +694,7 @@ export default function EventFormPanel({ eventId, onClose, onSaved }: EventFormP
             style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}
             accessibilityLabel="Toggle advanced location options"
           >
-            <ChevronDown
+            <CaretDown
               size={12}
               color={colors.textMuted}
               style={{ transform: [{ rotate: showAdvanced ? '0deg' : '-90deg' }] }}
