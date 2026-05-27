@@ -27,7 +27,12 @@ export function clearRateLimits(): void {
   rateLimitMap.clear()
 }
 
-// Periodic cleanup to prevent memory leaks (runs at most every 60s)
+// Periodic cleanup to prevent memory leaks (runs at most every 60s).
+// Plus a hard cap on map size (#125) — without it, sustained diverse-IP
+// traffic between cleanups could let the map grow unbounded inside a
+// long-lived isolate. 10K entries × ~80 bytes/entry ≈ 800KB worst case,
+// well under the 128MB isolate limit but bounded.
+const MAX_RATE_LIMIT_ENTRIES = 10_000
 let lastCleanup = 0
 function cleanupExpired() {
   const now = Date.now()
@@ -37,6 +42,12 @@ function cleanupExpired() {
     if (now > entry.resetAt) {
       rateLimitMap.delete(key)
     }
+  }
+  // Safety valve: if the map is still large after cleanup (lots of live
+  // windows in the last 60s), clear it. Cost is one window of allowing
+  // requests that would have been blocked — acceptable tradeoff vs OOM.
+  if (rateLimitMap.size > MAX_RATE_LIMIT_ENTRIES) {
+    rateLimitMap.clear()
   }
 }
 
