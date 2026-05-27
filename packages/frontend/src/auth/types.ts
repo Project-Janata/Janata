@@ -17,6 +17,11 @@ export interface User {
   isActive?: boolean
   profileComplete?: boolean
   interests?: string[] | null
+  // Minimal profile fields (#210)
+  school?: string | null
+  work?: string | null
+  region?: string | null
+  lookingFor?: string[] | null
   createdAt?: string
   updatedAt?: string
   // Cached original image for re-editing in the current session
@@ -55,6 +60,11 @@ export interface UpdateProfileRequest {
   phoneNumber?: string
   interests?: string[]
   dateOfBirth?: string
+  // Minimal profile fields (#210)
+  school?: string
+  work?: string
+  region?: string
+  lookingFor?: string[]
 }
 
 export interface AuthSuccessResponse {

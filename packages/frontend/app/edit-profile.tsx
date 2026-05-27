@@ -37,6 +37,15 @@ const INTEREST_OPTIONS = [
   'Formal',
 ]
 
+// Multi-select chips for "What I'm looking for" — predefined per PRD §5.4.
+const LOOKING_FOR_OPTIONS = [
+  'Mentorship',
+  'Friends in a new city',
+  'Professional network',
+  'Seva opportunities',
+  'Study partner',
+]
+
 export default function EditProfileScreen() {
   const router = useRouter()
   const { user, updateProfile, setUser } = useUser()
@@ -47,6 +56,10 @@ export default function EditProfileScreen() {
   const [birthday, setBirthday] = useState<Date | null>(null)
   const [centerID, setCenterID] = useState<string | null>(null)
   const [interests, setInterests] = useState<string[]>([])
+  const [school, setSchool] = useState('')
+  const [work, setWork] = useState('')
+  const [region, setRegion] = useState('')
+  const [lookingFor, setLookingFor] = useState<string[]>([])
   const [profileImage, setProfileImage] = useState<string | null>(null)
   const [profileImageBase64, setProfileImageBase64] = useState<string | null>(null)
   const [imageChanged, setImageChanged] = useState(false)
@@ -74,6 +87,10 @@ export default function EditProfileScreen() {
       setBirthday(user.dateOfBirth ? new Date(user.dateOfBirth.split('T')[0] + 'T00:00:00') : null)
       setCenterID(user.centerID || null)
       setInterests(user.interests || [])
+      setSchool(user.school || '')
+      setWork(user.work || '')
+      setRegion(user.region || '')
+      setLookingFor(user.lookingFor || [])
       setProfileImage(user.profileImage || null)
       setProfileImageBase64(null)
       setImageChanged(false)
@@ -143,6 +160,10 @@ export default function EditProfileScreen() {
         lastName: nameParts.slice(1).join(' '),
         bio,
         interests,
+        school: school.trim(),
+        work: work.trim(),
+        region: region.trim(),
+        lookingFor,
         ...(centerID ? { centerID } : {}),
         ...(birthday ? { dateOfBirth: birthday.toISOString().split('T')[0] } : {}),
         ...(imageChanged && profileImageBase64 ? { profileImage: profileImageBase64 } : {}),
@@ -162,6 +183,12 @@ export default function EditProfileScreen() {
     } finally {
       setIsSaving(false)
     }
+  }
+
+  const toggleLookingFor = (option: string) => {
+    setLookingFor((prev) =>
+      prev.includes(option) ? prev.filter((i) => i !== option) : [...prev, option]
+    )
   }
 
   const toggleInterest = (interest: string) => {
@@ -333,6 +360,82 @@ export default function EditProfileScreen() {
                   <ChevronRight size={18} color={faintColor} />
                 </View>
               </Pressable>
+            </View>
+          </Section>
+
+          {/* About you — #210 minimal profile fields */}
+          <Section title="ABOUT YOU" titleColor={faintColor}>
+            <View style={cardSection}>
+              <View style={[rowStyle, { borderBottomWidth: 1, borderBottomColor: borderColor }]}>
+                <Text style={fieldLabelStyle}>SCHOOL</Text>
+                <TextInput
+                  value={school}
+                  onChangeText={setSchool}
+                  placeholder="University of California, Berkeley"
+                  placeholderTextColor={faintColor}
+                  style={inputStyle}
+                  autoCapitalize="words"
+                />
+              </View>
+              <View style={[rowStyle, { borderBottomWidth: 1, borderBottomColor: borderColor }]}>
+                <Text style={fieldLabelStyle}>WORK</Text>
+                <TextInput
+                  value={work}
+                  onChangeText={setWork}
+                  placeholder="Software Engineer at Acme"
+                  placeholderTextColor={faintColor}
+                  style={inputStyle}
+                  autoCapitalize="words"
+                />
+              </View>
+              <View style={rowStyle}>
+                <Text style={fieldLabelStyle}>REGION</Text>
+                <TextInput
+                  value={region}
+                  onChangeText={setRegion}
+                  placeholder="San Francisco Bay Area"
+                  placeholderTextColor={faintColor}
+                  style={inputStyle}
+                  autoCapitalize="words"
+                />
+              </View>
+            </View>
+          </Section>
+
+          {/* Looking for — multi-select chips, same UX as Interests */}
+          <Section title="LOOKING FOR" titleColor={faintColor}>
+            <View style={cardSection}>
+              <View style={[rowStyle, { flexDirection: 'row', flexWrap: 'wrap', gap: 8 }]}>
+                {LOOKING_FOR_OPTIONS.map((option) => {
+                  const selected = lookingFor.includes(option)
+                  return (
+                    <Pressable
+                      key={option}
+                      onPress={() => toggleLookingFor(option)}
+                      accessibilityRole="button"
+                      accessibilityState={{ selected }}
+                      style={{
+                        paddingHorizontal: 16,
+                        paddingVertical: 9,
+                        borderRadius: 100,
+                        borderWidth: 1.5,
+                        borderColor: selected ? '#C2410C' : borderColor,
+                        backgroundColor: selected ? '#C2410C10' : 'transparent',
+                      }}
+                    >
+                      <Text
+                        style={{
+                          fontSize: 14,
+                          color: selected ? '#C2410C' : mutedColor,
+                          fontWeight: selected ? '600' : '400',
+                        }}
+                      >
+                        {option}
+                      </Text>
+                    </Pressable>
+                  )
+                })}
+              </View>
             </View>
           </Section>
 
