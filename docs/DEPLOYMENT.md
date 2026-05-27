@@ -11,11 +11,11 @@ The app runs as **two independent Cloudflare services**:
 
 ```
 Browser
-  ├── https://chinmaya-janata.pages.dev
-  │     └── Cloudflare Pages (static assets only)
+  ├── https://chinmayajanata.org  (CNAME → https://project-janatha.pages.dev)
+  │     └── Cloudflare Pages "project-janatha" (static assets only)
   │
-  └── https://chinmaya-janata-api.chinmayajanata.workers.dev/api/*
-        └── Cloudflare Worker (Hono API)
+  └── https://api.chinmayajanata.org/api/*
+        └── Cloudflare Worker "chinmaya-janata-api" (Hono)
               └── D1 database (SQLite)
 ```
 
@@ -117,7 +117,7 @@ npm run dev:frontend   # just the Expo dev server
 
 Configured in `packages/backend/wrangler.toml` (D1) and via `npx wrangler secret put` (secrets).
 
-### Frontend Pages (`chinmaya-janata`)
+### Frontend Pages (`project-janatha` — served behind `chinmayajanata.org`)
 
 | Variable                    | Type      | Description                             |
 |-----------------------------|-----------|-----------------------------------------|
@@ -139,5 +139,5 @@ GitHub Actions (`.github/workflows/deploy.yml`) runs two parallel jobs on push t
 ## Monitoring
 
 - **Backend** — Cloudflare Dashboard → Workers & Pages → chinmaya-janata-api → logs and analytics
-- **Frontend** — Cloudflare Dashboard → Workers & Pages → chinmaya-janata → deployments
+- **Frontend** — Cloudflare Dashboard → Workers & Pages → project-janatha → deployments (custom domain: chinmayajanata.org)
 - **D1** — Cloudflare Dashboard → Workers & Pages → D1 → chinmaya-janata-db → query browser
