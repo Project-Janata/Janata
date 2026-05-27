@@ -148,7 +148,7 @@ export type DiscoverItem =
   | { type: 'center'; data: DiscoverCenter }
   | { type: 'section'; data: { label: string } }
 
-export type DiscoverFilter = 'Events' | 'Centers' | 'Seva'
+export type DiscoverFilter = 'Events' | 'Centers'
 
 // ── Fetch helpers ──────────────────────────────────────────────────────
 

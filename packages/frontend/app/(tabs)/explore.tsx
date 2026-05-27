@@ -45,7 +45,6 @@ import Map from '../../components/map/Map'
 const FILTERS: { label: DiscoverFilter }[] = [
   { label: 'Events' },
   { label: 'Centers' },
-  { label: 'Seva' },
 ]
 
 /**
@@ -569,13 +568,10 @@ export default function DiscoverScreen() {
             scrollEnabled={true}
             stickyHeaderIndices={stickyHeaderIndices}
           >
-            {!loading && activeFilter === 'Seva' && (
-              <EmptyState message="Seva — coming soon" subtitle="Service opportunities will be listed here." />
-            )}
-            {!loading && activeFilter !== 'Seva' && displayItems.length === 0 && (
+            {!loading && displayItems.length === 0 && (
               <EmptyState variant={selectedDate ? 'date' : searchQuery ? 'search' : 'events'} />
             )}
-            {activeFilter !== 'Seva' && displayItems.map((item, idx) => {
+            {displayItems.map((item, idx) => {
               if (item.type === 'section') {
                 const label = item.data.label
                 const isCollapsed = collapsedSections.has(label)
