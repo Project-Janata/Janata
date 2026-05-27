@@ -101,6 +101,8 @@ function HeaderBar({
       <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
         <Pressable
           onPress={onBack}
+          accessibilityRole="button"
+          accessibilityLabel="Back"
           style={{
             flexDirection: 'row',
             alignItems: 'center',
@@ -123,6 +125,8 @@ function HeaderBar({
 
         <Pressable
           onPress={onShare}
+          accessibilityRole="button"
+          accessibilityLabel="Share this center"
           style={{
             padding: 8,
             minHeight: 44,

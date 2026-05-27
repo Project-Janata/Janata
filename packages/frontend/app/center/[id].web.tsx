@@ -150,11 +150,21 @@ function MobileCenterDetail({ centerId }: { centerId: string }) {
       {/* Header */}
       <View style={{ paddingHorizontal: 16, paddingTop: 16, paddingBottom: 8, gap: 10 }}>
         <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
-          <Pressable onPress={() => router.back()} style={{ flexDirection: 'row', alignItems: 'center', gap: 4 }}>
+          <Pressable
+            onPress={() => router.back()}
+            accessibilityRole="button"
+            accessibilityLabel="Back"
+            style={{ flexDirection: 'row', alignItems: 'center', gap: 4 }}
+          >
             <ChevronLeft size={20} color={colors.textSecondary} />
             <Text style={{ color: colors.textSecondary, fontSize: 16 }}>Back</Text>
           </Pressable>
-          <Pressable onPress={handleShare} style={{ padding: 8 }}>
+          <Pressable
+            onPress={handleShare}
+            accessibilityRole="button"
+            accessibilityLabel="Share this center"
+            style={{ padding: 8 }}
+          >
             <Share2 size={18} color={colors.textSecondary} />
           </Pressable>
         </View>

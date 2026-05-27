@@ -80,7 +80,9 @@ function MapControls({
           onPressIn={() => setPressedId('in')}
           onPressOut={() => setPressedId(null)}
           style={[styles.zoomButton, { backgroundColor: makeBg('in') }]}
+          accessibilityRole="button"
           accessibilityLabel="Zoom in"
+          accessibilityHint="Zooms the map in one step"
         >
           <Plus size={18} color={iconColor} strokeWidth={2} />
         </Pressable>
@@ -90,7 +92,9 @@ function MapControls({
           onPressIn={() => setPressedId('out')}
           onPressOut={() => setPressedId(null)}
           style={[styles.zoomButton, { backgroundColor: makeBg('out') }]}
+          accessibilityRole="button"
           accessibilityLabel="Zoom out"
+          accessibilityHint="Zooms the map out one step"
         >
           <Minus size={18} color={iconColor} strokeWidth={2} />
         </Pressable>
@@ -100,7 +104,9 @@ function MapControls({
         onPressIn={() => setPressedId('loc')}
         onPressOut={() => setPressedId(null)}
         style={[styles.locateButton, { backgroundColor: makeBg('loc'), borderColor: isDark ? '#404040' : '#D6D3D1' }]}
+        accessibilityRole="button"
         accessibilityLabel="Show my location"
+        accessibilityHint="Centers the map on your current location"
       >
         <Navigation size={18} color={iconColor} strokeWidth={2} />
       </Pressable>

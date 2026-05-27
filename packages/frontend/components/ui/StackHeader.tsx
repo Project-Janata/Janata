@@ -34,6 +34,9 @@ export default function StackHeader({ title, onBack, right }: StackHeaderProps) 
       >
         <Pressable
           onPress={onBack ?? (() => router.back())}
+          accessibilityRole="button"
+          accessibilityLabel="Back"
+          accessibilityHint="Returns to the previous screen"
           style={{ padding: 8, marginLeft: -8 }}
           hitSlop={8}
         >
