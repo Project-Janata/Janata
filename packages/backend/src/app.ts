@@ -798,8 +798,29 @@ app.post('/deauthenticate', (c) => {
 // ═══════════════════════════════════════════════════════════════════════
 
 app.get('/centers', cacheControl(30), async (c) => {
-  const centers = await db.getAllCenters(c.env.DB)
-  return c.json({ centers: centers.map(centerRowToApi) })
+  // Pagination (#107). Backwards-compatible: when no `limit` is provided we
+  // return the entire centers list as before (matches the legacy clients).
+  // When `limit` is set, return `{ centers, total, limit, offset }`.
+  const limitParam = c.req.query('limit')
+  if (limitParam == null) {
+    const centers = await db.getAllCenters(c.env.DB)
+    return c.json({ centers: centers.map(centerRowToApi) })
+  }
+  const limit = Number.parseInt(limitParam, 10)
+  const offset = Number.parseInt(c.req.query('offset') ?? '0', 10)
+  if (!Number.isFinite(limit) || limit < 1) {
+    return c.json({ message: 'limit must be a positive integer' }, 400)
+  }
+  if (!Number.isFinite(offset) || offset < 0) {
+    return c.json({ message: 'offset must be >= 0' }, 400)
+  }
+  const { data, total } = await db.getCentersPaginated(c.env.DB, limit, offset)
+  return c.json({
+    centers: data.map(centerRowToApi),
+    total,
+    limit: Math.min(limit, 200),
+    offset,
+  })
 })
 
 app.post('/addCenter', authMiddleware, async (c) => {
@@ -1465,10 +1486,32 @@ app.post('/fetchEventsByCenter', async (c) => {
 })
 
 app.get('/fetchAllEvents', cacheControl(30), async (c) => {
-  const events = await db.getAllEvents(c.env.DB)
+  // Pagination (#107). Backwards-compatible: legacy callers omit `limit`
+  // and get the full list. Paginated callers pass `?limit=&offset=` and
+  // receive `{ events, total, limit, offset }` for infinite-scroll UIs.
+  const limitParam = c.req.query('limit')
+  if (limitParam == null) {
+    const events = await db.getAllEvents(c.env.DB)
+    return c.json({
+      message: 'Success',
+      events: events.map(eventRowToApi),
+    })
+  }
+  const limit = Number.parseInt(limitParam, 10)
+  const offset = Number.parseInt(c.req.query('offset') ?? '0', 10)
+  if (!Number.isFinite(limit) || limit < 1) {
+    return c.json({ message: 'limit must be a positive integer' }, 400)
+  }
+  if (!Number.isFinite(offset) || offset < 0) {
+    return c.json({ message: 'offset must be >= 0' }, 400)
+  }
+  const { data, total } = await db.getEventsPaginated(c.env.DB, limit, offset)
   return c.json({
     message: 'Success',
-    events: events.map(eventRowToApi),
+    events: data.map(eventRowToApi),
+    total,
+    limit: Math.min(limit, 200),
+    offset,
   })
 })
 

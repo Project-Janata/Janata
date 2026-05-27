@@ -216,6 +216,57 @@ describe('centers', () => {
     })
   })
 
+  describe('getCentersPaginated (#107)', () => {
+    beforeEach(async () => {
+      // Seed 5 centers with predictable names so pagination is deterministic.
+      for (let i = 0; i < 5; i++) {
+        await db.createCenter(env.DB, {
+          ...testCenter,
+          id: `c-${i}`,
+          name: `Center ${String.fromCharCode(65 + i)}`, // A..E
+        })
+      }
+    })
+
+    it('returns first page with total count', async () => {
+      const { data, total } = await db.getCentersPaginated(env.DB, 2, 0)
+      expect(total).toBe(5)
+      expect(data).toHaveLength(2)
+      expect(data[0].name).toBe('Center A')
+      expect(data[1].name).toBe('Center B')
+    })
+
+    it('returns second page', async () => {
+      const { data, total } = await db.getCentersPaginated(env.DB, 2, 2)
+      expect(total).toBe(5)
+      expect(data).toHaveLength(2)
+      expect(data[0].name).toBe('Center C')
+      expect(data[1].name).toBe('Center D')
+    })
+
+    it('returns partial last page', async () => {
+      const { data, total } = await db.getCentersPaginated(env.DB, 2, 4)
+      expect(total).toBe(5)
+      expect(data).toHaveLength(1)
+      expect(data[0].name).toBe('Center E')
+    })
+
+    it('clamps limit to [1, 200]', async () => {
+      const zero = await db.getCentersPaginated(env.DB, 0, 0)
+      expect(zero.data).toHaveLength(1) // clamped to limit=1
+      // Limit > total just returns whatever's there
+      const big = await db.getCentersPaginated(env.DB, 9999, 0)
+      expect(big.data).toHaveLength(5)
+      expect(big.total).toBe(5)
+    })
+
+    it('clamps negative offset to 0', async () => {
+      const { data } = await db.getCentersPaginated(env.DB, 3, -10)
+      expect(data).toHaveLength(3)
+      expect(data[0].name).toBe('Center A')
+    })
+  })
+
   describe('updateCenter', () => {
     it('updates center fields', async () => {
       await db.createCenter(env.DB, testCenter)
@@ -311,6 +362,42 @@ describe('events', () => {
       expect(events[0].date).toBe('2025-06-01T00:00:00Z')
       expect(events[1].date).toBe('2025-03-01T00:00:00Z')
       expect(events[2].date).toBe('2025-01-01T00:00:00Z')
+    })
+  })
+
+  describe('getEventsPaginated (#107)', () => {
+    beforeEach(async () => {
+      // Seed 4 events with descending dates; date DESC means e-4 first.
+      for (let i = 1; i <= 4; i++) {
+        await db.createEvent(env.DB, {
+          ...testEvent,
+          id: `e-${i}`,
+          date: `2025-0${i}-01T00:00:00Z`,
+        })
+      }
+    })
+
+    it('returns first page with total count, newest first', async () => {
+      const { data, total } = await db.getEventsPaginated(env.DB, 2, 0)
+      expect(total).toBe(4)
+      expect(data).toHaveLength(2)
+      expect(data[0].id).toBe('e-4')
+      expect(data[1].id).toBe('e-3')
+    })
+
+    it('returns subsequent page', async () => {
+      const { data, total } = await db.getEventsPaginated(env.DB, 2, 2)
+      expect(total).toBe(4)
+      expect(data).toHaveLength(2)
+      expect(data[0].id).toBe('e-2')
+      expect(data[1].id).toBe('e-1')
+    })
+
+    it('clamps limit and offset', async () => {
+      const zero = await db.getEventsPaginated(env.DB, 0, 0)
+      expect(zero.data.length).toBe(1)
+      const neg = await db.getEventsPaginated(env.DB, 4, -5)
+      expect(neg.data).toHaveLength(4)
     })
   })
 
