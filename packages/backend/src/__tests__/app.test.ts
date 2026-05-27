@@ -819,12 +819,12 @@ describe('board routes', () => {
     )
     centerId = body.id
 
-    await env.DB.prepare('UPDATE users SET verification_level = 45, center_id = ? WHERE username = ?')
+    await env.DB.prepare('UPDATE users SET center_id = ? WHERE username = ?')
       .bind(centerId, 'boardmember')
       .run()
   })
 
-  it('returns an empty center board for a verified center member', async () => {
+  it('returns an empty center board for a signed-in center member', async () => {
     const { res, body } = await fetchJSON(
       `/api/boards/center/${centerId}`,
       { headers: authHeader(memberToken) },
@@ -856,11 +856,8 @@ describe('board routes', () => {
     expect(body.posts[0].body).toBe('Who is driving from South Bay?')
   })
 
-  it('rejects center board access for verified users at another center', async () => {
+  it('rejects center board access for signed-in users at another center', async () => {
     const other = await registerAndLogin('othermember', 'password123')
-    await env.DB.prepare('UPDATE users SET verification_level = 45 WHERE username = ?')
-      .bind('othermember')
-      .run()
 
     const { res } = await fetchJSON(
       `/api/boards/center/${centerId}`,

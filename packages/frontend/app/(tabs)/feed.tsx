@@ -199,21 +199,18 @@ export default function FeedScreen() {
 
   const threadColors = toThreadColors(colors)
 
-  const isVerifiedMember = user?.isVerified === true
-  const canAccessBoards = !!user && isVerifiedMember
+  const canAccessBoards = !!user
   const userCenter = allCenters.find((item) => item.id === user?.centerID)
   const groups = useMemo<GroupBoard[]>(() => {
-    if (user && !isVerifiedMember) return []
-
     const nextGroups: GroupBoard[] = []
 
-    if (user && isVerifiedMember && userCenter) {
+    if (user && userCenter) {
       nextGroups.push(centerToGroup(userCenter, 0))
     }
 
     const registeredEvents = sortUpcomingEvents(myEvents)
     const liveEventGroups =
-      user && isVerifiedMember
+      user
         ? registeredEvents.map((event) => {
             const eventDistance = haversineMiles(userCenter, {
               latitude: event.latitude,
@@ -227,7 +224,7 @@ export default function FeedScreen() {
     nextGroups.push(...liveEventGroups)
 
     return sortGroupsByDistance(nextGroups)
-  }, [allCenters, isVerifiedMember, myEvents, user, userCenter])
+  }, [allCenters, myEvents, user, userCenter])
 
   const groupBoardKey = useMemo(
     () => groups.map((group) => `${group.id}:${group.kind}:${group.parentId}`).join('|'),
@@ -338,8 +335,8 @@ export default function FeedScreen() {
       router.push('/auth')
       return
     }
-    posthog?.capture('connect_redeem_invite_pressed', { source: 'feed_cta' })
-    router.push('/auth' as never)
+    posthog?.capture('connect_explore_pressed', { source: 'feed_cta' })
+    router.push('/explore' as never)
   }
 
   const closeDetail = () => {

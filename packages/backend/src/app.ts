@@ -78,9 +78,6 @@ async function verifyBoardAccess(
   }
 
   const userIsAdmin = isAdmin(user)
-  if (!userIsAdmin && user.verification_level < NORMAL_USER) {
-    return c.json({ message: 'Verified member access required' }, 403)
-  }
 
   if (type === 'center') {
     const center = await db.getCenterById(c.env.DB, parentId)

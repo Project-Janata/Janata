@@ -63,13 +63,13 @@ export function ThreadPanel({
     return (
       <LockedBoardState
         colors={colors}
-        title={lockedTitle || 'For verified members'}
+        title={lockedTitle || 'Member board'}
         subtitle={
           lockedSubtitle ||
-          "Boards are conversations between verified CHYKs at a center. Get verified and you're in."
+          'Join this center or register for this event to participate in the board.'
         }
-        primaryActionLabel={primaryActionLabel || 'Redeem invite'}
-        secondaryActionLabel={secondaryActionLabel || 'Apply'}
+        primaryActionLabel={primaryActionLabel || 'Explore'}
+        secondaryActionLabel={secondaryActionLabel || 'Back'}
         onPrimaryAction={onPrimaryAction}
         onSecondaryAction={onSecondaryAction}
         bottomInset={bottomInset}
@@ -145,7 +145,7 @@ function BoardComposer({
           gap: 12,
         }}
       >
-        <Avatar name="Aditi Mehta" initials="AM" size={36} backgroundColor="#0478A5" />
+        <Avatar name="You" initials="YO" size={36} backgroundColor="#0478A5" />
         <TextInput
           editable={false}
           value=""
@@ -231,13 +231,8 @@ export function BoardPostCard({
   onPress?: () => void
   showSource?: boolean
 }) {
-  const replies = message.replyCount ?? Math.max(1, message.author.verification === 'sevak' ? 1 : 2)
-  const reactions = message.reactions ?? [
-    {
-      emoji: message.author.verification === 'sevak' ? '🪔' : '🙏',
-      count: message.author.verification === 'sevak' ? 6 : 2,
-    },
-  ]
+  const replies = message.replyCount ?? 0
+  const reactions = message.reactions ?? []
   const accent = colors.accent ?? '#E8862A'
   const accentSoft = colors.accentSoft ?? '#FFF7ED'
   const isFeedCard = showSource
@@ -528,6 +523,8 @@ function LockedBoardState({
   bottomInset: number
 }) {
   const accent = colors.accent ?? '#E8862A'
+  const hasPrimaryAction = !!onPrimaryAction
+  const hasSecondaryAction = !!onSecondaryAction
 
   return (
     <View
@@ -577,40 +574,46 @@ function LockedBoardState({
       >
         {subtitle}
       </Text>
-      <View style={{ flexDirection: 'row', gap: 10, marginTop: 34, width: '100%', maxWidth: 430 }}>
-        <Pressable
-          onPress={onPrimaryAction}
-          style={{
-            flex: 1,
-            minHeight: 50,
-            borderRadius: 999,
-            backgroundColor: accent,
-            alignItems: 'center',
-            justifyContent: 'center',
-          }}
-        >
-          <Text style={{ fontFamily: 'Inclusive Sans', fontSize: 15, color: '#FFFFFF' }}>
-            {primaryActionLabel}
-          </Text>
-        </Pressable>
-        <Pressable
-          onPress={onSecondaryAction}
-          style={{
-            flex: 1,
-            minHeight: 50,
-            borderRadius: 999,
-            borderWidth: 1,
-            borderColor: colors.border,
-            alignItems: 'center',
-            justifyContent: 'center',
-            backgroundColor: colors.cardBg ?? colors.panelBg,
-          }}
-        >
-          <Text style={{ fontFamily: 'Inclusive Sans', fontSize: 15, color: colors.textSecondary }}>
-            {secondaryActionLabel}
-          </Text>
-        </Pressable>
-      </View>
+      {hasPrimaryAction || hasSecondaryAction ? (
+        <View style={{ flexDirection: 'row', gap: 10, marginTop: 34, width: '100%', maxWidth: 430 }}>
+          {hasPrimaryAction ? (
+            <Pressable
+              onPress={onPrimaryAction}
+              style={{
+                flex: 1,
+                minHeight: 50,
+                borderRadius: 999,
+                backgroundColor: accent,
+                alignItems: 'center',
+                justifyContent: 'center',
+              }}
+            >
+              <Text style={{ fontFamily: 'Inclusive Sans', fontSize: 15, color: '#FFFFFF' }}>
+                {primaryActionLabel}
+              </Text>
+            </Pressable>
+          ) : null}
+          {hasSecondaryAction ? (
+            <Pressable
+              onPress={onSecondaryAction}
+              style={{
+                flex: 1,
+                minHeight: 50,
+                borderRadius: 999,
+                borderWidth: 1,
+                borderColor: colors.border,
+                alignItems: 'center',
+                justifyContent: 'center',
+                backgroundColor: colors.cardBg ?? colors.panelBg,
+              }}
+            >
+              <Text style={{ fontFamily: 'Inclusive Sans', fontSize: 15, color: colors.textSecondary }}>
+                {secondaryActionLabel}
+              </Text>
+            </Pressable>
+          ) : null}
+        </View>
+      ) : null}
     </View>
   )
 }

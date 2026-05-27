@@ -147,7 +147,7 @@ export function CreatePostSheet({
           </View>
 
           <Text style={{ marginTop: 16, fontSize: 12, lineHeight: 18, color: colors.textFaint }}>
-            Visible to verified members in {selectedGroup?.title || 'your group'}.
+            Visible to members in {selectedGroup?.title || 'your group'}.
           </Text>
         </ScrollView>
       </KeyboardAvoidingView>

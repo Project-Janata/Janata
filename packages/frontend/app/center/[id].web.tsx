@@ -52,7 +52,7 @@ function MobileCenterDetail({ centerId }: { centerId: string }) {
   const colors = useDetailColors()
   const [activeTab, setActiveTab] = useState('About')
   const canPostToThread =
-    !!user?.isVerified && (user.centerID === center?.id || (user.verificationLevel ?? 0) >= 107)
+    !!user && (user.centerID === center?.id || (user.verificationLevel ?? 0) >= 107)
   const { posts: boardPosts } = useBoard('center', center?.id, canPostToThread)
   const boardMessages = useMemo(() => boardPosts.map(boardPostToMessage), [boardPosts])
 

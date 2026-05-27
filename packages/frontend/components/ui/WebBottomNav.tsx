@@ -1,6 +1,6 @@
 import { View, Text, Pressable } from 'react-native'
 import { usePathname, useRouter } from 'expo-router'
-import { House, Compass, Newspaper, MessageSquare } from 'lucide-react-native'
+import { House, Compass, Newspaper } from 'lucide-react-native'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
 import { useUser, useTheme } from '../contexts'
 import Avatar from './Avatar'
@@ -9,7 +9,6 @@ const NAV_ITEMS = [
   { label: 'Home', href: '/', icon: House },
   { label: 'Explore', href: '/explore', icon: Compass },
   { label: 'Feed', href: '/feed', icon: Newspaper },
-  { label: 'Messages', href: '/chat', icon: MessageSquare },
   { label: 'Profile', href: '/profile', icon: null },
 ] as const
 

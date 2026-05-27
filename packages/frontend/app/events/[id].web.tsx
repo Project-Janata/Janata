@@ -65,7 +65,7 @@ function MobileEventDetail({ eventId }: { eventId: string }) {
   const isPast = event?.date ? new Date(event.date + 'T23:59:59') < new Date() : false
   const canEdit = !!user && (isSuperAdmin(user) || isCreator)
   const canAccessEventBoard =
-    !!user?.isVerified && !!event?.id && (!!event.isRegistered || isCreator || isSuperAdmin(user))
+    !!user && !!event?.id && (!!event.isRegistered || isCreator || isSuperAdmin(user))
   const canPostToThread = canAccessEventBoard
   const { posts: boardPosts } = useBoard('event', event?.id, canAccessEventBoard)
   const eventBoardMessages = useMemo(() => boardPosts.map(boardPostToMessage), [boardPosts])

@@ -46,14 +46,14 @@ export function FeedWorkspace({
         emptySubtitle="Once your boards have posts, they will show up here."
         composerPlaceholder="Share something with the center..."
         composerState="locked"
-        lockedTitle={isSignedIn ? 'For verified members' : 'Sign in for member boards'}
+        lockedTitle={isSignedIn ? 'No boards available yet' : 'Sign in for member boards'}
         lockedSubtitle={
           isSignedIn
-            ? "Boards are conversations between verified CHYKs at a center. Get verified and you're in."
+            ? 'Join a center or register for an event to start seeing member conversations here.'
             : 'Sign in to see your center board, event boards, and member conversations.'
         }
-        primaryActionLabel={isSignedIn ? 'Redeem invite' : 'Sign in'}
-        secondaryActionLabel={isSignedIn ? 'Apply' : 'Learn more'}
+        primaryActionLabel={isSignedIn ? 'Explore' : 'Sign in'}
+        secondaryActionLabel={isSignedIn ? 'View events' : 'Learn more'}
         onPrimaryAction={onRequestAccess}
         onSecondaryAction={onRequestAccess}
       />
