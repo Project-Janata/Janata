@@ -1582,6 +1582,16 @@ app.post('/attendEvent', authMiddleware, async (c) => {
     return c.json({ message: 'Event not found' }, 404)
   }
 
+  // #191 — per-event verified gate. UNVERIFIED_USER (30) signups can't RSVP
+  // for events marked requires_verified. They get a 403 with a clear msg so
+  // the UI can prompt them to verify their email first.
+  if (event.requires_verified === 1 && (user.verification_level ?? 0) < NORMAL_USER) {
+    return c.json(
+      { message: 'This event requires a verified account. Please verify your email to RSVP.' },
+      403,
+    )
+  }
+
   // Check if already registered
   const attendees = await db.getEventAttendees(c.env.DB, eventID)
   const alreadyRegistered = attendees.some((a) => a.id === user.id)
@@ -1598,6 +1608,51 @@ app.post('/attendEvent', authMiddleware, async (c) => {
   return c.json({
     message: 'Successfully registered for event',
     peopleAttending: updated?.people_attending ?? event.people_attending + 1,
+  })
+})
+
+// #191 — public guest RSVP. No auth required. Rate-limited to discourage
+// abuse. Rejects when the event has requires_verified = 1. The same email
+// signing up + verifying later upgrades these into real attendee rows via
+// db.upgradeGuestRsvpsForUser (wire-in pending — separate PR).
+app.post('/attendEventGuest', rateLimit(5, 60_000), async (c) => {
+  let body: { eventID?: string; email?: string; name?: string }
+  try {
+    body = await c.req.json()
+  } catch {
+    return c.json({ message: 'Invalid JSON body' }, 400)
+  }
+  const eventID = body.eventID
+  const email = body.email?.trim().toLowerCase()
+  const name = body.name?.trim()
+
+  if (!eventID || typeof eventID !== 'string') {
+    return c.json({ message: 'eventID is required' }, 400)
+  }
+  if (!email || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+    return c.json({ message: 'A valid email is required' }, 400)
+  }
+  if (!name || name.length < 1 || name.length > 120) {
+    return c.json({ message: 'name is required (1–120 chars)' }, 400)
+  }
+
+  const event = await db.getEventById(c.env.DB, eventID)
+  if (!event) return c.json({ message: 'Event not found' }, 404)
+  if (event.requires_verified === 1) {
+    return c.json(
+      { message: 'This event requires a verified account. Please sign up and verify your email to RSVP.' },
+      403,
+    )
+  }
+
+  const result = await db.createGuestRsvp(c.env.DB, eventID, email, name)
+  if (!result.success) {
+    return c.json({ message: 'Failed to register RSVP', error: result.error }, 500)
+  }
+
+  return c.json({
+    message: result.alreadyRsvped ? 'Already RSVPed' : 'RSVP recorded',
+    alreadyRsvped: result.alreadyRsvped === true,
   })
 })
 

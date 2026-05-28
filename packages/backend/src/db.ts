@@ -475,6 +475,92 @@ export async function listEvents(
 // EVENT ATTENDEES
 // ═══════════════════════════════════════════════════════════════════════
 
+/**
+ * Create a guest RSVP (no account required) — #191.
+ *
+ * PRIMARY KEY (event_id, email) means re-RSVPing with the same email is
+ * idempotent (INSERT OR IGNORE). Returns whether the row already existed.
+ */
+export async function createGuestRsvp(
+  db: D1Database,
+  eventId: string,
+  email: string,
+  name: string,
+): Promise<{ success: boolean; alreadyRsvped?: boolean; error?: string }> {
+  try {
+    const result = await db
+      .prepare(
+        `INSERT OR IGNORE INTO event_guest_rsvps (event_id, email, name)
+         VALUES (?1, ?2, ?3)`,
+      )
+      .bind(eventId, email.trim().toLowerCase(), name.trim())
+      .run()
+    return {
+      success: true,
+      alreadyRsvped: (result.meta?.changes ?? 0) === 0,
+    }
+  } catch (err: any) {
+    return { success: false, error: err?.message ?? 'Unknown error' }
+  }
+}
+
+/**
+ * Backfill guest RSVPs into the attendees table when a user's email is
+ * verified for the first time — #191.
+ *
+ * For each guest RSVP matching the user's email that hasn't been upgraded,
+ * (a) insert into event_attendees (idempotent via INSERT OR IGNORE),
+ * (b) mark upgraded_user_id so we don't re-upgrade,
+ * (c) refresh the people_attending count.
+ *
+ * Returns the count of upgraded RSVPs.
+ */
+export async function upgradeGuestRsvpsForUser(
+  db: D1Database,
+  userId: string,
+  email: string,
+): Promise<{ success: boolean; upgraded: number; error?: string }> {
+  try {
+    const normalized = email.trim().toLowerCase()
+    const result = await db
+      .prepare(
+        `SELECT event_id FROM event_guest_rsvps
+         WHERE email = ?1 AND upgraded_user_id IS NULL`,
+      )
+      .bind(normalized)
+      .all<{ event_id: string }>()
+    const eventIds = (result.results ?? []).map((r) => r.event_id)
+    if (eventIds.length === 0) return { success: true, upgraded: 0 }
+
+    const now = new Date().toISOString()
+    for (const eventId of eventIds) {
+      await db
+        .prepare(
+          'INSERT OR IGNORE INTO event_attendees (event_id, user_id, created_at) VALUES (?1, ?2, ?3)',
+        )
+        .bind(eventId, userId, now)
+        .run()
+      await db
+        .prepare(
+          'UPDATE event_guest_rsvps SET upgraded_user_id = ?1 WHERE event_id = ?2 AND email = ?3',
+        )
+        .bind(userId, eventId, normalized)
+        .run()
+      await db
+        .prepare(
+          `UPDATE events SET people_attending = (
+            SELECT COUNT(*) FROM event_attendees WHERE event_id = ?1
+          ), updated_at = ?2 WHERE id = ?1`,
+        )
+        .bind(eventId, now)
+        .run()
+    }
+    return { success: true, upgraded: eventIds.length }
+  } catch (err: any) {
+    return { success: false, upgraded: 0, error: err?.message ?? 'Unknown error' }
+  }
+}
+
 export async function addEventAttendee(
   db: D1Database,
   eventId: string,
