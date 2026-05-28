@@ -22,12 +22,16 @@ tok()  { curl -fsS -X POST "$API/auth/authenticate" -H 'Content-Type: applicatio
 echo "▶ registering role users"
 for r in unverified member sevak brahmachari admin; do reg "${r}@chinmayajanata.org"; done
 
-echo "▶ elevating verification levels (UNVERIFIED=30, NORMAL=45, SEVAK=54, BRAHMACHARI=108, ADMIN≥107)"
-sql "UPDATE users SET verification_level=45,  center_id='$CENTER' WHERE username='member@chinmayajanata.org'"
-sql "UPDATE users SET verification_level=54,  center_id='$CENTER' WHERE username='sevak@chinmayajanata.org'"
-sql "UPDATE users SET verification_level=108, center_id='$CENTER' WHERE username='brahmachari@chinmayajanata.org'"
-sql "UPDATE users SET verification_level=110, center_id='$CENTER' WHERE username='admin@chinmayajanata.org'"
-# unverified@ intentionally left at the signup default (30) so the verified-gate is testable.
+echo "▶ elevating verification levels + completing profiles (so role logins land on Home)"
+# verification_level: UNVERIFIED=30, NORMAL=45, SEVAK=54, BRAHMACHARI=108, ADMIN≥107.
+# first/last name + profile_complete=1 so each role skips onboarding and lands on Home;
+# the tier difference (what's gated) is verification_level. unverified stays lvl 30 so
+# the verified-gate is testable, but still gets a profile so it lands in-app.
+sql "UPDATE users SET verification_level=30,  first_name='Unverified', last_name='Demo', profile_complete=1 WHERE username='unverified@chinmayajanata.org'"
+sql "UPDATE users SET verification_level=45,  center_id='$CENTER', first_name='Member', last_name='Demo', profile_complete=1 WHERE username='member@chinmayajanata.org'"
+sql "UPDATE users SET verification_level=54,  center_id='$CENTER', first_name='Sevak', last_name='Demo', profile_complete=1 WHERE username='sevak@chinmayajanata.org'"
+sql "UPDATE users SET verification_level=108, center_id='$CENTER', first_name='Brahmachari', last_name='Demo', profile_complete=1 WHERE username='brahmachari@chinmayajanata.org'"
+sql "UPDATE users SET verification_level=110, center_id='$CENTER', first_name='Admin', last_name='Demo', profile_complete=1 WHERE username='admin@chinmayajanata.org'"
 
 echo "▶ seeding sample board posts + a moderation report (best-effort)"
 MT="$(tok member@chinmayajanata.org)"

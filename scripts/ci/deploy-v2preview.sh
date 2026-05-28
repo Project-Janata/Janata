@@ -33,16 +33,30 @@ grep -q "$DB_NAME" "$CONFIG"     || { echo "✗ guard: $CONFIG missing $DB_NAME"
 [[ "$WORKER_NAME" == *v2preview* ]] || { echo "✗ guard: worker name"; exit 1; }
 if grep -q "$PROD_DB_ID" "$CONFIG"; then echo "✗ guard: preview config references PROD D1 id"; exit 1; fi
 
-echo "▶ (1/7) Reset isolated preview D1 in place (drop all app tables, keep the DB)"
-# Reuse the existing isolated DB (id in $CONFIG) — deterministic, no D1 create
-# perms needed, no id churn. Verbose on purpose so any token/permission issue is
-# visible. Guard the id first.
-CFG_ID="$(grep -oE 'database_id = "[0-9a-fA-F-]{36}"' "$CONFIG" | grep -oiE '[0-9a-f-]{36}' | head -1)"
-[[ -n "$CFG_ID" && "$CFG_ID" != "$PROD_DB_ID" ]] || { echo "✗ guard: config D1 id missing or is PROD ($CFG_ID)"; exit 1; }
-echo "  preview D1 id = $CFG_ID"
-echo "  --- D1 access probe (CI token) ---"
-WR d1 execute "$DB_NAME" --remote --config "$CONFIG" --command "SELECT 1 AS ok;"
-echo "  --- dropping all app tables ---"
+echo "▶ (1/7) Resolve isolated preview D1 on the CI token's OWN account (reuse-by-name or create)"
+# The old 3150bf63 lived on a different CF account than this token (7403). The
+# token now has D1:Edit on its own account, so resolve the preview DB by NAME
+# there: reuse if it exists, else create. Then write the id into the config so
+# the worker binds it. Never prod (guarded below).
+echo "  --- D1 databases visible to this token ---"
+WR d1 list 2>&1 | head -20 || true
+LIST="$(WR d1 list --json 2>/dev/null || echo '[]')"
+DBID="$(printf '%s' "$LIST" | python3 -c 'import sys,json
+try:
+    d=json.load(sys.stdin)
+except Exception:
+    d=[]
+name="'"$DB_NAME"'"
+print(next((x.get("uuid") or x.get("database_id") or "" for x in d if x.get("name")==name), ""))' 2>/dev/null)"
+if [ -z "$DBID" ]; then
+  echo "  no $DB_NAME on this account — creating it"
+  CREATE="$(WR d1 create "$DB_NAME" 2>&1)"; printf '%s\n' "$CREATE"
+  DBID="$(printf '%s' "$CREATE" | grep -oiE '[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}' | head -1)"
+fi
+[[ -n "$DBID" && "$DBID" != "$PROD_DB_ID" ]] || { echo "✗ could not resolve a non-prod preview D1 id (check D1 perms/account)"; exit 1; }
+perl -pi -e "s/database_id = \"[0-9a-fA-F-]+\"/database_id = \"$DBID\"/" "$CONFIG"
+echo "  preview D1 id = $DBID"
+echo "  --- reset: drop all app tables (idempotent on fresh or existing) ---"
 WR d1 execute "$DB_NAME" --remote --config "$CONFIG" --file=migrations/_reset_preview.sql
 
 echo "▶ (2/7b) Apply schema migrations + dummy data (verbose)"
@@ -71,7 +85,7 @@ echo "▶ (5/7) Seed role users + sample board content"
 bash scripts/ci/seed-preview-roles.sh "$API" "$DB_NAME" "$CONFIG" "$PW"
 
 echo "▶ (6/7) Build frontend against the preview API"
-EXPO_PUBLIC_API_BASE_URL="$API" npm run build:frontend
+EXPO_PUBLIC_API_BASE_URL="$API" EXPO_PUBLIC_SHOW_DEV_TOOLS=1 npm run build:frontend
 
 echo "▶ (7/7) Deploy frontend to Pages preview branch"
 WR pages deploy dist --project-name "$PAGES_PROJECT" --branch "$PAGES_BRANCH" --commit-dirty=true
