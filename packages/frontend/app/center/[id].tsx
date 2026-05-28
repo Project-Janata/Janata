@@ -1,15 +1,6 @@
 import React, { useEffect, useMemo, useState } from 'react'
 import { DetailSkeleton } from '../../components/ui/Skeleton'
-import {
-  View,
-  Text,
-  ScrollView,
-  Image,
-  Pressable,
-  Linking,
-  ActivityIndicator,
-  Share,
-} from 'react-native'
+import { View, Text, ScrollView, Image, Pressable, Linking, Share } from 'react-native'
 import { SafeAreaView } from 'react-native-safe-area-context'
 import { useLocalSearchParams, useRouter } from 'expo-router'
 import {
@@ -19,15 +10,13 @@ import {
   Globe,
   Phone,
   User,
-  Navigation,
   BadgeCheck,
   Users,
-  MessageSquare,
-  ChevronRight,
+  Lock,
 } from 'lucide-react-native'
 import { usePostHog } from 'posthog-react-native'
 import { useBoard, useCenterDetail } from '../../hooks/useApiData'
-import { Badge, UnderlineTabBar } from '../../components/ui'
+import { DetailSection } from '../../components/ui'
 import { createBoardPost, type EventDisplay } from '../../utils/api'
 import { useDetailColors, type DetailColors } from '../../hooks/useDetailColors'
 import { useColors } from '../../hooks/useColors'
@@ -92,67 +81,31 @@ function HeaderBar({
   isVerified?: boolean
 }) {
   return (
-    <View
-      style={{
-        paddingHorizontal: 16,
-        paddingTop: 8,
-        paddingBottom: 12,
-        borderBottomWidth: 1,
-        borderBottomColor: colors.border,
-        gap: 10,
-      }}
-    >
+    <View style={{ paddingHorizontal: 16, paddingTop: 8, paddingBottom: 14, gap: 12 }}>
       {/* Top row: back + share */}
       <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
         <Pressable
           onPress={onBack}
           accessibilityRole="button"
           accessibilityLabel="Back"
-          style={{
-            flexDirection: 'row',
-            alignItems: 'center',
-            gap: 4,
-            padding: 8,
-            minHeight: 44,
-            minWidth: 44,
-          }}
+          style={{ flexDirection: 'row', alignItems: 'center', gap: 4, padding: 8, minHeight: 44, minWidth: 44 }}
         >
           <ChevronLeft size={20} color={colors.iconHeader} />
-          <Text
-            style={{
-              fontSize: 14,
-              color: colors.iconHeader,
-            }}
-          >
-            Back
-          </Text>
+          <Text style={{ fontFamily: 'Inclusive Sans', fontSize: 14, color: colors.iconHeader }}>Back</Text>
         </Pressable>
 
         <Pressable
           onPress={onShare}
           accessibilityRole="button"
           accessibilityLabel="Share this center"
-          style={{
-            padding: 8,
-            minHeight: 44,
-            minWidth: 44,
-            alignItems: 'center',
-            justifyContent: 'center',
-          }}
+          style={{ padding: 8, minHeight: 44, minWidth: 44, alignItems: 'center', justifyContent: 'center' }}
         >
           <ShareIcon size={18} color={colors.iconHeader} />
         </Pressable>
       </View>
 
-      {/* Title row */}
-      <Text
-        style={{
-          fontFamily: 'Inclusive Sans',
-          fontSize: 20,
-          color: colors.text,
-          lineHeight: 26,
-        }}
-      >
+      {/* Title */}
+      <Text style={{ fontFamily: 'Inclusive Sans', fontSize: 26, color: colors.text, lineHeight: 32 }}>
         {title}
       </Text>
 
@@ -161,35 +114,46 @@ function HeaderBar({
         <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
           {memberCount > 0 && (
             <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4 }}>
-              <Users size={13} color={colors.textSecondary} />
-              <Text
-                style={{
-                  fontSize: 13,
-                  color: colors.textSecondary,
-                }}
-              >
+              <Users size={14} color={colors.textSecondary} />
+              <Text style={{ fontSize: 13, color: colors.textSecondary }}>
                 {memberCount} {memberCount === 1 ? 'member' : 'members'}
               </Text>
             </View>
           )}
-          {memberCount > 0 && isVerified && (
-            <Text style={{ fontSize: 13, color: colors.textMuted }}>·</Text>
-          )}
+          {memberCount > 0 && isVerified && <Text style={{ fontSize: 13, color: colors.textMuted }}>·</Text>}
           {isVerified && (
             <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4 }}>
-              <BadgeCheck size={13} color="#E8862A" />
-              <Text
-                style={{
-                  fontSize: 13,
-                  color: '#E8862A',
-                }}
-              >
-                Verified
-              </Text>
+              <BadgeCheck size={14} color="#E8862A" />
+              <Text style={{ fontSize: 13, color: '#E8862A' }}>Verified</Text>
             </View>
           )}
         </View>
       )}
+    </View>
+  )
+}
+
+// ── Locked board hint ─────────────────────────────────────────────────────
+
+function LockedBoard({ colors }: { colors: DetailColors }) {
+  return (
+    <View
+      style={{
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: 12,
+        paddingVertical: 14,
+        paddingHorizontal: 14,
+        borderRadius: 14,
+        borderWidth: 1,
+        borderColor: colors.border,
+        backgroundColor: colors.iconBoxBg,
+      }}
+    >
+      <Lock size={18} color={colors.textSecondary} />
+      <Text style={{ flex: 1, fontFamily: 'Inclusive Sans', fontSize: 13, color: colors.textSecondary }}>
+        Verified members of this center can post and reply on the board.
+      </Text>
     </View>
   )
 }
@@ -205,11 +169,9 @@ export default function CenterDetailPage() {
   const { center, events, loading } = useCenterDetail(id as string)
   const colors = useDetailColors()
   const appColors = useColors()
-  const [activeTab, setActiveTab] = useState('About')
   const [threadDetailPost, setThreadDetailPost] = useState<FeedPost | null>(null)
   const canPostToThread =
     !!user && (user.centerID === center?.id || (user.verificationLevel ?? 0) >= 107)
-  const isVerified = !!user?.isVerified
   const { posts: boardPosts, refetch: refetchBoard } = useBoard('center', center?.id, canPostToThread)
   const boardMessages = useMemo(() => boardPosts.map(boardPostToMessage), [boardPosts])
 
@@ -244,43 +206,6 @@ export default function CenterDetailPage() {
   }
 
   const closeThreadPost = () => setThreadDetailPost(null)
-
-  // Thread tab: the board post list, or a tapped post's detail (replies +
-  // reactions + author actions) reusing the shared PostThread (#206).
-  const renderThreadTab = () =>
-    threadDetailPost ? (
-      <View style={{ paddingTop: 4 }}>
-        <Pressable
-          onPress={closeThreadPost}
-          accessibilityRole="button"
-          accessibilityLabel="Back to board"
-          style={{ flexDirection: 'row', alignItems: 'center', gap: 6, paddingVertical: 10 }}
-        >
-          <ChevronLeft size={20} color={appColors.accent} />
-          <Text style={{ fontSize: 14, color: appColors.accent }}>Back to board</Text>
-        </Pressable>
-        <PostThread
-          post={threadDetailPost}
-          colors={appColors}
-          onPostChanged={refetchBoard}
-          onPostDeleted={() => {
-            closeThreadPost()
-            refetchBoard()
-          }}
-        />
-      </View>
-    ) : (
-      <ThreadPanel
-        messages={boardMessages}
-        colors={colors}
-        emptyTitle="Be the first to post"
-        emptySubtitle={`Ask about rides, what to bring, or anything else for ${center?.name ?? 'this center'}.`}
-        composerPlaceholder="Write to the board..."
-        composerState={canPostToThread ? 'open' : 'locked'}
-        onSubmitPost={handleCreateThreadPost}
-        onMessagePress={openThreadPost}
-      />
-    )
 
   const handleShare = async () => {
     posthog?.capture('center_shared', { centerId: id })
@@ -327,27 +252,46 @@ export default function CenterDetailPage() {
   if (!center) {
     return (
       <SafeAreaView style={{ flex: 1, backgroundColor: colors.panelBg }} edges={['top']}>
-        <View
-          style={{ flex: 1, justifyContent: 'center', alignItems: 'center', paddingHorizontal: 16 }}
-        >
-          <Text
-            style={{
-              fontSize: 22,
-              fontFamily: 'Inclusive Sans',
-              color: colors.text,
-              marginBottom: 16,
-            }}
-          >
+        <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center', paddingHorizontal: 16 }}>
+          <Text style={{ fontSize: 22, fontFamily: 'Inclusive Sans', color: colors.text, marginBottom: 16 }}>
             Center not found
           </Text>
+          <Pressable onPress={() => router.back()} style={{ marginTop: 8, minHeight: 44, justifyContent: 'center' }}>
+            <Text style={{ fontSize: 16, fontFamily: 'Inclusive Sans', color: '#E8862A' }}>Go Back</Text>
+          </Pressable>
+        </View>
+      </SafeAreaView>
+    )
+  }
+
+  // ── Focused thread view (a board post + its replies) ─────────────────
+
+  if (threadDetailPost) {
+    return (
+      <SafeAreaView style={{ flex: 1, backgroundColor: appColors.bg }} edges={['top']}>
+        <View style={{ paddingTop: 6 }}>
           <Pressable
-            onPress={() => router.back()}
-            style={{ marginTop: 8, minHeight: 44, justifyContent: 'center' }}
+            onPress={closeThreadPost}
+            accessibilityRole="button"
+            accessibilityLabel="Back to board"
+            style={{ flexDirection: 'row', alignItems: 'center', gap: 6, paddingHorizontal: 16, paddingVertical: 12 }}
           >
-            <Text style={{ fontSize: 16, fontFamily: 'Inclusive Sans', color: '#E8862A' }}>
-              Go Back
+            <ChevronLeft size={20} color={appColors.accent} />
+            <Text style={{ fontFamily: 'Inclusive Sans', fontSize: 14, color: appColors.accent }}>
+              Back to board
             </Text>
           </Pressable>
+        </View>
+        <View style={{ flex: 1 }}>
+          <PostThread
+            post={threadDetailPost}
+            colors={appColors}
+            onPostChanged={refetchBoard}
+            onPostDeleted={() => {
+              closeThreadPost()
+              refetchBoard()
+            }}
+          />
         </View>
       </SafeAreaView>
     )
@@ -355,6 +299,9 @@ export default function CenterDetailPage() {
 
   // Strip protocol for website display
   const displayWebsite = (center.website ?? '').replace(/^https?:\/\//, '').replace(/\/$/, '')
+
+  // ── Sectioned detail (Details → Upcoming Events → Board) ─────────────
+
   return (
     <SafeAreaView style={{ flex: 1, backgroundColor: colors.panelBg }} edges={['top']}>
       <HeaderBar
@@ -368,310 +315,170 @@ export default function CenterDetailPage() {
 
       <ScrollView
         style={{ flex: 1 }}
-        contentContainerStyle={{ paddingBottom: 40 }}
+        contentContainerStyle={{ paddingBottom: 32 }}
+        keyboardShouldPersistTaps="handled"
         showsVerticalScrollIndicator={false}
       >
         {/* Hero image — edge-to-edge */}
         {center.image ? (
-          <Image
-            source={{ uri: center.image }}
-            style={{ width: '100%', height: 200 }}
-            resizeMode="cover"
-          />
+          <Image source={{ uri: center.image }} style={{ width: '100%', height: 200, marginBottom: 4 }} resizeMode="cover" />
         ) : null}
 
-        <View style={{ paddingTop: 8 }}>
-          <UnderlineTabBar
-            tabs={['About', 'Thread', 'Events']}
-            activeTab={activeTab}
-            onTabChange={setActiveTab}
-            counts={{ Thread: boardMessages.length, Events: events.length }}
-          />
-        </View>
-
-        {/* Content area */}
-        <View style={{ paddingHorizontal: 20, paddingTop: 20, paddingBottom: 32 }}>
-          {activeTab === 'About' && (
-            <>
-              {/* Point of contact subtitle */}
-              {center.pointOfContact ? (
-                <Text
-                  style={{
-                    fontFamily: 'Inclusive Sans',
-                    fontSize: 13,
-                    color: colors.textSecondary,
-                    marginBottom: 16,
-                  }}
-                >
-                  Point of Contact: {center.pointOfContact}
+        {/* DETAILS */}
+        <DetailSection title="Details" first>
+          <View style={{ gap: 16 }}>
+            {center.pointOfContact ? (
+              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12 }}>
+                <MetaIcon icon={User} color="#E8862A" colors={colors} />
+                <Text style={{ fontFamily: 'Inclusive Sans', fontSize: 14, color: colors.text }}>
+                  Contact: {center.pointOfContact}
                 </Text>
-              ) : null}
-
-              {/* Meta rows */}
-              <View style={{ gap: 16 }}>
-                {/* Address */}
-                {center.address ? (
-                  <View style={{ flexDirection: 'row', alignItems: 'flex-start', gap: 12 }}>
-                    <MetaIcon icon={MapPin} color="#E8862A" colors={colors} />
-                    <View style={{ flex: 1, gap: 8 }}>
-                      <Text
-                        style={{
-                          fontSize: 14,
-                          color: colors.text,
-                          lineHeight: 20,
-                        }}
-                      >
-                        {center.address}
-                      </Text>
-                      <Pressable
-                        onPress={handleAddressPress}
-                        style={{ alignSelf: 'flex-start', paddingVertical: 4 }}
-                        accessibilityLabel="Get directions"
-                      >
-                        <Text
-                          style={{
-                            fontSize: 14,
-                            color: '#E8862A',
-                          }}
-                        >
-                          Get directions →
-                        </Text>
-                      </Pressable>
-                    </View>
-                  </View>
-                ) : null}
-
-                {/* Website */}
-                {center.website ? (
-                  <Pressable
-                    onPress={handleWebsitePress}
-                    style={{ flexDirection: 'row', alignItems: 'center', gap: 12, minHeight: 44 }}
-                  >
-                    <MetaIcon icon={Globe} color="#E8862A" colors={colors} />
-                    <Text
-                      style={{
-                        fontSize: 14,
-                        color: '#E8862A',
-                        lineHeight: 20,
-                        flex: 1,
-                      }}
-                      numberOfLines={1}
-                    >
-                      {displayWebsite}
-                    </Text>
-                  </Pressable>
-                ) : null}
-
-                {/* Phone */}
-                {center.phone ? (
-                  <Pressable
-                    onPress={handlePhonePress}
-                    style={{ flexDirection: 'row', alignItems: 'center', gap: 12, minHeight: 44 }}
-                  >
-                    <MetaIcon icon={Phone} color="#E8862A" colors={colors} />
-                    <Text
-                      style={{
-                        fontSize: 14,
-                        color: colors.text,
-                        lineHeight: 20,
-                        flex: 1,
-                      }}
-                    >
-                      {center.phone}
-                    </Text>
-                  </Pressable>
-                ) : null}
-
-                {/* Acharya */}
-                {center.acharya ? (
-                  <View style={{ flexDirection: 'row', alignItems: 'flex-start', gap: 12 }}>
-                    <MetaIcon icon={User} color="#E8862A" colors={colors} />
-                    <View style={{ flex: 1, justifyContent: 'center' }}>
-                      <Text
-                        style={{
-                          fontSize: 14,
-                          color: colors.text,
-                          lineHeight: 20,
-                        }}
-                      >
-                        {center.acharya}
-                      </Text>
-                      <Text
-                        style={{
-                          fontSize: 13,
-                          color: colors.textSecondary,
-                          lineHeight: 18,
-                          marginTop: 2,
-                        }}
-                      >
-                        Resident Acharya
-                      </Text>
-                    </View>
-                  </View>
-                ) : null}
               </View>
+            ) : null}
 
-              {/* #208 — center board CTA (tier-gated) */}
-              {isVerified ? (
+            {/* Address */}
+            {center.address ? (
+              <View style={{ flexDirection: 'row', alignItems: 'flex-start', gap: 12 }}>
+                <MetaIcon icon={MapPin} color="#E8862A" colors={colors} />
+                <View style={{ flex: 1, gap: 6 }}>
+                  <Text style={{ fontSize: 14, color: colors.text, lineHeight: 20 }}>{center.address}</Text>
+                  <Pressable
+                    onPress={handleAddressPress}
+                    style={{ alignSelf: 'flex-start', paddingVertical: 2 }}
+                    accessibilityLabel="Get directions"
+                  >
+                    <Text style={{ fontSize: 14, color: '#E8862A' }}>Get directions →</Text>
+                  </Pressable>
+                </View>
+              </View>
+            ) : null}
+
+            {/* Website */}
+            {center.website ? (
+              <Pressable
+                onPress={handleWebsitePress}
+                style={{ flexDirection: 'row', alignItems: 'center', gap: 12, minHeight: 44 }}
+              >
+                <MetaIcon icon={Globe} color="#E8862A" colors={colors} />
+                <Text style={{ fontSize: 14, color: '#E8862A', lineHeight: 20, flex: 1 }} numberOfLines={1}>
+                  {displayWebsite}
+                </Text>
+              </Pressable>
+            ) : null}
+
+            {/* Phone */}
+            {center.phone ? (
+              <Pressable
+                onPress={handlePhonePress}
+                style={{ flexDirection: 'row', alignItems: 'center', gap: 12, minHeight: 44 }}
+              >
+                <MetaIcon icon={Phone} color="#E8862A" colors={colors} />
+                <Text style={{ fontSize: 14, color: colors.text, lineHeight: 20, flex: 1 }}>{center.phone}</Text>
+              </Pressable>
+            ) : null}
+
+            {/* Acharya */}
+            {center.acharya ? (
+              <View style={{ flexDirection: 'row', alignItems: 'flex-start', gap: 12 }}>
+                <MetaIcon icon={User} color="#E8862A" colors={colors} />
+                <View style={{ flex: 1, justifyContent: 'center' }}>
+                  <Text style={{ fontSize: 14, color: colors.text, lineHeight: 20 }}>{center.acharya}</Text>
+                  <Text style={{ fontSize: 13, color: colors.textSecondary, lineHeight: 18, marginTop: 2 }}>
+                    Resident Acharya
+                  </Text>
+                </View>
+              </View>
+            ) : null}
+          </View>
+        </DetailSection>
+
+        {/* UPCOMING EVENTS */}
+        {events.length > 0 ? (
+          <DetailSection title="Upcoming Events" count={events.length} contentStyle={{ gap: 8 }}>
+            {events.map((event) => {
+              const { month, day } = formatDateCallout(event.date)
+              return (
                 <Pressable
-                  onPress={() => setActiveTab('Thread')}
-                  accessibilityRole="button"
-                  accessibilityLabel="Open center board"
+                  key={event.id}
+                  onPress={() => handleEventPress(event)}
                   style={{
-                    marginTop: 20,
                     flexDirection: 'row',
                     alignItems: 'center',
-                    gap: 12,
-                    padding: 14,
-                    borderRadius: 14,
-                    borderWidth: 1,
-                    borderColor: colors.border,
-                    backgroundColor: colors.iconBoxBg,
+                    backgroundColor: colors.cardBg,
+                    borderRadius: 12,
+                    paddingVertical: 12,
+                    paddingHorizontal: 14,
+                    minHeight: 44,
                   }}
                 >
-                  <MessageSquare size={18} color="#E8862A" />
-                  <View style={{ flex: 1 }}>
-                    <Text style={{ fontFamily: 'Inclusive Sans', fontSize: 15, color: colors.text }}>
-                      Open center board
+                  <View style={{ width: 52, alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+                    <Text
+                      style={{
+                        fontFamily: 'Inclusive Sans',
+                        fontSize: 11,
+                        color: '#E8862A',
+                        textTransform: 'uppercase',
+                        lineHeight: 14,
+                      }}
+                    >
+                      {month}
                     </Text>
-                    <Text style={{ fontSize: 12, color: colors.textSecondary, marginTop: 2 }}>
-                      {boardMessages.length > 0
-                        ? `${boardMessages.length} ${boardMessages.length === 1 ? 'post' : 'posts'} from members`
-                        : 'No posts yet — start the conversation'}
+                    <Text style={{ fontFamily: 'Inclusive Sans', fontSize: 22, color: colors.text, lineHeight: 28 }}>
+                      {day}
                     </Text>
                   </View>
-                  <ChevronRight size={18} color={colors.textSecondary} />
+
+                  <View style={{ width: 1, backgroundColor: colors.border, alignSelf: 'stretch', marginHorizontal: 12 }} />
+
+                  <View style={{ flex: 1 }}>
+                    <Text
+                      style={{ fontFamily: 'Inclusive Sans', fontSize: 14, color: colors.text, lineHeight: 20 }}
+                      numberOfLines={2}
+                    >
+                      {event.title}
+                    </Text>
+                    <Text
+                      style={{
+                        fontFamily: 'Inclusive Sans',
+                        fontSize: 12,
+                        color: colors.textSecondary,
+                        lineHeight: 16,
+                        marginTop: 2,
+                      }}
+                    >
+                      {event.time}
+                      {event.attendees > 0 ? ` · ${event.attendees} attending` : ''}
+                    </Text>
+                  </View>
                 </Pressable>
-              ) : (
-                <View
-                  style={{
-                    marginTop: 20,
-                    flexDirection: 'row',
-                    alignItems: 'center',
-                    gap: 12,
-                    padding: 14,
-                    borderRadius: 14,
-                    borderWidth: 1,
-                    borderColor: colors.border,
-                    backgroundColor: colors.iconBoxBg,
-                  }}
-                >
-                  <MessageSquare size={18} color={colors.textSecondary} />
-                  <Text style={{ flex: 1, fontSize: 13, color: colors.textSecondary }}>
-                    Verified members can post on the center board.
-                  </Text>
-                </View>
-              )}
-            </>
+              )
+            })}
+          </DetailSection>
+        ) : null}
+
+        {/* BOARD — feed-style posts. Tapping a post opens the focused thread. */}
+        <DetailSection
+          title="Board"
+          count={canPostToThread ? boardMessages.length : undefined}
+          contentStyle={{ paddingHorizontal: 0 }}
+        >
+          {canPostToThread ? (
+            <ThreadPanel
+              messages={boardMessages}
+              colors={colors}
+              emptyTitle="Be the first to post"
+              emptySubtitle={`Ask about rides, what to bring, or anything else for ${center.name}.`}
+              composerPlaceholder="Write to the board..."
+              composerState="open"
+              onSubmitPost={handleCreateThreadPost}
+              onMessagePress={openThreadPost}
+            />
+          ) : (
+            <View style={{ paddingHorizontal: 20 }}>
+              <LockedBoard colors={colors} />
+            </View>
           )}
-
-          {activeTab === 'Thread' && renderThreadTab()}
-
-          {activeTab === 'Events' && (
-            <>
-              {events.length > 0 ? (
-                <View style={{ gap: 8 }}>
-                  {events.map((event) => {
-                    const { month, day } = formatDateCallout(event.date)
-                    return (
-                      <Pressable
-                        key={event.id}
-                        onPress={() => handleEventPress(event)}
-                        style={{
-                          flexDirection: 'row',
-                          alignItems: 'center',
-                          backgroundColor: colors.cardBg,
-                          borderRadius: 8,
-                          paddingVertical: 12,
-                          paddingHorizontal: 14,
-                          minHeight: 44,
-                        }}
-                      >
-                        <View
-                          style={{
-                            width: 52,
-                            alignItems: 'center',
-                            justifyContent: 'center',
-                            flexShrink: 0,
-                          }}
-                        >
-                          <Text
-                            style={{
-                              fontFamily: 'Inclusive Sans',
-                              fontSize: 11,
-                              color: '#E8862A',
-                              textTransform: 'uppercase',
-                              lineHeight: 14,
-                            }}
-                          >
-                            {month}
-                          </Text>
-                          <Text
-                            style={{
-                              fontFamily: 'Inclusive Sans',
-                              fontSize: 22,
-                              color: colors.text,
-                              lineHeight: 28,
-                            }}
-                          >
-                            {day}
-                          </Text>
-                        </View>
-
-                        <View
-                          style={{
-                            width: 1,
-                            backgroundColor: colors.border,
-                            alignSelf: 'stretch',
-                            marginHorizontal: 12,
-                          }}
-                        />
-
-                        <View style={{ flex: 1 }}>
-                          <Text
-                            style={{
-                              fontFamily: 'Inclusive Sans',
-                              fontSize: 14,
-                              color: colors.text,
-                              lineHeight: 20,
-                            }}
-                            numberOfLines={2}
-                          >
-                            {event.title}
-                          </Text>
-                          <Text
-                            style={{
-                              fontFamily: 'Inclusive Sans',
-                              fontSize: 12,
-                              color: colors.textSecondary,
-                              lineHeight: 16,
-                              marginTop: 2,
-                            }}
-                          >
-                            {event.time}
-                            {event.attendees > 0 ? ` \u00B7 ${event.attendees} attending` : ''}
-                          </Text>
-                        </View>
-                      </Pressable>
-                    )
-                  })}
-                </View>
-              ) : (
-                <View style={{ alignItems: 'center', paddingVertical: 32 }}>
-                  <Text
-                    style={{
-                      fontFamily: 'Inclusive Sans',
-                      fontSize: 14,
-                      color: colors.textSecondary,
-                    }}
-                  >
-                    No upcoming events yet
-                  </Text>
-                </View>
-              )}
-            </>
-          )}
-        </View>
+        </DetailSection>
       </ScrollView>
     </SafeAreaView>
   )
