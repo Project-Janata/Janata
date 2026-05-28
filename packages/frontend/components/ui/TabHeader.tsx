@@ -19,6 +19,12 @@ interface TabHeaderProps {
   action?: 'create' | 'notifications' | 'settings'
   onActionPress?: () => void
   rightContent?: React.ReactNode
+  /**
+   * Show the profile avatar as a top-right entry point to `/profile`.
+   * Native only — on web the profile entry lives in WebHeader / WebBottomNav.
+   * Defaults to true; pass false on the profile screen itself.
+   */
+  showProfile?: boolean
 }
 
 export default function TabHeader({
@@ -30,6 +36,7 @@ export default function TabHeader({
   action,
   onActionPress,
   rightContent,
+  showProfile = true,
 }: TabHeaderProps) {
   const router = useRouter()
   const { user } = useUser()
@@ -135,6 +142,31 @@ export default function TabHeader({
             })}
           >
             <ActionIcon />
+          </Pressable>
+        )}
+        {showProfile && Platform.OS !== 'web' && user && (
+          <Pressable
+            onPress={() => {
+              posthog?.capture('nav_profile_opened')
+              router.push('/profile')
+            }}
+            accessibilityRole="button"
+            accessibilityLabel="Profile"
+            hitSlop={8}
+            style={({ pressed }) => ({ opacity: pressed ? 0.6 : 1 })}
+          >
+            <Avatar
+              image={user.profileImage ?? undefined}
+              name={
+                user.firstName
+                  ? `${user.firstName} ${user.lastName ?? ''}`.trim()
+                  : user.username
+              }
+              size={32}
+              style={
+                transparent ? { borderWidth: 1.5, borderColor: 'rgba(255,255,255,0.7)' } : undefined
+              }
+            />
           </Pressable>
         )}
       </View>

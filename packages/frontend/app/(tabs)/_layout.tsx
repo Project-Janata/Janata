@@ -7,7 +7,6 @@ import { House, Newspaper, Compass, Plus } from 'lucide-react-native'
 import SettingsPanel from '../../components/settings/SettingsPanel'
 import Logo from '../../components/ui/Logo'
 import TabHeader from '../../components/ui/TabHeader'
-import { Avatar } from '../../components/ui'
 import { usePostHog } from 'posthog-react-native'
 
 export default function TabLayout() {
@@ -257,26 +256,16 @@ export default function TabLayout() {
           <Tabs.Screen
             name="profile"
             options={{
+              // Profile is no longer a bottom-bar tab on native — it's reached via
+              // the avatar button in TabHeader (showProfile). href: null keeps the
+              // /profile route mounted/navigable and leaves web (WebHeader /
+              // WebBottomNav) untouched, while removing the native tab icon.
+              href: null,
               tabBarShowLabel: false,
               title: 'Profile',
               header: isDesktopWeb
                 ? () => <WebHeader />
-                : () => <TabHeader title="You" action="settings" />,
-              tabBarIcon: ({ size, focused }) => (
-                <Avatar
-                  image={user?.profileImage ?? undefined}
-                  name={
-                    user?.firstName
-                      ? `${user.firstName} ${user.lastName ?? ''}`.trim()
-                      : user?.username
-                  }
-                  size={size + 4}
-                  style={{
-                    borderWidth: focused ? 2 : 0,
-                    borderColor: '#E8862A',
-                  }}
-                />
-              ),
+                : () => <TabHeader title="You" action="settings" showProfile={false} />,
             }}
           />
         </Tabs>
