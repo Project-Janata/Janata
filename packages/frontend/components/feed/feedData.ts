@@ -38,6 +38,32 @@ export function authorFromUser(user: User | null): PersonSummary {
   }
 }
 
+/** Pin/unpin is a sevak+ moderation action (tier ≥ 54). */
+export function canPinPosts(user: User | null): boolean {
+  return (user?.verificationLevel ?? 0) >= 54
+}
+
+/** Edit/delete are author-only in the member app (admin moderation lives in the admin app, #209). */
+export function canModifyPost(user: User | null, authorId: string): boolean {
+  return !!user?.id && user.id === authorId
+}
+
+/**
+ * Optimistically bump the tapped emoji's count (adds a chip if absent). The
+ * server's authoritative reaction list replaces this on response; reverted on
+ * failure. Does not mutate the input.
+ */
+export function applyOptimisticReaction(
+  reactions: Array<{ emoji: string; count: number }> | undefined,
+  emoji: string
+): Array<{ emoji: string; count: number }> {
+  const list = (reactions ?? []).map((r) => ({ ...r }))
+  const existing = list.find((r) => r.emoji === emoji)
+  if (existing) existing.count += 1
+  else list.push({ emoji, count: 1 })
+  return list
+}
+
 /**
  * Pending reply rendered immediately while the create request is in flight.
  * Replaced by the server-mapped message on success, removed on failure.

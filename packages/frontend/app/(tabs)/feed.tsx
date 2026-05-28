@@ -462,6 +462,11 @@ export default function FeedScreen() {
             onRequestAccess={handleBoardAccessCta}
             onOpenGroup={openGroup}
             onSelectPost={openPost}
+            onPostChanged={loadBoards}
+            onPostDeleted={() => {
+              closeDetail()
+              loadBoards()
+            }}
             groups={groupsWithMessages}
           />
         )}
@@ -498,6 +503,11 @@ export default function FeedScreen() {
                   colors={colors}
                   fullScreen
                   bottomInset={insets.bottom}
+                  onPostChanged={loadBoards}
+                  onPostDeleted={() => {
+                    closeDetail()
+                    loadBoards()
+                  }}
                 />
               ) : null}
             </View>
