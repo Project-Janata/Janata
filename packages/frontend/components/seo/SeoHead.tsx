@@ -67,11 +67,16 @@ export function SeoHead({
       <meta name="twitter:description" content={desc} />
       <meta name="twitter:image" content={img} />
 
+      {/*
+        react-helmet-async (used by expo-router/head) doesn't propagate
+        `dangerouslySetInnerHTML` on script tags — the inline JSON has to
+        be passed as a text-node child for it to render in <head>. Caught
+        this via Playwright evidence capture on 5/27 when the JSON-LD
+        wasn't showing up in the live DOM despite the rest of the Head
+        tags rendering correctly.
+      */}
       {jsonLd ? (
-        <script
-          type="application/ld+json"
-          dangerouslySetInnerHTML={{ __html: jsonLd }}
-        />
+        <script type="application/ld+json">{jsonLd}</script>
       ) : null}
     </Head>
   )
