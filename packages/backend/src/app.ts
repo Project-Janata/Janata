@@ -1236,6 +1236,105 @@ app.post('/boards/posts/:postId/reactions', authMiddleware, async (c) => {
   return c.json(result)
 })
 
+// Edit a post body. Author only; only within BOARD_POST_EDIT_WINDOW_MS of
+// creation; soft-deleted posts can't be edited.
+app.patch('/boards/posts/:postId', authMiddleware, async (c) => {
+  const user = c.get('user')
+  const postId = c.req.param('postId')
+
+  // Need the post to enforce access (the board the post belongs to) — we use
+  // the same membership/RSVP gate as posting. Include deleted rows so we
+  // can return 410 Gone instead of 404 for already-deleted posts.
+  const post = await db.getBoardPostByIdIncludingDeleted(c.env.DB, postId)
+  if (!post) {
+    return c.json({ message: 'Board post not found' }, 404)
+  }
+  const board = await db.getBoardById(c.env.DB, post.board_id)
+  if (!board) {
+    return c.json({ message: 'Board not found' }, 404)
+  }
+  const accessError = await verifyBoardAccess(c, board.type, board.parent_id, user)
+  if (accessError) return accessError
+
+  const body: { body?: string } = await c.req
+    .json<{ body?: string }>()
+    .catch(() => ({}))
+  const text = typeof body.body === 'string' ? body.body.trim() : ''
+  if (!text) {
+    return c.json({ message: 'Post body is required' }, 400)
+  }
+  if (text.length > 2000) {
+    return c.json({ message: 'Post body must be 2000 characters or fewer' }, 400)
+  }
+
+  const result = await db.editBoardPost(c.env.DB, postId, user.id, text)
+  if (!result.ok) {
+    switch (result.reason) {
+      case 'not_found':
+        return c.json({ message: 'Board post not found' }, 404)
+      case 'deleted':
+        return c.json({ message: 'Cannot edit a deleted post' }, 410)
+      case 'not_author':
+        return c.json({ message: 'Only the author can edit this post' }, 403)
+      case 'window_expired':
+        return c.json(
+          { message: 'Edit window has expired (posts are editable for 5 minutes after creation)' },
+          409,
+        )
+    }
+  }
+
+  // Return the updated post in the same shape as the create response.
+  const refreshed = await db.listBoardPosts(c.env.DB, post.board_id, { limit: 100 })
+  const updated = refreshed.find((p) => p.id === postId)
+  if (!updated) {
+    return c.json({ message: 'Post edited but could not be reloaded' }, 500)
+  }
+  return c.json({ post: boardPostToApi(updated) })
+})
+
+// Soft-delete a post. Author or admin only. The row stays in the table
+// so M1 (moderation) can still surface it; listBoardPosts already filters
+// deleted_at IS NULL.
+app.delete('/boards/posts/:postId', authMiddleware, async (c) => {
+  const user = c.get('user')
+  const postId = c.req.param('postId')
+
+  // Include deleted rows so we can return 410 Gone for an already-deleted post.
+  const post = await db.getBoardPostByIdIncludingDeleted(c.env.DB, postId)
+  if (!post) {
+    return c.json({ message: 'Board post not found' }, 404)
+  }
+  const board = await db.getBoardById(c.env.DB, post.board_id)
+  if (!board) {
+    return c.json({ message: 'Board not found' }, 404)
+  }
+  // Read access (deletion gate is finer-grained inside softDeleteBoardPost,
+  // but we still want to 403 non-members of the board)
+  const accessError = await verifyBoardAccess(c, board.type, board.parent_id, user)
+  if (accessError) return accessError
+
+  const result = await db.softDeleteBoardPost(c.env.DB, postId, {
+    id: user.id,
+    isAdmin: isAdmin(user),
+  })
+  if (!result.ok) {
+    switch (result.reason) {
+      case 'not_found':
+        return c.json({ message: 'Board post not found' }, 404)
+      case 'already_deleted':
+        return c.json({ message: 'Post is already deleted' }, 410)
+      case 'forbidden':
+        return c.json(
+          { message: 'Only the author or an admin can delete this post' },
+          403,
+        )
+    }
+  }
+
+  return c.json({ ok: true })
+})
+
 // ═══════════════════════════════════════════════════════════════════════
 // EVENT ROUTES
 // ═══════════════════════════════════════════════════════════════════════
