@@ -33,25 +33,28 @@ grep -q "$DB_NAME" "$CONFIG"     || { echo "✗ guard: $CONFIG missing $DB_NAME"
 [[ "$WORKER_NAME" == *v2preview* ]] || { echo "✗ guard: worker name"; exit 1; }
 if grep -q "$PROD_DB_ID" "$CONFIG"; then echo "✗ guard: preview config references PROD D1 id"; exit 1; fi
 
-echo "▶ (1/7) Reset isolated preview D1 in place (drop all tables, keep the DB)"
-# Reuse the existing isolated DB (id in $CONFIG) rather than delete/recreate —
-# deterministic, and doesn't depend on D1 create permissions. Guard the id first.
-CFG_ID="$(grep -oE 'database_id = "[0-9a-fA-F-]{36}"' "$CONFIG" | grep -oiE '[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}' | head -1)"
+echo "▶ (1/7) Reset isolated preview D1 in place (drop all app tables, keep the DB)"
+# Reuse the existing isolated DB (id in $CONFIG) — deterministic, no D1 create
+# perms needed, no id churn. Verbose on purpose so any token/permission issue is
+# visible. Guard the id first.
+CFG_ID="$(grep -oE 'database_id = "[0-9a-fA-F-]{36}"' "$CONFIG" | grep -oiE '[0-9a-f-]{36}' | head -1)"
 [[ -n "$CFG_ID" && "$CFG_ID" != "$PROD_DB_ID" ]] || { echo "✗ guard: config D1 id missing or is PROD ($CFG_ID)"; exit 1; }
 echo "  preview D1 id = $CFG_ID"
-TABLES="$(WR d1 execute "$DB_NAME" --remote --config "$CONFIG" --json \
-  --command "SELECT name FROM sqlite_master WHERE type='table' AND name NOT LIKE 'sqlite_%' AND name NOT LIKE '_cf_%' AND name NOT LIKE 'd1_%'" \
-  | python3 -c 'import sys,json
-d=json.load(sys.stdin)
-rows=(d[0].get("results") if isinstance(d,list) else d.get("results")) or []
-print(" ".join(r["name"] for r in rows))')"
-echo "  dropping tables: ${TABLES:-(none)}"
-for t in $TABLES; do
-  WR d1 execute "$DB_NAME" --remote --config "$CONFIG" --command "DROP TABLE IF EXISTS \"$t\";" >/dev/null
-done
+echo "  --- D1 access probe (CI token) ---"
+WR d1 execute "$DB_NAME" --remote --config "$CONFIG" --command "SELECT 1 AS ok;"
+echo "  --- dropping all app tables ---"
+WR d1 execute "$DB_NAME" --remote --config "$CONFIG" --file=migrations/_reset_preview.sql
 
-echo "▶ (2/7) Apply schema migrations + dummy data to preview D1"
-bash scripts/db/setup-preview-db.sh
+echo "▶ (2/7b) Apply schema migrations + dummy data (verbose)"
+SKIP_DATA_ONLY="0002 0007 0008 0010 0012 0013"
+for f in migrations/0[0-9][0-9][0-9]_*.sql; do
+  base="$(basename "$f")"; num="${base%%_*}"
+  if echo " $SKIP_DATA_ONLY " | grep -q " $num "; then echo "  skip $base (data-only)"; continue; fi
+  echo "  → $base"
+  WR d1 execute "$DB_NAME" --remote --config "$CONFIG" --file="$f"
+done
+echo "  → seed_preview_data.sql"
+WR d1 execute "$DB_NAME" --remote --config "$CONFIG" --file=migrations/seed_preview_data.sql
 
 echo "▶ (3/7) Deploy preview worker"
 WR deploy --config "$CONFIG"
