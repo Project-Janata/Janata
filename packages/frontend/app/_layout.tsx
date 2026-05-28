@@ -157,10 +157,13 @@ function RootLayoutNav({ onAuthReady }: { onAuthReady: () => void }) {
     const inIntroPage = pathname === '/intro'
 
     if (!isAuthenticated) {
-      // First-run-only: an unauthenticated user who has not seen the explainer
-      // is routed to /intro before landing/auth. Skip → /auth always works
-      // (it sets intro-shown), so the user is never trapped here.
-      if (!introShown && !inIntroPage && !inAuthGroup) {
+      // First-run-only: an unauthenticated first-timer is shown /intro ONLY when
+      // they hit the natural entry surface (root or landing). Public deep links
+      // (/events/:id, /center/:id, /feed, /explore, SEO pages) are NOT
+      // intercepted, so shared/indexed links open directly. Skip → /auth always
+      // works (it sets intro-shown), so the user is never trapped.
+      const isEntrySurface = pathname === '/' || inLandingPage
+      if (!introShown && isEntrySurface && !inIntroPage) {
         router.replace('/intro')
         return
       }
