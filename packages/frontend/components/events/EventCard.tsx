@@ -1,6 +1,6 @@
 import React from 'react'
 import { View, Text } from 'react-native'
-import { MapPin, ThumbsUp, MessageCircle } from 'lucide-react-native'
+import { MapPin, ThumbsUp, MessageCircle, BadgeCheck } from 'lucide-react-native'
 import { Card } from '../ui'
 
 export interface EventCardData {
@@ -11,6 +11,8 @@ export interface EventCardData {
   attendees: number
   likes: number
   comments: number
+  // #192 — true when creator was at SEVAK level or higher at create time.
+  isOfficial?: boolean
 }
 
 interface EventCardProps {
@@ -33,9 +35,18 @@ export function EventCard({ event, onPress, variant = 'compact' }: EventCardProp
               {event.location}
             </Text>
           </View>
-          <Text className="text-content dark:text-content-dark font-sans text-xl font-bold leading-tight mt-1">
-            {event.title}
-          </Text>
+          <View className="flex-row items-center gap-2 mt-1">
+            <Text className="text-content dark:text-content-dark font-sans text-xl font-bold leading-tight flex-shrink">
+              {event.title}
+            </Text>
+            {event.isOfficial && (
+              <BadgeCheck
+                size={18}
+                color="#C2410C"
+                accessibilityLabel="Official event"
+              />
+            )}
+          </View>
           <Text className="text-content dark:text-content-dark text-base font-medium mt-2">
             {event.attendees} {event.attendees === 1 ? 'person' : 'people'} attending
           </Text>
@@ -66,9 +77,18 @@ export function EventCard({ event, onPress, variant = 'compact' }: EventCardProp
         <Text className="text-content dark:text-content-dark font-sans text-sm">
           {event.location}
         </Text>
-        <Text className="text-content dark:text-content-dark font-sans text-lg font-semibold leading-tight">
-          {event.title}
-        </Text>
+        <View className="flex-row items-center gap-1.5">
+          <Text className="text-content dark:text-content-dark font-sans text-lg font-semibold leading-tight flex-shrink">
+            {event.title}
+          </Text>
+          {event.isOfficial && (
+            <BadgeCheck
+              size={15}
+              color="#C2410C"
+              accessibilityLabel="Official event"
+            />
+          )}
+        </View>
         <Text className="text-content dark:text-content-dark text-sm mt-1">
           {event.attendees} {event.attendees === 1 ? 'person' : 'people'}
         </Text>

@@ -98,6 +98,9 @@ export interface EventRow {
   external_url: string | null
   signup_url: string | null
   allow_janata_signup: number // 0 | 1
+  // Migration 0022 (#192): 1 when creator's verification_level was >= SEVAK
+  // (54) at event creation. Frontend renders a verified-check badge.
+  is_official: number // 0 | 1
   created_at: string
   updated_at: string
 }
@@ -220,6 +223,8 @@ export interface EventApiResponse {
   externalUrl: string | null
   signupUrl: string | null
   allowJanataSignup: boolean
+  // Migration 0022 (#192): true when creator was at SEVAK or higher at create time.
+  isOfficial: boolean
   createdAt: string
   updatedAt: string
 }
@@ -327,6 +332,7 @@ export function eventRowToApi(row: EventRow): EventApiResponse {
     externalUrl: row.external_url,
     signupUrl: row.signup_url,
     allowJanataSignup: row.allow_janata_signup === 1,
+    isOfficial: row.is_official === 1,
     createdAt: row.created_at,
     updatedAt: row.updated_at,
   }

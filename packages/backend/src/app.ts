@@ -1307,6 +1307,11 @@ app.post('/addEvent', authMiddleware, async (c) => {
     return c.json({ message: 'External URL or signup URL is invalid' }, 400)
   }
 
+  // #192 — auto-mark "official" when the creator's verification_level was
+  // SEVAK (54) or higher at create time. Snapshot value; no backfill on
+  // future level changes. Frontend renders a verified-check badge.
+  const isOfficial = (user.verification_level ?? 0) >= SEVAK ? 1 : 0
+
   const result = await db.createEvent(c.env.DB, {
     id: eventId,
     title: validTitle ?? '',
@@ -1322,6 +1327,7 @@ app.post('/addEvent', authMiddleware, async (c) => {
     external_url: validExternalUrl ?? null,
     signup_url: validSignupUrl ?? null,
     allow_janata_signup: data.allowJanataSignup ? 1 : 0,
+    is_official: isOfficial,
     created_by: user.id,
   })
 
