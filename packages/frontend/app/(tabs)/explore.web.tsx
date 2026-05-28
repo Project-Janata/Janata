@@ -48,7 +48,6 @@ import { ADMIN_EMAIL, isLocal } from '../../utils/admin'
 const FILTERS: { label: DiscoverFilter }[] = [
   { label: 'Events' },
   { label: 'Centers' },
-  { label: 'Seva' },
 ]
 
 function formatDatePill(dateStr: string): { month: string; day: string } {
@@ -884,13 +883,10 @@ function MobileDiscoverFallback() {
                 </Text>
               </View>
             )}
-            {!loading && activeFilter === 'Seva' && (
-              <EmptyState message="Seva — coming soon" subtitle="Service opportunities will be listed here." />
-            )}
-            {!loading && activeFilter !== 'Seva' && displayItems.length === 0 && (
+            {!loading && displayItems.length === 0 && (
               <EmptyState variant={selectedDate ? 'date' : searchQuery ? 'search' : 'events'} />
             )}
-            {activeFilter !== 'Seva' && displayItems.map((item, idx) => {
+            {displayItems.map((item, idx) => {
               if (item.type === 'section') {
                 const label = item.data.label
                 const isCollapsed = collapsedSections.has(label)
@@ -1371,13 +1367,10 @@ export default function DiscoverScreenWeb() {
               contentContainerStyle={{ paddingHorizontal: 4, paddingTop: 12, paddingBottom: 24, gap: 4 }}
               showsVerticalScrollIndicator={false}
             >
-              {!loading && activeFilter === 'Seva' && (
-                <EmptyState message="Seva — coming soon" subtitle="Service opportunities will be listed here." />
-              )}
-              {!loading && activeFilter !== 'Seva' && displayItems.length === 0 && (
+              {!loading && displayItems.length === 0 && (
                 <EmptyState variant={selectedDate ? 'date' : searchQuery ? 'search' : 'events'} />
               )}
-              {activeFilter !== 'Seva' && displayItems.map((item, idx) => {
+              {displayItems.map((item, idx) => {
                 if (item.type === 'section') {
                   const label = item.data.label
                   const isCollapsed = collapsedSections.has(label)
