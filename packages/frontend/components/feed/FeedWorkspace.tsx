@@ -21,6 +21,8 @@ export function FeedWorkspace({
   onRequestAccess,
   onOpenGroup,
   onSelectPost,
+  onPostChanged,
+  onPostDeleted,
 }: {
   posts: FeedPost[]
   groups: GroupBoard[]
@@ -36,6 +38,8 @@ export function FeedWorkspace({
   onRequestAccess: () => void
   onOpenGroup: (group: GroupBoard) => void
   onSelectPost: (id: string) => void
+  onPostChanged?: () => void
+  onPostDeleted?: () => void
 }) {
   if (!canAccessBoards) {
     return (
@@ -76,7 +80,12 @@ export function FeedWorkspace({
         </View>
         <View style={{ flex: 0.95, minWidth: 0 }}>
           {selectedPost ? (
-            <PostThread post={selectedPost} colors={colors} />
+            <PostThread
+              post={selectedPost}
+              colors={colors}
+              onPostChanged={onPostChanged}
+              onPostDeleted={onPostDeleted}
+            />
           ) : groups.length > 0 && !hasQuery ? (
             <EmptyPanel
               title="Open a board"
@@ -100,7 +109,14 @@ export function FeedWorkspace({
   }
 
   if (mobilePostOpen && !nativeDetailOpen && selectedPost) {
-    return <PostThread post={selectedPost} colors={colors} />
+    return (
+      <PostThread
+        post={selectedPost}
+        colors={colors}
+        onPostChanged={onPostChanged}
+        onPostDeleted={onPostDeleted}
+      />
+    )
   }
 
   return (

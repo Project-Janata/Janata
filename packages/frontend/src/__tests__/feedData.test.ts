@@ -3,6 +3,9 @@ import {
   buildFeedPosts,
   authorFromUser,
   optimisticReply,
+  canPinPosts,
+  canModifyPost,
+  applyOptimisticReaction,
 } from '../../components/feed/feedData'
 import type { GroupBoard } from '../../components/feed/types'
 import type { BoardMessage } from '../../components/boards/__mocks__/mockData'
@@ -108,5 +111,44 @@ describe('optimisticReply', () => {
     expect(reply.body).toBe('Hello there')
     expect(reply.author.name).toBe('Ravi')
     expect(reply.replyCount).toBe(0)
+  })
+})
+
+describe('canPinPosts', () => {
+  it('requires sevak tier (>=54)', () => {
+    expect(canPinPosts({ username: 'a', verificationLevel: 53 } as any)).toBe(false)
+    expect(canPinPosts({ username: 'a', verificationLevel: 54 } as any)).toBe(true)
+    expect(canPinPosts({ username: 'a', verificationLevel: 107 } as any)).toBe(true)
+    expect(canPinPosts(null)).toBe(false)
+  })
+})
+
+describe('canModifyPost', () => {
+  it('is true only for the post author', () => {
+    expect(canModifyPost({ id: 'u1', username: 'a' } as any, 'u1')).toBe(true)
+    expect(canModifyPost({ id: 'u1', username: 'a' } as any, 'u2')).toBe(false)
+    expect(canModifyPost({ username: 'a' } as any, 'u1')).toBe(false)
+    expect(canModifyPost(null, 'u1')).toBe(false)
+  })
+})
+
+describe('applyOptimisticReaction', () => {
+  it('adds a new chip when the emoji is absent', () => {
+    const next = applyOptimisticReaction([{ emoji: '🙏', count: 2 }], '❤️')
+    expect(next).toEqual([
+      { emoji: '🙏', count: 2 },
+      { emoji: '❤️', count: 1 },
+    ])
+  })
+
+  it('increments an existing emoji without mutating the input', () => {
+    const input = [{ emoji: '🙏', count: 2 }]
+    const next = applyOptimisticReaction(input, '🙏')
+    expect(next).toEqual([{ emoji: '🙏', count: 3 }])
+    expect(input).toEqual([{ emoji: '🙏', count: 2 }])
+  })
+
+  it('handles an undefined reaction list', () => {
+    expect(applyOptimisticReaction(undefined, '👍')).toEqual([{ emoji: '👍', count: 1 }])
   })
 })
