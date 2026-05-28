@@ -11,7 +11,14 @@
 import { Hono } from 'hono'
 import { cors } from 'hono/cors'
 import type { Env, UserRow, EventRow, CenterRow, BoardPostApiResponse, BoardType } from './types'
-import { userRowToApi, centerRowToApi, eventRowToApi, boardRowToApi } from './types'
+import {
+  userRowToApi,
+  centerRowToApi,
+  eventRowToApi,
+  boardRowToApi,
+  isUserSuspended,
+  moderationActionRowToApi,
+} from './types'
 import {
   hashPassword,
   verifyPassword,
@@ -69,6 +76,24 @@ function boardPostToApi(post: db.BoardPostWithAuthor): BoardPostApiResponse {
   }
 }
 
+/**
+ * Returns a 403 response if the user's posting privileges are suspended
+ * (#209), else null. Reads are never gated — only content creation.
+ */
+function suspendedPostingResponse(c: any, user: UserRow): Response | null {
+  if (!isUserSuspended(user)) return null
+  return c.json(
+    {
+      message: user.suspended_until
+        ? 'Your posting privileges are suspended until ' + user.suspended_until
+        : 'Your posting privileges are currently suspended',
+      reason: 'suspended',
+      suspendedUntil: user.suspended_until,
+    },
+    403,
+  )
+}
+
 async function verifyBoardAccess(
   c: any,
   type: BoardType,
@@ -114,6 +139,20 @@ async function adminMiddleware(c: any, next: () => Promise<void>): Promise<Respo
   const user = c.get('user')
   if (!user || !isAdmin(user)) {
     return c.json({ message: 'Admin access required' }, 403)
+  }
+  await next()
+}
+
+// Moderator gate: global admins OR sevak-and-above (verification_level >= SEVAK).
+// Used for content-moderation actions (report queue, post removal, audit log) so
+// the many MSC center sevaks can moderate their boards. Account-level actions
+// (suspend / unsuspend a user) stay admin-only via adminMiddleware.
+async function moderatorMiddleware(c: any, next: () => Promise<void>): Promise<Response | void> {
+  const authResult = await authMiddleware(c, async () => {})
+  if (authResult) return authResult
+  const user = c.get('user')
+  if (!user || (!isAdmin(user) && user.verification_level < SEVAK)) {
+    return c.json({ message: 'Moderator access required (sevak or admin)' }, 403)
   }
   await next()
 }
@@ -1211,6 +1250,9 @@ app.post('/boards/:type/:id/posts', authMiddleware, async (c) => {
   const accessError = await verifyBoardAccess(c, typeParam, parentId, user)
   if (accessError) return accessError
 
+  const suspended = suspendedPostingResponse(c, user)
+  if (suspended) return suspended
+
   const body: { body?: string; imageUrl?: string | null } = await c.req
     .json<{ body?: string; imageUrl?: string | null }>()
     .catch(() => ({}))
@@ -1475,6 +1517,9 @@ app.post('/boards/posts/:postId/replies', authMiddleware, async (c) => {
   const accessError = await verifyBoardAccess(c, board.type, board.parent_id, user)
   if (accessError) return accessError
 
+  const suspended = suspendedPostingResponse(c, user)
+  if (suspended) return suspended
+
   const body: { body?: string } = await c.req
     .json<{ body?: string }>()
     .catch(() => ({}))
@@ -1566,6 +1611,43 @@ app.get('/feed', authMiddleware, async (c) => {
   return c.json({
     posts: posts.map(boardPostToApi),
   })
+})
+
+/**
+ * Report a board post for moderation (#209). Any verified user can report;
+ * one report per (post, reporter) — re-reporting updates the reason. The
+ * report lands in the admin moderation queue.
+ */
+app.post('/boards/posts/:postId/report', authMiddleware, rateLimit(10, 60_000), async (c) => {
+  const user = c.get('user')
+  // Authenticated-only (rate-limited). We deliberately do NOT add a stricter
+  // verification gate than posting itself enforces — board posting checks
+  // center/event membership, not verification_level, so reporting matches.
+  const postId = c.req.param('postId')
+
+  // Allow reporting deleted posts too (a report may arrive just after a
+  // delete); use the including-deleted lookup so we 404 only for non-existent.
+  const post = await db.getBoardPostByIdIncludingDeleted(c.env.DB, postId)
+  if (!post) {
+    return c.json({ message: 'Board post not found' }, 404)
+  }
+
+  const body = await c.req.json<{ reason?: string }>().catch(() => ({}) as { reason?: string })
+  let reason: string | null = typeof body.reason === 'string' ? body.reason.trim() : null
+  if (reason && reason.length > 500) reason = reason.slice(0, 500)
+  if (reason === '') reason = null
+
+  const result = await db.createPostReport(c.env.DB, {
+    id: crypto.randomUUID(),
+    postId,
+    reporterId: user.id,
+    reason,
+  })
+  if (!result.success) {
+    console.error('createPostReport error:', result.error)
+    return c.json({ message: 'Failed to submit report' }, 500)
+  }
+  return c.json({ message: 'Report submitted' }, 201)
 })
 
 // ═══════════════════════════════════════════════════════════════════════
@@ -2694,6 +2776,148 @@ app.delete('/admin/notifications/:id', adminMiddleware, async (c) => {
     return c.json({ message: 'Notification not found' }, 404)
   }
   return c.json({ message: 'Notification deleted' })
+})
+
+// ═══════════════════════════════════════════════════════════════════════
+// MODERATION — ADMIN (#209)
+// ═══════════════════════════════════════════════════════════════════════
+
+/** Admin moderation queue: reported posts grouped by post, newest first. */
+app.get('/admin/moderation/queue', moderatorMiddleware, async (c) => {
+  const url = new URL(c.req.url)
+  const limit = Math.min(Math.max(parseInt(url.searchParams.get('limit') ?? '50', 10) || 50, 1), 100)
+  const offset = Math.max(parseInt(url.searchParams.get('offset') ?? '0', 10) || 0, 0)
+  const includeResolved = url.searchParams.get('includeResolved') === 'true'
+
+  const { items, total } = await db.listModerationQueue(c.env.DB, { limit, offset, includeResolved })
+  return c.json({
+    data: items.map((item) => ({
+      post: boardPostToApi(item.post),
+      reportCount: item.reportCount,
+      openReportCount: item.openReportCount,
+      latestReportAt: item.latestReportAt,
+      latestReason: item.latestReason,
+      status: item.status,
+    })),
+    total,
+    limit,
+    offset,
+  })
+})
+
+/** Admin: soft-delete a reported post and resolve its open reports. */
+app.post('/admin/moderation/posts/:postId/delete', moderatorMiddleware, async (c) => {
+  const admin = c.get('user')
+  const postId = c.req.param('postId')
+
+  const existing = await db.getBoardPostByIdIncludingDeleted(c.env.DB, postId)
+  if (!existing) {
+    return c.json({ message: 'Board post not found' }, 404)
+  }
+
+  const result = await db.softDeleteBoardPost(c.env.DB, postId, { id: admin.id, isAdmin: true })
+  // already_deleted is fine — the post is gone either way; we still resolve
+  // reports and log the action so the queue clears.
+  if (!result.ok && result.reason === 'not_found') {
+    return c.json({ message: 'Board post not found' }, 404)
+  }
+
+  await db.markReportsActionedForPost(c.env.DB, postId)
+  await db.createModerationAction(c.env.DB, {
+    id: crypto.randomUUID(),
+    actorId: admin.id,
+    action: 'delete_post',
+    targetPostId: postId,
+    targetUserId: existing.author_id,
+    metadata: { alreadyDeleted: !result.ok },
+  })
+  return c.json({ message: 'Post removed', alreadyDeleted: !result.ok })
+})
+
+/** Admin: suspend a user's posting privileges (timed or indefinite). */
+app.post('/admin/moderation/users/:userId/suspend', adminMiddleware, async (c) => {
+  const admin = c.get('user')
+  const userId = c.req.param('userId')
+
+  const body = await c.req
+    .json<{ reason?: string; until?: string | null; durationDays?: number }>()
+    .catch(() => ({}) as { reason?: string; until?: string | null; durationDays?: number })
+
+  const target = await db.getUserById(c.env.DB, userId)
+  if (!target) {
+    return c.json({ message: 'User not found' }, 404)
+  }
+  if (target.id === admin.id) {
+    return c.json({ message: 'You cannot suspend yourself' }, 400)
+  }
+  if (isAdmin(target)) {
+    return c.json({ message: 'Cannot suspend an admin' }, 403)
+  }
+
+  // Resolve the suspension end. durationDays wins; else an explicit ISO
+  // `until`; else null = indefinite.
+  let until: string | null = null
+  if (body.durationDays !== undefined) {
+    if (!Number.isFinite(body.durationDays) || body.durationDays <= 0) {
+      return c.json({ message: 'durationDays must be a positive number' }, 400)
+    }
+    until = new Date(Date.now() + body.durationDays * 24 * 60 * 60 * 1000).toISOString()
+  } else if (body.until) {
+    const parsed = new Date(body.until)
+    if (Number.isNaN(parsed.getTime())) {
+      return c.json({ message: 'until must be a valid ISO date' }, 400)
+    }
+    until = parsed.toISOString()
+  }
+
+  const reason = typeof body.reason === 'string' && body.reason.trim() ? body.reason.trim() : null
+  const ok = await db.suspendUser(c.env.DB, { userId, until, reason, by: admin.id })
+  if (!ok) {
+    return c.json({ message: 'Failed to suspend user' }, 500)
+  }
+  await db.createModerationAction(c.env.DB, {
+    id: crypto.randomUUID(),
+    actorId: admin.id,
+    action: 'suspend_user',
+    targetUserId: userId,
+    reason,
+    metadata: { until },
+  })
+  const updated = await db.getUserById(c.env.DB, userId)
+  return c.json({ message: 'User suspended', user: updated ? userRowToApi(updated) : null })
+})
+
+/** Admin: lift a user's suspension. */
+app.post('/admin/moderation/users/:userId/unsuspend', adminMiddleware, async (c) => {
+  const admin = c.get('user')
+  const userId = c.req.param('userId')
+
+  const target = await db.getUserById(c.env.DB, userId)
+  if (!target) {
+    return c.json({ message: 'User not found' }, 404)
+  }
+
+  const ok = await db.unsuspendUser(c.env.DB, userId)
+  if (!ok) {
+    return c.json({ message: 'Failed to lift suspension' }, 500)
+  }
+  await db.createModerationAction(c.env.DB, {
+    id: crypto.randomUUID(),
+    actorId: admin.id,
+    action: 'unsuspend_user',
+    targetUserId: userId,
+  })
+  const updated = await db.getUserById(c.env.DB, userId)
+  return c.json({ message: 'Suspension lifted', user: updated ? userRowToApi(updated) : null })
+})
+
+/** Admin: moderation audit log, newest first. */
+app.get('/admin/moderation/audit', moderatorMiddleware, async (c) => {
+  const url = new URL(c.req.url)
+  const limit = Math.min(Math.max(parseInt(url.searchParams.get('limit') ?? '50', 10) || 50, 1), 100)
+  const offset = Math.max(parseInt(url.searchParams.get('offset') ?? '0', 10) || 0, 0)
+  const { items, total } = await db.listModerationActions(c.env.DB, { limit, offset })
+  return c.json({ data: items.map(moderationActionRowToApi), total, limit, offset })
 })
 
 // ── Default export ────────────────────────────────────────────────────
