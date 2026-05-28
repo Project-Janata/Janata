@@ -271,10 +271,13 @@ export default function FeedScreen() {
 
     navigation.setOptions({
       tabBarStyle: nativeDetailOpen ? { display: 'none' } : nativeTabBarStyle,
+      // Hide the "Feed" tab header while a post is open so the detail's own
+      // back/title bar becomes the screen header — no gap, no doubled header.
+      headerShown: !nativeDetailOpen,
     })
 
     return () => {
-      navigation.setOptions({ tabBarStyle: nativeTabBarStyle })
+      navigation.setOptions({ tabBarStyle: nativeTabBarStyle, headerShown: true })
     }
   }, [navigation, nativeDetailOpen, nativeTabBarStyle])
 
@@ -492,7 +495,6 @@ export default function FeedScreen() {
               colors={colors}
               insetsTop={insets.top}
               title="Post"
-              subtitle={selectedPost?.sourceTitle}
               hideAvatar
               onBack={closeDetail}
             />
