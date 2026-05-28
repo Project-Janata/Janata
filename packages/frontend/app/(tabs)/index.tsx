@@ -129,11 +129,12 @@ export default function HomeScreen() {
   const greetingName = user?.firstName || user?.username || 'friend'
   const todayLabel = new Date().toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric' })
 
-  // First run: a member who hasn't joined an event or posted yet. Rather than a
-  // sparse, hard-to-read home, give them a short tour of what Janata does, a
-  // card for their center, and a peek at the feed — so they grasp the whole app
-  // at a glance and have clear next steps. Real events still render below.
-  const isNewUser = !!user && signedUpEvents.length === 0 && boardPeek.length === 0
+  // First run: a member still in discovery mode — hasn't joined an event yet.
+  // Rather than a sparse, hard-to-read home, give them a short tour of what
+  // Janata does, a card for their center, and a peek at their board feed when
+  // there's activity — so they grasp the whole app at a glance and have clear
+  // next steps. Real events still render below. Self-resolves once they RSVP.
+  const isNewUser = !!user && signedUpEvents.length === 0
 
   if (discoverLoading || (user ? myEventsLoading : false)) {
     return (
