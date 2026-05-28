@@ -42,6 +42,8 @@ export interface EventData {
   externalUrl?: string | null
   signupUrl?: string | null
   allowJanataSignup?: boolean
+  // #192 — true when creator was at SEVAK level or higher at create time.
+  isOfficial?: boolean
   createdAt?: string
   updatedAt?: string
 }
@@ -133,6 +135,8 @@ export interface EventDisplay {
   externalUrl?: string | null
   signupUrl?: string | null
   allowJanataSignup?: boolean
+  // #192 — true when creator was at SEVAK level or higher at create time.
+  isOfficial?: boolean
 }
 
 export interface DiscoverCenter {

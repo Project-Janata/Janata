@@ -326,9 +326,9 @@ export async function createEvent(
       .prepare(
         `INSERT INTO events (id, title, description, date, latitude, longitude, address,
           center_id, tier, people_attending, point_of_contact, image, category,
-          external_url, signup_url, allow_janata_signup,
+          external_url, signup_url, allow_janata_signup, is_official,
           created_by, created_at, updated_at)
-        VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10, ?11, ?12, ?13, ?14, ?15, ?16, ?17, ?18, ?19)`,
+        VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10, ?11, ?12, ?13, ?14, ?15, ?16, ?17, ?18, ?19, ?20)`,
       )
       .bind(
         event.id,
@@ -347,6 +347,7 @@ export async function createEvent(
         event.external_url ?? null,
         event.signup_url ?? null,
         event.allow_janata_signup ?? 0,
+        event.is_official ?? 0,
         event.created_by ?? null,
         now,
         now,
@@ -501,7 +502,7 @@ export async function addEventAttendee(
 
     // Wait briefly to ensure D1 consistency (optional, but safer in some environments)
     // Actually, in D1, consecutive await run() calls are sequential.
-    
+
     return { success: true }
   } catch (err: any) {
     return { success: false, error: err?.message ?? 'Unknown error' }
