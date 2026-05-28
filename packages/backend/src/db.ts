@@ -17,6 +17,8 @@ import type {
   BoardPostRow,
   BoardReactionCount,
   BoardType,
+  PostReportRow,
+  ModerationActionRow,
 } from './types'
 
 // ═══════════════════════════════════════════════════════════════════════
@@ -1275,4 +1277,209 @@ export async function listAggregatedFeed(
     }),
   )
   return hydrated.filter((p): p is BoardPostWithAuthor => p !== null)
+}
+
+// ═══════════════════════════════════════════════════════════════════════
+// MODERATION (#209)
+// ═══════════════════════════════════════════════════════════════════════
+
+export type ModerationQueueRow = {
+  post: BoardPostWithAuthor
+  reportCount: number
+  openReportCount: number
+  latestReportAt: string
+  latestReason: string | null
+  status: 'open' | 'actioned'
+}
+
+/**
+ * File or update a report on a board post. One report per (post, reporter):
+ * re-reporting updates the reason and re-opens the report.
+ */
+export async function createPostReport(
+  db: D1Database,
+  args: { id: string; postId: string; reporterId: string; reason: string | null },
+): Promise<{ success: boolean; error?: string }> {
+  try {
+    await db
+      .prepare(
+        `INSERT INTO post_reports (id, post_id, reporter_id, reason, status, created_at, updated_at)
+         VALUES (?1, ?2, ?3, ?4, 'open', datetime('now'), datetime('now'))
+         ON CONFLICT (post_id, reporter_id) DO UPDATE SET
+           reason = excluded.reason,
+           status = 'open',
+           updated_at = datetime('now')`,
+      )
+      .bind(args.id, args.postId, args.reporterId, args.reason)
+      .run()
+    return { success: true }
+  } catch (err: any) {
+    return { success: false, error: err?.message ?? 'Unknown error' }
+  }
+}
+
+/**
+ * Admin moderation queue: one row per reported post, newest-report-first.
+ * Includes soft-deleted posts so an admin can see history. By default only
+ * surfaces posts with at least one open report; pass includeResolved to show
+ * fully-actioned posts too.
+ */
+export async function listModerationQueue(
+  db: D1Database,
+  opts: { limit?: number; offset?: number; includeResolved?: boolean } = {},
+): Promise<{ items: ModerationQueueRow[]; total: number }> {
+  const limit = Math.min(Math.max(opts.limit ?? 50, 1), 100)
+  const offset = Math.max(opts.offset ?? 0, 0)
+  const havingOpen = opts.includeResolved ? '' : 'HAVING open_count > 0'
+
+  const totalRow = await db
+    .prepare(
+      `SELECT COUNT(*) AS count FROM (
+         SELECT post_id, SUM(CASE WHEN status = 'open' THEN 1 ELSE 0 END) AS open_count
+         FROM post_reports GROUP BY post_id ${havingOpen}
+       )`,
+    )
+    .first<{ count: number }>()
+  const total = totalRow?.count ?? 0
+
+  const grouped = await db
+    .prepare(
+      `SELECT post_id,
+              COUNT(*) AS report_count,
+              SUM(CASE WHEN status = 'open' THEN 1 ELSE 0 END) AS open_count,
+              MAX(created_at) AS latest_at
+       FROM post_reports
+       GROUP BY post_id
+       ${havingOpen}
+       ORDER BY latest_at DESC
+       LIMIT ?1 OFFSET ?2`,
+    )
+    .bind(limit, offset)
+    .all<{ post_id: string; report_count: number; open_count: number; latest_at: string }>()
+
+  const rows = grouped.results ?? []
+  const items = await Promise.all(
+    rows.map(async (g) => {
+      const post = await getBoardPostByIdIncludingDeleted(db, g.post_id)
+      if (!post) return null
+      const author = await getUserById(db, post.author_id)
+      if (!author) return null
+      const reactions = await getBoardPostReactionCounts(db, post.id)
+      const replyCount = await db
+        .prepare('SELECT COUNT(*) as count FROM board_post_replies WHERE parent_post_id = ?1')
+        .bind(post.id)
+        .first<{ count: number }>()
+      const latest = await db
+        .prepare(
+          `SELECT reason FROM post_reports WHERE post_id = ?1 ORDER BY created_at DESC LIMIT 1`,
+        )
+        .bind(post.id)
+        .first<{ reason: string | null }>()
+      return {
+        post: { ...post, author, reactions, reply_count: replyCount?.count ?? 0 },
+        reportCount: g.report_count,
+        openReportCount: g.open_count,
+        latestReportAt: g.latest_at,
+        latestReason: latest?.reason ?? null,
+        status: g.open_count > 0 ? 'open' : 'actioned',
+      } as ModerationQueueRow
+    }),
+  )
+  return { items: items.filter((i): i is ModerationQueueRow => i !== null), total }
+}
+
+/** Mark all open reports on a post as actioned (after an admin acts). */
+export async function markReportsActionedForPost(db: D1Database, postId: string): Promise<void> {
+  await db
+    .prepare(
+      `UPDATE post_reports SET status = 'actioned', updated_at = datetime('now')
+       WHERE post_id = ?1 AND status = 'open'`,
+    )
+    .bind(postId)
+    .run()
+}
+
+/** Append an entry to the moderation audit log. */
+export async function createModerationAction(
+  db: D1Database,
+  args: {
+    id: string
+    actorId: string
+    action: string
+    targetPostId?: string | null
+    targetUserId?: string | null
+    reason?: string | null
+    metadata?: unknown
+  },
+): Promise<void> {
+  await db
+    .prepare(
+      `INSERT INTO moderation_actions
+         (id, actor_id, action, target_post_id, target_user_id, reason, metadata, created_at)
+       VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, datetime('now'))`,
+    )
+    .bind(
+      args.id,
+      args.actorId,
+      args.action,
+      args.targetPostId ?? null,
+      args.targetUserId ?? null,
+      args.reason ?? null,
+      args.metadata === undefined || args.metadata === null ? null : JSON.stringify(args.metadata),
+    )
+    .run()
+}
+
+/** List moderation audit log entries, newest first. */
+export async function listModerationActions(
+  db: D1Database,
+  opts: { limit?: number; offset?: number } = {},
+): Promise<{ items: ModerationActionRow[]; total: number }> {
+  const limit = Math.min(Math.max(opts.limit ?? 50, 1), 100)
+  const offset = Math.max(opts.offset ?? 0, 0)
+  const totalRow = await db
+    .prepare('SELECT COUNT(*) AS count FROM moderation_actions')
+    .first<{ count: number }>()
+  const result = await db
+    .prepare('SELECT * FROM moderation_actions ORDER BY created_at DESC LIMIT ?1 OFFSET ?2')
+    .bind(limit, offset)
+    .all<ModerationActionRow>()
+  return { items: result.results ?? [], total: totalRow?.count ?? 0 }
+}
+
+/** Suspend a user's posting privileges. until=null means indefinite. */
+export async function suspendUser(
+  db: D1Database,
+  args: { userId: string; until: string | null; reason: string | null; by: string },
+): Promise<boolean> {
+  const result = await db
+    .prepare(
+      `UPDATE users
+         SET suspended_at = datetime('now'),
+             suspended_until = ?2,
+             suspended_reason = ?3,
+             suspended_by = ?4,
+             updated_at = datetime('now')
+       WHERE id = ?1`,
+    )
+    .bind(args.userId, args.until, args.reason, args.by)
+    .run()
+  return (result.meta?.changes ?? 0) > 0
+}
+
+/** Lift a user's suspension. */
+export async function unsuspendUser(db: D1Database, userId: string): Promise<boolean> {
+  const result = await db
+    .prepare(
+      `UPDATE users
+         SET suspended_at = NULL,
+             suspended_until = NULL,
+             suspended_reason = NULL,
+             suspended_by = NULL,
+             updated_at = datetime('now')
+       WHERE id = ?1`,
+    )
+    .bind(userId)
+    .run()
+  return (result.meta?.changes ?? 0) > 0
 }

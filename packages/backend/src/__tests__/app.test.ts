@@ -2857,3 +2857,265 @@ describe('POST /api/auth/register — invite code consume', () => {
     expect([401, 409]).toContain(b.res.status)
   })
 })
+
+// ═══════════════════════════════════════════════════════════════════════
+// MODERATION (#209)
+// ═══════════════════════════════════════════════════════════════════════
+
+describe('moderation', () => {
+  let adminToken: string
+  let memberToken: string
+  let memberId: string
+  let centerId: string
+  let postId: string
+
+  beforeEach(async () => {
+    adminToken = await createAdmin()
+    const member = await registerAndLogin('modmember', 'password123')
+    memberToken = member.token
+    memberId = member.user.id
+
+    const { body: center } = await jsonPost(
+      '/api/addCenter',
+      { centerName: 'Mod Center', latitude: 37.0, longitude: -121.0 },
+      authHeader(adminToken),
+    )
+    centerId = center.id
+    await env.DB.prepare('UPDATE users SET center_id = ? WHERE id = ?').bind(centerId, memberId).run()
+
+    const { body: post } = await jsonPost(
+      `/api/boards/center/${centerId}/posts`,
+      { body: 'a post that will be reported' },
+      authHeader(memberToken),
+    )
+    postId = post.post.id
+  })
+
+  describe('POST /boards/posts/:postId/report', () => {
+    it('lets an authenticated user report a post (201) and surfaces it in the queue', async () => {
+      const reporter = await registerAndLogin('reporter1', 'password123')
+      const { res } = await jsonPost(
+        `/api/boards/posts/${postId}/report`,
+        { reason: 'spam' },
+        authHeader(reporter.token),
+      )
+      expect(res.status).toBe(201)
+
+      const { res: qRes, body: q } = await fetchJSON('/api/admin/moderation/queue', {
+        headers: authHeader(adminToken),
+      })
+      expect(qRes.status).toBe(200)
+      expect(q.data).toHaveLength(1)
+      expect(q.data[0].post.id).toBe(postId)
+      expect(q.data[0].reportCount).toBe(1)
+      expect(q.data[0].openReportCount).toBe(1)
+      expect(q.data[0].latestReason).toBe('spam')
+      expect(q.data[0].status).toBe('open')
+    })
+
+    it('dedupes repeat reports from the same user (one row, reason updated)', async () => {
+      const reporter = await registerAndLogin('reporter2', 'password123')
+      await jsonPost(`/api/boards/posts/${postId}/report`, { reason: 'first' }, authHeader(reporter.token))
+      await jsonPost(`/api/boards/posts/${postId}/report`, { reason: 'second' }, authHeader(reporter.token))
+      const { body: q } = await fetchJSON('/api/admin/moderation/queue', { headers: authHeader(adminToken) })
+      expect(q.data[0].reportCount).toBe(1)
+      expect(q.data[0].latestReason).toBe('second')
+    })
+
+    it('groups multiple reporters and counts them', async () => {
+      const r1 = await registerAndLogin('rA', 'password123')
+      const r2 = await registerAndLogin('rB', 'password123')
+      await jsonPost(`/api/boards/posts/${postId}/report`, { reason: 'x' }, authHeader(r1.token))
+      await jsonPost(`/api/boards/posts/${postId}/report`, { reason: 'y' }, authHeader(r2.token))
+      const { body: q } = await fetchJSON('/api/admin/moderation/queue', { headers: authHeader(adminToken) })
+      expect(q.data[0].reportCount).toBe(2)
+      expect(q.data[0].openReportCount).toBe(2)
+    })
+
+    it('404s on a non-existent post', async () => {
+      const { res } = await jsonPost(
+        '/api/boards/posts/does-not-exist/report',
+        { reason: 'x' },
+        authHeader(memberToken),
+      )
+      expect(res.status).toBe(404)
+    })
+  })
+
+  describe('admin queue + delete', () => {
+    it('non-admin cannot see the queue (403)', async () => {
+      const { res } = await fetchJSON('/api/admin/moderation/queue', { headers: authHeader(memberToken) })
+      expect(res.status).toBe(403)
+    })
+
+    it('admin deletes a reported post: it leaves the feed, reports resolve, audit logged', async () => {
+      const reporter = await registerAndLogin('reporter3', 'password123')
+      await jsonPost(`/api/boards/posts/${postId}/report`, { reason: 'bad' }, authHeader(reporter.token))
+
+      const del = await jsonPost(
+        `/api/admin/moderation/posts/${postId}/delete`,
+        {},
+        authHeader(adminToken),
+      )
+      expect(del.res.status).toBe(200)
+
+      // Post no longer in the board feed
+      const { body: board } = await fetchJSON(`/api/boards/center/${centerId}`, {
+        headers: authHeader(memberToken),
+      })
+      expect(board.posts.find((p: any) => p.id === postId)).toBeUndefined()
+
+      // Default queue (open only) is now empty; reports are resolved
+      const { body: q } = await fetchJSON('/api/admin/moderation/queue', { headers: authHeader(adminToken) })
+      expect(q.data).toHaveLength(0)
+
+      // includeResolved surfaces the now-actioned report
+      const { body: qAll } = await fetchJSON(
+        '/api/admin/moderation/queue?includeResolved=true',
+        { headers: authHeader(adminToken) },
+      )
+      expect(qAll.data).toHaveLength(1)
+      expect(qAll.data[0].status).toBe('actioned')
+
+      // Audit log has the delete action
+      const { body: audit } = await fetchJSON('/api/admin/moderation/audit', { headers: authHeader(adminToken) })
+      expect(audit.data.some((a: any) => a.action === 'delete_post' && a.targetPostId === postId)).toBe(true)
+    })
+
+    it('deleting an already-deleted post still clears the queue (200, alreadyDeleted)', async () => {
+      const reporter = await registerAndLogin('reporter4', 'password123')
+      await jsonPost(`/api/boards/posts/${postId}/report`, { reason: 'bad' }, authHeader(reporter.token))
+      await jsonPost(`/api/admin/moderation/posts/${postId}/delete`, {}, authHeader(adminToken))
+      const second = await jsonPost(
+        `/api/admin/moderation/posts/${postId}/delete`,
+        {},
+        authHeader(adminToken),
+      )
+      expect(second.res.status).toBe(200)
+      expect(second.body.alreadyDeleted).toBe(true)
+    })
+  })
+
+  describe('suspension', () => {
+    it('suspends a user → they can no longer post; unsuspend restores it', async () => {
+      // member can post before suspension
+      const before = await jsonPost(
+        `/api/boards/center/${centerId}/posts`,
+        { body: 'pre-suspension' },
+        authHeader(memberToken),
+      )
+      expect(before.res.status).toBe(201)
+
+      const susp = await jsonPost(
+        `/api/admin/moderation/users/${memberId}/suspend`,
+        { reason: 'repeated spam', durationDays: 7 },
+        authHeader(adminToken),
+      )
+      expect(susp.res.status).toBe(200)
+      expect(susp.body.user.isSuspended).toBe(true)
+
+      const blocked = await jsonPost(
+        `/api/boards/center/${centerId}/posts`,
+        { body: 'should be blocked' },
+        authHeader(memberToken),
+      )
+      expect(blocked.res.status).toBe(403)
+      expect(blocked.body.reason).toBe('suspended')
+
+      // replies are blocked too
+      const reply = await jsonPost(
+        `/api/boards/posts/${postId}/replies`,
+        { body: 'blocked reply' },
+        authHeader(memberToken),
+      )
+      expect(reply.res.status).toBe(403)
+
+      const unsusp = await jsonPost(
+        `/api/admin/moderation/users/${memberId}/unsuspend`,
+        {},
+        authHeader(adminToken),
+      )
+      expect(unsusp.res.status).toBe(200)
+      expect(unsusp.body.user.isSuspended).toBe(false)
+
+      const after = await jsonPost(
+        `/api/boards/center/${centerId}/posts`,
+        { body: 'post-unsuspend' },
+        authHeader(memberToken),
+      )
+      expect(after.res.status).toBe(201)
+    })
+
+    it('an expired suspension does not block posting (lazy expiry)', async () => {
+      // Suspend, then back-date the expiry into the past directly.
+      await jsonPost(
+        `/api/admin/moderation/users/${memberId}/suspend`,
+        { durationDays: 7 },
+        authHeader(adminToken),
+      )
+      await env.DB.prepare('UPDATE users SET suspended_until = ? WHERE id = ?')
+        .bind('2000-01-01T00:00:00.000Z', memberId)
+        .run()
+      const res = await jsonPost(
+        `/api/boards/center/${centerId}/posts`,
+        { body: 'after expiry' },
+        authHeader(memberToken),
+      )
+      expect(res.res.status).toBe(201)
+    })
+
+    it('indefinite suspension (no duration) blocks until lifted', async () => {
+      const susp = await jsonPost(
+        `/api/admin/moderation/users/${memberId}/suspend`,
+        { reason: 'indefinite' },
+        authHeader(adminToken),
+      )
+      expect(susp.body.user.suspendedUntil).toBeNull()
+      expect(susp.body.user.isSuspended).toBe(true)
+    })
+
+    it('cannot suspend another admin (403)', async () => {
+      // Promote a second user to admin level so it's not "self".
+      const other = await registerAndLogin('otheradmin', 'password123')
+      await env.DB.prepare('UPDATE users SET verification_level = 108 WHERE id = ?')
+        .bind(other.user.id)
+        .run()
+      const onAdmin = await jsonPost(
+        `/api/admin/moderation/users/${other.user.id}/suspend`,
+        {},
+        authHeader(adminToken),
+      )
+      expect(onAdmin.res.status).toBe(403)
+    })
+
+    it('cannot suspend self (400)', async () => {
+      const adminRow = await env.DB.prepare('SELECT id FROM users WHERE username = ?')
+        .bind('chinmayajanata@gmail.com')
+        .first<{ id: string }>()
+      const onSelf = await jsonPost(
+        `/api/admin/moderation/users/${adminRow!.id}/suspend`,
+        {},
+        authHeader(adminToken),
+      )
+      expect(onSelf.res.status).toBe(400)
+    })
+
+    it('404s on a missing user', async () => {
+      const missing = await jsonPost(
+        '/api/admin/moderation/users/nope/suspend',
+        {},
+        authHeader(adminToken),
+      )
+      expect(missing.res.status).toBe(404)
+    })
+
+    it('non-admin cannot suspend (403)', async () => {
+      const { res } = await jsonPost(
+        `/api/admin/moderation/users/${memberId}/suspend`,
+        {},
+        authHeader(memberToken),
+      )
+      expect(res.status).toBe(403)
+    })
+  })
+})

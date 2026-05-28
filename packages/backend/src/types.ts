@@ -57,6 +57,13 @@ export interface UserRow {
   work: string | null
   region: string | null
   looking_for: string | null // JSON array
+  // Suspension (#209, migration 0024). suspended_at NULL = not suspended.
+  // While suspended_at is set, the user is suspended until suspended_until
+  // (NULL = indefinite); posting is gated, reads are not.
+  suspended_at: string | null
+  suspended_until: string | null
+  suspended_reason: string | null
+  suspended_by: string | null
   created_at: string
   updated_at: string
 }
@@ -195,6 +202,11 @@ export interface UserApiResponse {
   work: string | null
   region: string | null
   lookingFor: string[] | null
+  // Suspension (#209). isSuspended is computed against "now".
+  isSuspended: boolean
+  suspendedAt: string | null
+  suspendedUntil: string | null
+  suspendedReason: string | null
   createdAt: string
   updatedAt: string
 }
@@ -280,6 +292,20 @@ function safeParseJsonArray(value: string | null): string[] | null {
 
 // ── Serialization helpers ─────────────────────────────────────────────
 
+/**
+ * Whether a user is currently suspended (#209). Lazily expiring: suspended
+ * while suspended_at is set AND (suspended_until is NULL = indefinite OR
+ * suspended_until is in the future).
+ */
+export function isUserSuspended(
+  row: Pick<UserRow, 'suspended_at' | 'suspended_until'>,
+  now: Date = new Date(),
+): boolean {
+  if (!row.suspended_at) return false
+  if (!row.suspended_until) return true // indefinite
+  return new Date(row.suspended_until) > now
+}
+
 export function userRowToApi(row: UserRow): UserApiResponse {
   return {
     id: row.id,
@@ -304,6 +330,10 @@ export function userRowToApi(row: UserRow): UserApiResponse {
     work: row.work,
     region: row.region,
     lookingFor: safeParseJsonArray(row.looking_for),
+    isSuspended: isUserSuspended(row),
+    suspendedAt: row.suspended_at,
+    suspendedUntil: row.suspended_until,
+    suspendedReason: row.suspended_reason,
     createdAt: row.created_at,
     updatedAt: row.updated_at,
   }
@@ -371,4 +401,71 @@ export function boardRowToApi(row: BoardRow): BoardApiResponse {
 export function sanitizeUser(row: UserRow): SafeUser {
   const { password: _, ...safe } = row
   return safe
+}
+
+// ── Moderation (#209) ──────────────────────────────────────────────────
+
+export type ReportStatus = 'open' | 'actioned' | 'dismissed'
+
+export interface PostReportRow {
+  id: string
+  post_id: string
+  reporter_id: string
+  reason: string | null
+  status: ReportStatus
+  created_at: string
+  updated_at: string
+}
+
+export interface ModerationActionRow {
+  id: string
+  actor_id: string | null
+  action: string
+  target_post_id: string | null
+  target_user_id: string | null
+  reason: string | null
+  metadata: string | null
+  created_at: string
+}
+
+/** One row in the admin moderation queue: a reported post + its report stats. */
+export interface ModerationQueueItem {
+  post: BoardPostApiResponse
+  reportCount: number
+  openReportCount: number
+  latestReportAt: string
+  latestReason: string | null
+  status: ReportStatus
+}
+
+export interface ModerationActionApiResponse {
+  id: string
+  actorId: string | null
+  action: string
+  targetPostId: string | null
+  targetUserId: string | null
+  reason: string | null
+  metadata: unknown
+  createdAt: string
+}
+
+export function moderationActionRowToApi(row: ModerationActionRow): ModerationActionApiResponse {
+  let metadata: unknown = null
+  if (row.metadata) {
+    try {
+      metadata = JSON.parse(row.metadata)
+    } catch {
+      metadata = row.metadata
+    }
+  }
+  return {
+    id: row.id,
+    actorId: row.actor_id,
+    action: row.action,
+    targetPostId: row.target_post_id,
+    targetUserId: row.target_user_id,
+    reason: row.reason,
+    metadata,
+    createdAt: row.created_at,
+  }
 }

@@ -1004,6 +1004,121 @@ export async function fetchAdminInviteCodeUsers(code: string): Promise<UserData[
   return data.data
 }
 
+// ── Moderation (#209) ─────────────────────────────────────────────────
+
+/**
+ * Report a board post for moderation. Any signed-in user may report; one
+ * report per (post, reporter) — re-reporting updates the reason. Member-side
+ * "report" button (Lane B) calls this.
+ */
+export async function reportBoardPost(postId: string, reason?: string): Promise<void> {
+  const response = await authFetch(`/boards/posts/${encodeURIComponent(postId)}/report`, {
+    method: 'POST',
+    body: JSON.stringify(reason ? { reason } : {}),
+  })
+  if (!response.ok) {
+    const err = await response.json().catch(() => ({ message: 'Failed to submit report' }))
+    throw new Error(err.message)
+  }
+}
+
+export interface ModerationQueuePost {
+  id: string
+  boardId: string
+  body: string
+  imageUrl: string | null
+  createdAt: string
+  deletedAt: string | null
+  author: { id: string; username: string; firstName: string; lastName: string }
+}
+
+export interface ModerationQueueItem {
+  post: ModerationQueuePost
+  reportCount: number
+  openReportCount: number
+  latestReportAt: string
+  latestReason: string | null
+  status: 'open' | 'actioned'
+}
+
+export interface ModerationAuditEntry {
+  id: string
+  actorId: string | null
+  action: string
+  targetPostId: string | null
+  targetUserId: string | null
+  reason: string | null
+  metadata: unknown
+  createdAt: string
+}
+
+export async function fetchAdminModerationQueue(params?: {
+  limit?: number
+  offset?: number
+  includeResolved?: boolean
+}): Promise<AdminPaginatedResponse<ModerationQueueItem>> {
+  const searchParams = new URLSearchParams()
+  if (params?.limit) searchParams.set('limit', String(params.limit))
+  if (params?.offset) searchParams.set('offset', String(params.offset))
+  if (params?.includeResolved) searchParams.set('includeResolved', 'true')
+  const qs = searchParams.toString()
+  const response = await authFetch(`/admin/moderation/queue${qs ? `?${qs}` : ''}`)
+  if (!response.ok) throw new Error('Failed to fetch moderation queue')
+  return response.json()
+}
+
+export async function adminDeleteReportedPost(
+  postId: string,
+): Promise<{ message: string; alreadyDeleted: boolean }> {
+  const response = await authFetch(
+    `/admin/moderation/posts/${encodeURIComponent(postId)}/delete`,
+    { method: 'POST', body: '{}' },
+  )
+  if (!response.ok) {
+    const err = await response.json().catch(() => ({ message: 'Failed to remove post' }))
+    throw new Error(err.message)
+  }
+  return response.json()
+}
+
+export async function adminSuspendUser(
+  userId: string,
+  opts: { reason?: string; durationDays?: number } = {},
+): Promise<void> {
+  const response = await authFetch(
+    `/admin/moderation/users/${encodeURIComponent(userId)}/suspend`,
+    { method: 'POST', body: JSON.stringify(opts) },
+  )
+  if (!response.ok) {
+    const err = await response.json().catch(() => ({ message: 'Failed to suspend user' }))
+    throw new Error(err.message)
+  }
+}
+
+export async function adminUnsuspendUser(userId: string): Promise<void> {
+  const response = await authFetch(
+    `/admin/moderation/users/${encodeURIComponent(userId)}/unsuspend`,
+    { method: 'POST', body: '{}' },
+  )
+  if (!response.ok) {
+    const err = await response.json().catch(() => ({ message: 'Failed to lift suspension' }))
+    throw new Error(err.message)
+  }
+}
+
+export async function fetchAdminModerationAudit(params?: {
+  limit?: number
+  offset?: number
+}): Promise<AdminPaginatedResponse<ModerationAuditEntry>> {
+  const searchParams = new URLSearchParams()
+  if (params?.limit) searchParams.set('limit', String(params.limit))
+  if (params?.offset) searchParams.set('offset', String(params.offset))
+  const qs = searchParams.toString()
+  const response = await authFetch(`/admin/moderation/audit${qs ? `?${qs}` : ''}`)
+  if (!response.ok) throw new Error('Failed to fetch moderation audit log')
+  return response.json()
+}
+
 // ── Admin Notifications API ──────────────────────────────────────────
 
 export interface AdminNotification {
