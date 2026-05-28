@@ -2523,13 +2523,55 @@ async function registerAsDeveloper(): Promise<{ token: string; user: any }> {
 }
 
 describe('POST /api/auth/invite-codes (mint)', () => {
-  it('verified user mints a single-use 30-day code', async () => {
+  it('verified user mints a multi-use code (default 25 uses / 7-day expiry)', async () => {
     const { token } = await registerAsDeveloper()
     const { res, body } = await jsonPost('/api/auth/invite-codes', {}, authHeader(token))
     expect(res.status).toBe(200)
     expect(body.code).toMatch(/^[0-9A-F]{12}$/)
     expect(body.shareUrl).toContain(body.code)
-    expect(new Date(body.expiresAt).getTime()).toBeGreaterThan(Date.now())
+    expect(body.maxUses).toBe(25)
+    const ttlDays = (new Date(body.expiresAt).getTime() - Date.now()) / (24 * 60 * 60 * 1000)
+    expect(ttlDays).toBeGreaterThan(6.9)
+    expect(ttlDays).toBeLessThan(7.1)
+  })
+
+  it('honors maxUses + expiresInDays overrides', async () => {
+    const { token } = await registerAsDeveloper()
+    const { res, body } = await jsonPost(
+      '/api/auth/invite-codes',
+      { maxUses: 3, expiresInDays: 2 },
+      authHeader(token),
+    )
+    expect(res.status).toBe(200)
+    expect(body.maxUses).toBe(3)
+    const ttlDays = (new Date(body.expiresAt).getTime() - Date.now()) / (24 * 60 * 60 * 1000)
+    expect(ttlDays).toBeGreaterThan(1.9)
+    expect(ttlDays).toBeLessThan(2.1)
+  })
+
+  it('clamps out-of-range overrides (maxUses to 100, expiry to 30 days)', async () => {
+    const { token } = await registerAsDeveloper()
+    const { body } = await jsonPost(
+      '/api/auth/invite-codes',
+      { maxUses: 9999, expiresInDays: 9999 },
+      authHeader(token),
+    )
+    expect(body.maxUses).toBe(100)
+    const ttlDays = (new Date(body.expiresAt).getTime() - Date.now()) / (24 * 60 * 60 * 1000)
+    expect(ttlDays).toBeLessThan(30.1)
+    expect(ttlDays).toBeGreaterThan(29.9)
+  })
+
+  it('rejects non-integer overrides with 400', async () => {
+    const { token } = await registerAsDeveloper()
+    const bad = await jsonPost('/api/auth/invite-codes', { maxUses: 2.5 }, authHeader(token))
+    expect(bad.res.status).toBe(400)
+    const bad2 = await jsonPost(
+      '/api/auth/invite-codes',
+      { expiresInDays: 'soon' as any },
+      authHeader(token),
+    )
+    expect(bad2.res.status).toBe(400)
   })
 
   it('rejects unverified user with 403', async () => {
@@ -2664,9 +2706,13 @@ describe('POST /api/auth/redeem-invite', () => {
     expect(body.message).toContain('Invalid')
   })
 
-  it('rejects already-consumed single-use codes with 401 (validate fails)', async () => {
+  it('rejects redemption of an exhausted (single-use) code with 409 exhausted', async () => {
     const { token: devToken } = await registerAsDeveloper()
-    const { body: minted } = await jsonPost('/api/auth/invite-codes', {}, authHeader(devToken))
+    const { body: minted } = await jsonPost(
+      '/api/auth/invite-codes',
+      { maxUses: 1 },
+      authHeader(devToken),
+    )
 
     // First redemption: user A
     await jsonPost('/api/auth/register', { username: 'first@test.com', password: 'password123' })
@@ -2681,7 +2727,7 @@ describe('POST /api/auth/redeem-invite', () => {
     )
     expect(first.res.status).toBe(200)
 
-    // Second redemption attempt by user B should fail
+    // Second redemption attempt by user B should fail as exhausted
     await jsonPost('/api/auth/register', { username: 'second@test.com', password: 'password123' })
     const { body: authB } = await jsonPost('/api/auth/authenticate', {
       username: 'second@test.com',
@@ -2692,14 +2738,106 @@ describe('POST /api/auth/redeem-invite', () => {
       { code: minted.code },
       authHeader(authB.token),
     )
-    expect(second.res.status).toBe(401)
+    expect(second.res.status).toBe(409)
+    expect(second.body.reason).toBe('exhausted')
+  })
+
+  it('a multi-use code can be redeemed up to its cap, then is exhausted', async () => {
+    const { token: devToken } = await registerAsDeveloper()
+    const { body: minted } = await jsonPost(
+      '/api/auth/invite-codes',
+      { maxUses: 3 },
+      authHeader(devToken),
+    )
+
+    // Three distinct unverified users redeem successfully.
+    for (let i = 0; i < 3; i++) {
+      await jsonPost('/api/auth/register', {
+        username: `cap${i}@test.com`,
+        password: 'password123',
+      })
+      const { body: auth } = await jsonPost('/api/auth/authenticate', {
+        username: `cap${i}@test.com`,
+        password: 'password123',
+      })
+      const r = await jsonPost(
+        '/api/auth/redeem-invite',
+        { code: minted.code },
+        authHeader(auth.token),
+      )
+      expect(r.res.status).toBe(200)
+    }
+
+    // Fourth redemption is refused as exhausted.
+    await jsonPost('/api/auth/register', { username: 'cap3@test.com', password: 'password123' })
+    const { body: auth4 } = await jsonPost('/api/auth/authenticate', {
+      username: 'cap3@test.com',
+      password: 'password123',
+    })
+    const fourth = await jsonPost(
+      '/api/auth/redeem-invite',
+      { code: minted.code },
+      authHeader(auth4.token),
+    )
+    expect(fourth.res.status).toBe(409)
+    expect(fourth.body.reason).toBe('exhausted')
+  })
+
+  it('redeeming an expired code returns 410 expired, and records inviter attribution on success', async () => {
+    const { token: devToken, user: dev } = await registerAsDeveloper()
+    const { body: minted } = await jsonPost('/api/auth/invite-codes', {}, authHeader(devToken))
+
+    // Force the code into the past.
+    await env.DB.prepare('UPDATE invite_codes SET expires_at = ? WHERE code = ?')
+      .bind('2000-01-01T00:00:00.000Z', minted.code)
+      .run()
+
+    await jsonPost('/api/auth/register', { username: 'expired@test.com', password: 'password123' })
+    const { body: auth } = await jsonPost('/api/auth/authenticate', {
+      username: 'expired@test.com',
+      password: 'password123',
+    })
+    const expired = await jsonPost(
+      '/api/auth/redeem-invite',
+      { code: minted.code },
+      authHeader(auth.token),
+    )
+    expect(expired.res.status).toBe(410)
+    expect(expired.body.reason).toBe('expired')
+
+    // A fresh code from the same minter records inviter attribution on the
+    // redeemer (users.invite_code → invite_codes.created_by_user_id = minter).
+    const { body: fresh } = await jsonPost('/api/auth/invite-codes', {}, authHeader(devToken))
+    await jsonPost('/api/auth/register', { username: 'attrib@test.com', password: 'password123' })
+    const { body: authAttrib } = await jsonPost('/api/auth/authenticate', {
+      username: 'attrib@test.com',
+      password: 'password123',
+    })
+    const ok = await jsonPost(
+      '/api/auth/redeem-invite',
+      { code: fresh.code },
+      authHeader(authAttrib.token),
+    )
+    expect(ok.res.status).toBe(200)
+    const row = await env.DB.prepare(
+      `SELECT ic.created_by_user_id AS inviter
+         FROM users u JOIN invite_codes ic ON ic.code = u.invite_code
+        WHERE u.username = ?`,
+    )
+      .bind('attrib@test.com')
+      .first<{ inviter: string }>()
+    expect(row?.inviter).toBe(dev.id)
   })
 })
 
 describe('POST /api/auth/register — invite code consume', () => {
   it('single-use code can only be redeemed once at signup', async () => {
     const { token: devToken } = await registerAsDeveloper()
-    const { body: minted } = await jsonPost('/api/auth/invite-codes', {}, authHeader(devToken))
+    const { body: minted } = await jsonPost(
+      '/api/auth/invite-codes',
+      { maxUses: 1 },
+      authHeader(devToken),
+    )
 
     const a = await jsonPost('/api/auth/register', {
       username: 'racea@test.com',
