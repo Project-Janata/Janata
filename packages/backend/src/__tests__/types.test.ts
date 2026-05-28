@@ -68,6 +68,7 @@ const mockEventRow: EventRow = {
   image: 'https://img.example.com/event.jpg',
   category: 91,
   is_official: 0,
+  requires_verified: 0,
   created_at: '2025-01-01T00:00:00Z',
   updated_at: '2025-06-01T00:00:00Z',
 }

@@ -101,8 +101,19 @@ export interface EventRow {
   // Migration 0022 (#192): 1 when creator's verification_level was >= SEVAK
   // (54) at event creation. Frontend renders a verified-check badge.
   is_official: number // 0 | 1
+  // Migration 0023 (#191): 1 when only NORMAL_USER+ can RSVP. Guest RSVP
+  // (POST /attendEventGuest) is also rejected when this is 1.
+  requires_verified: number // 0 | 1
   created_at: string
   updated_at: string
+}
+
+export interface EventGuestRsvpRow {
+  event_id: string
+  email: string
+  name: string
+  upgraded_user_id: string | null
+  created_at: string
 }
 
 export interface EventAttendeeRow {
@@ -225,6 +236,8 @@ export interface EventApiResponse {
   allowJanataSignup: boolean
   // Migration 0022 (#192): true when creator was at SEVAK or higher at create time.
   isOfficial: boolean
+  // Migration 0023 (#191): when true, only verified users can RSVP.
+  requiresVerified: boolean
   createdAt: string
   updatedAt: string
 }
@@ -333,6 +346,7 @@ export function eventRowToApi(row: EventRow): EventApiResponse {
     signupUrl: row.signup_url,
     allowJanataSignup: row.allow_janata_signup === 1,
     isOfficial: row.is_official === 1,
+    requiresVerified: row.requires_verified === 1,
     createdAt: row.created_at,
     updatedAt: row.updated_at,
   }
