@@ -1,24 +1,55 @@
 import React, { useEffect, useRef, useState } from 'react'
-import { ActivityIndicator, Pressable, ScrollView, Text, TextInput, View } from 'react-native'
-import { Building2, CalendarDays, Send } from 'lucide-react-native'
+import { ActivityIndicator, Modal, Pressable, ScrollView, Text, TextInput, View } from 'react-native'
+import {
+  Building2,
+  CalendarDays,
+  MoreHorizontal,
+  Pencil,
+  Pin,
+  PinOff,
+  Send,
+  SmilePlus,
+  Trash2,
+} from 'lucide-react-native'
 import { Avatar } from '../ui'
 import { useUser } from '../contexts'
 import type { AppColors } from '../../tokens'
 import { boardPostToMessage, type BoardMessage } from '../boards'
-import { createBoardPostReply, fetchBoardPostReplies } from '../../utils/api'
-import { authorFromUser, optimisticReply } from './feedData'
+import {
+  createBoardPostReply,
+  deleteBoardPost,
+  editBoardPost,
+  fetchBoardPostReplies,
+  setBoardPostPinned,
+  toggleBoardPostReaction,
+} from '../../utils/api'
+import {
+  applyOptimisticReaction,
+  authorFromUser,
+  canModifyPost,
+  canPinPosts,
+  optimisticReply,
+} from './feedData'
 import type { FeedPost } from './types'
+
+const REACTION_CHOICES = ['🙏', '❤️', '👍', '🎉']
 
 export function PostThread({
   post,
   colors,
   fullScreen = false,
   bottomInset = 0,
+  onPostChanged,
+  onPostDeleted,
 }: {
   post: FeedPost
   colors: AppColors
   fullScreen?: boolean
   bottomInset?: number
+  // Refresh the feed list after a pin/edit/reaction so it reflects the change.
+  onPostChanged?: () => void
+  // Close the detail surface after the post is deleted.
+  onPostDeleted?: () => void
 }) {
   const { user } = useUser()
   const author = authorFromUser(user)
@@ -30,6 +61,88 @@ export function PostThread({
   const [sending, setSending] = useState(false)
   const [sendError, setSendError] = useState<string | null>(null)
   const reloadKey = useRef(0)
+
+  // Original-post mutable state (optimistic pin / edit / delete / reactions).
+  const [pinned, setPinned] = useState(!!post.pinned)
+  const [postBody, setPostBody] = useState(post.body)
+  const [reactions, setReactions] = useState(post.reactions ?? [])
+  const [deleted, setDeleted] = useState(false)
+  const [menuOpen, setMenuOpen] = useState(false)
+  const [editOpen, setEditOpen] = useState(false)
+  const [editDraft, setEditDraft] = useState(post.body)
+  const [actionBusy, setActionBusy] = useState(false)
+  const [actionError, setActionError] = useState<string | null>(null)
+
+  const canPin = canPinPosts(user)
+  const isAuthor = canModifyPost(user, post.author.id)
+  const hasMenu = canPin || isAuthor
+
+  const handleTogglePin = async () => {
+    if (actionBusy) return
+    const prev = pinned
+    setPinned(!prev)
+    setMenuOpen(false)
+    setActionBusy(true)
+    setActionError(null)
+    try {
+      await setBoardPostPinned(post.postId, !prev)
+      onPostChanged?.()
+    } catch (err: any) {
+      setPinned(prev)
+      setActionError(err?.message || 'Could not update pin.')
+    } finally {
+      setActionBusy(false)
+    }
+  }
+
+  const handleDelete = async () => {
+    if (actionBusy) return
+    setActionBusy(true)
+    setActionError(null)
+    try {
+      await deleteBoardPost(post.postId)
+      setDeleted(true)
+      setMenuOpen(false)
+      // onPostDeleted already refreshes the feed; no separate change notice needed.
+      onPostDeleted?.()
+    } catch (err: any) {
+      setActionError(err?.message || 'Could not delete the post.')
+    } finally {
+      setActionBusy(false)
+    }
+  }
+
+  const handleSaveEdit = async () => {
+    const body = editDraft.trim()
+    if (!body || actionBusy) return
+    const prev = postBody
+    setPostBody(body)
+    setEditOpen(false)
+    setActionBusy(true)
+    setActionError(null)
+    try {
+      const updated = await editBoardPost(post.postId, body)
+      setPostBody(updated.body)
+      onPostChanged?.()
+    } catch (err: any) {
+      setPostBody(prev)
+      setActionError(err?.message || 'Could not save your edit.')
+    } finally {
+      setActionBusy(false)
+    }
+  }
+
+  const handleReact = async (emoji: string) => {
+    const prev = reactions
+    setReactions(applyOptimisticReaction(prev, emoji))
+    try {
+      const res = await toggleBoardPostReaction(post.postId, emoji)
+      setReactions(res.reactions)
+      onPostChanged?.()
+    } catch {
+      setReactions(prev)
+    }
+  }
 
   const loadReplies = () => {
     reloadKey.current += 1
@@ -54,10 +167,18 @@ export function PostThread({
 
   useEffect(() => {
     loadReplies()
-    // Reset composer when switching between posts.
+    // Reset composer + original-post state when switching between posts.
     setDraft('')
     setSendError(null)
     setRepliesLoaded(false)
+    setPinned(!!post.pinned)
+    setPostBody(post.body)
+    setReactions(post.reactions ?? [])
+    setEditDraft(post.body)
+    setDeleted(false)
+    setMenuOpen(false)
+    setEditOpen(false)
+    setActionError(null)
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [post.postId])
 
@@ -96,7 +217,27 @@ export function PostThread({
       }}
     >
       <SourceBoardChip post={post} colors={colors} />
-      <PostMessageBlock message={post} colors={colors} original />
+      {deleted ? (
+        <Text style={{ fontSize: 15, color: colors.textFaint, paddingVertical: 12 }}>
+          This post was deleted.
+        </Text>
+      ) : (
+        <OriginalPost
+          key={post.postId}
+          post={post}
+          body={postBody}
+          pinned={pinned}
+          reactions={reactions}
+          colors={colors}
+          hasMenu={hasMenu}
+          onOpenMenu={() => setMenuOpen(true)}
+          onReact={handleReact}
+        />
+      )}
+
+      {actionError ? (
+        <Text style={{ fontSize: 12, color: '#C2410C', marginTop: 8 }}>{actionError}</Text>
+      ) : null}
 
       <View
         style={{
@@ -230,6 +371,33 @@ export function PostThread({
           {composer}
         </View>
       )}
+
+      <ActionMenuSheet
+        visible={menuOpen}
+        colors={colors}
+        canPin={canPin}
+        isAuthor={isAuthor}
+        pinned={pinned}
+        busy={actionBusy}
+        onClose={() => setMenuOpen(false)}
+        onTogglePin={handleTogglePin}
+        onEdit={() => {
+          setMenuOpen(false)
+          setEditDraft(postBody)
+          setEditOpen(true)
+        }}
+        onDelete={handleDelete}
+      />
+
+      <EditPostModal
+        visible={editOpen}
+        colors={colors}
+        value={editDraft}
+        busy={actionBusy}
+        onChangeText={setEditDraft}
+        onCancel={() => setEditOpen(false)}
+        onSave={handleSaveEdit}
+      />
     </View>
   )
 }
@@ -354,14 +522,20 @@ function ReactionChip({
   count,
   colors,
   active,
+  onPress,
 }: {
   emoji: string
   count: number
   colors: AppColors
   active?: boolean
+  onPress?: () => void
 }) {
   return (
-    <View
+    <Pressable
+      onPress={onPress}
+      disabled={!onPress}
+      accessibilityRole={onPress ? 'button' : undefined}
+      accessibilityLabel={onPress ? `React ${emoji}` : undefined}
       style={{
         borderRadius: 999,
         borderWidth: 1,
@@ -376,7 +550,426 @@ function ReactionChip({
     >
       <Text style={{ fontSize: 13 }}>{emoji}</Text>
       <Text style={{ fontSize: 13, color: colors.textMuted }}>{count}</Text>
+    </Pressable>
+  )
+}
+
+function OriginalPost({
+  post,
+  body,
+  pinned,
+  reactions,
+  colors,
+  hasMenu,
+  onOpenMenu,
+  onReact,
+}: {
+  post: FeedPost
+  body: string
+  pinned: boolean
+  reactions: Array<{ emoji: string; count: number }>
+  colors: AppColors
+  hasMenu: boolean
+  onOpenMenu: () => void
+  onReact: (emoji: string) => void
+}) {
+  const [pickerOpen, setPickerOpen] = useState(false)
+  return (
+    <View style={{ flexDirection: 'row', gap: 12 }}>
+      <Avatar
+        name={post.author.name}
+        initials={post.author.initials}
+        size={42}
+        backgroundColor={post.author.accentColor}
+      />
+      <View style={{ flex: 1, minWidth: 0 }}>
+        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 7, flexWrap: 'wrap' }}>
+          <Text style={{ fontFamily: 'Inclusive Sans', fontSize: 15, color: colors.text }}>
+            {post.author.name}
+          </Text>
+          {post.author.verification === 'sevak' ? (
+            <Text style={{ fontSize: 12, color: '#C2410C' }}>SEVAK</Text>
+          ) : null}
+          {pinned ? (
+            <View
+              style={{
+                borderRadius: 999,
+                backgroundColor: colors.panel,
+                paddingHorizontal: 8,
+                paddingVertical: 3,
+              }}
+            >
+              <Text style={{ fontSize: 11, color: colors.textMuted }}>Pinned</Text>
+            </View>
+          ) : null}
+          <Text style={{ marginLeft: 'auto', fontSize: 12, color: colors.textFaint }}>
+            {post.timestamp}
+          </Text>
+          {hasMenu ? (
+            <Pressable
+              onPress={onOpenMenu}
+              accessibilityRole="button"
+              accessibilityLabel="Post actions"
+              hitSlop={8}
+              style={{ paddingLeft: 2 }}
+            >
+              <MoreHorizontal size={18} color={colors.textMuted} />
+            </Pressable>
+          ) : null}
+        </View>
+
+        <Text
+          style={{
+            marginTop: 8,
+            fontSize: 16,
+            lineHeight: 23,
+            color: colors.textMuted,
+          }}
+        >
+          {body}
+        </Text>
+
+        <View
+          style={{
+            flexDirection: 'row',
+            alignItems: 'center',
+            gap: 7,
+            flexWrap: 'wrap',
+            marginTop: 10,
+          }}
+        >
+          {reactions.map((reaction, index) => (
+            <ReactionChip
+              key={`${reaction.emoji}-${index}`}
+              emoji={reaction.emoji}
+              count={reaction.count}
+              colors={colors}
+              active={index === 0}
+              onPress={() => onReact(reaction.emoji)}
+            />
+          ))}
+          <Pressable
+            onPress={() => setPickerOpen((open) => !open)}
+            accessibilityRole="button"
+            accessibilityLabel="Add reaction"
+            style={{
+              borderRadius: 999,
+              borderWidth: 1,
+              borderStyle: 'dashed',
+              borderColor: colors.border,
+              paddingHorizontal: 10,
+              paddingVertical: 5,
+              flexDirection: 'row',
+              alignItems: 'center',
+              gap: 4,
+            }}
+          >
+            <SmilePlus size={13} color={colors.textFaint} />
+            <Text style={{ fontSize: 12, color: colors.textFaint }}>React</Text>
+          </Pressable>
+        </View>
+
+        {pickerOpen ? (
+          <View style={{ flexDirection: 'row', gap: 8, marginTop: 8, flexWrap: 'wrap' }}>
+            {REACTION_CHOICES.map((emoji) => (
+              <Pressable
+                key={emoji}
+                onPress={() => {
+                  setPickerOpen(false)
+                  onReact(emoji)
+                }}
+                accessibilityRole="button"
+                accessibilityLabel={`React ${emoji}`}
+                style={{
+                  width: 38,
+                  height: 38,
+                  borderRadius: 19,
+                  backgroundColor: colors.panel,
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                }}
+              >
+                <Text style={{ fontSize: 18 }}>{emoji}</Text>
+              </Pressable>
+            ))}
+          </View>
+        ) : null}
+      </View>
     </View>
+  )
+}
+
+function ActionMenuSheet({
+  visible,
+  colors,
+  canPin,
+  isAuthor,
+  pinned,
+  busy,
+  onClose,
+  onTogglePin,
+  onEdit,
+  onDelete,
+}: {
+  visible: boolean
+  colors: AppColors
+  canPin: boolean
+  isAuthor: boolean
+  pinned: boolean
+  busy: boolean
+  onClose: () => void
+  onTogglePin: () => void
+  onEdit: () => void
+  onDelete: () => void
+}) {
+  const [confirmingDelete, setConfirmingDelete] = useState(false)
+  useEffect(() => {
+    if (!visible) setConfirmingDelete(false)
+  }, [visible])
+
+  return (
+    <Modal visible={visible} transparent animationType="fade" onRequestClose={onClose}>
+      <Pressable
+        onPress={onClose}
+        style={{ flex: 1, backgroundColor: 'rgba(0,0,0,0.35)', justifyContent: 'flex-end' }}
+      >
+        <Pressable
+          onPress={(e) => e.stopPropagation()}
+          style={{
+            backgroundColor: colors.surface,
+            borderTopLeftRadius: 20,
+            borderTopRightRadius: 20,
+            paddingTop: 10,
+            paddingBottom: 28,
+            paddingHorizontal: 12,
+            gap: 4,
+          }}
+        >
+          <View
+            style={{
+              alignSelf: 'center',
+              width: 36,
+              height: 4,
+              borderRadius: 2,
+              backgroundColor: colors.border,
+              marginBottom: 8,
+            }}
+          />
+          {canPin ? (
+            <MenuRow
+              icon={pinned ? <PinOff size={18} color={colors.text} /> : <Pin size={18} color={colors.text} />}
+              label={pinned ? 'Unpin post' : 'Pin post'}
+              colors={colors}
+              disabled={busy}
+              onPress={onTogglePin}
+            />
+          ) : null}
+          {isAuthor ? (
+            <MenuRow
+              icon={<Pencil size={18} color={colors.text} />}
+              label="Edit post"
+              colors={colors}
+              disabled={busy}
+              onPress={onEdit}
+            />
+          ) : null}
+          {isAuthor ? (
+            confirmingDelete ? (
+              <View style={{ paddingVertical: 10, paddingHorizontal: 12, gap: 10 }}>
+                <Text style={{ fontSize: 14, color: colors.text }}>
+                  Delete this post for everyone?
+                </Text>
+                <View style={{ flexDirection: 'row', gap: 10 }}>
+                  <Pressable
+                    onPress={() => setConfirmingDelete(false)}
+                    disabled={busy}
+                    accessibilityRole="button"
+                    accessibilityLabel="Cancel delete"
+                    style={{
+                      flex: 1,
+                      borderRadius: 12,
+                      borderWidth: 1,
+                      borderColor: colors.border,
+                      paddingVertical: 11,
+                      alignItems: 'center',
+                    }}
+                  >
+                    <Text style={{ fontSize: 14, color: colors.text }}>Cancel</Text>
+                  </Pressable>
+                  <Pressable
+                    onPress={onDelete}
+                    disabled={busy}
+                    accessibilityRole="button"
+                    accessibilityLabel="Confirm delete"
+                    style={{
+                      flex: 1,
+                      borderRadius: 12,
+                      backgroundColor: '#C2410C',
+                      paddingVertical: 11,
+                      alignItems: 'center',
+                      opacity: busy ? 0.6 : 1,
+                    }}
+                  >
+                    {busy ? (
+                      <ActivityIndicator size="small" color="#FFFFFF" />
+                    ) : (
+                      <Text style={{ fontSize: 14, color: '#FFFFFF' }}>Delete</Text>
+                    )}
+                  </Pressable>
+                </View>
+              </View>
+            ) : (
+              <MenuRow
+                icon={<Trash2 size={18} color="#C2410C" />}
+                label="Delete post"
+                colors={colors}
+                destructive
+                disabled={busy}
+                onPress={() => setConfirmingDelete(true)}
+              />
+            )
+          ) : null}
+        </Pressable>
+      </Pressable>
+    </Modal>
+  )
+}
+
+function MenuRow({
+  icon,
+  label,
+  colors,
+  destructive = false,
+  disabled = false,
+  onPress,
+}: {
+  icon: React.ReactNode
+  label: string
+  colors: AppColors
+  destructive?: boolean
+  disabled?: boolean
+  onPress: () => void
+}) {
+  return (
+    <Pressable
+      onPress={onPress}
+      disabled={disabled}
+      accessibilityRole="button"
+      accessibilityLabel={label}
+      style={{
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: 12,
+        paddingVertical: 13,
+        paddingHorizontal: 12,
+        borderRadius: 12,
+        opacity: disabled ? 0.5 : 1,
+      }}
+    >
+      {icon}
+      <Text style={{ fontSize: 15, color: destructive ? '#C2410C' : colors.text }}>{label}</Text>
+    </Pressable>
+  )
+}
+
+function EditPostModal({
+  visible,
+  colors,
+  value,
+  busy,
+  onChangeText,
+  onCancel,
+  onSave,
+}: {
+  visible: boolean
+  colors: AppColors
+  value: string
+  busy: boolean
+  onChangeText: (text: string) => void
+  onCancel: () => void
+  onSave: () => void
+}) {
+  const canSave = value.trim().length > 0 && !busy
+  return (
+    <Modal visible={visible} transparent animationType="fade" onRequestClose={onCancel}>
+      <View
+        style={{
+          flex: 1,
+          backgroundColor: 'rgba(0,0,0,0.35)',
+          justifyContent: 'center',
+          paddingHorizontal: 20,
+        }}
+      >
+        <View
+          style={{
+            backgroundColor: colors.surface,
+            borderRadius: 20,
+            padding: 18,
+            gap: 14,
+          }}
+        >
+          <Text style={{ fontFamily: 'Inclusive Sans', fontSize: 18, color: colors.text }}>
+            Edit post
+          </Text>
+          <TextInput
+            value={value}
+            onChangeText={onChangeText}
+            editable={!busy}
+            multiline
+            placeholder="Update your post..."
+            placeholderTextColor={colors.textFaint}
+            style={{
+              minHeight: 96,
+              borderRadius: 14,
+              borderWidth: 1,
+              borderColor: colors.border,
+              backgroundColor: colors.panel,
+              padding: 12,
+              fontSize: 15,
+              color: colors.text,
+              textAlignVertical: 'top',
+            }}
+          />
+          <View style={{ flexDirection: 'row', gap: 10, justifyContent: 'flex-end' }}>
+            <Pressable
+              onPress={onCancel}
+              disabled={busy}
+              accessibilityRole="button"
+              accessibilityLabel="Cancel edit"
+              style={{
+                borderRadius: 12,
+                borderWidth: 1,
+                borderColor: colors.border,
+                paddingVertical: 10,
+                paddingHorizontal: 18,
+              }}
+            >
+              <Text style={{ fontSize: 14, color: colors.text }}>Cancel</Text>
+            </Pressable>
+            <Pressable
+              onPress={onSave}
+              disabled={!canSave}
+              accessibilityRole="button"
+              accessibilityLabel="Save edit"
+              accessibilityState={{ disabled: !canSave }}
+              style={{
+                borderRadius: 12,
+                backgroundColor: colors.accent,
+                paddingVertical: 10,
+                paddingHorizontal: 18,
+                opacity: canSave ? 1 : 0.45,
+              }}
+            >
+              {busy ? (
+                <ActivityIndicator size="small" color="#FFFFFF" />
+              ) : (
+                <Text style={{ fontSize: 14, color: '#FFFFFF' }}>Save</Text>
+              )}
+            </Pressable>
+          </View>
+        </View>
+      </View>
+    </Modal>
   )
 }
 
