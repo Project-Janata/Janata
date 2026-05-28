@@ -16,10 +16,13 @@ export type GroupBoard = {
 }
 
 export type FeedPost = BoardMessage & {
+  // Board-scoped compound key (`${groupId}-${postId}`) — unique for selection/routing.
   groupId: string
   groupKind: GroupKind
+  // Real API ids used for reply/pin/edit/delete calls against the post's board.
+  postId: string
+  groupParentId: string
   sourceTitle: string
   sourceSubtitle: string
   sourceLabel: string
-  replyMessages: BoardMessage[]
 }
