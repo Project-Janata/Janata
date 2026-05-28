@@ -19,7 +19,7 @@ cd "$(git rev-parse --show-toplevel)"
 CONFIG="packages/backend/wrangler.preview.toml"
 DB_NAME="chinmaya-janata-db-v2preview"
 
-if grep -q "PASTE_PREVIEW_DB_ID_HERE" "$CONFIG"; then
+if grep -q 'database_id = "PASTE_PREVIEW_DB_ID_HERE"' "$CONFIG"; then
   cat <<'ERR' >&2
 ✗ wrangler.preview.toml still has the placeholder database_id.
   Run first:
@@ -30,11 +30,24 @@ ERR
   exit 1
 fi
 
-echo "▶ Applying all migrations to $DB_NAME (fresh preview DB)"
+# Data-only migrations are SKIPPED: they seed real Chinmaya data and several
+# assume column orderings that only held mid-history (e.g. 0002 inserts a
+# `website` value before 0003 adds the column). On a clean replay they fail,
+# and preview replaces their data with seed_preview_data.sql anyway. We apply
+# only the schema-defining migrations (CREATE/ALTER), in order.
+SKIP_DATA_ONLY="0002 0007 0008 0010 0012 0013"
+
+echo "▶ Applying SCHEMA migrations to $DB_NAME (fresh preview DB)"
 for f in migrations/0[0-9][0-9][0-9]_*.sql; do
-  echo "  → $(basename "$f")"
+  base="$(basename "$f")"
+  num="${base%%_*}"
+  if echo " $SKIP_DATA_ONLY " | grep -q " $num "; then
+    echo "  ↳ skip $base (data-only)"
+    continue
+  fi
+  echo "  → $base"
   npx wrangler d1 execute "$DB_NAME" --remote --file="$f" --config "$CONFIG" >/dev/null 2>&1 \
-    || { echo "✗ FAILED on $(basename "$f")" >&2; exit 1; }
+    || { echo "✗ FAILED on $base" >&2; exit 1; }
 done
 
 echo "▶ Loading preview dummy data (centers + events with badge/verified flags)"

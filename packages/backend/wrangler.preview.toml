@@ -19,7 +19,7 @@ compatibility_date = "2026-02-26"
 [[d1_databases]]
 binding = "DB"
 database_name = "chinmaya-janata-db-v2preview"
-database_id = "PASTE_PREVIEW_DB_ID_HERE"
+database_id = "3150bf63-caf1-4257-92d5-d759455425e1"
 
 [[r2_buckets]]
 binding = "AVATARS"
