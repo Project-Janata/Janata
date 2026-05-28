@@ -476,45 +476,61 @@ export default function FeedScreen() {
       </ScrollView>
 
       {nativeDetailOpen ? (
-        <Animated.View
-          style={{
-            position: 'absolute',
-            top: 0,
-            right: 0,
-            bottom: 0,
-            left: 0,
-            backgroundColor: colors.surface,
-            transform: [{ translateX: detailTranslateX }],
-          }}
-        >
-          <KeyboardAvoidingView
-            behavior={Platform.OS === 'ios' ? 'padding' : undefined}
-            style={{ flex: 1, backgroundColor: colors.surface }}
+        <>
+          {/* Static opaque backdrop. Hiding the "Feed" tab header reflows the
+              feed list below; without this, the horizontal slide would expose
+              that upward shift on the way in and out. The panel slides over a
+              uniform surface instead. */}
+          <View
+            style={{
+              position: 'absolute',
+              top: 0,
+              right: 0,
+              bottom: 0,
+              left: 0,
+              backgroundColor: colors.surface,
+            }}
+          />
+          <Animated.View
+            style={{
+              position: 'absolute',
+              top: 0,
+              right: 0,
+              bottom: 0,
+              left: 0,
+              backgroundColor: colors.surface,
+              transform: [{ translateX: detailTranslateX }],
+            }}
           >
-            <NativeChatHeader
-              colors={colors}
-              insetsTop={insets.top}
-              title="Post"
-              hideAvatar
-              onBack={closeDetail}
-            />
-            <View style={{ flex: 1 }}>
-              {selectedPost ? (
-                <PostThread
-                  post={selectedPost}
-                  colors={colors}
-                  fullScreen
-                  bottomInset={insets.bottom}
-                  onPostChanged={loadBoards}
-                  onPostDeleted={() => {
-                    closeDetail()
-                    loadBoards()
-                  }}
-                />
-              ) : null}
-            </View>
-          </KeyboardAvoidingView>
-        </Animated.View>
+            <KeyboardAvoidingView
+              behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+              style={{ flex: 1, backgroundColor: colors.surface }}
+            >
+              <NativeChatHeader
+                colors={colors}
+                insetsTop={insets.top}
+                title="Post"
+                hideAvatar
+                onBack={closeDetail}
+              />
+              <View style={{ flex: 1 }}>
+                {selectedPost ? (
+                  <PostThread
+                    post={selectedPost}
+                    colors={colors}
+                    fullScreen
+                    bottomInset={insets.bottom}
+                    onPostChanged={loadBoards}
+                    onPostDeleted={() => {
+                      closeDetail()
+                      loadBoards()
+                    }}
+                  />
+                ) : null}
+              </View>
+            </KeyboardAvoidingView>
+          </Animated.View>
+        </>
       ) : null}
 
       <CreatePostSheet
