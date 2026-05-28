@@ -4,10 +4,12 @@ import { useFocusEffect, useRouter } from 'expo-router'
 import { usePostHog } from 'posthog-react-native'
 import { useUser } from '../../components/contexts'
 import { useColors } from '../../hooks/useColors'
-import { useDiscoverData, useMyEvents } from '../../hooks/useApiData'
+import { useDetailColors } from '../../hooks/useDetailColors'
+import { useDiscoverData, useMyEvents, useBoard } from '../../hooks/useApiData'
 import type { EventDisplay } from '../../utils/api'
 import { FeaturedEventCard, type FeaturedSource } from '../../components/home/FeaturedEventCard'
 import { MiniEventRow, type WeekItem } from '../../components/home/MiniEventRow'
+import { BoardPostCard, boardPostToMessage } from '../../components/boards'
 
 function formatDatePill(dateStr: string): { month: string; day: string } {
   const parsed = new Date(`${dateStr}T00:00:00`)
@@ -54,9 +56,27 @@ export default function HomeScreen() {
   const posthog = usePostHog()
   const { user } = useUser()
   const c = useColors()
+  const detailColors = useDetailColors()
   const { events: myEvents, loading: myEventsLoading, refetch: refetchMyEvents } = useMyEvents(user?.username)
   const { allEvents, allCenters, loading: discoverLoading, refresh: refreshDiscover } = useDiscoverData(
     'Events', '', user?.id, false, false, user?.interests ?? undefined, user?.centerID
+  )
+
+  // Boards peek (#199): surface the 1-2 latest posts from the user's center
+  // board so Home reflects real activity instead of a permanent empty state.
+  const { posts: centerBoardPosts } = useBoard('center', user?.centerID ?? undefined, !!user?.centerID)
+  const centerName = useMemo(
+    () => allCenters.find((item) => item.id === user?.centerID)?.name,
+    [allCenters, user?.centerID]
+  )
+  const boardPeek = useMemo(
+    () =>
+      centerBoardPosts.slice(0, 2).map((post) => ({
+        ...boardPostToMessage(post),
+        sourceKind: 'center' as const,
+        sourceLabel: centerName ?? 'Your center',
+      })),
+    [centerBoardPosts, centerName]
   )
 
   useFocusEffect(
@@ -159,11 +179,10 @@ export default function HomeScreen() {
         </SectionHeader>
 
         {/*
-          Boards peek (#199). Static empty state for now — when the Boards
-          backend (#205) lands in v2 and the user's center has posts, wire
-          this to fetch 1-2 latest from `useBoard('center', user.centerID)`
-          and render them as small cards. Keep this section visible even
-          when empty so the user knows where to look once posts arrive.
+          Boards peek (#199): the 1-2 latest posts from the user's center
+          board (wired to useBoard now that the boards backend #205 landed).
+          Falls back to a visible empty state so members know where
+          conversations land once posts arrive.
         */}
         <SectionHeader
           eyebrow="LATEST ON YOUR BOARDS"
@@ -172,14 +191,31 @@ export default function HomeScreen() {
           faintColor={c.textFaint}
           onTrailingPress={() => router.push('/feed' as never)}
         >
-          <View style={{ borderRadius: 16, borderWidth: 1, borderColor: c.border, backgroundColor: c.card, padding: 16, gap: 6 }}>
-            <Text style={{ fontFamily: 'Inclusive Sans', fontSize: 16, color: c.text }}>
-              No posts yet on your boards
-            </Text>
-            <Text style={{ fontSize: 14, lineHeight: 20, color: c.textMuted }}>
-              Conversations from your center and events you've joined will appear here. Head to the Feed to see what's new across the network.
-            </Text>
-          </View>
+          {boardPeek.length > 0 ? (
+            <View>
+              {boardPeek.map((message) => (
+                <BoardPostCard
+                  key={message.id}
+                  message={message}
+                  colors={detailColors}
+                  showSource
+                  onPress={() => {
+                    posthog?.capture('home_board_peek_pressed', { postId: message.id })
+                    router.push('/feed' as never)
+                  }}
+                />
+              ))}
+            </View>
+          ) : (
+            <View style={{ borderRadius: 16, borderWidth: 1, borderColor: c.border, backgroundColor: c.card, padding: 16, gap: 6 }}>
+              <Text style={{ fontFamily: 'Inclusive Sans', fontSize: 16, color: c.text }}>
+                No posts yet on your boards
+              </Text>
+              <Text style={{ fontSize: 14, lineHeight: 20, color: c.textMuted }}>
+                Conversations from your center and events you've joined will appear here. Head to the Feed to see what's new across the network.
+              </Text>
+            </View>
+          )}
         </SectionHeader>
 
         <SectionHeader
