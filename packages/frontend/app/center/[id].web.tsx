@@ -1,12 +1,15 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { View, Text, ScrollView, Image, Pressable, ActivityIndicator, Linking, useWindowDimensions } from 'react-native'
 import { useLocalSearchParams, useRouter } from 'expo-router'
-import { ChevronLeft, Share2, MapPin, Globe, Phone, User, Navigation, BadgeCheck, Users } from 'lucide-react-native'
+import { ChevronLeft, ChevronRight, Share2, MapPin, Globe, Phone, User, Navigation, BadgeCheck, Users, MessageSquare } from 'lucide-react-native'
 import { useBoard, useCenterDetail } from '../../hooks/useApiData'
 import { useDetailColors } from '../../hooks/useDetailColors'
+import { useColors } from '../../hooks/useColors'
 import { createBoardPost, type EventDisplay } from '../../utils/api'
 import UnderlineTabBar from '../../components/ui/UnderlineTabBar'
-import { ThreadPanel, boardPostToMessage } from '../../components/boards'
+import { ThreadPanel, boardPostToMessage, type BoardMessage } from '../../components/boards'
+import { PostThread, type FeedPost } from '../../components/feed'
+import { buildFeedPostFromMessage } from '../../components/feed/feedData'
 import { useUser } from '../../components/contexts'
 import { SeoHead } from '../../components/seo/SeoHead'
 import { buildCenterJsonLd } from '../../components/seo/jsonLd'
@@ -54,7 +57,9 @@ function MobileCenterDetail({ centerId }: { centerId: string }) {
   const posthog = usePostHog()
   const { center, events, loading } = useCenterDetail(centerId)
   const colors = useDetailColors()
+  const appColors = useColors()
   const [activeTab, setActiveTab] = useState('About')
+  const [threadDetailPost, setThreadDetailPost] = useState<FeedPost | null>(null)
 
   // Fire center_viewed once per center load. Mirrors the native page's
   // event so web traffic isn't missing from PostHog. (#analytics)
@@ -69,6 +74,7 @@ function MobileCenterDetail({ centerId }: { centerId: string }) {
   }, [loading, center?.id, center?.name, posthog])
   const canPostToThread =
     !!user && (user.centerID === center?.id || (user.verificationLevel ?? 0) >= 107)
+  const isVerified = !!user?.isVerified
   const { posts: boardPosts, refetch: refetchBoard } = useBoard('center', center?.id, canPostToThread)
   const boardMessages = useMemo(() => boardPosts.map(boardPostToMessage), [boardPosts])
 
@@ -77,6 +83,56 @@ function MobileCenterDetail({ centerId }: { centerId: string }) {
     await createBoardPost('center', center.id, body)
     await refetchBoard()
   }
+
+  const openThreadPost = (message: BoardMessage) => {
+    if (!center?.id) return
+    setThreadDetailPost(
+      buildFeedPostFromMessage(message, {
+        groupId: `center-${center.id}`,
+        kind: 'center',
+        parentId: center.id,
+        title: center.name,
+        subtitle: center.address || 'Center board',
+      })
+    )
+  }
+
+  const closeThreadPost = () => setThreadDetailPost(null)
+
+  const renderThreadTab = () =>
+    threadDetailPost ? (
+      <View style={{ paddingTop: 4 }}>
+        <Pressable
+          onPress={closeThreadPost}
+          accessibilityRole="button"
+          accessibilityLabel="Back to board"
+          style={{ flexDirection: 'row', alignItems: 'center', gap: 6, paddingVertical: 10 }}
+        >
+          <ChevronLeft size={20} color={appColors.accent} />
+          <Text style={{ fontSize: 14, color: appColors.accent }}>Back to board</Text>
+        </Pressable>
+        <PostThread
+          post={threadDetailPost}
+          colors={appColors}
+          onPostChanged={refetchBoard}
+          onPostDeleted={() => {
+            closeThreadPost()
+            refetchBoard()
+          }}
+        />
+      </View>
+    ) : (
+      <ThreadPanel
+        messages={boardMessages}
+        colors={colors}
+        emptyTitle="Be the first to post"
+        emptySubtitle={`Ask about rides, what to bring, or anything else for ${center?.name ?? 'this center'}.`}
+        composerPlaceholder="Write to the board..."
+        composerState={canPostToThread ? 'open' : 'locked'}
+        onSubmitPost={handleCreateThreadPost}
+        onMessagePress={openThreadPost}
+      />
+    )
 
   const handleShare = () => {
     posthog?.capture('center_shared', { centerId: center?.id, source: 'web_detail' })
@@ -262,20 +318,60 @@ function MobileCenterDetail({ centerId }: { centerId: string }) {
               </View>
             </View>
             ) : null}
+
+            {/* #208 — center board CTA (tier-gated) */}
+            {isVerified ? (
+              <Pressable
+                onPress={() => setActiveTab('Thread')}
+                accessibilityRole="button"
+                accessibilityLabel="Open center board"
+                style={{
+                  marginTop: 20,
+                  flexDirection: 'row',
+                  alignItems: 'center',
+                  gap: 12,
+                  padding: 14,
+                  borderRadius: 14,
+                  borderWidth: 1,
+                  borderColor: colors.border,
+                  backgroundColor: colors.iconBoxBg,
+                }}
+              >
+                <MessageSquare size={18} color="#E8862A" />
+                <View style={{ flex: 1 }}>
+                  <Text style={{ color: colors.text, fontSize: 15 }}>Open center board</Text>
+                  <Text style={{ color: colors.textSecondary, fontSize: 12, marginTop: 2 }}>
+                    {boardMessages.length > 0
+                      ? `${boardMessages.length} ${boardMessages.length === 1 ? 'post' : 'posts'} from members`
+                      : 'No posts yet — start the conversation'}
+                  </Text>
+                </View>
+                <ChevronRight size={18} color={colors.textSecondary} />
+              </Pressable>
+            ) : (
+              <View
+                style={{
+                  marginTop: 20,
+                  flexDirection: 'row',
+                  alignItems: 'center',
+                  gap: 12,
+                  padding: 14,
+                  borderRadius: 14,
+                  borderWidth: 1,
+                  borderColor: colors.border,
+                  backgroundColor: colors.iconBoxBg,
+                }}
+              >
+                <MessageSquare size={18} color={colors.textSecondary} />
+                <Text style={{ flex: 1, color: colors.textSecondary, fontSize: 13 }}>
+                  Verified members can post on the center board.
+                </Text>
+              </View>
+            )}
             </>
           )}
 
-          {activeTab === 'Thread' && (
-            <ThreadPanel
-              messages={boardMessages}
-              colors={colors}
-              emptyTitle="Be the first to post"
-              emptySubtitle={`Ask about rides, what to bring, or anything else for ${center.name}.`}
-              composerPlaceholder="Write to the board..."
-              composerState={canPostToThread ? 'open' : 'locked'}
-              onSubmitPost={handleCreateThreadPost}
-            />
-          )}
+          {activeTab === 'Thread' && renderThreadTab()}
 
           {activeTab === 'Events' && (
             <>

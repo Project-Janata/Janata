@@ -13,7 +13,10 @@ import PrimaryButton from '../../components/ui/buttons/PrimaryButton'
 import DestructiveButton from '../../components/ui/buttons/DestructiveButton'
 import AuthPromptModal from '../../components/ui/AuthPromptModal'
 import { useDetailColors } from '../../hooks/useDetailColors'
-import { ThreadPanel, boardPostToMessage } from '../../components/boards'
+import { useColors } from '../../hooks/useColors'
+import { ThreadPanel, boardPostToMessage, type BoardMessage } from '../../components/boards'
+import { PostThread, type FeedPost } from '../../components/feed'
+import { buildFeedPostFromMessage } from '../../components/feed/feedData'
 import { SeoHead } from '../../components/seo/SeoHead'
 import { buildEventJsonLd } from '../../components/seo/jsonLd'
 
@@ -60,9 +63,11 @@ function MobileEventDetail({ eventId }: { eventId: string }) {
   const { user } = useUser()
   const { event, loading, toggleRegistration, isToggling, attendees, isCreator } = useEventDetail(eventId, user?.username, user?.id)
   const colors = useDetailColors()
+  const appColors = useColors()
   const [activeTab, setActiveTab] = useState('Details')
   const [showAuthPrompt, setShowAuthPrompt] = useState(false)
   const [isDeleting, setIsDeleting] = useState(false)
+  const [threadDetailPost, setThreadDetailPost] = useState<FeedPost | null>(null)
 
   const isPast = event?.date ? new Date(event.date + 'T23:59:59') < new Date() : false
   const canEdit = !!user && (isSuperAdmin(user) || isCreator)
@@ -77,6 +82,58 @@ function MobileEventDetail({ eventId }: { eventId: string }) {
     await createBoardPost('event', event.id, body)
     await refetchBoard()
   }
+
+  const openThreadPost = (message: BoardMessage) => {
+    if (!event?.id) return
+    setThreadDetailPost(
+      buildFeedPostFromMessage(message, {
+        groupId: `event-${event.id}`,
+        kind: 'event',
+        parentId: event.id,
+        title: event.title,
+        subtitle: event.location || `${event.attendees ?? 0} going`,
+      })
+    )
+  }
+
+  const closeThreadPost = () => setThreadDetailPost(null)
+
+  // Thread tab: post list, or the tapped post's detail (replies + reactions +
+  // author actions) reusing the shared PostThread from the Connect Feed (#206).
+  const renderThreadTab = () =>
+    threadDetailPost ? (
+      <View style={{ paddingTop: 4 }}>
+        <Pressable
+          onPress={closeThreadPost}
+          accessibilityRole="button"
+          accessibilityLabel="Back to board"
+          style={{ flexDirection: 'row', alignItems: 'center', gap: 6, paddingVertical: 10 }}
+        >
+          <ChevronLeft size={20} color={appColors.accent} />
+          <Text style={{ fontSize: 14, color: appColors.accent }}>Back to board</Text>
+        </Pressable>
+        <PostThread
+          post={threadDetailPost}
+          colors={appColors}
+          onPostChanged={refetchBoard}
+          onPostDeleted={() => {
+            closeThreadPost()
+            refetchBoard()
+          }}
+        />
+      </View>
+    ) : (
+      <ThreadPanel
+        messages={eventBoardMessages}
+        colors={colors}
+        emptyTitle="Be the first to post"
+        emptySubtitle={`Ask about carpooling, what to bring, or anything else for the ${event?.attendees ?? 0} people going.`}
+        composerPlaceholder="Write to the group..."
+        composerState={canPostToThread ? 'open' : 'locked'}
+        onSubmitPost={handleCreateThreadPost}
+        onMessagePress={openThreadPost}
+      />
+    )
 
   const handleDelete = async () => {
     if (!event) return
@@ -241,15 +298,7 @@ function MobileEventDetail({ eventId }: { eventId: string }) {
             )}
           </>
         ) : activeTab === 'Thread' ? (
-          <ThreadPanel
-            messages={eventBoardMessages}
-            colors={colors}
-            emptyTitle="Be the first to post"
-            emptySubtitle={`Ask about carpooling, what to bring, or anything else for the ${event.attendees} people going.`}
-            composerPlaceholder="Write to the group..."
-            composerState={canPostToThread ? 'open' : 'locked'}
-            onSubmitPost={handleCreateThreadPost}
-          />
+          renderThreadTab()
         ) : (
           <>
             <Text style={{ color: colors.textSecondary, fontSize: 14 }}>

@@ -1,5 +1,6 @@
 import type { User } from '../../src/auth/types'
 import type { BoardMessage, PersonSummary, VerificationKind } from '../boards/__mocks__/mockData'
+import type { GroupKind } from '../boards'
 import type { FeedPost, GroupBoard } from './types'
 
 const AVATAR_COLORS = ['#0F766E', '#1D4ED8', '#7C3AED', '#C2410C', '#0369A1', '#15803D']
@@ -78,26 +79,49 @@ export function optimisticReply(user: User | null, body: string, id: string): Bo
   }
 }
 
+export interface FeedPostContext {
+  groupId: string
+  kind: GroupKind
+  parentId: string
+  title: string
+  subtitle: string
+}
+
 /**
- * Flattens real board messages into the feed list shape. Each post keeps its
- * real API id (`postId`) for reply/pin/edit/delete calls, while `id` stays a
- * board-scoped compound key so selection/routing is unique across boards.
+ * Builds a single feed/detail post from a board message + its board context.
+ * Keeps the real API id (`postId`) for reply/pin/edit/delete calls, while `id`
+ * stays a board-scoped compound key unique across boards. Used by the Connect
+ * Feed and by per-board surfaces (event/center boards) so they share the same
+ * PostThread detail experience.
+ */
+export function buildFeedPostFromMessage(message: BoardMessage, ctx: FeedPostContext): FeedPost {
+  return {
+    ...message,
+    id: `${ctx.groupId}-${message.id}`,
+    postId: message.id,
+    sourceLabel: ctx.title,
+    sourceKind: ctx.kind,
+    sourceTitle: ctx.title,
+    sourceSubtitle: ctx.subtitle,
+    groupId: ctx.groupId,
+    groupKind: ctx.kind,
+    groupParentId: ctx.parentId,
+  }
+}
+
+/**
+ * Flattens real board messages into the feed list shape (pinned first).
  * Replies are fetched lazily in the detail thread, not synthesized here.
  */
 export function buildFeedPosts(groups: GroupBoard[]): FeedPost[] {
   const posts = groups.flatMap((group) =>
-    group.messages.map(
-      (message): FeedPost => ({
-        ...message,
-        id: `${group.id}-${message.id}`,
-        postId: message.id,
-        sourceLabel: group.title,
-        sourceKind: group.kind,
-        sourceTitle: group.title,
-        sourceSubtitle: group.subtitle,
+    group.messages.map((message) =>
+      buildFeedPostFromMessage(message, {
         groupId: group.id,
-        groupKind: group.kind,
-        groupParentId: group.parentId,
+        kind: group.kind,
+        parentId: group.parentId,
+        title: group.title,
+        subtitle: group.subtitle,
       })
     )
   )
