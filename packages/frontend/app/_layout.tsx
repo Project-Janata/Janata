@@ -28,6 +28,7 @@ import {
 } from '../components/contexts'
 import { ErrorBoundary, ErrorBoundaryWithAnalytics } from '../components/ui/ErrorBoundary'
 import WebBottomNav from '../components/ui/WebBottomNav'
+import { getIntroShown } from '../utils/introStorage'
 import '../globals.css'
 
 export const unstable_settings = {
@@ -111,6 +112,23 @@ function RootLayoutNav({ onAuthReady }: { onAuthReady: () => void }) {
   const router = useRouter()
   const isAuthenticated = !!user
   const { width } = useWindowDimensions()
+  // First-timer explainer gate. null = not yet resolved (don't redirect yet).
+  const [introShown, setIntroShown] = useState<boolean | null>(null)
+
+  useEffect(() => {
+    let active = true
+    getIntroShown()
+      .then((seen) => {
+        if (active) setIntroShown(seen)
+      })
+      .catch(() => {
+        // On any failure, treat as "shown" so we never trap the user pre-auth.
+        if (active) setIntroShown(true)
+      })
+    return () => {
+      active = false
+    }
+  }, [])
   // Mirrors the desktop WebHeader, which shows its nav regardless of auth —
   // only hide on the full-screen landing/auth/onboarding flows.
   const showBottomNav =
@@ -118,7 +136,8 @@ function RootLayoutNav({ onAuthReady }: { onAuthReady: () => void }) {
     width < 768 &&
     !pathname.startsWith('/auth') &&
     !pathname.startsWith('/onboarding') &&
-    pathname !== '/landing'
+    pathname !== '/landing' &&
+    pathname !== '/intro'
 
   useEffect(() => {
     if (!loading) {
@@ -128,14 +147,30 @@ function RootLayoutNav({ onAuthReady }: { onAuthReady: () => void }) {
 
   useEffect(() => {
     if (loading) return
+    // Wait until the intro-shown flag has resolved before redirecting, so we
+    // don't briefly route a first-timer to landing/auth before /intro.
+    if (introShown === null) return
 
     const inAuthGroup = pathname.startsWith('/auth')
     const inOnboardingGroup = pathname.startsWith('/onboarding')
     const inLandingPage = pathname === '/landing'
+    const inIntroPage = pathname === '/intro'
 
     if (!isAuthenticated) {
+      // First-run-only: an unauthenticated first-timer is shown /intro ONLY when
+      // they hit the natural entry surface (root or landing). Public deep links
+      // (/events/:id, /center/:id, /feed, /explore, SEO pages) are NOT
+      // intercepted, so shared/indexed links open directly. Skip → /auth always
+      // works (it sets intro-shown), so the user is never trapped.
+      const isEntrySurface = pathname === '/' || inLandingPage
+      if (!introShown && isEntrySurface && !inIntroPage) {
+        router.replace('/intro')
+        return
+      }
+
       const isPublicPage =
         inAuthGroup ||
+        inIntroPage ||
         inLandingPage ||
         pathname === '/' ||
         pathname.startsWith('/(tabs)') ||
@@ -153,6 +188,11 @@ function RootLayoutNav({ onAuthReady }: { onAuthReady: () => void }) {
         router.replace('/landing')
       }
     } else {
+      // Authenticated users never see the intro; if they land on it, move on.
+      if (inIntroPage) {
+        router.replace('/')
+        return
+      }
       const isComplete = user.profileComplete || (!!user.firstName && !!user.lastName)
 
       if (!isComplete) {
@@ -165,7 +205,7 @@ function RootLayoutNav({ onAuthReady }: { onAuthReady: () => void }) {
         }
       }
     }
-  }, [user, loading, pathname, isAuthenticated])
+  }, [user, loading, pathname, isAuthenticated, introShown])
 
   const navTheme = isDark ? DarkTheme : DefaultTheme
   const prevIsDark = useRef(isDark)
@@ -190,6 +230,7 @@ function RootLayoutNav({ onAuthReady }: { onAuthReady: () => void }) {
         <Stack screenOptions={{ headerShown: false, animation: 'slide_from_right' }}>
           <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
           <Stack.Screen name="auth" options={{ headerShown: false }} />
+          <Stack.Screen name="intro" options={{ headerShown: false, gestureEnabled: false }} />
           <Stack.Screen name="landing" options={{ headerShown: false }} />
           <Stack.Screen name="onboarding" options={{ headerShown: false, gestureEnabled: false }} />
           <Stack.Screen name="settings" options={{ headerShown: false }} />
