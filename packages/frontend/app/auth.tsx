@@ -17,8 +17,12 @@ import { validateEmail, validatePassword } from '../utils'
 import { PasswordStrength } from '../components'
 import DevPanel from '../components/DevPanel'
 import { API_BASE_URL } from '../src/config/api'
-// __DEV__ is a React Native/Expo global — always false in production builds
-const isDev = typeof __DEV__ !== 'undefined' && __DEV__
+// __DEV__ is a React Native/Expo global — always false in production builds.
+// EXPO_PUBLIC_SHOW_DEV_TOOLS=1 also enables the dev/demo tools (set on the
+// isolated v2 preview build), so role-switching works for demos there too.
+const isDev =
+  (typeof __DEV__ !== 'undefined' && __DEV__) ||
+  process.env.EXPO_PUBLIC_SHOW_DEV_TOOLS === '1'
 
 type AuthStep = 'initial' | 'login' | 'invite-code' | 'signup'
 
@@ -391,26 +395,6 @@ export default function AuthScreen() {
               )}
             </View>
 
-            {/* Dev Mode Button -- dev only */}
-            {isDev && (
-              <View className="mt-8 pt-6 border-t border-borderColor dark:border-borderColor-dark">
-                <Pressable
-                  onPress={() => setShowDevPanel(true)}
-                  className="flex-row items-center justify-center bg-slate-100 dark:bg-slate-800 px-4 py-3 rounded-xl active:opacity-70"
-                >
-                  <Code size={18} className={isDark ? 'text-white' : 'text-black'} />
-                  <Text className="ml-2 text-content dark:text-content-dark font-sans font-semibold">
-                    Developer Mode
-                  </Text>
-                </Pressable>
-              </View>
-            )}
-
-            {/* Show DevPanel when Developer Mode is clicked */}
-            {isDev && showDevPanel && (
-              <DevPanel visible={showDevPanel} onClose={() => setShowDevPanel(false)} />
-            )}
-
             {/* Footer Text */}
             <Text className="text-content dark:text-content-dark opacity-50 text-sm font-sans mt-8 text-center px-4">
               By continuing, you agree to our{' '}
@@ -431,6 +415,20 @@ export default function AuthScreen() {
           </View>
         </View>
       </ScrollView>
+      {/* Discreet dev/demo tools — bottom-left circle, dev/preview only */}
+      {isDev && (
+        <Pressable
+          onPress={() => setShowDevPanel(true)}
+          accessibilityLabel="Developer tools"
+          className="absolute left-5 bottom-10 w-11 h-11 rounded-full items-center justify-center bg-stone-200/90 dark:bg-neutral-800/90 active:opacity-70"
+          style={{ shadowColor: '#000', shadowOpacity: 0.15, shadowRadius: 6, shadowOffset: { width: 0, height: 2 }, elevation: 3 }}
+        >
+          <Code size={18} className={isDark ? 'text-white' : 'text-black'} />
+        </Pressable>
+      )}
+      {isDev && showDevPanel && (
+        <DevPanel visible={showDevPanel} onClose={() => setShowDevPanel(false)} />
+      )}
     </KeyboardAvoidingView>
   )
 }

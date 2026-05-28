@@ -12,8 +12,12 @@ import DevPanel from '../components/DevPanel'
 import Logo from '../components/ui/Logo'
 import { API_BASE_URL } from '../src/config/api'
 
-// __DEV__ is a React Native/Expo global — always false in production builds
-const isDev = typeof __DEV__ !== 'undefined' && __DEV__
+// __DEV__ is a React Native/Expo global — always false in production builds.
+// EXPO_PUBLIC_SHOW_DEV_TOOLS=1 also enables the dev/demo tools (set on the
+// isolated v2 preview build) so role-switching works for demos there too.
+const isDev =
+  (typeof __DEV__ !== 'undefined' && __DEV__) ||
+  process.env.EXPO_PUBLIC_SHOW_DEV_TOOLS === '1'
 
 // Inject CSS for placeholder, hover, and mobile-specific styles (web only)
 if (typeof document !== 'undefined') {
@@ -691,29 +695,32 @@ export default function AuthScreen() {
             </p>
           )}
 
-          {/* Developer Mode button — dev only */}
+          {/* Discreet dev/demo tools — fixed bottom-left circle, dev/preview only */}
           {isDev && (
             <button
               onClick={() => setShowDevPanel(true)}
+              aria-label="Developer tools"
               style={{
+                position: 'fixed',
+                left: 20,
+                bottom: 24,
+                width: 44,
+                height: 44,
+                borderRadius: 9999,
                 display: 'flex',
                 alignItems: 'center',
                 justifyContent: 'center',
-                gap: 8,
-                backgroundColor: '#F5F5F4',
-                padding: '10px 16px',
-                borderRadius: 8,
+                backgroundColor: '#E7E5E4',
                 border: 'none',
                 cursor: 'pointer',
-                marginTop: 24,
-                width: '100%',
-                fontSize: 14,
-                fontFamily: 'Inclusive Sans, sans-serif',
+                boxShadow: '0 2px 6px rgba(0,0,0,0.15)',
+                fontFamily: 'monospace',
+                fontSize: 16,
                 color: '#57534E',
+                zIndex: 50,
               }}
             >
-              <span style={{ fontFamily: 'monospace', fontSize: 16 }}>&lt;/&gt;</span>
-              Developer Mode
+              &lt;/&gt;
             </button>
           )}
 
