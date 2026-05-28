@@ -50,5 +50,8 @@ export function boardPostToMessage(post: BoardPostData): BoardMessage {
     attachmentLabel: post.imageUrl ? 'Image attachment' : undefined,
     reactions: post.reactions,
     replyCount: post.replyCount,
+    // #249 — surface the pinned state so ThreadPanel renders its "Pinned" pill
+    // + accent treatment for posts a sevak has pinned.
+    pinned: !!post.pinnedAt,
   }
 }
