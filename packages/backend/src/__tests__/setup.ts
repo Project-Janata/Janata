@@ -34,23 +34,25 @@ function stripForeignKeys(stmt: string): string {
 }
 
 /**
+ * Strip block comments and line comments from SQL. Must run BEFORE splitting
+ * on `;` — a `;` inside a comment would otherwise land mid-comment and chop
+ * the following statement's head, dropping it.
+ */
+export function stripSqlComments(sql: string): string {
+  return sql
+    .replace(/\/\*[\s\S]*?\*\//g, '')
+    .replace(/--[^\n]*/g, '')
+}
+
+/**
  * Split a migration file into individual statements, keeping only schema
  * ones (CREATE/ALTER/DROP TABLE/INDEX). Comments and blank lines are
  * dropped. INSERT/UPDATE statements (seed data) are skipped.
  */
-function extractSchemaStatements(sql: string): string[] {
-  return sql
+export function extractSchemaStatements(sql: string): string[] {
+  return stripSqlComments(sql)
     .split(';')
     .map((s) => s.trim())
-    .filter((s) => s.length > 0)
-    // Strip leading -- comments inside each statement so we can match the head
-    .map((s) =>
-      s
-        .split('\n')
-        .filter((line) => !line.trim().startsWith('--'))
-        .join('\n')
-        .trim(),
-    )
     .filter((s) => s.length > 0)
     .filter((s) => {
       const head = s.slice(0, 60).toUpperCase()
