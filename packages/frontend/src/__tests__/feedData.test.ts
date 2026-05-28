@@ -1,6 +1,7 @@
 import { describe, it, expect } from 'vitest'
 import {
   buildFeedPosts,
+  buildFeedPostFromMessage,
   authorFromUser,
   optimisticReply,
   canPinPosts,
@@ -70,6 +71,24 @@ describe('buildFeedPosts', () => {
     ]
     const ordered = buildFeedPosts(groups)
     expect(ordered[0].postId).toBe('post-2')
+  })
+})
+
+describe('buildFeedPostFromMessage', () => {
+  it('builds a detail post from a board message + event context', () => {
+    const post = buildFeedPostFromMessage(message('post-9', { replyCount: 4 }), {
+      groupId: 'event-evt1',
+      kind: 'event',
+      parentId: 'evt1',
+      title: 'Bhagavad Gita Study',
+      subtitle: 'Boston · 12 going',
+    })
+    expect(post.postId).toBe('post-9')
+    expect(post.groupParentId).toBe('evt1')
+    expect(post.groupKind).toBe('event')
+    expect(post.id).toBe('event-evt1-post-9')
+    expect(post.sourceTitle).toBe('Bhagavad Gita Study')
+    expect(post.replyCount).toBe(4)
   })
 })
 

@@ -19,8 +19,11 @@ import { useBoard, useEventDetail } from '../../hooks/useApiData'
 import { useUser } from '../../components/contexts'
 import { Badge, UnderlineTabBar, Avatar, PrimaryButton, DestructiveButton } from '../../components/ui'
 import { useDetailColors, type DetailColors } from '../../hooks/useDetailColors'
+import { useColors } from '../../hooks/useColors'
 import { createBoardPost, removeEvent } from '../../utils/api'
-import { ThreadPanel, boardPostToMessage } from '../../components/boards'
+import { ThreadPanel, boardPostToMessage, type BoardMessage } from '../../components/boards'
+import { PostThread, type FeedPost } from '../../components/feed'
+import { buildFeedPostFromMessage } from '../../components/feed/feedData'
 
 const ADMIN_EMAIL = 'chinmayajanata@gmail.com'
 
@@ -562,7 +565,9 @@ export default function EventDetailPage() {
   const { event, attendees, loading, toggleRegistration, isToggling, isCreator } =
     useEventDetail(id as string, username, userId)
   const colors = useDetailColors()
+  const appColors = useColors()
   const hasTrackedView = useRef(false)
+  const [threadDetailPost, setThreadDetailPost] = useState<FeedPost | null>(null)
 
   const isAdmin = user?.email === ADMIN_EMAIL || (user?.verificationLevel !== undefined && user.verificationLevel >= 107)
   const canEdit = isAdmin || isCreator
@@ -637,6 +642,71 @@ export default function EventDetailPage() {
     await createBoardPost('event', event.id, body)
     await refetchBoard()
   }
+
+  const openThreadPost = (message: BoardMessage) => {
+    if (!event?.id) return
+    posthog?.capture('event_board_post_opened', { eventId: id, postId: message.id })
+    setThreadDetailPost(
+      buildFeedPostFromMessage(message, {
+        groupId: `event-${event.id}`,
+        kind: 'event',
+        parentId: event.id,
+        title: event.title,
+        subtitle: event.location || `${event.attendees ?? 0} going`,
+      })
+    )
+  }
+
+  const closeThreadPost = () => setThreadDetailPost(null)
+
+  // Thread tab content: either the post list (ThreadPanel) or, when a post is
+  // tapped, its detail (replies + reactions + author actions) reusing the same
+  // PostThread as the Connect Feed (#206). Rendered inline (not a Modal) so it
+  // works reliably on web inside the screen's ScrollView.
+  const renderThreadTab = () =>
+    threadDetailPost ? (
+      <View style={{ paddingTop: 6 }}>
+        <Pressable
+          onPress={closeThreadPost}
+          accessibilityRole="button"
+          accessibilityLabel="Back to board"
+          style={{
+            flexDirection: 'row',
+            alignItems: 'center',
+            gap: 6,
+            paddingHorizontal: 16,
+            paddingVertical: 10,
+          }}
+        >
+          <ChevronLeft size={20} color={appColors.accent} />
+          <Text style={{ fontFamily: 'Inclusive Sans', fontSize: 14, color: appColors.accent }}>
+            Back to board
+          </Text>
+        </Pressable>
+        <View style={{ paddingHorizontal: 16 }}>
+          <PostThread
+            post={threadDetailPost}
+            colors={appColors}
+            onPostChanged={refetchBoard}
+            onPostDeleted={() => {
+              closeThreadPost()
+              refetchBoard()
+            }}
+          />
+        </View>
+      </View>
+    ) : (
+      <ThreadPanel
+        messages={eventBoardMessages}
+        colors={colors}
+        emptyTitle="Be the first to post"
+        emptySubtitle={`Ask about carpooling, what to bring, or anything else for the ${event?.attendees ?? 0} people going.`}
+        composerPlaceholder="Write to the group..."
+        composerState={canPostToThread ? 'open' : 'locked'}
+        onSubmitPost={handleCreateThreadPost}
+        onMessagePress={openThreadPost}
+      />
+    )
 
   // ── Loading state ────────────────────────────────────────────────────
 
@@ -798,17 +868,7 @@ export default function EventDetailPage() {
             </View>
           )}
 
-          {activeTab === 'Thread' && (
-            <ThreadPanel
-              messages={eventBoardMessages}
-              colors={colors}
-              emptyTitle="Be the first to post"
-              emptySubtitle={`Ask about carpooling, what to bring, or anything else for the ${event.attendees} people going.`}
-              composerPlaceholder="Write to the group..."
-              composerState={canPostToThread ? 'open' : 'locked'}
-              onSubmitPost={handleCreateThreadPost}
-            />
-          )}
+          {activeTab === 'Thread' && renderThreadTab()}
 
         </ScrollView>
 
@@ -908,17 +968,7 @@ export default function EventDetailPage() {
           </>
         )}
 
-        {activeTab === 'Thread' && (
-          <ThreadPanel
-            messages={eventBoardMessages}
-            colors={colors}
-            emptyTitle="Be the first to post"
-            emptySubtitle={`Ask about carpooling, what to bring, or anything else for the ${event.attendees} people going.`}
-            composerPlaceholder="Write to the group..."
-            composerState={canPostToThread ? 'open' : 'locked'}
-            onSubmitPost={handleCreateThreadPost}
-          />
-        )}
+        {activeTab === 'Thread' && renderThreadTab()}
 
         {activeTab === 'Attendees' && (
           <View style={{ paddingTop: 8 }}>
