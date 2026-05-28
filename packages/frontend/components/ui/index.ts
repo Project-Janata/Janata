@@ -26,6 +26,7 @@ import TabHeader from './TabHeader'
 import StackHeader from './StackHeader'
 import { Text } from './Text'
 import { Section } from './Section'
+import { DetailSection } from './DetailSection'
 import { GradientIconBadge } from './GradientIconBadge'
 import { IconBadge } from './IconBadge'
 
@@ -49,6 +50,7 @@ export {
   StackHeader,
   Text,
   Section,
+  DetailSection,
   GradientIconBadge,
   IconBadge,
 }
