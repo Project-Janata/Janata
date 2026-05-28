@@ -14,10 +14,11 @@ database_id = "d38b4cd2-963b-45eb-9f83-1e72f9d3aa5d"
 binding = "AVATARS"
 bucket_name = "chinmaya-janata-avatars"
 
+# Non-secret vars only. Secrets come from `wrangler secret put`.
 [vars]
-JWT_SECRET = "dev-secret-key-change-in-production"
-JWT_REFRESH_SECRET = "dev-refresh-secret-key-change-in-production"
 RESEND_FROM_EMAIL = "noreply@chinmayajanata.org"
 
 # Secrets set via:
-#   npx wrangler secret put RESEND_API_KEY --config wrangler.staging.toml
+#   npx wrangler secret put JWT_SECRET         --config wrangler.staging.toml
+#   npx wrangler secret put JWT_REFRESH_SECRET --config wrangler.staging.toml
+#   npx wrangler secret put RESEND_API_KEY     --config wrangler.staging.toml
