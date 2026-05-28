@@ -1,0 +1,8 @@
+# Cloudflare Pages headers
+# Serve the Apple App Site Association file as JSON. Apple requires the AASA
+# file at /.well-known/apple-app-site-association to be valid JSON over HTTPS
+# with no redirect; setting an explicit JSON content-type is best practice.
+/.well-known/apple-app-site-association
+  Content-Type: application/json
+/.well-known/assetlinks.json
+  Content-Type: application/json

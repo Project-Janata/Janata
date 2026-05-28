@@ -5,7 +5,7 @@
     "version": "0.2.0",
     "orientation": "portrait",
     "icon": "./assets/images/logo.png",
-    "scheme": "myapp",
+    "scheme": "janata",
     "userInterfaceStyle": "automatic",
     "splash": {
       "image": "./assets/images/logo_with_text.png",
@@ -23,7 +23,24 @@
         "ACCESS_FINE_LOCATION",
         "ACCESS_COARSE_LOCATION"
       ],
-      "package": "org.chinmayamission.janata"
+      "package": "org.chinmayamission.janata",
+      "intentFilters": [
+        {
+          "action": "VIEW",
+          "autoVerify": true,
+          "data": [
+            { "scheme": "https", "host": "chinmayajanata.org", "pathPrefix": "/center" },
+            { "scheme": "https", "host": "chinmayajanata.org", "pathPrefix": "/events" },
+            { "scheme": "https", "host": "chinmayajanata.org", "pathPrefix": "/feed" },
+            { "scheme": "https", "host": "chinmayajanata.org", "pathPrefix": "/auth" },
+            { "scheme": "https", "host": "www.chinmayajanata.org", "pathPrefix": "/center" },
+            { "scheme": "https", "host": "www.chinmayajanata.org", "pathPrefix": "/events" },
+            { "scheme": "https", "host": "www.chinmayajanata.org", "pathPrefix": "/feed" },
+            { "scheme": "https", "host": "www.chinmayajanata.org", "pathPrefix": "/auth" }
+          ],
+          "category": ["BROWSABLE", "DEFAULT"]
+        }
+      ]
     },
     "assetBundlePatterns": [
       "**/*"
@@ -38,7 +55,11 @@
         "NSCameraUsageDescription": "Chinmaya Janata needs access to your camera to take a profile picture.",
         "ITSAppUsesNonExemptEncryption": false
       },
-      "bundleIdentifier": "org.chinmayamission.janata"
+      "bundleIdentifier": "org.chinmayamission.janata",
+      "associatedDomains": [
+        "applinks:chinmayajanata.org",
+        "applinks:www.chinmayajanata.org"
+      ]
     },
     "web": {
       "bundler": "metro",
