@@ -1198,3 +1198,81 @@ export async function listBoardPostReplies(
   )
   return hydrated.filter((p): p is BoardPostWithAuthor => p !== null)
 }
+
+/**
+ * Aggregated cross-board feed: every top-level post on a board the user
+ * has access to, reverse-chronological. Closes the last open acceptance
+ * criterion on #205.
+ *
+ * Access rules (mirrors the existing verifyBoardAccess in app.ts):
+ *   - Center boards: user.center_id must match board.parent_id.
+ *   - Event boards: user must have an event_attendees row for that event.
+ *
+ * Returns hydrated posts with author, reactions, reply_count. Replies are
+ * excluded so the feed stays top-level. Pagination is limit/offset.
+ */
+export async function listAggregatedFeed(
+  db: D1Database,
+  user: {
+    id: string
+    center_id: string | null
+  },
+  opts: { limit?: number; offset?: number } = {},
+): Promise<BoardPostWithAuthor[]> {
+  const limit = Math.min(Math.max(opts.limit ?? 50, 1), 100)
+  const offset = Math.max(opts.offset ?? 0, 0)
+
+  const includeCenterBoards = user.center_id !== null
+
+  // The query unions (logically, via OR) the two access cases:
+  //   center board the user is a member of (center_id match)
+  //   event board the user has an event_attendees row for
+  const result = await db
+    .prepare(
+      `SELECT bp.*
+       FROM board_posts bp
+       JOIN boards b ON b.id = bp.board_id
+       WHERE bp.deleted_at IS NULL
+         AND bp.id NOT IN (SELECT post_id FROM board_post_replies)
+         AND (
+           (?3 = 1 AND b.type = 'center' AND b.parent_id = ?2)
+           OR
+           (b.type = 'event' AND b.parent_id IN (
+             SELECT event_id FROM event_attendees WHERE user_id = ?1
+           ))
+         )
+       ORDER BY bp.created_at DESC
+       LIMIT ?4 OFFSET ?5`,
+    )
+    .bind(
+      user.id,
+      user.center_id ?? '',
+      includeCenterBoards ? 1 : 0,
+      limit,
+      offset,
+    )
+    .all<BoardPostRow>()
+
+  const posts = result.results ?? []
+  const hydrated = await Promise.all(
+    posts.map(async (post) => {
+      const author = await getUserById(db, post.author_id)
+      const reactions = await getBoardPostReactionCounts(db, post.id)
+      const replyCount = await db
+        .prepare(
+          'SELECT COUNT(*) as count FROM board_post_replies WHERE parent_post_id = ?1',
+        )
+        .bind(post.id)
+        .first<{ count: number }>()
+      return author
+        ? {
+            ...post,
+            author,
+            reactions,
+            reply_count: replyCount?.count ?? 0,
+          }
+        : null
+    }),
+  )
+  return hydrated.filter((p): p is BoardPostWithAuthor => p !== null)
+}
