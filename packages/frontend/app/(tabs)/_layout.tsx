@@ -220,9 +220,7 @@ export default function TabLayout() {
                 ? () => <WebHeader />
                 : () => (
                     <TabHeader
-                      title="Explore"
                       transparent
-                      pillTitle
                       borderAvatar
                       {...(Platform.OS === 'web'
                         ? { action: 'create' as const, onActionPress: () => router.push('/events/form') }

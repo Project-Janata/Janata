@@ -19,6 +19,7 @@ import {
   Building2,
   ChevronUp,
   ChevronDown,
+  Plus,
 } from 'lucide-react-native'
 import { useRouter, useFocusEffect, useNavigation } from 'expo-router'
 import { usePostHog } from 'posthog-react-native'
@@ -290,12 +291,13 @@ export default function DiscoverScreen() {
     navigation.setOptions({ headerShown: !isSheetExpanded })
   }, [navigation, isSheetExpanded])
 
-  // Set initial sheet position to mid once we know the container height
+  // Set initial sheet position to collapsed once we know the container height
+  // (peek + a few rows visible, map prominent) — see SNAP_COLLAPSED.
   React.useEffect(() => {
     if (containerHeight > 0 && !initializedRef.current) {
-      const mid = Math.max(0, (containerHeight - EXPANDED_TOP) * 0.2)
-      sheetY.setValue(mid)
-      offsetRef.current = mid
+      const collapsed = Math.max(0, (containerHeight - EXPANDED_TOP) * 0.6)
+      sheetY.setValue(collapsed)
+      offsetRef.current = collapsed
       initializedRef.current = true
     }
   }, [containerHeight, sheetY])
@@ -520,34 +522,62 @@ export default function DiscoverScreen() {
               />
             </View>
 
-            {/* Filter chips — Today / Center / Going (max 4) */}
+            {/* Filter chips — Today / Center / Going + Create button */}
             {activeFilter === 'Events' && (
-              <View className="flex-row flex-wrap items-center px-4 py-2 gap-2">
-                <FilterChip
-                  label="Today"
-                  variant="outline"
-                  active={selectedDate === todayStr}
-                  onPress={() => {
-                    setSelectedDate((prev) => {
-                      const next = prev === todayStr ? null : todayStr
-                      if (next) posthog?.capture('discover_date_selected', { date: next })
-                      return next
-                    })
-                  }}
-                />
-                <FilterChip
-                  label={centerChipLabel}
-                  variant="outline"
-                  active={selectedCenter !== null}
-                  onPress={() => setShowCenterModal(true)}
-                />
-                {user && (
+              <View className="flex-row items-center px-4 py-2 gap-2">
+                <View className="flex-1 flex-row flex-wrap items-center gap-2">
                   <FilterChip
-                    label="Going"
+                    label="Today"
                     variant="outline"
-                    active={showGoingOnly}
-                    onPress={() => setShowGoingOnly((prev) => !prev)}
+                    active={selectedDate === todayStr}
+                    onPress={() => {
+                      setSelectedDate((prev) => {
+                        const next = prev === todayStr ? null : todayStr
+                        if (next) posthog?.capture('discover_date_selected', { date: next })
+                        return next
+                      })
+                    }}
                   />
+                  <FilterChip
+                    label={centerChipLabel}
+                    variant="outline"
+                    active={selectedCenter !== null}
+                    onPress={() => setShowCenterModal(true)}
+                  />
+                  {user && (
+                    <FilterChip
+                      label="Going"
+                      variant="outline"
+                      active={showGoingOnly}
+                      onPress={() => setShowGoingOnly((prev) => !prev)}
+                    />
+                  )}
+                </View>
+                {user && (
+                  <Pressable
+                    accessibilityRole="button"
+                    accessibilityLabel="Create event"
+                    hitSlop={8}
+                    onPress={() => {
+                      posthog?.capture('nav_create_event', { source: 'discover' })
+                      router.push('/events/form')
+                    }}
+                    className="flex-row items-center active:opacity-70"
+                    style={{
+                      flexShrink: 0,
+                      gap: 4,
+                      paddingHorizontal: 12,
+                      paddingVertical: 6,
+                      borderRadius: 999,
+                      borderWidth: 1.5,
+                      borderColor: '#E8862A',
+                    }}
+                  >
+                    <Plus size={16} color="#E8862A" strokeWidth={2.5} />
+                    <Text style={{ fontWeight: '600', fontSize: 13, lineHeight: 18, color: '#E8862A' }}>
+                      Create
+                    </Text>
+                  </Pressable>
                 )}
               </View>
             )}
