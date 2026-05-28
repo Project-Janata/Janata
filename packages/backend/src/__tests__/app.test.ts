@@ -2942,8 +2942,57 @@ describe('moderation', () => {
     })
   })
 
+  describe('sevak moderation tier (admin + sevak ≥54)', () => {
+    let sevakToken: string
+
+    beforeEach(async () => {
+      const sevak = await registerAndLogin('modsevak', 'password123')
+      sevakToken = sevak.token
+      await env.DB.prepare(
+        'UPDATE users SET center_id = ?, verification_level = 54 WHERE username = ?',
+      )
+        .bind(centerId, 'modsevak')
+        .run()
+    })
+
+    it('lets a sevak view the moderation queue (200)', async () => {
+      const reporter = await registerAndLogin('sevakreporter', 'password123')
+      await jsonPost(`/api/boards/posts/${postId}/report`, { reason: 'spam' }, authHeader(reporter.token))
+      const { res, body } = await fetchJSON('/api/admin/moderation/queue', {
+        headers: authHeader(sevakToken),
+      })
+      expect(res.status).toBe(200)
+      expect(body.data).toHaveLength(1)
+    })
+
+    it('lets a sevak remove a reported post + writes an audit entry', async () => {
+      const reporter = await registerAndLogin('sevakreporter2', 'password123')
+      await jsonPost(`/api/boards/posts/${postId}/report`, { reason: 'bad' }, authHeader(reporter.token))
+      const del = await jsonPost(
+        `/api/admin/moderation/posts/${postId}/delete`,
+        {},
+        authHeader(sevakToken),
+      )
+      expect(del.res.status).toBe(200)
+      const { res: aRes, body: audit } = await fetchJSON('/api/admin/moderation/audit', {
+        headers: authHeader(sevakToken),
+      })
+      expect(aRes.status).toBe(200)
+      expect(audit.data.length).toBeGreaterThan(0)
+    })
+
+    it('does NOT let a sevak suspend a user — account actions stay admin-only (403)', async () => {
+      const { res } = await jsonPost(
+        `/api/admin/moderation/users/${memberId}/suspend`,
+        { durationDays: 7 },
+        authHeader(sevakToken),
+      )
+      expect(res.status).toBe(403)
+    })
+  })
+
   describe('admin queue + delete', () => {
-    it('non-admin cannot see the queue (403)', async () => {
+    it('non-admin (basic member) cannot see the queue (403)', async () => {
       const { res } = await fetchJSON('/api/admin/moderation/queue', { headers: authHeader(memberToken) })
       expect(res.status).toBe(403)
     })

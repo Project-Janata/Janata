@@ -143,6 +143,20 @@ async function adminMiddleware(c: any, next: () => Promise<void>): Promise<Respo
   await next()
 }
 
+// Moderator gate: global admins OR sevak-and-above (verification_level >= SEVAK).
+// Used for content-moderation actions (report queue, post removal, audit log) so
+// the many MSC center sevaks can moderate their boards. Account-level actions
+// (suspend / unsuspend a user) stay admin-only via adminMiddleware.
+async function moderatorMiddleware(c: any, next: () => Promise<void>): Promise<Response | void> {
+  const authResult = await authMiddleware(c, async () => {})
+  if (authResult) return authResult
+  const user = c.get('user')
+  if (!user || (!isAdmin(user) && user.verification_level < SEVAK)) {
+    return c.json({ message: 'Moderator access required (sevak or admin)' }, 403)
+  }
+  await next()
+}
+
 // ── Global error handler ──────────────────────────────────────────────
 
 app.onError((err, c) => {
@@ -2769,7 +2783,7 @@ app.delete('/admin/notifications/:id', adminMiddleware, async (c) => {
 // ═══════════════════════════════════════════════════════════════════════
 
 /** Admin moderation queue: reported posts grouped by post, newest first. */
-app.get('/admin/moderation/queue', adminMiddleware, async (c) => {
+app.get('/admin/moderation/queue', moderatorMiddleware, async (c) => {
   const url = new URL(c.req.url)
   const limit = Math.min(Math.max(parseInt(url.searchParams.get('limit') ?? '50', 10) || 50, 1), 100)
   const offset = Math.max(parseInt(url.searchParams.get('offset') ?? '0', 10) || 0, 0)
@@ -2792,7 +2806,7 @@ app.get('/admin/moderation/queue', adminMiddleware, async (c) => {
 })
 
 /** Admin: soft-delete a reported post and resolve its open reports. */
-app.post('/admin/moderation/posts/:postId/delete', adminMiddleware, async (c) => {
+app.post('/admin/moderation/posts/:postId/delete', moderatorMiddleware, async (c) => {
   const admin = c.get('user')
   const postId = c.req.param('postId')
 
@@ -2898,7 +2912,7 @@ app.post('/admin/moderation/users/:userId/unsuspend', adminMiddleware, async (c)
 })
 
 /** Admin: moderation audit log, newest first. */
-app.get('/admin/moderation/audit', adminMiddleware, async (c) => {
+app.get('/admin/moderation/audit', moderatorMiddleware, async (c) => {
   const url = new URL(c.req.url)
   const limit = Math.min(Math.max(parseInt(url.searchParams.get('limit') ?? '50', 10) || 50, 1), 100)
   const offset = Math.max(parseInt(url.searchParams.get('offset') ?? '0', 10) || 0, 0)
