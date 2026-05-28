@@ -1,32 +1,24 @@
 import { useEffect, useMemo, useState, useRef } from 'react'
 import { View, Text, ScrollView, Pressable, ActivityIndicator, useWindowDimensions, Linking } from 'react-native'
 import { useLocalSearchParams, useRouter } from 'expo-router'
-import { ChevronLeft, Share2, MapPin, Users, User, Clock, CheckCircle, Pencil, Trash2 } from 'lucide-react-native'
+import { ChevronLeft, Share2, MapPin, Users, User, Clock, Lock, Pencil, Trash2 } from 'lucide-react-native'
 import { useUser } from '../../components/contexts'
 import { useBoard, useEventDetail } from '../../hooks/useApiData'
 import { createBoardPost, removeEvent } from '../../utils/api'
 import { isSuperAdmin } from '../../utils/admin'
 import Avatar from '../../components/ui/Avatar'
 import Badge from '../../components/ui/Badge'
-import UnderlineTabBar from '../../components/ui/UnderlineTabBar'
 import PrimaryButton from '../../components/ui/buttons/PrimaryButton'
 import DestructiveButton from '../../components/ui/buttons/DestructiveButton'
 import AuthPromptModal from '../../components/ui/AuthPromptModal'
-import { useDetailColors } from '../../hooks/useDetailColors'
+import { DetailSection } from '../../components/ui'
+import { useDetailColors, type DetailColors } from '../../hooks/useDetailColors'
 import { useColors } from '../../hooks/useColors'
 import { ThreadPanel, boardPostToMessage, type BoardMessage } from '../../components/boards'
 import { PostThread, type FeedPost } from '../../components/feed'
 import { buildFeedPostFromMessage } from '../../components/feed/feedData'
 import { SeoHead } from '../../components/seo/SeoHead'
 import { buildEventJsonLd } from '../../components/seo/jsonLd'
-
-function formatEventDateLabel(dateStr: string): string {
-  const d = new Date(`${dateStr}T00:00:00`)
-  if (isNaN(d.getTime())) return dateStr.toUpperCase()
-  const weekday = d.toLocaleDateString('en-US', { weekday: 'short' }).toUpperCase()
-  const month = d.toLocaleDateString('en-US', { month: 'short' }).toUpperCase()
-  return `${weekday}, ${month} ${d.getDate()}`
-}
 
 export default function EventDetailWeb() {
   const { id: rawId } = useLocalSearchParams()
@@ -58,13 +50,35 @@ export default function EventDetailWeb() {
   return <MobileEventDetail eventId={id || ''} />
 }
 
+function LockedComments({ colors }: { colors: DetailColors }) {
+  return (
+    <View
+      style={{
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: 12,
+        paddingVertical: 14,
+        paddingHorizontal: 14,
+        borderRadius: 14,
+        borderWidth: 1,
+        borderColor: colors.border,
+        backgroundColor: colors.iconBoxBg,
+      }}
+    >
+      <Lock size={18} color={colors.textSecondary} />
+      <Text style={{ flex: 1, fontSize: 13, color: colors.textSecondary }}>
+        RSVP to join the conversation — ask about carpooling, what to bring, and more.
+      </Text>
+    </View>
+  )
+}
+
 function MobileEventDetail({ eventId }: { eventId: string }) {
   const router = useRouter()
   const { user } = useUser()
   const { event, loading, toggleRegistration, isToggling, attendees, isCreator } = useEventDetail(eventId, user?.username, user?.id)
   const colors = useDetailColors()
   const appColors = useColors()
-  const [activeTab, setActiveTab] = useState('Details')
   const [showAuthPrompt, setShowAuthPrompt] = useState(false)
   const [isDeleting, setIsDeleting] = useState(false)
   const [threadDetailPost, setThreadDetailPost] = useState<FeedPost | null>(null)
@@ -73,7 +87,6 @@ function MobileEventDetail({ eventId }: { eventId: string }) {
   const canEdit = !!user && (isSuperAdmin(user) || isCreator)
   const canAccessEventBoard =
     !!user && !!event?.id && (!!event.isRegistered || isCreator || isSuperAdmin(user))
-  const canPostToThread = canAccessEventBoard
   const { posts: boardPosts, refetch: refetchBoard } = useBoard('event', event?.id, canAccessEventBoard)
   const eventBoardMessages = useMemo(() => boardPosts.map(boardPostToMessage), [boardPosts])
 
@@ -97,43 +110,6 @@ function MobileEventDetail({ eventId }: { eventId: string }) {
   }
 
   const closeThreadPost = () => setThreadDetailPost(null)
-
-  // Thread tab: post list, or the tapped post's detail (replies + reactions +
-  // author actions) reusing the shared PostThread from the Connect Feed (#206).
-  const renderThreadTab = () =>
-    threadDetailPost ? (
-      <View style={{ paddingTop: 4 }}>
-        <Pressable
-          onPress={closeThreadPost}
-          accessibilityRole="button"
-          accessibilityLabel="Back to board"
-          style={{ flexDirection: 'row', alignItems: 'center', gap: 6, paddingVertical: 10 }}
-        >
-          <ChevronLeft size={20} color={appColors.accent} />
-          <Text style={{ fontSize: 14, color: appColors.accent }}>Back to board</Text>
-        </Pressable>
-        <PostThread
-          post={threadDetailPost}
-          colors={appColors}
-          onPostChanged={refetchBoard}
-          onPostDeleted={() => {
-            closeThreadPost()
-            refetchBoard()
-          }}
-        />
-      </View>
-    ) : (
-      <ThreadPanel
-        messages={eventBoardMessages}
-        colors={colors}
-        emptyTitle="Be the first to post"
-        emptySubtitle={`Ask about carpooling, what to bring, or anything else for the ${event?.attendees ?? 0} people going.`}
-        composerPlaceholder="Write to the group..."
-        composerState={canPostToThread ? 'open' : 'locked'}
-        onSubmitPost={handleCreateThreadPost}
-        onMessagePress={openThreadPost}
-      />
-    )
 
   const handleDelete = async () => {
     if (!event) return
@@ -168,6 +144,36 @@ function MobileEventDetail({ eventId }: { eventId: string }) {
     )
   }
 
+  // ── Focused thread view (a board post + its replies) ─────────────────
+  if (threadDetailPost) {
+    return (
+      <View style={{ flex: 1, backgroundColor: appColors.bg }}>
+        <View style={{ paddingTop: 12 }}>
+          <Pressable
+            onPress={closeThreadPost}
+            accessibilityRole="button"
+            accessibilityLabel="Back to board"
+            style={{ flexDirection: 'row', alignItems: 'center', gap: 6, paddingHorizontal: 16, paddingVertical: 10 }}
+          >
+            <ChevronLeft size={20} color={appColors.accent} />
+            <Text style={{ fontSize: 14, color: appColors.accent }}>Back to board</Text>
+          </Pressable>
+        </View>
+        <View style={{ flex: 1 }}>
+          <PostThread
+            post={threadDetailPost}
+            colors={appColors}
+            onPostChanged={refetchBoard}
+            onPostDeleted={() => {
+              closeThreadPost()
+              refetchBoard()
+            }}
+          />
+        </View>
+      </View>
+    )
+  }
+
   const seoTitle = event.title || 'Event'
   const seoDesc =
     event.description && event.description.length > 30
@@ -176,6 +182,7 @@ function MobileEventDetail({ eventId }: { eventId: string }) {
         (event.address ? ` at ${event.address}` : '') +
         '. Find details and RSVP on Chinmaya Janata.'
   const eventJsonLd = buildEventJsonLd(event)
+  const isExternalOnly = !!event.signupUrl && !event.allowJanataSignup
 
   return (
     <View style={{ flex: 1, backgroundColor: colors.panelBg }}>
@@ -199,21 +206,12 @@ function MobileEventDetail({ eventId }: { eventId: string }) {
         </Pressable>
         <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4 }}>
           {canEdit && !isPast && (
-            <Pressable
-              onPress={() => router.push(`/events/form?id=${event.id}`)}
-              style={{ padding: 8 }}
-              accessibilityLabel="Edit event"
-            >
+            <Pressable onPress={() => router.push(`/events/form?id=${event.id}`)} style={{ padding: 8 }} accessibilityLabel="Edit event">
               <Pencil size={18} color={colors.textSecondary} />
             </Pressable>
           )}
           {canEdit && (
-            <Pressable
-              onPress={handleDelete}
-              disabled={isDeleting}
-              style={{ padding: 8, opacity: isDeleting ? 0.5 : 1 }}
-              accessibilityLabel="Delete event"
-            >
+            <Pressable onPress={handleDelete} disabled={isDeleting} style={{ padding: 8, opacity: isDeleting ? 0.5 : 1 }} accessibilityLabel="Delete event">
               <Trash2 size={18} color="#DC2626" />
             </Pressable>
           )}
@@ -235,111 +233,102 @@ function MobileEventDetail({ eventId }: { eventId: string }) {
       </View>
 
       {/* Title + Badge */}
-      <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: 16, paddingBottom: 8 }}>
-        <Text style={{ fontSize: 22, fontWeight: 'bold', color: colors.text, flex: 1 }}>{event.title}</Text>
-        {event.isRegistered && <Badge label="Going" variant="going" />}
+      <View style={{ flexDirection: 'row', alignItems: 'flex-start', justifyContent: 'space-between', paddingHorizontal: 16, paddingBottom: 12, gap: 10 }}>
+        <Text style={{ fontSize: 26, fontWeight: 'bold', color: colors.text, flex: 1 }}>{event.title}</Text>
+        {event.isRegistered && <View style={{ marginTop: 4 }}><Badge label="Going" variant="going" /></View>}
       </View>
 
-      {/* Tabs */}
-      <UnderlineTabBar
-        tabs={['Details', 'Thread', 'People']}
-        activeTab={activeTab}
-        onTabChange={setActiveTab}
-        counts={{ Thread: eventBoardMessages.length }}
-      />
-
-      <ScrollView style={{ flex: 1 }} contentContainerStyle={{ padding: 16, gap: 16 }}>
-        {activeTab === 'Details' ? (
-          <>
-            {/* Date & Time */}
+      <ScrollView style={{ flex: 1 }} contentContainerStyle={{ paddingBottom: 24 }} keyboardShouldPersistTaps="handled">
+        {/* DETAILS */}
+        <DetailSection title="Details" first>
+          <View style={{ gap: 16 }}>
             {event.date && (
               <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10 }}>
-                <Clock size={18} color={colors.textSecondary} />
+                <Clock size={18} color="#E8862A" />
                 <Text style={{ color: colors.text, fontSize: 15 }}>
-                  {new Date(event.date + 'T00:00:00').toLocaleDateString('en-US', { month: 'numeric', day: 'numeric' })}
+                  {new Date(event.date + 'T00:00:00').toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' })}
                   {event.time ? ` · ${event.time}` : ''}
                 </Text>
               </View>
             )}
 
-            {/* Location */}
             {event.address && (
-              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10 }}>
-                <MapPin size={18} color="#E8862A" />
-                <Text style={{ color: colors.text, fontSize: 15 }}>{event.address}</Text>
+              <View style={{ flexDirection: 'row', alignItems: 'flex-start', gap: 10 }}>
+                <MapPin size={18} color="#E8862A" style={{ marginTop: 1 }} />
+                <Text style={{ color: colors.text, fontSize: 15, flex: 1 }}>{event.address}</Text>
               </View>
             )}
 
-            {/* Attendees count — hidden when signup is external-only
-                (the on-Janata count would always read 0). */}
-            {!(event.signupUrl && !event.allowJanataSignup) && (
-              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10 }}>
-                <Users size={18} color={colors.textSecondary} />
-                <Text style={{ color: colors.text, fontSize: 15 }}>
-                  {event.attendees} {event.attendees === 1 ? 'person' : 'people'} attending
-                </Text>
-              </View>
-            )}
-
-            {/* Contact */}
             {event.pointOfContact && (
               <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10 }}>
-                <User size={18} color={colors.textSecondary} />
+                <User size={18} color="#E8862A" />
                 <Text style={{ color: colors.text, fontSize: 15 }}>Contact: {event.pointOfContact}</Text>
               </View>
             )}
 
-            {/* Description */}
             {event.description && (
-              <View style={{ marginTop: 8 }}>
-                <Text style={{ color: colors.textSecondary, fontSize: 12, fontWeight: '600', marginBottom: 8 }}>ABOUT</Text>
-                <Text style={{ color: colors.text, fontSize: 15, lineHeight: 22 }}>{event.description}</Text>
+              <Text style={{ color: colors.textSecondary, fontSize: 15, lineHeight: 22, marginTop: 2 }}>{event.description}</Text>
+            )}
+          </View>
+        </DetailSection>
+
+        {/* ATTENDEES — hidden when registration is external-only */}
+        {!isExternalOnly && (
+          <DetailSection title="Attendees" count={event.attendees} contentStyle={{ gap: 4 }}>
+            {attendees.length > 0 ? (
+              attendees.map((a) => (
+                <View key={a.name} style={{ flexDirection: 'row', alignItems: 'center', gap: 12, paddingVertical: 8 }}>
+                  <Avatar name={a.name} size={40} image={a.image} />
+                  <Text style={{ color: colors.text, fontSize: 15, flex: 1 }}>{a.name}</Text>
+                </View>
+              ))
+            ) : (
+              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10, paddingVertical: 4 }}>
+                <Users size={18} color={colors.textMuted} />
+                <Text style={{ color: colors.textSecondary, fontSize: 14 }}>No attendees yet — be the first to RSVP.</Text>
               </View>
             )}
-          </>
-        ) : activeTab === 'Thread' ? (
-          renderThreadTab()
-        ) : (
-          <>
-            <Text style={{ color: colors.textSecondary, fontSize: 14 }}>
-              {attendees.length} {attendees.length === 1 ? 'person' : 'people'} attending
-            </Text>
-            {attendees.map((a) => (
-              <View key={a.name} style={{ flexDirection: 'row', alignItems: 'center', gap: 12, paddingVertical: 8 }}>
-                <Avatar name={a.name} size={40} image={a.image} />
-                <Text style={{ color: colors.text, fontSize: 16, flex: 1 }}>
-                  {a.name}
-                </Text>
-              </View>
-            ))}
-          </>
+          </DetailSection>
         )}
+
+        {/* COMMENTS */}
+        <DetailSection title="Comments" count={canAccessEventBoard ? eventBoardMessages.length : undefined} contentStyle={{ paddingHorizontal: 0 }}>
+          {canAccessEventBoard ? (
+            <ThreadPanel
+              messages={eventBoardMessages}
+              colors={colors}
+              emptyTitle="Be the first to post"
+              emptySubtitle={`Ask about carpooling, what to bring, or anything else for the ${event.attendees ?? 0} people going.`}
+              composerPlaceholder="Write to the group..."
+              composerState="open"
+              onSubmitPost={handleCreateThreadPost}
+              onMessagePress={openThreadPost}
+            />
+          ) : (
+            <View style={{ paddingHorizontal: 16 }}>
+              <LockedComments colors={colors} />
+            </View>
+          )}
+        </DetailSection>
       </ScrollView>
 
-      {/* Action button(s) — three modes (matches EventDetailPanel.ActionBar):
+      {/* Action button(s) — three modes:
           1. signupUrl + allowJanataSignup → Janata primary, external alt
           2. signupUrl only → external referrer, no native RSVP
           3. no signupUrl → native Register / Cancel */}
       {!isPast && (
-        <View style={{ padding: 16, gap: 8 }}>
+        <View style={{ padding: 16, gap: 8, borderTopWidth: 1, borderTopColor: colors.border }}>
           {event.signupUrl && event.allowJanataSignup ? (
             <>
               {event.isRegistered ? (
-                <DestructiveButton
-                  onPress={() => user?.username && toggleRegistration(user.username)}
-                  disabled={isToggling}
-                  loading={isToggling}
-                >
+                <DestructiveButton onPress={() => user?.username && toggleRegistration(user.username)} disabled={isToggling} loading={isToggling}>
                   Cancel Registration
                 </DestructiveButton>
               ) : (
                 <PrimaryButton
                   onPress={() => {
-                    if (!user) {
-                      setShowAuthPrompt(true)
-                    } else if (user.username) {
-                      toggleRegistration(user.username)
-                    }
+                    if (!user) setShowAuthPrompt(true)
+                    else if (user.username) toggleRegistration(user.username)
                   }}
                   disabled={isToggling}
                   loading={isToggling}
@@ -362,34 +351,19 @@ function MobileEventDetail({ eventId }: { eventId: string }) {
               <PrimaryButton onPress={() => Linking.openURL(event.signupUrl!)}>
                 Sign up at {hostnameOf(event.signupUrl)}
               </PrimaryButton>
-              <Text
-                style={{
-                  fontFamily: 'Inclusive Sans',
-                  fontSize: 12,
-                  color: colors.textSecondary,
-                  textAlign: 'center',
-                  marginTop: 4,
-                }}
-              >
+              <Text style={{ fontFamily: 'Inclusive Sans', fontSize: 12, color: colors.textSecondary, textAlign: 'center', marginTop: 4 }}>
                 Registration handled on the official site
               </Text>
             </>
           ) : event.isRegistered ? (
-            <DestructiveButton
-              onPress={() => user?.username && toggleRegistration(user.username)}
-              disabled={isToggling}
-              loading={isToggling}
-            >
+            <DestructiveButton onPress={() => user?.username && toggleRegistration(user.username)} disabled={isToggling} loading={isToggling}>
               Cancel Registration
             </DestructiveButton>
           ) : (
             <PrimaryButton
               onPress={() => {
-                if (!user) {
-                  setShowAuthPrompt(true)
-                } else if (user.username) {
-                  toggleRegistration(user.username)
-                }
+                if (!user) setShowAuthPrompt(true)
+                else if (user.username) toggleRegistration(user.username)
               }}
               disabled={isToggling}
               loading={isToggling}
