@@ -25,9 +25,9 @@ import {
   NativeChatHeader,
   FeedWorkspace,
   PostThread,
-  type FeedPost,
   type GroupBoard,
 } from '../../components/feed'
+import { buildFeedPosts } from '../../components/feed/feedData'
 import type { DiscoverCenter, EventDisplay } from '../../utils/api'
 
 function formatEventDateLabel(date: string) {
@@ -135,30 +135,6 @@ function sortGroupsByDistance(groups: GroupBoard[]) {
 
 function matchesQuery(value: string, query: string) {
   return value.toLowerCase().includes(query.toLowerCase().trim())
-}
-
-function buildFeedPosts(groups: GroupBoard[]): FeedPost[] {
-  const posts = groups.flatMap((group) =>
-    group.messages.map((message) => {
-      const replies = group.messages.filter((candidate) => candidate.id !== message.id)
-      return {
-        ...message,
-        id: `${group.id}-${message.id}`,
-        sourceLabel: group.title,
-        sourceKind: group.kind,
-        sourceTitle: group.title,
-        sourceSubtitle: group.subtitle,
-        groupId: group.id,
-        groupKind: group.kind,
-        replyMessages: replies.slice(0, Math.max(message.replyCount ?? 2, 1)),
-      }
-    })
-  )
-
-  return posts.sort((a, b) => {
-    if (a.pinned !== b.pinned) return a.pinned ? -1 : 1
-    return a.id < b.id ? 1 : -1
-  })
 }
 
 export default function FeedScreen() {

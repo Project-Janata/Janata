@@ -594,17 +594,19 @@ export async function createBoardPostReply(
   return data.reply
 }
 
-/** List replies under a board post, oldest first (#205 / GET /replies). */
+/**
+ * List replies under a board post, oldest first (#205 / GET /replies).
+ * Throws on failure so the post-detail thread can show a retryable error
+ * state (rather than masking a network/auth failure as an empty thread).
+ */
 export async function fetchBoardPostReplies(postId: string): Promise<BoardPostData[]> {
-  try {
-    const response = await authFetch(`/boards/posts/${encodeURIComponent(postId)}/replies`)
-    if (!response.ok) return []
-    const data = await response.json()
-    return data.replies ?? []
-  } catch (err: any) {
-    if (__DEV__) console.warn('[fetchBoardPostReplies]', err?.message || err)
-    return []
+  const response = await authFetch(`/boards/posts/${encodeURIComponent(postId)}/replies`)
+  if (!response.ok) {
+    const err = await response.json().catch(() => ({ message: 'Failed to load replies' }))
+    throw new Error(err.message || 'Failed to load replies')
   }
+  const data = await response.json()
+  return data.replies ?? []
 }
 
 /** Edit a board post body — author only, within the edit window (#205 / PATCH). */
