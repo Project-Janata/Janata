@@ -3,7 +3,8 @@
  *
  * Client for the v2 user-issued invite code endpoints.
  *
- *   - mintCode: verified user creates a single-use 30-day code to share
+ *   - mintCode: verified user creates a multi-use code to share (default
+ *     25 uses / 7-day expiry; adjustable, or maxUses=1 for single-use)
  *   - listMyCodes: list codes the current user has minted
  *   - redeem: an Unverified user redeems a code post-signup (the signup
  *     path itself takes the code in /auth/register)
@@ -71,7 +72,15 @@ const safeJson = async <T>(response: Response): Promise<T | null> => {
 export interface MintedInviteCode {
   code: string
   expiresAt: string
+  maxUses: number
   shareUrl: string
+}
+
+export interface MintInviteOptions {
+  /** Max redemptions. Server clamps to [1, 100]. Defaults to 25. */
+  maxUses?: number
+  /** Days until expiry. Server clamps to [1, 30]. Defaults to 7. */
+  expiresInDays?: number
 }
 
 export interface MintedCodeListEntry {
@@ -94,16 +103,22 @@ export interface RedeemResponse extends GenericSuccessResponse {
 
 export const inviteClient = {
   /**
-   * Mint a new single-use, 30-day-expiry invite code tied to the caller.
-   * Requires verification_level >= NORMAL_USER (45) server-side.
+   * Mint a new multi-use invite code tied to the caller. Defaults to 25 uses
+   * / 7-day expiry; pass `options` to adjust (server clamps maxUses to
+   * [1, 100] and expiresInDays to [1, 30]). Pass `{ maxUses: 1 }` for a
+   * single-use link. Requires verification_level >= NORMAL_USER (45) server-side.
    */
-  async mintCode(token: string): AsyncResult<MintedInviteCode> {
+  async mintCode(token: string, options: MintInviteOptions = {}): AsyncResult<MintedInviteCode> {
     try {
       const response = await withTimeout(
         buildUrl('/auth/invite-codes'),
         {
           method: 'POST',
           headers: { Authorization: `Bearer ${token}` },
+          body: JSON.stringify({
+            ...(options.maxUses !== undefined ? { maxUses: options.maxUses } : {}),
+            ...(options.expiresInDays !== undefined ? { expiresInDays: options.expiresInDays } : {}),
+          }),
         },
         API_TIMEOUTS.standard,
       )
@@ -119,7 +134,12 @@ export const inviteClient = {
 
       return {
         success: true,
-        data: { code: data.code, expiresAt: data.expiresAt, shareUrl: data.shareUrl },
+        data: {
+          code: data.code,
+          expiresAt: data.expiresAt,
+          maxUses: data.maxUses,
+          shareUrl: data.shareUrl,
+        },
       }
     } catch (error: any) {
       if (error?.name === 'AbortError') {
@@ -183,12 +203,16 @@ export const inviteClient = {
         API_TIMEOUTS.standard,
       )
 
-      const data = await safeJson<RedeemResponse>(response)
+      const data = await safeJson<RedeemResponse & { reason?: string }>(response)
 
       if (!response.ok || !data?.user) {
         return {
           success: false,
-          error: toError(data?.message || 'Failed to redeem invite code', response.status),
+          error: toError(
+            data?.message || 'Failed to redeem invite code',
+            response.status,
+            data?.reason,
+          ),
         }
       }
 

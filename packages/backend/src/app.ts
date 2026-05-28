@@ -247,13 +247,18 @@ app.post('/auth/validate-invite-code', rateLimit(10, 60_000), async (c) => {
     return c.json({ valid: false, error: 'Invite code is required' }, 400)
   }
 
-  const code = await inviteCodes.validateInviteCode(c.env, body.code)
-
-  if (code) {
+  const status = await inviteCodes.classifyInviteCode(c.env, body.code)
+  if (status === 'ok') {
     return c.json({ valid: true })
   }
 
-  return c.json({ valid: false, error: 'Invalid or inactive invite code' })
+  const messages: Record<Exclude<inviteCodes.InviteCodeStatus, 'ok'>, string> = {
+    not_found: 'Invalid or inactive invite code',
+    inactive: 'This invite link has been deactivated',
+    expired: 'This invite link has expired',
+    exhausted: 'This invite link has reached its maximum number of uses',
+  }
+  return c.json({ valid: false, error: messages[status], reason: status })
 })
 
 app.post('/auth/register', rateLimit(5, 60_000), async (c) => {
@@ -609,7 +614,23 @@ app.post('/auth/invite-codes', authMiddleware, async (c) => {
     return c.json({ message: 'Only verified users can issue invite codes' }, 403)
   }
 
-  const result = await inviteCodes.mintUserInviteCode(c.env, user.id)
+  const body = await c.req
+    .json<{ maxUses?: number; expiresInDays?: number }>()
+    .catch(() => ({}) as { maxUses?: number; expiresInDays?: number })
+
+  // Optional overrides; out-of-range values are clamped in the lib, but reject
+  // non-integers so a typo doesn't silently fall back to the default.
+  if (body.maxUses !== undefined && !Number.isInteger(body.maxUses)) {
+    return c.json({ message: 'maxUses must be an integer' }, 400)
+  }
+  if (body.expiresInDays !== undefined && !Number.isInteger(body.expiresInDays)) {
+    return c.json({ message: 'expiresInDays must be an integer' }, 400)
+  }
+
+  const result = await inviteCodes.mintUserInviteCode(c.env, user.id, {
+    maxUses: body.maxUses,
+    expiresInDays: body.expiresInDays,
+  })
   if (!result.success) {
     console.error('mintUserInviteCode error:', result.error)
     return c.json({ message: 'Failed to mint invite code' }, 500)
@@ -618,6 +639,7 @@ app.post('/auth/invite-codes', authMiddleware, async (c) => {
   return c.json({
     code: result.code,
     expiresAt: result.expiresAt,
+    maxUses: result.maxUses,
     shareUrl: `${INVITE_SHARE_URL_BASE}?code=${result.code}`,
   })
 })
@@ -648,23 +670,40 @@ app.post('/auth/redeem-invite', rateLimit(5, 60_000), authMiddleware, async (c) 
     return c.json({ message: 'Invite code is required' }, 400)
   }
 
-  const validated = await inviteCodes.validateInviteCode(c.env, body.code)
-  if (!validated) {
-    return c.json({ message: 'Invalid, expired, or fully redeemed invite code' }, 401)
+  // Fetch once and both classify (for a specific error: expired vs exhausted
+  // vs deactivated) and consume off the same row. The atomic guard in
+  // consumeInviteCode is what actually prevents over-redemption under load.
+  const codeRow = await inviteCodes.getInviteCode(c.env, body.code)
+  const status = inviteCodes.classifyInviteCodeRow(codeRow)
+  if (status !== 'ok' || !codeRow) {
+    const reasons: Record<
+      Exclude<inviteCodes.InviteCodeStatus, 'ok'>,
+      { message: string; code: 401 | 403 | 409 | 410 }
+    > = {
+      not_found: { message: 'Invalid invite code', code: 401 },
+      inactive: { message: 'This invite link has been deactivated', code: 403 },
+      expired: { message: 'This invite link has expired', code: 410 },
+      exhausted: { message: 'This invite link has reached its maximum number of uses', code: 409 },
+    }
+    const r = reasons[status === 'ok' ? 'not_found' : status]
+    return c.json({ message: r.message, reason: status === 'ok' ? 'not_found' : status }, r.code)
   }
 
-  const consumed = await inviteCodes.consumeInviteCode(c.env, validated.code)
+  const consumed = await inviteCodes.consumeInviteCode(c.env, codeRow.code)
   if (!consumed) {
-    // Race: someone else consumed it between validate and consume.
-    return c.json({ message: 'Invite code already redeemed or expired' }, 409)
+    // Race: the last remaining use was taken between classify and consume.
+    return c.json(
+      { message: 'This invite link has reached its maximum number of uses', reason: 'exhausted' },
+      409,
+    )
   }
 
   // Record the code on the user. If email is already verified, apply the
   // promotion now. Otherwise the bump happens at email-verify.
-  const updates: Partial<UserRow> = { invite_code: validated.code }
+  const updates: Partial<UserRow> = { invite_code: codeRow.code }
   let promoted = false
-  if (user.email_verified_at && user.verification_level < validated.verification_level) {
-    updates.verification_level = validated.verification_level
+  if (user.email_verified_at && user.verification_level < codeRow.verification_level) {
+    updates.verification_level = codeRow.verification_level
     promoted = true
   }
   await db.updateUser(c.env.DB, user.id, updates)

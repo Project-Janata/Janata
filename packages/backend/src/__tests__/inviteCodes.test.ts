@@ -331,4 +331,65 @@ describe('Invite Codes Module', () => {
       expect(api.isActive).toBe(false)
     })
   })
+
+  describe('clampMaxUses / clampTtlDays (#272)', () => {
+    it('clamps maxUses into [1, 100]', () => {
+      expect(inviteCodes.clampMaxUses(0)).toBe(1)
+      expect(inviteCodes.clampMaxUses(-5)).toBe(1)
+      expect(inviteCodes.clampMaxUses(25)).toBe(25)
+      expect(inviteCodes.clampMaxUses(100)).toBe(100)
+      expect(inviteCodes.clampMaxUses(9999)).toBe(100)
+      expect(inviteCodes.clampMaxUses(2.9)).toBe(2) // floored
+    })
+
+    it('clamps ttl days into [1, 30]', () => {
+      expect(inviteCodes.clampTtlDays(0)).toBe(1)
+      expect(inviteCodes.clampTtlDays(7)).toBe(7)
+      expect(inviteCodes.clampTtlDays(30)).toBe(30)
+      expect(inviteCodes.clampTtlDays(9999)).toBe(30)
+    })
+  })
+
+  describe('classifyInviteCode (#272)', () => {
+    const baseRow = (over: Record<string, any>) => ({
+      code: 'MULTI001',
+      label: 'multi',
+      verification_level: 45,
+      is_active: 1,
+      created_at: '2026-04-07T00:00:00Z',
+      created_by_user_id: 'u1',
+      expires_at: null,
+      max_uses: 25,
+      uses_count: 0,
+      ...over,
+    })
+    const now = new Date('2026-05-28T00:00:00Z')
+
+    it('returns not_found for a missing code', async () => {
+      expect(await inviteCodes.classifyInviteCode(env, 'NOPE', now)).toBe('not_found')
+    })
+
+    it('returns inactive for a deactivated code', async () => {
+      ;(env.DB as any).setData('MULTI001', baseRow({ is_active: 0 }))
+      expect(await inviteCodes.classifyInviteCode(env, 'multi001', now)).toBe('inactive')
+    })
+
+    it('returns expired when past expires_at', async () => {
+      ;(env.DB as any).setData('MULTI001', baseRow({ expires_at: '2026-05-01T00:00:00Z' }))
+      expect(await inviteCodes.classifyInviteCode(env, 'MULTI001', now)).toBe('expired')
+    })
+
+    it('returns exhausted when uses_count >= max_uses', async () => {
+      ;(env.DB as any).setData('MULTI001', baseRow({ max_uses: 3, uses_count: 3 }))
+      expect(await inviteCodes.classifyInviteCode(env, 'MULTI001', now)).toBe('exhausted')
+    })
+
+    it('returns ok for an active, in-window, non-exhausted code', async () => {
+      ;(env.DB as any).setData(
+        'MULTI001',
+        baseRow({ expires_at: '2026-06-30T00:00:00Z', max_uses: 25, uses_count: 4 }),
+      )
+      expect(await inviteCodes.classifyInviteCode(env, 'MULTI001', now)).toBe('ok')
+    })
+  })
 })
