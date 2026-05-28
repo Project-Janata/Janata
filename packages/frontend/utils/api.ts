@@ -101,6 +101,9 @@ export interface BoardPostData {
   author: UserData
   reactions: Array<{ emoji: string; count: number }>
   replyCount: number
+  // #205 boards enhancements — present once the post has been pinned (#249).
+  pinnedAt?: string | null
+  pinnedBy?: string | null
 }
 
 // ── Discover-specific types ─────────────────────────────────────────────
@@ -551,6 +554,102 @@ export async function toggleBoardPostReaction(
     throw new Error(err.message || 'Failed to update reaction')
   }
   return response.json()
+}
+
+/**
+ * Aggregated cross-board feed (#205 / GET /feed). Server-side aggregation of
+ * every top-level post on a board the user can access, reverse-chronological.
+ * Returns [] on failure so the Feed tab degrades gracefully.
+ */
+export async function fetchAggregatedFeed(
+  opts: { limit?: number; offset?: number } = {}
+): Promise<BoardPostData[]> {
+  const limit = Math.max(1, Math.min(100, Math.floor(opts.limit ?? 50)))
+  const offset = Math.max(0, Math.floor(opts.offset ?? 0))
+  try {
+    const response = await authFetch(`/feed?limit=${limit}&offset=${offset}`)
+    if (!response.ok) return []
+    const data = await response.json()
+    return data.posts ?? []
+  } catch (err: any) {
+    if (__DEV__) console.warn('[fetchAggregatedFeed]', err?.message || err)
+    return []
+  }
+}
+
+/** Create a single-level reply to a board post (#205 / POST /replies). */
+export async function createBoardPostReply(
+  postId: string,
+  body: string
+): Promise<BoardPostData> {
+  const response = await authFetch(`/boards/posts/${encodeURIComponent(postId)}/replies`, {
+    method: 'POST',
+    body: JSON.stringify({ body }),
+  })
+  if (!response.ok) {
+    const err = await response.json().catch(() => ({ message: 'Failed to post reply' }))
+    throw new Error(err.message || 'Failed to post reply')
+  }
+  const data = await response.json()
+  return data.reply
+}
+
+/** List replies under a board post, oldest first (#205 / GET /replies). */
+export async function fetchBoardPostReplies(postId: string): Promise<BoardPostData[]> {
+  try {
+    const response = await authFetch(`/boards/posts/${encodeURIComponent(postId)}/replies`)
+    if (!response.ok) return []
+    const data = await response.json()
+    return data.replies ?? []
+  } catch (err: any) {
+    if (__DEV__) console.warn('[fetchBoardPostReplies]', err?.message || err)
+    return []
+  }
+}
+
+/** Edit a board post body — author only, within the edit window (#205 / PATCH). */
+export async function editBoardPost(postId: string, body: string): Promise<BoardPostData> {
+  const response = await authFetch(`/boards/posts/${encodeURIComponent(postId)}`, {
+    method: 'PATCH',
+    body: JSON.stringify({ body }),
+  })
+  if (!response.ok) {
+    const err = await response.json().catch(() => ({ message: 'Failed to edit post' }))
+    throw new Error(err.message || 'Failed to edit post')
+  }
+  const data = await response.json()
+  return data.post
+}
+
+/** Soft-delete a board post — author or admin (#205 / DELETE). */
+export async function deleteBoardPost(postId: string): Promise<void> {
+  const response = await authFetch(`/boards/posts/${encodeURIComponent(postId)}`, {
+    method: 'DELETE',
+  })
+  if (!response.ok) {
+    const err = await response.json().catch(() => ({ message: 'Failed to delete post' }))
+    throw new Error(err.message || 'Failed to delete post')
+  }
+}
+
+/**
+ * Pin / unpin a board post — sevak+ or admin only (#205 / POST pin|unpin).
+ * Returns the new pinned state.
+ */
+export async function setBoardPostPinned(
+  postId: string,
+  pinned: boolean
+): Promise<boolean> {
+  const action = pinned ? 'pin' : 'unpin'
+  const response = await authFetch(`/boards/posts/${encodeURIComponent(postId)}/${action}`, {
+    method: 'POST',
+  })
+  if (!response.ok) {
+    const err = await response.json().catch(() => ({ message: `Failed to ${action} post` }))
+    throw new Error(err.message || `Failed to ${action} post`)
+  }
+  const data = await response.json()
+  return data.pinned ?? pinned
 }
 
 // ── Profile endpoints ─────────────────────────────────────────────────
