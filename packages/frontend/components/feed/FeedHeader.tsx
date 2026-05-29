@@ -55,7 +55,7 @@ export function FeedHeader({
           <TextInput
             value={query}
             onChangeText={onChangeQuery}
-            placeholder="Search posts, people, groups"
+            placeholder="Search posts and people"
             placeholderTextColor={colors.textFaint}
             style={{
               flex: 1,

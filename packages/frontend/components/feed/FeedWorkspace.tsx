@@ -265,7 +265,7 @@ function FeedContextRail({
         <TextInput
           value={query}
           onChangeText={onChangeQuery}
-          placeholder="Search posts, people, groups"
+          placeholder="Search posts and people"
           placeholderTextColor={colors.textFaint}
           style={{ flex: 1, fontSize: 14, color: colors.text, paddingVertical: 0, outlineStyle: 'none' } as any}
         />
