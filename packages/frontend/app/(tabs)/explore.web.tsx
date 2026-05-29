@@ -518,18 +518,24 @@ function MobileDiscoverFallback() {
 
   const currentTranslateY = sheetTranslateY ?? getSnapY(sheetSnap)
 
-  // Touch handlers for bottom sheet drag
-  const handleTouchStart = useCallback(
-    (e: React.TouchEvent) => {
-      dragStartY.current = e.touches[0].clientY
+  // Pointer handlers for the bottom-sheet drag. Pointer events cover touch,
+  // mouse, and stylus on every modern browser — the sheet was touch-only, so
+  // it didn't drag with a pointer/trackpad or in a device-emulated mobile
+  // viewport (issue #321).
+  const handleDragStart = useCallback(
+    (e: React.PointerEvent) => {
+      e.currentTarget.setPointerCapture(e.pointerId)
+      dragStartY.current = e.clientY
       dragStartTranslate.current = currentTranslateY
     },
     [currentTranslateY]
   )
 
-  const handleTouchMove = useCallback(
-    (e: React.TouchEvent) => {
-      const dy = e.touches[0].clientY - dragStartY.current
+  const handleDragMove = useCallback(
+    (e: React.PointerEvent) => {
+      // pointermove also fires on hover — only act during a captured drag.
+      if (!e.currentTarget.hasPointerCapture(e.pointerId)) return
+      const dy = e.clientY - dragStartY.current
       const positions = getSnapPositions()
       const next = Math.max(
         positions.expanded,
@@ -540,11 +546,11 @@ function MobileDiscoverFallback() {
     [getSnapPositions]
   )
 
-  const handleTouchEnd = useCallback(
-    (e: React.TouchEvent) => {
+  const handleDragEnd = useCallback(
+    (e: React.PointerEvent) => {
       if (sheetTranslateY === null) return
       const positions = getSnapPositions()
-      const dragDy = e.changedTouches[0].clientY - dragStartY.current
+      const dragDy = e.clientY - dragStartY.current
 
       // Snap to nearest of 4 positions, biased by velocity
       let snapTo: SheetSnap
@@ -680,9 +686,9 @@ function MobileDiscoverFallback() {
         >
           {/* Drag Handle Zone */}
           <div
-            onTouchStart={handleTouchStart}
-            onTouchMove={handleTouchMove}
-            onTouchEnd={handleTouchEnd}
+            onPointerDown={handleDragStart}
+            onPointerMove={handleDragMove}
+            onPointerUp={handleDragEnd}
             style={{
               touchAction: 'none',
               cursor: 'grab',
