@@ -90,6 +90,9 @@ export default function HomeScreen() {
     }, [refetchMyEvents, refreshDiscover])
   )
 
+  // Desktop two-column composition is web-only and gated on a wide breakpoint.
+  // Mobile web and native always render the original single centered column.
+  const isWideDesktop = Platform.OS === 'web' && width >= 1024
   const isDesktop = width >= 860
 
   const signedUpEvents = useMemo(() => {
@@ -144,6 +147,180 @@ export default function HomeScreen() {
     )
   }
 
+  const greeting = (
+    <View style={{ gap: 4 }}>
+      <Text style={{ fontSize: 12.5, color: c.textFaint, letterSpacing: 0.2 }}>{todayLabel}</Text>
+      <Text style={{ fontFamily: 'Inclusive Sans', fontSize: 30, lineHeight: 34, letterSpacing: -0.5, color: c.text }} numberOfLines={1}>
+        {user ? `Namaste, ${greetingName}` : 'Namaste'}
+      </Text>
+    </View>
+  )
+
+  const firstRunOverview = isNewUser ? (
+    <FirstRunOverview
+      c={c}
+      detailColors={detailColors}
+      center={userCenter}
+      peek={boardPeek}
+      onExplore={() => {
+        track('home_first_run_explore_pressed')
+        router.push('/explore' as never)
+      }}
+      onFeed={() => {
+        track('home_first_run_feed_pressed')
+        router.push('/feed' as never)
+      }}
+      onChooseCenter={() => {
+        track('home_first_run_center_pressed')
+        router.push('/center-picker' as never)
+      }}
+      onOpenCenter={(id) => {
+        track('home_first_run_center_opened', { centerId: id })
+        router.push(`/center/${id}`)
+      }}
+      onPeekPress={(id) => {
+        track('home_board_peek_pressed', { postId: id, source: 'first_run_peek' })
+        router.push('/feed' as never)
+      }}
+    />
+  ) : null
+
+  const upNextSection = !isNewUser || featured ? (
+    <SectionHeader eyebrow="UP NEXT FOR YOU" trailing="See all" accentColor={c.accent} faintColor={c.textFaint} onTrailingPress={() => {
+      track('home_see_all_pressed', { section: 'up_next' })
+      router.push('/' as never)
+    }}>
+      {featured ? (
+        <FeaturedEventCard
+          featured={featured}
+          onPress={() => {
+            track('home_featured_event_pressed', { eventId: featured.event.id })
+            router.push(`/events/${featured.event.id}`)
+          }}
+        />
+      ) : (
+        <View style={{ borderRadius: 18, borderWidth: 1, borderColor: c.border, backgroundColor: c.card, padding: 16, gap: 10 }}>
+          <View style={{ gap: 4 }}>
+            <Text style={{ fontFamily: 'Inclusive Sans', fontSize: 17, color: c.text }}>No upcoming events at your center yet</Text>
+            <Text style={{ fontSize: 14, lineHeight: 20, color: c.textMuted }}>
+              Explore other CHYK events while your center's calendar fills in.
+            </Text>
+          </View>
+          <Pressable
+            onPress={() => {
+              track('home_explore_fallback_pressed', { source: 'up_next_empty' })
+              router.push('/explore' as never)
+            }}
+            style={{ alignSelf: 'flex-start', paddingVertical: 8, paddingHorizontal: 12, borderRadius: 999, backgroundColor: c.accentSoft }}
+          >
+            <Text style={{ fontFamily: 'Inclusive Sans', fontSize: 13, color: c.accent }}>Explore</Text>
+          </Pressable>
+        </View>
+      )}
+    </SectionHeader>
+  ) : null
+
+  // Boards peek (#199): the 1-2 latest posts from the user's center board.
+  // New users get their center + a feed peek inside the first-run overview,
+  // so this section is for returning members only.
+  const boardsSection = !isNewUser ? (
+    <SectionHeader
+      eyebrow="LATEST ON YOUR BOARDS"
+      trailing="Open Feed"
+      accentColor={c.accent}
+      faintColor={c.textFaint}
+      onTrailingPress={() => {
+        track('home_open_feed_pressed', { source: 'boards_section_header' })
+        router.push('/feed' as never)
+      }}
+    >
+      {boardPeek.length > 0 ? (
+        <View>
+          {boardPeek.map((message) => (
+            <BoardPostCard
+              key={message.id}
+              message={message}
+              colors={detailColors}
+              showSource
+              onPress={() => {
+                track('home_board_peek_pressed', { postId: message.id, source: 'boards_section' })
+                router.push('/feed' as never)
+              }}
+            />
+          ))}
+        </View>
+      ) : (
+        <View style={{ borderRadius: 16, borderWidth: 1, borderColor: c.border, backgroundColor: c.card, padding: 16, gap: 6 }}>
+          <Text style={{ fontFamily: 'Inclusive Sans', fontSize: 16, color: c.text }}>
+            No posts yet on your boards
+          </Text>
+          <Text style={{ fontSize: 14, lineHeight: 20, color: c.textMuted }}>
+            Conversations from your center and events you've joined will appear here. Head to the Feed to see what's new across the network.
+          </Text>
+        </View>
+      )}
+    </SectionHeader>
+  ) : null
+
+  const weekSection = !isNewUser || weekItems.length > 0 ? (
+    <SectionHeader
+      eyebrow={signedUpEvents.length > 0 ? 'THIS WEEK' : 'COMING UP'}
+      trailing="See all"
+      accentColor={c.accent}
+      faintColor={c.textFaint}
+      onTrailingPress={() => {
+        track('home_see_all_pressed', { section: signedUpEvents.length > 0 ? 'this_week' : 'coming_up' })
+        router.push('/' as never)
+      }}
+    >
+      {weekItems.length > 0 ? (
+        <View style={{ gap: 8 }}>
+          {weekItems.map((item) => <MiniEventRow key={item.id} item={item} />)}
+        </View>
+      ) : (
+        <View style={{ borderRadius: 16, borderWidth: 1, borderColor: c.border, backgroundColor: c.card, padding: 16, gap: 4 }}>
+          <Text style={{ fontFamily: 'Inclusive Sans', fontSize: 16, color: c.text }}>No events yet</Text>
+          <Text style={{ fontSize: 14, lineHeight: 20, color: c.textMuted }}>
+            Upcoming events from Explore will appear here as they are added.
+          </Text>
+        </View>
+      )}
+    </SectionHeader>
+  ) : null
+
+  // ── Wide desktop: a real two-column composition ─────────────────────────
+  // A centered ~1040px container with the schedule (Up Next + This Week) as
+  // the primary column and a ~320px right rail for the member's center, the
+  // welcome tour, and board activity — so the page uses the width instead of
+  // stranding a narrow column in empty gray. Reuses the exact same section
+  // blocks as mobile; only their arrangement differs.
+  if (isWideDesktop) {
+    const rail = isNewUser ? firstRunOverview : (
+      <View style={{ gap: 22 }}>{boardsSection}</View>
+    )
+    return (
+      <ScrollView
+        style={{ flex: 1, backgroundColor: c.bg }}
+        contentContainerStyle={{ paddingHorizontal: 40, paddingTop: 28, paddingBottom: 56 }}
+        showsVerticalScrollIndicator={false}
+      >
+        <View style={{ width: '100%', maxWidth: 1040, alignSelf: 'center', gap: 28 }}>
+          {greeting}
+          <View style={{ flexDirection: 'row', alignItems: 'flex-start', gap: 32 }}>
+            <View style={{ flex: 1, minWidth: 0, gap: 28 }}>
+              {upNextSection}
+              {weekSection}
+            </View>
+            <View style={{ width: 320, gap: 22 }}>
+              {rail}
+            </View>
+          </View>
+        </View>
+      </ScrollView>
+    )
+  }
+
+  // ── Mobile web + native + narrow web: original single centered column ────
   return (
     <ScrollView
       style={{ flex: 1, backgroundColor: c.bg }}
@@ -155,146 +332,11 @@ export default function HomeScreen() {
       showsVerticalScrollIndicator={false}
     >
       <View style={{ width: '100%', maxWidth: 640, alignSelf: 'center', gap: 22 }}>
-        <View style={{ gap: 4 }}>
-          <Text style={{ fontSize: 12.5, color: c.textFaint, letterSpacing: 0.2 }}>{todayLabel}</Text>
-          <Text style={{ fontFamily: 'Inclusive Sans', fontSize: 30, lineHeight: 34, letterSpacing: -0.5, color: c.text }} numberOfLines={1}>
-            {user ? `Namaste, ${greetingName}` : 'Namaste'}
-          </Text>
-        </View>
-
-        {isNewUser ? (
-          <FirstRunOverview
-            c={c}
-            detailColors={detailColors}
-            center={userCenter}
-            peek={boardPeek}
-            onExplore={() => {
-              track('home_first_run_explore_pressed')
-              router.push('/explore' as never)
-            }}
-            onFeed={() => {
-              track('home_first_run_feed_pressed')
-              router.push('/feed' as never)
-            }}
-            onChooseCenter={() => {
-              track('home_first_run_center_pressed')
-              router.push('/center-picker' as never)
-            }}
-            onOpenCenter={(id) => {
-              track('home_first_run_center_opened', { centerId: id })
-              router.push(`/center/${id}`)
-            }}
-            onPeekPress={(id) => {
-              track('home_board_peek_pressed', { postId: id, source: 'first_run_peek' })
-              router.push('/feed' as never)
-            }}
-          />
-        ) : null}
-
-        {!isNewUser || featured ? (
-          <SectionHeader eyebrow="UP NEXT FOR YOU" trailing="See all" accentColor={c.accent} faintColor={c.textFaint} onTrailingPress={() => {
-            track('home_see_all_pressed', { section: 'up_next' })
-            router.push('/' as never)
-          }}>
-            {featured ? (
-              <FeaturedEventCard
-                featured={featured}
-                onPress={() => {
-                  track('home_featured_event_pressed', { eventId: featured.event.id })
-                  router.push(`/events/${featured.event.id}`)
-                }}
-              />
-            ) : (
-              <View style={{ borderRadius: 18, borderWidth: 1, borderColor: c.border, backgroundColor: c.card, padding: 16, gap: 10 }}>
-                <View style={{ gap: 4 }}>
-                  <Text style={{ fontFamily: 'Inclusive Sans', fontSize: 17, color: c.text }}>No upcoming events at your center yet</Text>
-                  <Text style={{ fontSize: 14, lineHeight: 20, color: c.textMuted }}>
-                    Explore other CHYK events while your center's calendar fills in.
-                  </Text>
-                </View>
-                <Pressable
-                  onPress={() => {
-                    track('home_explore_fallback_pressed', { source: 'up_next_empty' })
-                    router.push('/explore' as never)
-                  }}
-                  style={{ alignSelf: 'flex-start', paddingVertical: 8, paddingHorizontal: 12, borderRadius: 999, backgroundColor: c.accentSoft }}
-                >
-                  <Text style={{ fontFamily: 'Inclusive Sans', fontSize: 13, color: c.accent }}>Explore</Text>
-                </Pressable>
-              </View>
-            )}
-          </SectionHeader>
-        ) : null}
-
-        {/*
-          Boards peek (#199): the 1-2 latest posts from the user's center
-          board. New users get their center + a feed peek inside the first-run
-          overview above, so this section is for returning members only.
-        */}
-        {!isNewUser ? (
-          <SectionHeader
-            eyebrow="LATEST ON YOUR BOARDS"
-            trailing="Open Feed"
-            accentColor={c.accent}
-            faintColor={c.textFaint}
-            onTrailingPress={() => {
-              track('home_open_feed_pressed', { source: 'boards_section_header' })
-              router.push('/feed' as never)
-            }}
-          >
-            {boardPeek.length > 0 ? (
-              <View>
-                {boardPeek.map((message) => (
-                  <BoardPostCard
-                    key={message.id}
-                    message={message}
-                    colors={detailColors}
-                    showSource
-                    onPress={() => {
-                      track('home_board_peek_pressed', { postId: message.id, source: 'boards_section' })
-                      router.push('/feed' as never)
-                    }}
-                  />
-                ))}
-              </View>
-            ) : (
-              <View style={{ borderRadius: 16, borderWidth: 1, borderColor: c.border, backgroundColor: c.card, padding: 16, gap: 6 }}>
-                <Text style={{ fontFamily: 'Inclusive Sans', fontSize: 16, color: c.text }}>
-                  No posts yet on your boards
-                </Text>
-                <Text style={{ fontSize: 14, lineHeight: 20, color: c.textMuted }}>
-                  Conversations from your center and events you've joined will appear here. Head to the Feed to see what's new across the network.
-                </Text>
-              </View>
-            )}
-          </SectionHeader>
-        ) : null}
-
-        {!isNewUser || weekItems.length > 0 ? (
-          <SectionHeader
-            eyebrow={signedUpEvents.length > 0 ? 'THIS WEEK' : 'COMING UP'}
-            trailing="See all"
-            accentColor={c.accent}
-            faintColor={c.textFaint}
-            onTrailingPress={() => {
-              track('home_see_all_pressed', { section: signedUpEvents.length > 0 ? 'this_week' : 'coming_up' })
-              router.push('/' as never)
-            }}
-          >
-            {weekItems.length > 0 ? (
-              <View style={{ gap: 8 }}>
-                {weekItems.map((item) => <MiniEventRow key={item.id} item={item} />)}
-              </View>
-            ) : (
-              <View style={{ borderRadius: 16, borderWidth: 1, borderColor: c.border, backgroundColor: c.card, padding: 16, gap: 4 }}>
-                <Text style={{ fontFamily: 'Inclusive Sans', fontSize: 16, color: c.text }}>No events yet</Text>
-                <Text style={{ fontSize: 14, lineHeight: 20, color: c.textMuted }}>
-                  Upcoming events from Explore will appear here as they are added.
-                </Text>
-              </View>
-            )}
-          </SectionHeader>
-        ) : null}
+        {greeting}
+        {firstRunOverview}
+        {upNextSection}
+        {boardsSection}
+        {weekSection}
       </View>
     </ScrollView>
   )
