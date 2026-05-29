@@ -20,7 +20,9 @@ CONFIG="packages/backend/wrangler.preview.toml"
 DB_NAME="chinmaya-janata-db-v2preview"
 WORKER_NAME="chinmaya-janata-api-v2preview"
 API="https://chinmaya-janata-api-v2preview.chinmayajanata.workers.dev/api"
-PAGES_PROJECT="project-janatha"
+# Pages PROJECT name is "chinmaya-janata"; its pages.dev domain is
+# project-janatha.pages.dev, so --branch v2preview → v2preview.project-janatha.pages.dev.
+PAGES_PROJECT="chinmaya-janata"
 PAGES_BRANCH="v2preview"
 PROD_DB_ID="d38b4cd2-963b-45eb-9f83-1e72f9d3aa5d"
 PW="PreviewTest2026!"
