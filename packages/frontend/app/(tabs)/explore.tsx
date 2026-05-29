@@ -19,13 +19,16 @@ import {
   Building2,
   ChevronUp,
   ChevronDown,
+  ChevronRight,
+  Check,
+  Globe,
   Plus,
 } from 'lucide-react-native'
 import { useRouter, useFocusEffect, useNavigation } from 'expo-router'
 import { usePostHog } from 'posthog-react-native'
 import { useTheme } from '../../components/contexts'
-import { Badge, UnderlineTabBar, Avatar, FilterChip } from '../../components/ui'
-import FilterPickerModal, { type FilterPickerOption } from '../../components/ui/FilterPickerModal'
+import { Badge, Avatar, FilterChip } from '../../components/ui'
+import { type FilterPickerOption } from '../../components/ui/FilterPickerModal'
 import { useUser } from '../../components/contexts/UserContext'
 import { useDiscoverData, type DiscoverFilter } from '../../hooks/useApiData'
 import type { EventDisplay, DiscoverCenter, AttendeeInfo } from '../../utils/api'
@@ -43,10 +46,29 @@ import { extractCityState } from '../../utils/addressParsing'
 // Metro-specific.
 import Map from '../../components/map/Map'
 
-const FILTERS: { label: DiscoverFilter }[] = [
-  { label: 'Events' },
-  { label: 'Centers' },
-]
+// Great-circle miles between two lat/lng points — used to rank the centers
+// nearest to the member's home center.
+function milesBetween(
+  a: { latitude?: number; longitude?: number },
+  b: { latitude?: number; longitude?: number }
+): number {
+  if (
+    !Number.isFinite(a.latitude) || !Number.isFinite(a.longitude) ||
+    !Number.isFinite(b.latitude) || !Number.isFinite(b.longitude)
+  ) {
+    return Number.POSITIVE_INFINITY
+  }
+  const toRad = (v: number) => (v * Math.PI) / 180
+  const dLat = toRad(b.latitude! - a.latitude!)
+  const dLng = toRad(b.longitude! - a.longitude!)
+  const lat1 = toRad(a.latitude!)
+  const lat2 = toRad(b.latitude!)
+  const h =
+    Math.sin(dLat / 2) ** 2 +
+    Math.cos(lat1) * Math.cos(lat2) * Math.sin(dLng / 2) ** 2
+  return 3958.8 * 2 * Math.atan2(Math.sqrt(h), Math.sqrt(1 - h))
+}
+
 
 /**
  * Format a date string into a short display like "FEB 26"
@@ -239,7 +261,8 @@ export default function DiscoverScreen() {
   const [showGoingOnly, setShowGoingOnly] = useState(false)
   const [showPastEvents, setShowPastEvents] = useState(false)
   const [selectedCenter, setSelectedCenter] = useState<string | null>(null)
-  const [showCenterModal, setShowCenterModal] = useState(false)
+  // The center dropdown opens an in-sheet list (not a modal) — view, pick one, or close.
+  const [centerPickerOpen, setCenterPickerOpen] = useState(false)
     const { user } = useUser()
     const {
     items,
@@ -249,6 +272,26 @@ export default function DiscoverScreen() {
     allCenters,
     refresh,
   } = useDiscoverData(activeFilter, searchQuery, user?.id, showPastEvents, showGoingOnly, user?.interests ?? undefined, user?.centerID, { fetchAttendees: true })
+
+  // The member's home center — pinned at the top of the sheet as their anchor.
+  const userCenter = useMemo(
+    () => allCenters.find((c) => c.id === user?.centerID),
+    [allCenters, user?.centerID]
+  )
+
+  // The center whose area we're showing events for. The card is a dropdown:
+  // selectedCenter overrides it; default is the member's home center. Events
+  // are sorted by nearness to this center, so "pick a center → see what's on
+  // around there."
+  // "__all__" = show events from every center (no proximity scoping); null =
+  // default to the member's home center; any id = that center's area.
+  const isAllCenters = selectedCenter === '__all__'
+  const areaCenterId = isAllCenters ? null : selectedCenter ?? user?.centerID ?? null
+  const areaCenter = useMemo(
+    () => (isAllCenters ? undefined : allCenters.find((c) => c.id === areaCenterId) ?? userCenter),
+    [isAllCenters, allCenters, areaCenterId, userCenter]
+  )
+  const isHomeArea = !!areaCenter && areaCenter.id === user?.centerID
 
   useFocusEffect(
     useCallback(() => {
@@ -360,14 +403,34 @@ export default function DiscoverScreen() {
         (item) => item.type === 'event' && (item.data as EventDisplay).date === selectedDate
       )
     }
-    if (selectedCenter) {
-      result = result.filter((item) => {
-        if (item.type !== 'event') return true
-        return (item.data as EventDisplay).centerId === selectedCenter
-      })
+    // Order the events by nearness to the selected area center so "what's on
+    // around <center>" surfaces first. Sorting (not filtering) keeps the list
+    // from ever going empty. Only applies to a flat events list.
+    if (areaCenter && result.length > 0 && result.every((i) => i.type === 'event')) {
+      result = [...result].sort(
+        (a, b) =>
+          milesBetween(areaCenter, a.data as EventDisplay) -
+          milesBetween(areaCenter, b.data as EventDisplay)
+      )
     }
     return result
-  }, [items, selectedDate, selectedCenter])
+  }, [items, selectedDate, areaCenter])
+
+  // Count of items under each section header (e.g. centers per state) so the
+  // grouped list shows "CALIFORNIA  3" — counts the rows even while collapsed.
+  const sectionCounts = React.useMemo(() => {
+    const counts: Record<string, number> = {}
+    let current: string | null = null
+    for (const item of displayItems) {
+      if (item.type === 'section') {
+        current = item.data.label
+        counts[current] = 0
+      } else if (current) {
+        counts[current] += 1
+      }
+    }
+    return counts
+  }, [displayItems])
 
   // Filter chip helpers — counts over upcoming events
   const todayStr = new Date().toISOString().split('T')[0]
@@ -381,17 +444,13 @@ export default function DiscoverScreen() {
       if (e.centerId) counts[e.centerId] = (counts[e.centerId] ?? 0) + 1
     }
     return [...allCenters]
-      .map((c) => ({ value: c.id, label: c.name, sublabel: c.address, count: counts[c.id] ?? 0 }))
-      .filter((o) => (o.count ?? 0) > 0)
+      .map((c) => ({ value: c.id, label: c.name, sublabel: extractCityState(c.address) || c.address, count: counts[c.id] ?? 0 }))
       .sort((a, b) => {
         if (user?.centerID && a.value === user.centerID) return -1
         if (user?.centerID && b.value === user.centerID) return 1
         return a.label.localeCompare(b.label)
       })
   }, [allCenters, eventsForCounts, user?.centerID])
-  const centerChipLabel = selectedCenter
-    ? centerOptions.find((o) => o.value === selectedCenter)?.label ?? 'Center'
-    : 'Center'
 
   const [collapsedSections, setCollapsedSections] = useState<Set<string>>(new Set())
   const toggleSection = useCallback((label: string) => {
@@ -512,18 +571,70 @@ export default function DiscoverScreen() {
               />
             </View>
 
-            {/* Filter tabs — underline style */}
-            <View style={{ marginBottom: 4 }}>
-              <UnderlineTabBar
-                tabs={FILTERS.map((f) => f.label)}
-                activeTab={selectedDate ? '' : activeFilter}
-                onTabChange={(tab) => handleFilterPress(tab as DiscoverFilter)}
-                counts={{ Events: allEvents.length, Centers: allCenters.length }}
-              />
-            </View>
+            {/* Center dropdown — picks which center's area to show events for.
+                Defaults to the member's home center; tapping opens the center
+                list so they can see what's on around any center. */}
+            {!centerPickerOpen && user && (isAllCenters || areaCenter) && (
+              <Pressable
+                onPress={() => {
+                  posthog?.capture('explore_area_center_opened', { centerId: areaCenter?.id ?? 'all' })
+                  setCenterPickerOpen(true)
+                }}
+                accessibilityRole="button"
+                accessibilityLabel={
+                  isAllCenters
+                    ? 'Showing events from all centers. Tap to change.'
+                    : `Showing events near ${areaCenter?.name}. Tap to change center.`
+                }
+                className="flex-row items-center mx-4 mb-3 px-3 rounded-2xl active:opacity-70"
+                style={{
+                  minHeight: 58,
+                  gap: 12,
+                  backgroundColor: isDark ? 'rgba(232,134,42,0.12)' : '#FFF7ED',
+                  borderWidth: 1,
+                  borderColor: isDark ? 'rgba(232,134,42,0.22)' : '#FDE8D0',
+                }}
+              >
+                <View
+                  className="w-10 h-10 rounded-xl items-center justify-center"
+                  style={{ backgroundColor: isDark ? 'rgba(232,134,42,0.18)' : '#FDE8D0' }}
+                >
+                  {isAllCenters ? <Globe size={18} color="#E8862A" /> : <Building2 size={18} color="#E8862A" />}
+                </View>
+                <View style={{ flex: 1 }}>
+                  <Text className="text-content dark:text-content-dark font-sans" style={{ fontSize: 15 }} numberOfLines={1}>
+                    {isAllCenters ? 'All centers' : areaCenter?.name}
+                  </Text>
+                  <Text className="text-stone-500 dark:text-stone-400 font-sans" style={{ fontSize: 12.5 }} numberOfLines={1}>
+                    {isAllCenters
+                      ? 'Events everywhere · tap to change'
+                      : isHomeArea
+                        ? `Your center${areaCenter?.memberCount ? ` · ${areaCenter.memberCount} members` : ''}`
+                        : 'Events near here · tap to change'}
+                  </Text>
+                </View>
+                <ChevronDown size={18} color="#a8a29e" />
+              </Pressable>
+            )}
 
-            {/* Filter chips — Today / Center / Going + Create button */}
-            {activeFilter === 'Events' && (
+            {/* In-sheet center picker header — title + Close. The list itself
+                renders in the ScrollView below. */}
+            {centerPickerOpen && (
+              <View
+                className="flex-row items-center justify-between px-4"
+                style={{ paddingTop: 2, paddingBottom: 8 }}
+              >
+                <Text className="font-sans text-stone-500 dark:text-stone-400 uppercase" style={{ fontSize: 11.5, letterSpacing: 0.9 }}>
+                  Show events near
+                </Text>
+                <Pressable onPress={() => setCenterPickerOpen(false)} hitSlop={8}>
+                  <Text style={{ fontSize: 13, fontWeight: '500', color: '#E8862A' }}>Close</Text>
+                </Pressable>
+              </View>
+            )}
+
+            {/* Filter chips — Today / Going + Create button */}
+            {!centerPickerOpen && activeFilter === 'Events' && (
               <View className="flex-row items-center px-4 py-2 gap-2">
                 <View className="flex-1 flex-row flex-wrap items-center gap-2">
                   <FilterChip
@@ -537,12 +648,6 @@ export default function DiscoverScreen() {
                         return next
                       })
                     }}
-                  />
-                  <FilterChip
-                    label={centerChipLabel}
-                    variant="outline"
-                    active={selectedCenter !== null}
-                    onPress={() => setShowCenterModal(true)}
                   />
                   {user && (
                     <FilterChip
@@ -596,33 +701,134 @@ export default function DiscoverScreen() {
             contentContainerStyle={{ paddingHorizontal: 4, paddingTop: 12, paddingBottom: 40, gap: 4 }}
             showsVerticalScrollIndicator={false}
             scrollEnabled={true}
-            stickyHeaderIndices={stickyHeaderIndices}
+            stickyHeaderIndices={centerPickerOpen ? undefined : stickyHeaderIndices}
           >
-            {!loading && displayItems.length === 0 && (
+            {centerPickerOpen && (
+              <>
+                {/* All centers — show events from every center, no area scoping. */}
+                <Pressable
+                  onPress={() => {
+                    posthog?.capture('explore_area_all_selected')
+                    setSelectedCenter('__all__')
+                    setCenterPickerOpen(false)
+                  }}
+                  accessibilityRole="button"
+                  accessibilityLabel="Show events from all centers"
+                  className="flex-row items-center px-4 active:opacity-60"
+                  style={{ minHeight: 56, gap: 12 }}
+                >
+                  <View
+                    className="w-10 h-10 rounded-xl items-center justify-center"
+                    style={{ backgroundColor: isDark ? 'rgba(232,134,42,0.18)' : '#FDE8D0' }}
+                  >
+                    <Globe size={18} color="#E8862A" />
+                  </View>
+                  <View style={{ flex: 1 }}>
+                    <Text className="text-content dark:text-content-dark font-sans" style={{ fontSize: 15 }} numberOfLines={1}>
+                      All centers
+                    </Text>
+                    <Text className="text-stone-500 dark:text-stone-400 font-sans" style={{ fontSize: 12.5 }} numberOfLines={1}>
+                      Events from every center
+                    </Text>
+                  </View>
+                  {isAllCenters ? <Check size={18} color="#E8862A" /> : null}
+                </Pressable>
+
+                {centerOptions.map((opt) => (
+                  <View key={opt.value}>
+                    <View className="bg-stone-200/70 dark:bg-neutral-800" style={{ height: 1, marginHorizontal: 16 }} />
+                    <View className="flex-row items-center px-4" style={{ minHeight: 56, gap: 8 }}>
+                      {/* Tap the row to scope events to this center's area. */}
+                      <Pressable
+                        onPress={() => {
+                          posthog?.capture('explore_area_center_selected', { centerId: opt.value })
+                          setSelectedCenter(opt.value)
+                          setCenterPickerOpen(false)
+                        }}
+                        accessibilityRole="button"
+                        accessibilityLabel={`Show events near ${opt.label}`}
+                        className="flex-1 flex-row items-center active:opacity-60"
+                        style={{ gap: 12, minHeight: 56 }}
+                      >
+                        <View
+                          className="w-10 h-10 rounded-xl items-center justify-center"
+                          style={{ backgroundColor: isDark ? 'rgba(232,134,42,0.18)' : '#FDE8D0' }}
+                        >
+                          <Building2 size={18} color="#E8862A" />
+                        </View>
+                        <View style={{ flex: 1 }}>
+                          <Text className="text-content dark:text-content-dark font-sans" style={{ fontSize: 15 }} numberOfLines={1}>
+                            {opt.label}
+                          </Text>
+                          <Text className="text-stone-500 dark:text-stone-400 font-sans" style={{ fontSize: 12.5 }} numberOfLines={1}>
+                            {opt.sublabel}{opt.count ? ` · ${opt.count} event${opt.count === 1 ? '' : 's'}` : ''}
+                          </Text>
+                        </View>
+                      </Pressable>
+                      {opt.value === areaCenterId ? <Check size={18} color="#E8862A" /> : null}
+                      {/* Distinct "view this center's page" action. */}
+                      <Pressable
+                        onPress={() => {
+                          posthog?.capture('explore_center_page_opened', { centerId: opt.value })
+                          router.push(`/center/${opt.value}`)
+                        }}
+                        accessibilityRole="button"
+                        accessibilityLabel={`View ${opt.label} page`}
+                        hitSlop={6}
+                        className="items-center justify-center active:opacity-60"
+                        style={{
+                          width: 30,
+                          height: 30,
+                          borderRadius: 15,
+                          backgroundColor: isDark ? '#262626' : '#F3F4F6',
+                        }}
+                      >
+                        <ChevronRight size={16} color={isDark ? '#A8A29E' : '#78716C'} />
+                      </Pressable>
+                    </View>
+                  </View>
+                ))}
+              </>
+            )}
+            {!centerPickerOpen && !loading && displayItems.length === 0 && (
               <EmptyState variant={selectedDate ? 'date' : searchQuery ? 'search' : 'events'} />
             )}
-            {displayItems.map((item, idx) => {
+            {!centerPickerOpen && displayItems.map((item, idx) => {
               if (item.type === 'section') {
                 const label = item.data.label
                 const isCollapsed = collapsedSections.has(label)
+                const count = sectionCounts[label]
                 return (
                   <Pressable
                     key={`section-${idx}`}
                     onPress={() => toggleSection(label)}
-                    className={`bg-white dark:bg-neutral-900 ${idx > 0 ? 'border-t border-stone-200 dark:border-neutral-800' : ''}`}
+                    className="bg-white dark:bg-neutral-900 active:opacity-60"
                   >
+                    {/* Inset hairline between states — softer than a full-bleed
+                        line so the grouped list doesn't read as line-heavy. */}
+                    {idx > 0 ? (
+                      <View className="bg-stone-200/70 dark:bg-neutral-800" style={{ height: 1, marginHorizontal: 16 }} />
+                    ) : null}
                     <View
                       style={{
-                        paddingHorizontal: 12,
-                        paddingVertical: 14,
+                        paddingHorizontal: 16,
+                        paddingTop: idx > 0 ? 18 : 8,
+                        paddingBottom: 10,
                         flexDirection: 'row',
                         alignItems: 'center',
                         justifyContent: 'space-between',
                       }}
                     >
-                      <Text className="text-xs font-sans text-stone-500 dark:text-stone-400 uppercase" style={{ letterSpacing: 0.6 }}>
-                        {label}
-                      </Text>
+                      <View style={{ flexDirection: 'row', alignItems: 'baseline', gap: 8 }}>
+                        <Text className="font-sans text-stone-500 dark:text-stone-400 uppercase" style={{ fontSize: 11.5, letterSpacing: 0.9 }}>
+                          {label}
+                        </Text>
+                        {count ? (
+                          <Text className="font-sans text-stone-400 dark:text-stone-500" style={{ fontSize: 11.5 }}>
+                            {count}
+                          </Text>
+                        ) : null}
+                      </View>
                       {isCollapsed ? <ChevronDown size={16} color="#a8a29e" /> : <ChevronUp size={16} color="#a8a29e" />}
                     </View>
                   </Pressable>
@@ -659,16 +865,6 @@ export default function DiscoverScreen() {
         </View>
       </Animated.View>
       )}
-
-      <FilterPickerModal
-        visible={showCenterModal}
-        title="Center"
-        options={centerOptions}
-        selected={selectedCenter}
-        onSelect={setSelectedCenter}
-        onClear={() => setSelectedCenter(null)}
-        onClose={() => setShowCenterModal(false)}
-      />
     </View>
   )
 }
