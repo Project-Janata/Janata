@@ -3,7 +3,7 @@ import { Platform, View, Text, Pressable, Image, StatusBar, useWindowDimensions 
 import { useState, useEffect } from 'react'
 import { useUser, useTheme } from '../../components/contexts'
 import { HeaderActionProvider } from '../../components/contexts/HeaderActionContext'
-import { House, Newspaper, Compass, Plus } from 'lucide-react-native'
+import { House, Newspaper, Compass, Plus, Bell } from 'lucide-react-native'
 import SettingsPanel from '../../components/settings/SettingsPanel'
 import Logo from '../../components/ui/Logo'
 import TabHeader from '../../components/ui/TabHeader'
@@ -131,6 +131,27 @@ export default function TabLayout() {
               <Text style={{ fontFamily: 'Inclusive Sans', fontSize: 13, color: '#E8862A' }}>
                 Create Event
               </Text>
+            </Pressable>
+          )}
+          {user && (
+            <Pressable
+              accessibilityRole="button"
+              accessibilityLabel="Notifications"
+              hitSlop={8}
+              style={{
+                width: 36,
+                height: 36,
+                borderRadius: 18,
+                alignItems: 'center',
+                justifyContent: 'center',
+                backgroundColor: isDark ? '#1C1917' : '#F5F5F4',
+              }}
+              onPress={() => {
+                track('nav_notifications_opened', { source: 'web_header' })
+                router.push('/notifications')
+              }}
+            >
+              <Bell size={18} color={isDark ? '#E7E5E4' : '#44403C'} />
             </Pressable>
           )}
           <Pressable
