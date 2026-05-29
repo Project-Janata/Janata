@@ -32,9 +32,9 @@ export function DetailSection({
   return (
     <View>
       {!first ? (
-        <View style={{ height: 1, backgroundColor: c.border, marginHorizontal: 20 }} />
+        <View style={{ height: 1, backgroundColor: c.border, marginHorizontal: 20, marginTop: 24 }} />
       ) : null}
-      <View style={{ paddingHorizontal: 20, paddingTop: first ? 4 : 22, paddingBottom: 8 }}>
+      <View style={{ paddingHorizontal: 20, paddingTop: first ? 4 : 18, paddingBottom: 8 }}>
         <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
           <Text style={{ flex: 1, fontSize: 11, letterSpacing: 0.9, color: c.textFaint }}>
             {title.toUpperCase()}

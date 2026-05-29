@@ -320,12 +320,14 @@ const Map = memo<MapProps>(function Map({
           ))}
       </MapView>
 
-      {/* Custom controls in the top-right, sitting under the profile icon.
+      {/* Custom controls in the top-right, sitting BELOW the profile avatar
+          (TabHeader renders a 32px avatar at top=insets.top). Offset by the
+          avatar zone (~44) so the zoom group clears it instead of overlapping.
           react-native-maps' built-in user-location button is Android-only,
           and zoom buttons aren't built in at all. */}
       {showControls && (
         <MapControls
-          top={Math.max(insets.top, 8)}
+          top={Math.max(insets.top, 8) + 44}
           buttonBg={buttonBg}
           iconColor={iconColor}
           isDark={isDark}
