@@ -40,3 +40,12 @@ export const validatePhoneNumber = (phoneNumber: string): boolean => {
   const phoneNumberRegex = /^\d{10}$/; // Exactly 10 digits
   return phoneNumberRegex.test(phoneNumber);
 };
+
+// Accept either a full invite LINK (e.g. https://janata.app/i/ABC123) or a raw
+// code. Returns the bare code so the UI can say "invite link" while the backend
+// keeps receiving a code. No-op for an already-bare code.
+export const extractInviteCode = (input: string): string => {
+  const trimmed = (input ?? "").trim();
+  const match = trimmed.match(/janata\.app\/i\/([^/?#\s]+)/i);
+  return (match ? match[1] : trimmed).trim();
+};

@@ -3,6 +3,7 @@ import { useRouter } from 'expo-router'
 import { useUser } from '../components/contexts'
 import { useAnalytics } from '../utils/analytics'
 import { validateEmail, validatePassword } from '../utils'
+import { extractInviteCode } from '../utils/validation'
 import PasswordStrength from '../components/auth/PasswordStrength'
 import { ImageCarousel } from '../components/auth/ImageCarousel'
 // eslint-disable-next-line @typescript-eslint/no-var-requires
@@ -164,7 +165,7 @@ export default function AuthScreen() {
       return
     }
     try {
-      const result = await signup(username, password, inviteCode)
+      const result = await signup(username, password, extractInviteCode(inviteCode))
       if (result.success) {
         track('signup_success', { source: 'auth' })
         router.replace(returnTo ? `/onboarding?returnTo=${encodeURIComponent(returnTo)}` : '/onboarding')
@@ -190,7 +191,7 @@ export default function AuthScreen() {
       const response = await fetch(`${API_BASE_URL}/auth/validate-invite-code`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ code: inviteCode }),
+        body: JSON.stringify({ code: extractInviteCode(inviteCode) }),
       })
       const data = await response.json()
       if (data.valid) {
@@ -300,7 +301,7 @@ export default function AuthScreen() {
     authStep === 'login'
       ? 'Welcome back.'
       : authStep === 'invite-code'
-        ? 'Enter invite code.'
+        ? 'Enter your invite link.'
         : authStep === 'signup'
           ? 'Join the community.'
           : 'Welcome.'
@@ -309,7 +310,7 @@ export default function AuthScreen() {
     authStep === 'login'
       ? 'Enter your password to continue'
       : authStep === 'invite-code'
-        ? 'Enter your beta invite code to proceed'
+        ? 'Paste your invite link or code to continue'
         : authStep === 'signup'
           ? 'Create your account to get started'
           : 'Enter your email to get started'
@@ -319,7 +320,7 @@ export default function AuthScreen() {
     : authStep === 'login'
       ? 'Sign In'
       : authStep === 'invite-code'
-        ? 'Verify Code'
+        ? 'Continue'
         : authStep === 'signup'
           ? 'Create Account'
           : 'Continue'
@@ -538,7 +539,7 @@ export default function AuthScreen() {
               <input
                 className="auth-input"
                 type="text"
-                placeholder="Invite Code"
+                placeholder="Invite link or code"
                 value={inviteCode}
                 onChange={handleInviteCodeChange}
                 autoComplete="off"
