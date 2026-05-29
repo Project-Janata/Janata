@@ -1,6 +1,6 @@
 import React, { useMemo, useState, useEffect, useCallback } from 'react'
 import { View, Text, Pressable, StyleSheet, ActivityIndicator, TextInput } from 'react-native'
-import { Copy, Users, ToggleLeft, ToggleRight, Plus, X, Ticket } from 'lucide-react-native'
+import { Copy, Users, ToggleLeft, ToggleRight, Plus, X, Ticket } from 'phosphor-react-native'
 import AdminTable, { type Column } from './AdminTable'
 import AdminDetailPanel from './AdminDetailPanel'
 import ConfirmDialog from './ConfirmDialog'

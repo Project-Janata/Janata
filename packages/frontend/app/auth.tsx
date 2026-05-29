@@ -9,10 +9,11 @@ import {
   TouchableOpacity,
 } from 'react-native'
 import { useRouter, useLocalSearchParams } from 'expo-router'
-import { Code, ArrowLeft } from 'lucide-react-native'
+import { Code, ArrowLeft } from 'phosphor-react-native'
 import { usePostHog } from 'posthog-react-native'
 import { AuthInput, Logo, PrimaryButton } from '../components/ui'
 import { useUser, useTheme } from '../components/contexts'
+import { useColors } from '../hooks/useColors'
 import { validateEmail, validatePassword } from '../utils'
 import { PasswordStrength } from '../components'
 import DevPanel from '../components/DevPanel'
@@ -29,6 +30,7 @@ type AuthStep = 'initial' | 'login' | 'invite-code' | 'signup'
 export default function AuthScreen() {
   const router = useRouter()
   const { isDark } = useTheme()
+  const c = useColors()
   const { checkUserExists, login, signup, loading } = useUser()
   const posthog = usePostHog()
 
@@ -283,7 +285,7 @@ export default function AuthScreen() {
 
               <Text
                 className="text-base font-sans mt-2"
-                style={{ color: '#78716C' }}
+                style={{ color: c.textMuted }}
               >
                 {authStep === 'login'
                   ? 'Enter your password to continue'

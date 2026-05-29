@@ -1,17 +1,19 @@
 import React from 'react'
 import { View, Text, Pressable } from 'react-native'
-import { Sun, Moon, Monitor } from 'lucide-react-native'
+import { Sun, Moon, Monitor } from 'phosphor-react-native'
 import { useTheme } from '../contexts'
+import { useColors } from '../../hooks/useColors'
 
 const themeOptions = ['light', 'dark', 'system'] as const
 const optionWidth = 70
 
 export default function ThemeSelector({ style, className }: { style?: any; className?: string }) {
-  const { preference: themePreference, setPreference: setThemePreference, isDark } = useTheme()
+  const { preference: themePreference, setPreference: setThemePreference } = useTheme()
+  const c = useColors()
 
-  const textColor = isDark ? '#FAFAFA' : '#1C1917'
-  const mutedColor = isDark ? '#737373' : '#A8A29E'
-  const accentColor = '#C2410C'
+  const textColor = c.text
+  const mutedColor = c.textFaint
+  const accentColor = c.accent
 
   const getLabel = (option: (typeof themeOptions)[number]) => {
     if (option === 'system') return 'Auto'

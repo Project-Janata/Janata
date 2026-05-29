@@ -1,16 +1,6 @@
-import React, { useEffect, useRef, useState } from 'react'
-import { ActivityIndicator, Modal, Pressable, ScrollView, Text, TextInput, View } from 'react-native'
-import {
-  Building2,
-  CalendarDays,
-  MoreHorizontal,
-  Pencil,
-  Pin,
-  PinOff,
-  Send,
-  SmilePlus,
-  Trash2,
-} from 'lucide-react-native'
+import React from 'react'
+import { ScrollView, Text, TextInput, View } from 'react-native'
+import { Buildings, CalendarDots, PaperPlaneTilt } from 'phosphor-react-native'
 import { Avatar } from '../ui'
 import { useUser } from '../contexts'
 import type { AppColors } from '../../tokens'
@@ -419,9 +409,9 @@ function SourceBoardChip({ post, colors }: { post: FeedPost; colors: AppColors }
       }}
     >
       {isEvent ? (
-        <CalendarDays size={13} color={colors.accent} strokeWidth={2.3} />
+        <CalendarDots size={13} color={colors.accent} />
       ) : (
-        <Building2 size={13} color={colors.accent} strokeWidth={2.3} />
+        <Buildings size={13} color={colors.accent} />
       )}
       <Text style={{ fontFamily: 'Inclusive Sans', fontSize: 12, color: colors.accent }}>
         {post.sourceTitle} - Board
@@ -1053,12 +1043,8 @@ function ThreadReplyComposer({
             justifyContent: 'center',
           }}
         >
-          {sending ? (
-            <ActivityIndicator size="small" color="#FFFFFF" />
-          ) : (
-            <Send size={15} color="#FFFFFF" />
-          )}
-        </Pressable>
+          <PaperPlaneTilt size={15} color="#FFFFFF" />
+        </View>
       </View>
     </View>
   )

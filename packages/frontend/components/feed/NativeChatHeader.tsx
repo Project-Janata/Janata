@@ -1,6 +1,6 @@
 import React from 'react'
 import { Pressable, Text, View } from 'react-native'
-import { ArrowLeft } from 'lucide-react-native'
+import { ArrowLeft } from 'phosphor-react-native'
 import type { AppColors } from '../../tokens'
 
 export function NativeChatHeader({

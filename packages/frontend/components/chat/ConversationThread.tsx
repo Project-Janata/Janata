@@ -1,6 +1,6 @@
 import React from 'react'
 import { Pressable, ScrollView, Text, TextInput, View } from 'react-native'
-import { Camera, Send } from 'lucide-react-native'
+import { Camera, PaperPlaneTilt } from 'phosphor-react-native'
 import { Avatar } from '../ui'
 import type { AppColors } from '../../tokens'
 import type { ChatMessage, Conversation } from './types'
@@ -135,7 +135,7 @@ function ChatComposer({
             justifyContent: 'center',
           }}
         >
-          <Send size={15} color="#FFFFFF" />
+          <PaperPlaneTilt size={15} color="#FFFFFF" />
         </View>
       </View>
     </View>

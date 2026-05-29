@@ -1,6 +1,6 @@
 import React from 'react'
 import { Image, Pressable, Text, View } from 'react-native'
-import { Clock3, MapPin } from 'lucide-react-native'
+import { Clock, MapPin } from 'phosphor-react-native'
 import Svg, {
   Circle,
   Defs,
@@ -267,7 +267,7 @@ export function FeaturedEventCard({
         </Text>
         <View style={{ flexDirection: 'column', gap: 4, marginTop: 8 }}>
           <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
-            <Clock3 size={13} color={c.textFaint} />
+            <Clock size={13} color={c.textFaint} />
             <Text
               style={{ fontFamily: 'Inclusive Sans', fontSize: 13, color: c.textSecondary }}
               numberOfLines={1}

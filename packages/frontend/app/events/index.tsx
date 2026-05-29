@@ -1,11 +1,12 @@
 import React, { useEffect } from 'react'
 import { View, Text, ScrollView, ActivityIndicator, RefreshControl, Pressable } from 'react-native'
 import { useRouter } from 'expo-router'
-import { Calendar, MapPin, ThumbsUp, MessageCircle } from 'lucide-react-native'
+import { Calendar, MapPin, ThumbsUp, ChatCircle } from 'phosphor-react-native'
 import { useUser } from '../../components/contexts'
 import { useMyEvents, EventDisplay } from '../../hooks/useApiData'
 import { Card } from '../../components/ui'
 import { usePostHog } from 'posthog-react-native'
+import { useColors } from '../../hooks/useColors'
 
 export default function EventsListPage() {
   const router = useRouter()
@@ -13,6 +14,7 @@ export default function EventsListPage() {
   const { events, loading, refetch } = useMyEvents(user?.username)
   const [refreshing, setRefreshing] = React.useState(false)
   const posthog = usePostHog()
+  const c = useColors()
 
   useEffect(() => {
     posthog?.capture('event_list_viewed')
@@ -32,7 +34,7 @@ export default function EventsListPage() {
   if (loading && !refreshing) {
     return (
       <View className="flex-1 justify-center items-center bg-background dark:bg-background-dark">
-        <ActivityIndicator size="large" color="#ea580c" />
+        <ActivityIndicator size="large" color={c.accent} />
       </View>
     )
   }
@@ -68,7 +70,7 @@ export default function EventsListPage() {
           </View>
         ) : (
           <View className="items-center py-16 gap-4">
-            <Calendar size={48} color="#a1a1aa" />
+            <Calendar size={48} color={c.textFaint} />
             <Text className="text-lg text-contentStrong dark:text-contentStrong-dark font-sans">
               No events yet
             </Text>

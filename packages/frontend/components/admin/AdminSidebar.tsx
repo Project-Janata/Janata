@@ -1,7 +1,8 @@
 import React from 'react'
-import { View, Text, Pressable, StyleSheet } from 'react-native'
-import { Bell, Building2, CalendarDays, Users, Ticket, ShieldAlert } from 'lucide-react-native'
-import { useTheme } from '../contexts'
+import { View, Text, Pressable } from 'react-native'
+import { Bell, Buildings, CalendarDots, Users, Ticket, ShieldAlert } from 'phosphor-react-native'
+import type { Icon } from 'phosphor-react-native'
+import { useColors } from '../../hooks/useColors'
 
 export type AdminTab =
   | 'Centers'
@@ -16,9 +17,9 @@ type AdminSidebarProps = {
   onTabChange: (tab: AdminTab) => void
 }
 
-const tabs: { key: AdminTab; label: string; Icon: typeof Building2 }[] = [
-  { key: 'Centers', label: 'Centers', Icon: Building2 },
-  { key: 'Events', label: 'Events', Icon: CalendarDays },
+const tabs: { key: AdminTab; label: string; Icon: Icon }[] = [
+  { key: 'Centers', label: 'Centers', Icon: Buildings },
+  { key: 'Events', label: 'Events', Icon: CalendarDots },
   { key: 'Users', label: 'Users', Icon: Users },
   { key: 'Invite Codes', label: 'Invite Codes', Icon: Ticket },
   { key: 'Moderation', label: 'Moderation', Icon: ShieldAlert },
@@ -26,72 +27,56 @@ const tabs: { key: AdminTab; label: string; Icon: typeof Building2 }[] = [
 ]
 
 export default function AdminSidebar({ activeTab, onTabChange }: AdminSidebarProps) {
-  const { isDark } = useTheme()
-
-  const inactiveColor = isDark ? '#A8A29E' : '#78716C'
+  const c = useColors()
 
   return (
     <View
-      style={[
-        styles.container,
-        {
-          backgroundColor: isDark ? '#1a1a1a' : '#F5F5F4',
-          borderRightColor: isDark ? '#262626' : '#E7E5E4',
-        },
-      ]}
+      style={{
+        width: 200,
+        borderRightWidth: 1,
+        borderRightColor: c.border,
+        paddingTop: 20,
+        paddingHorizontal: 12,
+        backgroundColor: c.bg,
+      }}
     >
-      <Text style={styles.header}>Admin</Text>
+      <Text
+        style={{
+          fontFamily: 'Inclusive Sans',
+          fontSize: 15,
+          color: c.accent,
+          marginBottom: 20,
+          paddingHorizontal: 8,
+        }}
+      >
+        Admin
+      </Text>
 
       {tabs.map(({ key, label, Icon }) => {
         const isActive = activeTab === key
-        const color = isActive ? '#E8862A' : inactiveColor
+        const color = isActive ? c.accent : c.iconMuted
 
         return (
           <Pressable
             key={key}
             onPress={() => onTabChange(key)}
-            style={[
-              styles.tab,
-              isActive && styles.tabActive,
-            ]}
+            style={{
+              flexDirection: 'row',
+              alignItems: 'center',
+              paddingVertical: 10,
+              paddingHorizontal: 8,
+              borderRadius: 8,
+              marginBottom: 4,
+              backgroundColor: isActive ? c.accentSoft : 'transparent',
+            }}
           >
             <Icon size={18} color={color} />
-            <Text style={[styles.tabLabel, { color }]}>{label}</Text>
+            <Text style={{ fontFamily: 'Inclusive Sans', fontSize: 14, marginLeft: 10, color }}>
+              {label}
+            </Text>
           </Pressable>
         )
       })}
     </View>
   )
 }
-
-const styles = StyleSheet.create({
-  container: {
-    width: 200,
-    borderRightWidth: 1,
-    paddingTop: 20,
-    paddingHorizontal: 12,
-  },
-  header: {
-    fontFamily: 'Inclusive Sans',
-    fontSize: 15,
-    color: '#E8862A',
-    marginBottom: 20,
-    paddingHorizontal: 8,
-  },
-  tab: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingVertical: 10,
-    paddingHorizontal: 8,
-    borderRadius: 8,
-    marginBottom: 4,
-  },
-  tabActive: {
-    backgroundColor: 'rgba(232,134,42,0.12)',
-  },
-  tabLabel: {
-    fontFamily: 'Inclusive Sans',
-    fontSize: 14,
-    marginLeft: 10,
-  },
-})

@@ -9,7 +9,7 @@ import {
   Platform,
   useWindowDimensions,
 } from 'react-native'
-import { Camera, Pencil, MapPin } from 'lucide-react-native'
+import { Camera, PencilSimple, MapPin } from 'phosphor-react-native'
 import { useUser, useTheme } from '../../components/contexts'
 import { Text } from '../../components/ui'
 import BirthdatePicker from '../../components/profile/BirthdatePicker'
@@ -795,7 +795,7 @@ export default function Profile() {
                 gap: 8,
               }}
             >
-              <Pencil size={16} color={isDark ? '#1C1917' : '#FFFFFF'} />
+              <PencilSimple size={16} color={isDark ? '#1C1917' : '#FFFFFF'} />
               <Text style={{ fontFamily: 'Inclusive Sans', fontSize: 15, color: isDark ? '#1C1917' : '#FFFFFF' }}>
                 Edit Profile
               </Text>
@@ -909,7 +909,7 @@ export default function Profile() {
               <ActivityIndicator size="small" color="#fff" />
             ) : (
               <>
-                <Pencil size={16} color={isEditing ? '#FFFFFF' : isDark ? '#1C1917' : '#FFFFFF'} />
+                <PencilSimple size={16} color={isEditing ? '#FFFFFF' : isDark ? '#1C1917' : '#FFFFFF'} />
                 <Text
                   style={{
                     fontFamily: 'Inclusive Sans',

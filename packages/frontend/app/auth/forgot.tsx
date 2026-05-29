@@ -8,11 +8,12 @@ import {
   TouchableOpacity,
   View,
 } from 'react-native'
-import { ArrowLeft } from 'lucide-react-native'
+import { ArrowLeft } from 'phosphor-react-native'
 import { useRouter } from 'expo-router'
 import { AuthInput, Logo, PrimaryButton } from '../../components/ui'
 import { useTheme } from '../../components/contexts'
 import { PasswordStrength } from '../../components'
+import { useColors } from '../../hooks/useColors'
 import { authClient } from '../../src/auth/authClient'
 import { validateEmail, validatePassword } from '../../utils'
 
@@ -21,6 +22,7 @@ type Step = 'enter-email' | 'enter-code-and-password' | 'done'
 export default function ForgotPasswordScreen() {
   const router = useRouter()
   const { isDark } = useTheme()
+  const c = useColors()
 
   const [step, setStep] = useState<Step>('enter-email')
   const [email, setEmail] = useState('')
@@ -171,7 +173,7 @@ export default function ForgotPasswordScreen() {
                   ? 'Check your email.'
                   : 'Password updated.'}
               </Text>
-              <Text className="text-base font-sans mt-2" style={{ color: '#78716C' }}>
+              <Text className="text-base font-sans mt-2" style={{ color: c.textMuted }}>
                 {step === 'enter-email'
                   ? 'Enter the email on your account. We\'ll send you a 6-digit code.'
                   : step === 'enter-code-and-password'

@@ -1,8 +1,7 @@
 import React, { useState } from 'react'
 import { View, Text, Pressable, useWindowDimensions, Platform } from 'react-native'
 import { useRouter } from 'expo-router'
-import { usePostHog } from 'posthog-react-native'
-import { User } from 'lucide-react-native'
+import { User } from 'phosphor-react-native'
 import Logo from '../ui/Logo'
 
 // Inject hamburger animation CSS (web only)
@@ -94,7 +93,6 @@ export function NavBar() {
           >
             <User size={18} color="#1C1917" />
           </Pressable>
-
         </View>
       </View>
     </View>

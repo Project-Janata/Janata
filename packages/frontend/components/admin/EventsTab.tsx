@@ -1,6 +1,6 @@
 import React, { useState, useMemo, useEffect, useCallback } from 'react'
 import { View, Text, Pressable, ActivityIndicator } from 'react-native'
-import { MapPin, Clock, Users, FileText } from 'lucide-react-native'
+import { MapPin, Clock, Users, FileText } from 'phosphor-react-native'
 import AdminTable, { type Column } from './AdminTable'
 import AdminDetailPanel from './AdminDetailPanel'
 import AdminSearchInput from './AdminSearchInput'

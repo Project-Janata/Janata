@@ -4,16 +4,16 @@ import { View, Text, ScrollView, Image, Pressable, Linking, Share } from 'react-
 import { SafeAreaView } from 'react-native-safe-area-context'
 import { useLocalSearchParams, useRouter } from 'expo-router'
 import {
-  ChevronLeft,
-  Share as ShareIcon,
+  CaretLeft,
+  ShareNetwork as ShareIcon,
   MapPin,
   Globe,
   Phone,
   User,
-  BadgeCheck,
+  NavigationArrow,
+  SealCheck,
   Users,
-  Lock,
-} from 'lucide-react-native'
+} from 'phosphor-react-native'
 import { usePostHog } from 'posthog-react-native'
 import { useBoard, useCenterDetail } from '../../hooks/useApiData'
 import { DetailSection } from '../../components/ui'
@@ -24,6 +24,7 @@ import { ThreadPanel, boardPostToMessage, type BoardMessage } from '../../compon
 import { PostThread, type FeedPost } from '../../components/feed'
 import { buildFeedPostFromMessage } from '../../components/feed/feedData'
 import { useUser } from '../../components/contexts'
+import { useColors } from '../../hooks/useColors'
 
 // ── Helpers ─────────────────────────────────────────────────────────────
 
@@ -80,6 +81,7 @@ function HeaderBar({
   memberCount?: number
   isVerified?: boolean
 }) {
+  const appColors = useColors()
   return (
     <View style={{ paddingHorizontal: 16, paddingTop: 8, paddingBottom: 14, gap: 12 }}>
       {/* Top row: back + share */}
@@ -90,8 +92,15 @@ function HeaderBar({
           accessibilityLabel="Back"
           style={{ flexDirection: 'row', alignItems: 'center', gap: 4, padding: 8, minHeight: 44, minWidth: 44 }}
         >
-          <ChevronLeft size={20} color={colors.iconHeader} />
-          <Text style={{ fontFamily: 'Inclusive Sans', fontSize: 14, color: colors.iconHeader }}>Back</Text>
+          <CaretLeft size={20} color={colors.iconHeader} />
+          <Text
+            style={{
+              fontSize: 14,
+              color: colors.iconHeader,
+            }}
+          >
+            Back
+          </Text>
         </Pressable>
 
         <Pressable
@@ -123,8 +132,15 @@ function HeaderBar({
           {memberCount > 0 && isVerified && <Text style={{ fontSize: 13, color: colors.textMuted }}>·</Text>}
           {isVerified && (
             <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4 }}>
-              <BadgeCheck size={14} color="#E8862A" />
-              <Text style={{ fontSize: 13, color: '#E8862A' }}>Verified</Text>
+              <SealCheck size={13} color={appColors.accent} />
+              <Text
+                style={{
+                  fontSize: 13,
+                  color: appColors.accent,
+                }}
+              >
+                Verified
+              </Text>
             </View>
           )}
         </View>
@@ -168,12 +184,8 @@ export default function CenterDetailPage() {
   const { user } = useUser()
   const { center, events, loading } = useCenterDetail(id as string)
   const colors = useDetailColors()
-  const appColors = useColors()
-  const [threadDetailPost, setThreadDetailPost] = useState<FeedPost | null>(null)
-  const canPostToThread =
-    !!user && (user.centerID === center?.id || (user.verificationLevel ?? 0) >= 107)
-  const { posts: boardPosts, refetch: refetchBoard } = useBoard('center', center?.id, canPostToThread)
-  const boardMessages = useMemo(() => boardPosts.map(boardPostToMessage), [boardPosts])
+  const c = useColors()
+  const [activeTab, setActiveTab] = useState('About')
 
   useEffect(() => {
     if (!loading && center) {
@@ -276,9 +288,8 @@ export default function CenterDetailPage() {
             accessibilityLabel="Back to board"
             style={{ flexDirection: 'row', alignItems: 'center', gap: 6, paddingHorizontal: 16, paddingVertical: 12 }}
           >
-            <ChevronLeft size={20} color={appColors.accent} />
-            <Text style={{ fontFamily: 'Inclusive Sans', fontSize: 14, color: appColors.accent }}>
-              Back to board
+            <Text style={{ fontSize: 16, fontFamily: 'Inclusive Sans', color: c.accent }}>
+              Go Back
             </Text>
           </Pressable>
         </View>
@@ -336,97 +347,173 @@ export default function CenterDetailPage() {
               </View>
             ) : null}
 
-            {/* Address */}
-            {center.address ? (
-              <View style={{ flexDirection: 'row', alignItems: 'flex-start', gap: 12 }}>
-                <MetaIcon icon={MapPin} color="#E8862A" colors={colors} />
-                <View style={{ flex: 1, gap: 6 }}>
-                  <Text style={{ fontSize: 14, color: colors.text, lineHeight: 20 }}>{center.address}</Text>
+              {/* Meta rows */}
+              <View style={{ gap: 16 }}>
+                {/* Address */}
+                {center.address ? (
+                  <View style={{ flexDirection: 'row', alignItems: 'flex-start', gap: 12 }}>
+                    <MetaIcon icon={MapPin} color={c.accent} colors={colors} />
+                    <View style={{ flex: 1, gap: 8 }}>
+                      <Text
+                        style={{
+                          fontSize: 14,
+                          color: colors.text,
+                          lineHeight: 20,
+                        }}
+                      >
+                        {center.address}
+                      </Text>
+                      <Pressable
+                        onPress={handleAddressPress}
+                        style={{ alignSelf: 'flex-start', paddingVertical: 4 }}
+                        accessibilityLabel="Get directions"
+                      >
+                        <Text
+                          style={{
+                            fontSize: 14,
+                            color: c.accent,
+                          }}
+                        >
+                          Get directions →
+                        </Text>
+                      </Pressable>
+                    </View>
+                  </View>
+                ) : null}
+
+                {/* Website */}
+                {center.website ? (
                   <Pressable
-                    onPress={handleAddressPress}
-                    style={{ alignSelf: 'flex-start', paddingVertical: 2 }}
-                    accessibilityLabel="Get directions"
+                    onPress={handleWebsitePress}
+                    style={{ flexDirection: 'row', alignItems: 'center', gap: 12, minHeight: 44 }}
                   >
-                    <Text style={{ fontSize: 14, color: '#E8862A' }}>Get directions →</Text>
-                  </Pressable>
-                </View>
-              </View>
-            ) : null}
-
-            {/* Website */}
-            {center.website ? (
-              <Pressable
-                onPress={handleWebsitePress}
-                style={{ flexDirection: 'row', alignItems: 'center', gap: 12, minHeight: 44 }}
-              >
-                <MetaIcon icon={Globe} color="#E8862A" colors={colors} />
-                <Text style={{ fontSize: 14, color: '#E8862A', lineHeight: 20, flex: 1 }} numberOfLines={1}>
-                  {displayWebsite}
-                </Text>
-              </Pressable>
-            ) : null}
-
-            {/* Phone */}
-            {center.phone ? (
-              <Pressable
-                onPress={handlePhonePress}
-                style={{ flexDirection: 'row', alignItems: 'center', gap: 12, minHeight: 44 }}
-              >
-                <MetaIcon icon={Phone} color="#E8862A" colors={colors} />
-                <Text style={{ fontSize: 14, color: colors.text, lineHeight: 20, flex: 1 }}>{center.phone}</Text>
-              </Pressable>
-            ) : null}
-
-            {/* Acharya */}
-            {center.acharya ? (
-              <View style={{ flexDirection: 'row', alignItems: 'flex-start', gap: 12 }}>
-                <MetaIcon icon={User} color="#E8862A" colors={colors} />
-                <View style={{ flex: 1, justifyContent: 'center' }}>
-                  <Text style={{ fontSize: 14, color: colors.text, lineHeight: 20 }}>{center.acharya}</Text>
-                  <Text style={{ fontSize: 13, color: colors.textSecondary, lineHeight: 18, marginTop: 2 }}>
-                    Resident Acharya
-                  </Text>
-                </View>
-              </View>
-            ) : null}
-          </View>
-        </DetailSection>
-
-        {/* UPCOMING EVENTS */}
-        {events.length > 0 ? (
-          <DetailSection title="Upcoming Events" count={events.length} contentStyle={{ gap: 8 }}>
-            {events.map((event) => {
-              const { month, day } = formatDateCallout(event.date)
-              return (
-                <Pressable
-                  key={event.id}
-                  onPress={() => handleEventPress(event)}
-                  style={{
-                    flexDirection: 'row',
-                    alignItems: 'center',
-                    backgroundColor: colors.cardBg,
-                    borderRadius: 12,
-                    paddingVertical: 12,
-                    paddingHorizontal: 14,
-                    minHeight: 44,
-                  }}
-                >
-                  <View style={{ width: 52, alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+                    <MetaIcon icon={Globe} color={c.accent} colors={colors} />
                     <Text
                       style={{
-                        fontFamily: 'Inclusive Sans',
-                        fontSize: 11,
-                        color: '#E8862A',
-                        textTransform: 'uppercase',
-                        lineHeight: 14,
+                        fontSize: 14,
+                        color: c.accent,
+                        lineHeight: 20,
+                        flex: 1,
+                      }}
+                      numberOfLines={1}
+                    >
+                      {displayWebsite}
+                    </Text>
+                  </Pressable>
+                ) : null}
+
+                {/* Phone */}
+                {center.phone ? (
+                  <Pressable
+                    onPress={handlePhonePress}
+                    style={{ flexDirection: 'row', alignItems: 'center', gap: 12, minHeight: 44 }}
+                  >
+                    <MetaIcon icon={Phone} color={c.accent} colors={colors} />
+                    <Text
+                      style={{
+                        fontSize: 14,
+                        color: colors.text,
+                        lineHeight: 20,
+                        flex: 1,
                       }}
                     >
-                      {month}
+                      {center.phone}
                     </Text>
-                    <Text style={{ fontFamily: 'Inclusive Sans', fontSize: 22, color: colors.text, lineHeight: 28 }}>
-                      {day}
-                    </Text>
+                  </Pressable>
+                ) : null}
+
+                {/* Acharya */}
+                {center.acharya ? (
+                  <View style={{ flexDirection: 'row', alignItems: 'flex-start', gap: 12 }}>
+                    <MetaIcon icon={User} color={c.accent} colors={colors} />
+                    <View style={{ flex: 1, justifyContent: 'center' }}>
+                      <Text
+                        style={{
+                          fontSize: 14,
+                          color: colors.text,
+                          lineHeight: 20,
+                        }}
+                      >
+                        {center.acharya}
+                      </Text>
+                      <Text
+                        style={{
+                          fontSize: 13,
+                          color: colors.textSecondary,
+                          lineHeight: 18,
+                          marginTop: 2,
+                        }}
+                      >
+                        Resident Acharya
+                      </Text>
+                    </View>
                   </View>
+                ) : null}
+              </View>
+            </>
+          )}
+
+          {activeTab === 'Thread' && (
+            <ThreadPanel
+              messages={board.messages}
+              colors={colors}
+              emptyTitle="Be the first to post"
+              emptySubtitle={`Ask about rides, what to bring, or anything else for ${center.name}.`}
+              composerPlaceholder="Write to the board..."
+              composerState={canPostToThread ? 'open' : 'locked'}
+            />
+          )}
+
+          {activeTab === 'Events' && (
+            <>
+              {events.length > 0 ? (
+                <View style={{ gap: 8 }}>
+                  {events.map((event) => {
+                    const { month, day } = formatDateCallout(event.date)
+                    return (
+                      <Pressable
+                        key={event.id}
+                        onPress={() => handleEventPress(event)}
+                        style={{
+                          flexDirection: 'row',
+                          alignItems: 'center',
+                          backgroundColor: colors.cardBg,
+                          borderRadius: 8,
+                          paddingVertical: 12,
+                          paddingHorizontal: 14,
+                          minHeight: 44,
+                        }}
+                      >
+                        <View
+                          style={{
+                            width: 52,
+                            alignItems: 'center',
+                            justifyContent: 'center',
+                            flexShrink: 0,
+                          }}
+                        >
+                          <Text
+                            style={{
+                              fontFamily: 'Inclusive Sans',
+                              fontSize: 11,
+                              color: c.accent,
+                              textTransform: 'uppercase',
+                              lineHeight: 14,
+                            }}
+                          >
+                            {month}
+                          </Text>
+                          <Text
+                            style={{
+                              fontFamily: 'Inclusive Sans',
+                              fontSize: 22,
+                              color: colors.text,
+                              lineHeight: 28,
+                            }}
+                          >
+                            {day}
+                          </Text>
+                        </View>
 
                   <View style={{ width: 1, backgroundColor: colors.border, alignSelf: 'stretch', marginHorizontal: 12 }} />
 

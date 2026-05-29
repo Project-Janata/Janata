@@ -3,7 +3,7 @@ import React, { useState, useEffect } from 'react'
 import { View, Text, Pressable } from 'react-native'
 // --- NEW: Import Headless UI ---
 import { Listbox, Transition } from '@headlessui/react'
-import { ChevronDown } from 'lucide-react-native'
+import { CaretDown } from 'phosphor-react-native'
 
 // --- Helper: Generate array of numbers ---
 function range(start, end) {
@@ -26,7 +26,7 @@ function Select({ label, value, options, onChange, className }) {
           <span className="block truncate">{selectedOption?.label}</span>
           {/* A basic arrow. Replace with an SVG icon for best results. */}
           <span className="pointer-events-none absolute inset-y-0 right-0 flex items-center pr-3">
-            <ChevronDown className="text-stone-400 dark:text-stone-500 ml-3" />
+            <CaretDown className="text-stone-400 dark:text-stone-500 ml-3" />
           </span>
         </Listbox.Button>
 

@@ -1,6 +1,7 @@
 import React from 'react'
 import { View, Text, Pressable } from 'react-native'
 import { useDetailColors } from '../../hooks/useDetailColors'
+import { useColors } from '../../hooks/useColors'
 import { Avatar } from '../ui'
 
 type UserRowProps = {
@@ -13,6 +14,7 @@ type UserRowProps = {
 }
 
 export default function AdminUserRow({ name, image, actionLabel, onAction, colors, isDark }: UserRowProps) {
+  const c = useColors()
   return (
     <View
       style={{
@@ -43,7 +45,7 @@ export default function AdminUserRow({ name, image, actionLabel, onAction, color
             style={{
               fontFamily: 'Inclusive Sans',
               fontSize: 11,
-              color: isDark ? '#F87171' : '#DC2626',
+              color: c.error,
             }}
           >
             {actionLabel}

@@ -1,13 +1,24 @@
 import { Tabs, usePathname, useRouter } from 'expo-router'
-import { Platform, View, Text, Pressable, Image, StatusBar, useWindowDimensions } from 'react-native'
+import {
+  Platform,
+  View,
+  Text,
+  Pressable,
+  Image,
+  StatusBar,
+  useWindowDimensions,
+} from 'react-native'
 import { useState, useEffect } from 'react'
 import { useUser, useTheme } from '../../components/contexts'
 import { HeaderActionProvider } from '../../components/contexts/HeaderActionContext'
-import { House, Newspaper, Compass, Plus } from 'lucide-react-native'
+import { Plus, Bell, House, Compass, Newspaper, Chat } from 'phosphor-react-native'
 import SettingsPanel from '../../components/settings/SettingsPanel'
 import Logo from '../../components/ui/Logo'
 import TabHeader from '../../components/ui/TabHeader'
+import { Avatar } from '../../components/ui'
+import { useColors } from '../../hooks/useColors'
 import { usePostHog } from 'posthog-react-native'
+import { AppColors } from 'packages/frontend/tokens'
 
 export default function TabLayout() {
   const router = useRouter()
@@ -15,6 +26,7 @@ export default function TabLayout() {
   const { user, loading, logout } = useUser()
   const { isDark } = useTheme()
   const [settingsVisible, setSettingsVisible] = useState(false)
+  const c = useColors() as AppColors
   const canCreate = !!user
   const posthog = usePostHog()
   const tabBarShowLabel = Platform.OS === 'web'
@@ -37,6 +49,7 @@ export default function TabLayout() {
     { label: 'Home', href: '/' },
     { label: 'Explore', href: '/explore' },
     { label: 'Feed', href: '/feed' },
+    { label: 'Messages', href: '/chat' },
   ] as const
 
   const isRouteActive = (href: (typeof navItems)[number]['href']) => {
@@ -62,9 +75,9 @@ export default function TabLayout() {
           justifyContent: 'space-between',
           paddingHorizontal: 16,
           height: 56,
-          backgroundColor: isDark ? '#000000' : '#FFFFFF',
+          backgroundColor: c.card,
           borderBottomWidth: 1,
-          borderBottomColor: isDark ? '#262626' : '#E5E7EB',
+          borderBottomColor: c.border,
         }}
       >
         {/* Left: Logo + Nav */}
@@ -86,18 +99,14 @@ export default function TabLayout() {
                     paddingHorizontal: 12,
                     paddingVertical: 10,
                     borderRadius: 999,
-                    backgroundColor: active
-                      ? isDark
-                        ? 'rgba(232,134,42,0.16)'
-                        : '#FFF7ED'
-                      : 'transparent',
+                    backgroundColor: active ? c.accentSoft : 'transparent',
                   }}
                 >
                   <Text
                     style={{
                       fontFamily: active ? 'Inclusive Sans' : 'Inclusive Sans',
                       fontSize: 14,
-                      color: active ? '#E8862A' : isDark ? '#E7E5E4' : '#44403C',
+                      color: active ? c.accent : c.textSecondary,
                     }}
                   >
                     {label}
@@ -120,15 +129,15 @@ export default function TabLayout() {
                 alignItems: 'center',
                 gap: 6,
                 borderWidth: 1.5,
-                borderColor: '#E8862A',
+                borderColor: c.accent,
               }}
               onPress={() => {
                 posthog?.capture('nav_create_event')
                 router.push('/explore?action=create')
               }}
             >
-              <Plus size={16} color="#E8862A" />
-              <Text style={{ fontFamily: 'Inclusive Sans', fontSize: 13, color: '#E8862A' }}>
+              <Plus size={16} color={c.accent} />
+              <Text style={{ fontFamily: 'Inclusive Sans', fontSize: 13, color: c.accent }}>
                 Create Event
               </Text>
             </Pressable>
@@ -148,12 +157,12 @@ export default function TabLayout() {
                   width: 36,
                   height: 36,
                   borderRadius: 18,
-                  backgroundColor: '#C2410C',
+                  backgroundColor: c.accent,
                   alignItems: 'center',
                   justifyContent: 'center',
                 }}
               >
-                <Text style={{ color: '#fff', fontSize: 14, fontWeight: '600' }}>
+                <Text style={{ color: '#FFFFFF', fontSize: 14, fontWeight: '600' }}>
                   {getInitials()}
                 </Text>
               </View>
@@ -186,14 +195,14 @@ export default function TabLayout() {
             tabBarStyle: isWeb
               ? { display: 'none' }
               : {
-                  backgroundColor: isDark ? '#171717' : '#FFFFFF',
-                  borderTopColor: isDark ? '#262626' : '#E7E5E4',
+                  backgroundColor: c.rail,
+                  borderTopColor: c.border,
                   height: 84,
                   paddingTop: 8,
                   paddingBottom: 24,
                 },
-            tabBarActiveTintColor: '#E8862A',
-            tabBarInactiveTintColor: isDark ? '#A8A29E' : '#78716C',
+            tabBarActiveTintColor: c.accent,
+            tabBarInactiveTintColor: c.iconMuted,
             headerShown: true,
             headerShadowVisible: false,
           }}
@@ -206,7 +215,9 @@ export default function TabLayout() {
               header: isDesktopWeb
                 ? () => <WebHeader />
                 : () => <TabHeader showLogo action="notifications" />,
-              tabBarIcon: ({ color, size }) => <House size={size} color={color} />,
+              tabBarIcon: ({ color, size, focused }) => (
+                <House size={size} color={color} weight={focused ? 'fill' : 'regular'} />
+              ),
             }}
           />
           <Tabs.Screen
@@ -219,14 +230,21 @@ export default function TabLayout() {
                 ? () => <WebHeader />
                 : () => (
                     <TabHeader
+                      title="Explore"
                       transparent
+                      pillTitle
                       borderAvatar
                       {...(Platform.OS === 'web'
-                        ? { action: 'create' as const, onActionPress: () => router.push('/events/form') }
+                        ? {
+                            action: 'create' as const,
+                            onActionPress: () => router.push('/events/form'),
+                          }
                         : {})}
                     />
                   ),
-              tabBarIcon: ({ color, size }) => <Compass size={size} color={color} />,
+              tabBarIcon: ({ color, size, focused }) => (
+                <Compass size={size} color={color} weight={focused ? 'fill' : 'regular'} />
+              ),
             }}
           />
           <Tabs.Screen
@@ -237,33 +255,47 @@ export default function TabLayout() {
               header: isDesktopWeb
                 ? () => <WebHeader />
                 : () => <TabHeader title="Feed" action="create" />,
-              tabBarIcon: ({ color, size }) => <Newspaper size={size} color={color} />,
+              tabBarIcon: ({ color, size, focused }) => (
+                <Newspaper size={size} color={color} weight={focused ? 'fill' : 'regular'} />
+              ),
             }}
           />
           <Tabs.Screen
             name="chat"
             options={{
-              href: null,
               tabBarShowLabel: false,
               title: 'Chat',
               header: isDesktopWeb
                 ? () => <WebHeader />
                 : () => <TabHeader title="Chat" action="create" />,
+              tabBarIcon: ({ color, size, focused }) => (
+                <Chat size={size} color={color} weight={focused ? 'fill' : 'regular'} />
+              ),
             }}
           />
           <Tabs.Screen
             name="profile"
             options={{
-              // Profile is no longer a bottom-bar tab on native — it's reached via
-              // the avatar button in TabHeader (showProfile). href: null keeps the
-              // /profile route mounted/navigable and leaves web (WebHeader /
-              // WebBottomNav) untouched, while removing the native tab icon.
-              href: null,
               tabBarShowLabel: false,
               title: 'Profile',
               header: isDesktopWeb
                 ? () => <WebHeader />
-                : () => <TabHeader title="You" action="settings" showProfile={false} />,
+                : () => <TabHeader title="You" action="settings" />,
+              tabBarIcon: ({ size, focused }) => (
+                <Avatar
+                  image={user?.profileImage ?? undefined}
+                  name={
+                    user?.firstName
+                      ? `${user.firstName} ${user.lastName ?? ''}`.trim()
+                      : user?.username
+                  }
+                  size={size + 4}
+                  style={{
+                    borderWidth: focused ? 2 : 0,
+                    borderColor: c.accent,
+                  }}
+                />
+              ),
             }}
           />
         </Tabs>

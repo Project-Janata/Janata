@@ -1,8 +1,8 @@
 import React, { useState, useEffect } from 'react'
 import { View, TextInput, FlatList, Pressable } from 'react-native'
 import { useRouter, useLocalSearchParams } from 'expo-router'
-import { Check } from 'lucide-react-native'
-import { useTheme } from '../components/contexts'
+import { Check } from 'phosphor-react-native'
+import { useColors } from '../hooks/useColors'
 import { Text, StackHeader } from '../components/ui'
 import { fetchCenters, CenterData } from '../utils/api'
 import { centerPickerStore } from '../utils/centerPickerStore'
@@ -10,7 +10,7 @@ import { centerPickerStore } from '../utils/centerPickerStore'
 export default function CenterPickerScreen() {
   const router = useRouter()
   const { currentCenterID } = useLocalSearchParams<{ currentCenterID?: string }>()
-  const { isDark } = useTheme()
+  const c = useColors()
 
   const [allCenters, setAllCenters] = useState<CenterData[]>([])
   const [search, setSearch] = useState('')
@@ -20,15 +20,15 @@ export default function CenterPickerScreen() {
   }, [])
 
   const filtered = search.length >= 1
-    ? allCenters.filter((c) => c.name.toLowerCase().includes(search.toLowerCase()))
+    ? allCenters.filter((center) => center.name.toLowerCase().includes(search.toLowerCase()))
     : allCenters
 
-  const textColor = isDark ? '#FAFAFA' : '#1C1917'
-  const faintColor = isDark ? '#737373' : '#A8A29E'
-  const borderColor = isDark ? '#262626' : '#ECE7DE'
-  const cardBg = isDark ? '#262626' : '#FFFFFF'
-  const pageBg = isDark ? '#1A1A1A' : '#F5F5F4'
-  const inputBg = isDark ? '#333333' : '#F0EFED'
+  const textColor = c.text
+  const faintColor = c.textFaint
+  const borderColor = c.border
+  const cardBg = c.card
+  const pageBg = c.bg
+  const inputBg = c.surface
 
   return (
     <View style={{ flex: 1, backgroundColor: pageBg }}>

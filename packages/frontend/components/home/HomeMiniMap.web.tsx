@@ -1,6 +1,6 @@
 import React from 'react'
 import { Pressable, Text, View } from 'react-native'
-import { Map as MapIcon } from 'lucide-react-native'
+import { MapTrifold as MapIcon } from 'phosphor-react-native'
 import CommunityMap from '../map/Map'
 import type { MapPoint } from '../../utils/api'
 

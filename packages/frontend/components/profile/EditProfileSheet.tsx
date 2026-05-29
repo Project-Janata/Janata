@@ -23,9 +23,10 @@ let ImageManipulator: typeof import('expo-image-manipulator') | null = null
 try {
   ImageManipulator = require('expo-image-manipulator')
 } catch {}
-import { Camera, Check } from 'lucide-react-native'
-import { useUser, useTheme } from '../contexts'
+import { Camera, Check } from 'phosphor-react-native'
+import { useUser } from '../contexts'
 import { Text } from '../ui'
+import { useColors } from '../../hooks/useColors'
 import BirthdatePicker from './BirthdatePicker'
 import { fetchCenters, CenterData } from '../../utils/api'
 
@@ -45,7 +46,7 @@ interface Props {
 
 export default function EditProfileSheet({ visible, onClose }: Props) {
   const { user, updateProfile, setUser } = useUser()
-  const { isDark } = useTheme()
+  const c = useColors()
 
   const [name, setName] = useState('')
   const [bio, setBio] = useState('')
@@ -187,12 +188,12 @@ export default function EditProfileSheet({ visible, onClose }: Props) {
     return n[0].toUpperCase()
   }
 
-  const textColor = isDark ? '#FAFAFA' : '#1C1917'
-  const mutedColor = isDark ? '#A8A29E' : '#78716C'
-  const borderColor = isDark ? '#404040' : '#E7E5E4'
-  const cardBg = isDark ? '#262626' : '#FFFFFF'
-  const pageBg = isDark ? '#1A1A1A' : '#F5F5F4'
-  const inputBg = isDark ? '#333333' : '#F0EFED'
+  const textColor = c.text
+  const mutedColor = c.textMuted
+  const borderColor = c.border
+  const cardBg = c.card
+  const pageBg = c.bg
+  const inputBg = c.surface
 
   const inputStyle = {
     fontFamily: 'Inclusive Sans' as const,
@@ -296,7 +297,7 @@ export default function EditProfileSheet({ visible, onClose }: Props) {
                 {profileImage ? (
                   <Image
                     source={{ uri: profileImage }}
-                    style={{ width: 88, height: 88, borderRadius: 44, backgroundColor: '#D6D3D1' }}
+                    style={{ width: 88, height: 88, borderRadius: 44, backgroundColor: c.borderStrong }}
                   />
                 ) : (
                   <View
@@ -364,7 +365,7 @@ export default function EditProfileSheet({ visible, onClose }: Props) {
                   style={{
                     fontFamily: 'Inclusive Sans',
                     fontSize: 12,
-                    color: '#DC2626',
+                    color: c.error,
                     marginTop: 4,
                   }}
                 >
@@ -497,7 +498,7 @@ export default function EditProfileSheet({ visible, onClose }: Props) {
                 style={{
                   fontFamily: 'Inclusive Sans',
                   fontSize: 13,
-                  color: '#DC2626',
+                  color: c.error,
                   textAlign: 'center',
                 }}
               >

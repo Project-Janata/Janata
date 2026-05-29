@@ -1,6 +1,6 @@
 import React, { useState, useMemo, useEffect, useCallback } from 'react'
 import { View, Text, Pressable, ActivityIndicator, TextInput } from 'react-native'
-import { MapPin, Globe, Phone, User, Image as ImageIcon, Pencil } from 'lucide-react-native'
+import { MapPin, Globe, Phone, User, Image as ImageIcon, PencilSimple } from 'phosphor-react-native'
 import AdminTable, { type Column } from './AdminTable'
 import AdminDetailPanel from './AdminDetailPanel'
 import AdminSearchInput from './AdminSearchInput'
@@ -18,11 +18,11 @@ import {
   type UserData,
 } from '../../utils/api'
 import { useDetailColors } from '../../hooks/useDetailColors'
-import { useTheme } from '../contexts'
+import { useColors } from '../../hooks/useColors'
 
 export default function CentersTab() {
   const colors = useDetailColors()
-  const { isDark } = useTheme()
+  const c = useColors()
   const [search, setSearch] = useState('')
   const [centers, setCenters] = useState<CenterData[]>([])
   const [total, setTotal] = useState(0)
@@ -107,12 +107,8 @@ export default function CentersTab() {
   }, [selected])
 
   const renderStatus = (isVerified: boolean) => {
-    const bg = isVerified
-      ? isDark ? 'rgba(22,101,52,0.3)' : '#ECFDF5'
-      : isDark ? 'rgba(113,63,18,0.3)' : '#FFFBEB'
-    const textColor = isVerified
-      ? isDark ? '#4ade80' : '#059669'
-      : isDark ? '#fbbf24' : '#D97706'
+    const bg = isVerified ? c.successSoft : c.accentSoft
+    const textColor = isVerified ? c.success : c.accent
 
     return (
       <View style={{ alignSelf: 'flex-start', backgroundColor: bg, paddingHorizontal: 8, paddingVertical: 2, borderRadius: 99 }}>
@@ -225,7 +221,7 @@ export default function CentersTab() {
   if (loading && centers.length === 0) {
     return (
       <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center' }}>
-        <ActivityIndicator color="#E8862A" />
+        <ActivityIndicator color={c.accent} />
       </View>
     )
   }
@@ -233,10 +229,10 @@ export default function CentersTab() {
   if (error && centers.length === 0) {
     return (
       <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center', padding: 40 }}>
-        <Text style={{ fontFamily: 'Inclusive Sans', fontSize: 14, color: '#DC2626', textAlign: 'center' }}>
+        <Text style={{ fontFamily: 'Inclusive Sans', fontSize: 14, color: c.error, textAlign: 'center' }}>
           {error}
         </Text>
-        <Pressable onPress={() => loadCenters()} style={{ marginTop: 12, paddingHorizontal: 16, paddingVertical: 8, backgroundColor: '#E8862A', borderRadius: 8 }}>
+        <Pressable onPress={() => loadCenters()} style={{ marginTop: 12, paddingHorizontal: 16, paddingVertical: 8, backgroundColor: c.accent, borderRadius: 8 }}>
           <Text style={{ fontFamily: 'Inclusive Sans', fontSize: 13, color: '#fff' }}>Retry</Text>
         </Pressable>
       </View>
@@ -317,7 +313,7 @@ export default function CentersTab() {
                 colors={colors}
               />
               {saveError && (
-                <Text style={{ fontFamily: 'Inclusive Sans', fontSize: 12, color: '#DC2626' }}>
+                <Text style={{ fontFamily: 'Inclusive Sans', fontSize: 12, color: c.error }}>
                   {saveError}
                 </Text>
               )}
@@ -325,7 +321,7 @@ export default function CentersTab() {
                 <Pressable
                   onPress={handleSave}
                   disabled={saving}
-                  style={{ backgroundColor: '#E8862A', paddingHorizontal: 14, paddingVertical: 8, borderRadius: 8, opacity: saving ? 0.6 : 1 }}
+                  style={{ backgroundColor: c.accent, paddingHorizontal: 14, paddingVertical: 8, borderRadius: 8, opacity: saving ? 0.6 : 1 }}
                 >
                   <Text style={{ fontFamily: 'Inclusive Sans', fontSize: 12, color: '#fff' }}>
                     {saving ? 'Saving…' : 'Save'}
@@ -364,9 +360,9 @@ export default function CentersTab() {
               <View style={{ flexDirection: 'row', gap: 8, marginTop: 16 }}>
                 <Pressable
                   onPress={() => setEditing(true)}
-                  style={{ backgroundColor: '#E8862A', paddingHorizontal: 14, paddingVertical: 8, borderRadius: 8, flexDirection: 'row', alignItems: 'center', gap: 6 }}
+                  style={{ backgroundColor: c.accent, paddingHorizontal: 14, paddingVertical: 8, borderRadius: 8, flexDirection: 'row', alignItems: 'center', gap: 6 }}
                 >
-                  <Pencil size={12} color="#fff" />
+                  <PencilSimple size={12} color="#fff" />
                   <Text style={{ fontFamily: 'Inclusive Sans', fontSize: 12, color: '#fff' }}>
                     Edit
                   </Text>
@@ -385,7 +381,7 @@ export default function CentersTab() {
                   onPress={() => setDeleteTarget(selected)}
                   style={{ backgroundColor: colors.iconBoxBg, paddingHorizontal: 14, paddingVertical: 8, borderRadius: 8 }}
                 >
-                  <Text style={{ fontFamily: 'Inclusive Sans', fontSize: 12, color: isDark ? '#F87171' : '#DC2626' }}>
+                  <Text style={{ fontFamily: 'Inclusive Sans', fontSize: 12, color: c.error }}>
                     Delete
                   </Text>
                 </Pressable>
@@ -395,7 +391,7 @@ export default function CentersTab() {
 
           <AdminSectionHeader label="Members" colors={colors} />
           {membersLoading ? (
-            <ActivityIndicator size="small" color="#E8862A" />
+            <ActivityIndicator size="small" color={c.accent} />
           ) : members.length === 0 ? (
             <Text style={{ fontFamily: 'Inclusive Sans', fontSize: 12, color: colors.textMuted }}>
               No members

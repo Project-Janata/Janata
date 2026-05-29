@@ -21,7 +21,7 @@ import {
   ActivityIndicator,
   Image,
 } from 'react-native'
-import { MapPin, Search, Building2, Users, ChevronUp, ChevronDown } from 'lucide-react-native'
+import { MapPin, MagnifyingGlass, Buildings, Users, CaretUp, CaretDown } from 'phosphor-react-native'
 import { useRouter, useLocalSearchParams, useFocusEffect } from 'expo-router'
 import { useTheme, useUser } from '../../components/contexts'
 import { FilterChip, Badge, UnderlineTabBar, Avatar } from '../../components/ui'
@@ -238,7 +238,7 @@ function CenterItem({ center, onPress, isMyCenter }: { center: DiscoverCenter; o
         {center.image ? (
           <Image source={{ uri: center.image }} style={{ width: 52, height: 60 }} resizeMode="cover" />
         ) : (
-          <Building2 size={22} color="#9A3412" />
+          <Buildings size={22} color="#9A3412" />
         )}
       </View>
 
@@ -793,7 +793,7 @@ function MobileDiscoverFallback() {
                 backgroundColor: isDark ? '#262626' : '#F3F4F6',
               }}
             >
-              <Search size={16} color="#9CA3AF" />
+              <MagnifyingGlass size={16} color="#9CA3AF" />
               <TextInput
                 className="flex-1 ml-2 text-sm font-sans"
                 style={{
@@ -908,7 +908,7 @@ function MobileDiscoverFallback() {
                       <Text className="text-xs font-sans text-stone-500 dark:text-stone-400 uppercase" style={{ letterSpacing: 0.6 }}>
                         {label}
                       </Text>
-                      {isCollapsed ? <ChevronDown size={14} color="#a8a29e" /> : <ChevronUp size={14} color="#a8a29e" />}
+                      {isCollapsed ? <CaretDown size={14} color="#a8a29e" /> : <CaretUp size={14} color="#a8a29e" />}
                     </View>
                   </Pressable>
                 )
@@ -1303,7 +1303,7 @@ export default function DiscoverScreenWeb() {
                   className="flex-row items-center px-3 rounded-xl bg-stone-100 dark:bg-neutral-800"
                   style={{ minHeight: 40, flex: 1 }}
                 >
-                  <Search size={16} color="#9CA3AF" />
+                  <MagnifyingGlass size={16} color="#9CA3AF" />
                   <TextInput
                     className="flex-1 ml-2 text-sm font-sans text-content dark:text-content-dark outline-none"
                     placeholder="Search events and centers..."
@@ -1381,7 +1381,7 @@ export default function DiscoverScreenWeb() {
                           {label}
                         </Text>
                         <View className="flex-1 h-px bg-stone-200 dark:bg-neutral-700" />
-                        {isCollapsed ? <ChevronDown size={14} color="#a8a29e" /> : <ChevronUp size={14} color="#a8a29e" />}
+                        {isCollapsed ? <CaretDown size={14} color="#a8a29e" /> : <CaretUp size={14} color="#a8a29e" />}
                       </View>
                     </Pressable>
                   )
