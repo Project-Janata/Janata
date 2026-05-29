@@ -14,6 +14,8 @@ export type AdminTab =
 type AdminSidebarProps = {
   activeTab: AdminTab
   onTabChange: (tab: AdminTab) => void
+  // Full admins see every tab; sevaks (moderation-only) see just Moderation.
+  isAdmin: boolean
 }
 
 const tabs: { key: AdminTab; label: string; Icon: typeof Building2 }[] = [
@@ -25,10 +27,11 @@ const tabs: { key: AdminTab; label: string; Icon: typeof Building2 }[] = [
   { key: 'Notifications', label: 'Notifications', Icon: Bell },
 ]
 
-export default function AdminSidebar({ activeTab, onTabChange }: AdminSidebarProps) {
+export default function AdminSidebar({ activeTab, onTabChange, isAdmin }: AdminSidebarProps) {
   const { isDark } = useTheme()
 
   const inactiveColor = isDark ? '#A8A29E' : '#78716C'
+  const visibleTabs = isAdmin ? tabs : tabs.filter((t) => t.key === 'Moderation')
 
   return (
     <View
@@ -42,7 +45,7 @@ export default function AdminSidebar({ activeTab, onTabChange }: AdminSidebarPro
     >
       <Text style={styles.header}>Admin</Text>
 
-      {tabs.map(({ key, label, Icon }) => {
+      {visibleTabs.map(({ key, label, Icon }) => {
         const isActive = activeTab === key
         const color = isActive ? '#E8862A' : inactiveColor
 
