@@ -1,5 +1,5 @@
 import React, { useEffect, useRef, useState } from 'react'
-import { ActivityIndicator, Modal, Pressable, ScrollView, Text, TextInput, View } from 'react-native'
+import { ActivityIndicator, Modal, Platform, Pressable, ScrollView, Text, TextInput, View } from 'react-native'
 import {
   Building2,
   CalendarDays,
@@ -1026,6 +1026,13 @@ function ThreadReplyComposer({
   authorColor?: string
 }) {
   const canSend = value.trim().length > 0 && !sending
+  // Auto-grow: the input starts as a single line and grows with content up to
+  // a cap. Tracking the measured content height (not a fixed minHeight) keeps
+  // the pill exactly one line tall to start instead of rendering a tall box.
+  const LINE_HEIGHT = 20
+  const MAX_INPUT_HEIGHT = 120
+  const [inputHeight, setInputHeight] = useState(LINE_HEIGHT)
+  const grownHeight = Math.min(Math.max(LINE_HEIGHT, inputHeight), MAX_INPUT_HEIGHT)
   return (
     <View
       style={{
@@ -1042,16 +1049,20 @@ function ThreadReplyComposer({
       {error ? (
         <Text style={{ fontSize: 12, color: '#C2410C', marginBottom: 8 }}>{error}</Text>
       ) : null}
-      <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
-        <Avatar name={authorName} initials={authorInitials} size={30} backgroundColor={authorColor} />
+      {/* Avatar pinned to the top and the send button to the bottom, so as the
+          input grows vertically the row reads top-to-bottom instead of drifting
+          to center. */}
+      <View style={{ flexDirection: 'row', alignItems: 'flex-end', gap: 8 }}>
+        <View style={{ alignSelf: 'flex-start' }}>
+          <Avatar name={authorName} initials={authorInitials} size={30} backgroundColor={authorColor} />
+        </View>
         <View
           style={{
             flex: 1,
-            minHeight: 38,
             borderRadius: 19,
             backgroundColor: colors.panel,
             paddingHorizontal: 14,
-            justifyContent: 'center',
+            paddingVertical: 9,
           }}
         >
           <TextInput
@@ -1063,7 +1074,16 @@ function ThreadReplyComposer({
             multiline
             placeholder="Reply..."
             placeholderTextColor={colors.textFaint}
-            style={{ fontSize: 15, color: colors.text, paddingVertical: 8 }}
+            onContentSizeChange={(e) => setInputHeight(e.nativeEvent.contentSize.height)}
+            style={{
+              fontSize: 15,
+              lineHeight: LINE_HEIGHT,
+              color: colors.text,
+              height: grownHeight,
+              padding: 0,
+              textAlignVertical: 'center',
+              ...(Platform.OS === 'web' ? ({ outlineStyle: 'none' } as object) : {}),
+            }}
           />
         </View>
         <Pressable
@@ -1073,6 +1093,7 @@ function ThreadReplyComposer({
           accessibilityLabel="Send reply"
           accessibilityState={{ disabled: !canSend }}
           style={{
+            alignSelf: 'flex-end',
             width: 36,
             height: 36,
             borderRadius: 18,
