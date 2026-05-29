@@ -6,11 +6,13 @@ import { useTheme } from '../components/contexts'
 import { Text, StackHeader } from '../components/ui'
 import { fetchCenters, CenterData } from '../utils/api'
 import { centerPickerStore } from '../utils/centerPickerStore'
+import { useAnalytics } from '../utils/analytics'
 
 export default function CenterPickerScreen() {
   const router = useRouter()
   const { currentCenterID } = useLocalSearchParams<{ currentCenterID?: string }>()
   const { isDark } = useTheme()
+  const { track } = useAnalytics()
 
   const [allCenters, setAllCenters] = useState<CenterData[]>([])
   const [search, setSearch] = useState('')
@@ -43,7 +45,12 @@ export default function CenterPickerScreen() {
       }}>
         <TextInput
           value={search}
-          onChangeText={setSearch}
+          onChangeText={(text) => {
+            setSearch(text)
+            if (text.length > 0) {
+              track('center_picker_searched', { query: text, source: 'center_picker' })
+            }
+          }}
           placeholder="Search centers..."
           placeholderTextColor={faintColor}
           autoFocus
@@ -66,6 +73,13 @@ export default function CenterPickerScreen() {
         renderItem={({ item }) => (
           <Pressable
             onPress={() => {
+              track('center_picker_selected', {
+                center_id: item.centerID,
+                center_name: item.name,
+                was_current: currentCenterID === item.centerID,
+                search_query: search || null,
+                source: 'center_picker',
+              })
               centerPickerStore.result = item.centerID
               router.back()
             }}

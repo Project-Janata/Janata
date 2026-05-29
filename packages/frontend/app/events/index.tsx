@@ -1,31 +1,28 @@
-import React, { useEffect } from 'react'
+import React from 'react'
 import { View, Text, ScrollView, ActivityIndicator, RefreshControl, Pressable } from 'react-native'
 import { useRouter } from 'expo-router'
 import { Calendar, MapPin, ThumbsUp, MessageCircle } from 'lucide-react-native'
 import { useUser } from '../../components/contexts'
 import { useMyEvents, EventDisplay } from '../../hooks/useApiData'
 import { Card } from '../../components/ui'
-import { usePostHog } from 'posthog-react-native'
+import { useAnalytics } from '../../utils/analytics'
 
 export default function EventsListPage() {
   const router = useRouter()
   const { user } = useUser()
   const { events, loading, refetch } = useMyEvents(user?.username)
   const [refreshing, setRefreshing] = React.useState(false)
-  const posthog = usePostHog()
-
-  useEffect(() => {
-    posthog?.capture('event_list_viewed')
-  }, [])
+  const { track } = useAnalytics()
 
   const handleRefresh = async () => {
     setRefreshing(true)
     await refetch()
     setRefreshing(false)
+    track('event_list_refreshed', { source: 'events_list' })
   }
 
   const handleEventPress = (event: EventDisplay) => {
-    posthog?.capture('event_list_item_pressed', { eventId: event.id })
+    track('event_list_item_pressed', { eventId: event.id, source: 'events_list' })
     router.push(`/events/${event.id}`)
   }
 

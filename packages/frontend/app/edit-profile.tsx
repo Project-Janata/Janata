@@ -23,6 +23,7 @@ try {
 } catch {}
 import { Camera, ChevronRight } from 'lucide-react-native'
 import { useUser, useTheme } from '../components/contexts'
+import { useAnalytics } from '../utils/analytics'
 import { Text, Section, StackHeader } from '../components/ui'
 import BirthdatePicker from '../components/profile/BirthdatePicker'
 import { fetchCenters, CenterData } from '../utils/api'
@@ -50,6 +51,7 @@ export default function EditProfileScreen() {
   const router = useRouter()
   const { user, updateProfile, setUser } = useUser()
   const { isDark } = useTheme()
+  const { track } = useAnalytics()
 
   const [name, setName] = useState('')
   const [bio, setBio] = useState('')
@@ -127,6 +129,8 @@ export default function EditProfileScreen() {
 
     if (result.canceled || !result.assets.length) return
 
+    track('profile_photo_changed', { source: 'edit_profile' })
+
     const uri = result.assets[0].uri
 
     if (ImageManipulator) {
@@ -171,30 +175,37 @@ export default function EditProfileScreen() {
 
       if (!result.success) {
         setErrors({ form: result.message || 'Failed to save profile' })
+        track('profile_update_failed', { source: 'edit_profile', reason: result.message || 'api_error' })
         return
       }
 
+      track('profile_updated', { source: 'edit_profile', image_changed: imageChanged })
       if (user && imageChanged && profileImage) {
         setUser({ ...user, originalImage: profileImage })
       }
       router.back()
     } catch {
       setErrors({ form: 'Failed to save profile. Please try again.' })
+      track('profile_update_failed', { source: 'edit_profile', reason: 'exception' })
     } finally {
       setIsSaving(false)
     }
   }
 
   const toggleLookingFor = (option: string) => {
-    setLookingFor((prev) =>
-      prev.includes(option) ? prev.filter((i) => i !== option) : [...prev, option]
-    )
+    setLookingFor((prev) => {
+      const selected = prev.includes(option)
+      track('profile_looking_for_toggled', { option, selected: !selected, source: 'edit_profile' })
+      return selected ? prev.filter((i) => i !== option) : [...prev, option]
+    })
   }
 
   const toggleInterest = (interest: string) => {
-    setInterests((prev) =>
-      prev.includes(interest) ? prev.filter((i) => i !== interest) : [...prev, interest]
-    )
+    setInterests((prev) => {
+      const selected = prev.includes(interest)
+      track('profile_interest_toggled', { interest, selected: !selected, source: 'edit_profile' })
+      return selected ? prev.filter((i) => i !== interest) : [...prev, interest]
+    })
   }
 
   const getInitials = () => {
@@ -350,7 +361,10 @@ export default function EditProfileScreen() {
               </View>
               <Pressable
                 style={rowStyle}
-                onPress={() => router.push({ pathname: '/center-picker', params: { currentCenterID: centerID || '' } })}
+                onPress={() => {
+                  track('profile_center_picker_opened', { source: 'edit_profile', current_center_id: centerID || null })
+                  router.push({ pathname: '/center-picker', params: { currentCenterID: centerID || '' } })
+                }}
               >
                 <Text style={fieldLabelStyle}>CENTER</Text>
                 <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingTop: 6 }}>

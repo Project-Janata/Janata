@@ -7,7 +7,7 @@ import { House, Newspaper, Compass, Plus } from 'lucide-react-native'
 import SettingsPanel from '../../components/settings/SettingsPanel'
 import Logo from '../../components/ui/Logo'
 import TabHeader from '../../components/ui/TabHeader'
-import { usePostHog } from 'posthog-react-native'
+import { useAnalytics } from '../../utils/analytics'
 
 export default function TabLayout() {
   const router = useRouter()
@@ -16,7 +16,7 @@ export default function TabLayout() {
   const { isDark } = useTheme()
   const [settingsVisible, setSettingsVisible] = useState(false)
   const canCreate = !!user
-  const posthog = usePostHog()
+  const { track } = useAnalytics()
   const tabBarShowLabel = Platform.OS === 'web'
   const { width } = useWindowDimensions()
   const isDesktopWeb = Platform.OS === 'web' && width >= 768
@@ -28,7 +28,7 @@ export default function TabLayout() {
   }, [user, loading])
 
   const handleLogout = async () => {
-    posthog?.capture('nav_logout')
+    track('nav_logout')
     await logout()
     router.replace('/auth')
   }
@@ -70,7 +70,7 @@ export default function TabLayout() {
         {/* Left: Logo + Nav */}
         <View style={{ flexDirection: 'row', alignItems: 'center', gap: 24 }}>
           <Pressable
-            onPress={() => router.push('/')}
+            onPress={() => { track('nav_logo_pressed', { source: 'web_header' }); router.push('/') }}
             style={{ flexDirection: 'row', alignItems: 'center', gap: 10 }}
           >
             <Logo size={28} />
@@ -81,7 +81,7 @@ export default function TabLayout() {
               return (
                 <Pressable
                   key={href}
-                  onPress={() => router.push(href)}
+                  onPress={() => { track('nav_tab_pressed', { label, href, source: 'web_header' }); router.push(href) }}
                   style={{
                     paddingHorizontal: 12,
                     paddingVertical: 10,
@@ -123,7 +123,7 @@ export default function TabLayout() {
                 borderColor: '#E8862A',
               }}
               onPress={() => {
-                posthog?.capture('nav_create_event')
+                track('nav_create_event', { source: 'web_header' })
                 router.push('/explore?action=create')
               }}
             >
@@ -136,7 +136,7 @@ export default function TabLayout() {
           <Pressable
             style={{ width: 36, height: 36, borderRadius: 18, overflow: 'hidden' }}
             onPress={() => {
-              posthog?.capture('nav_menu_opened')
+              track('nav_menu_opened', { source: 'web_header' })
               setSettingsVisible(true)
             }}
           >

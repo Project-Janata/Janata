@@ -15,7 +15,7 @@ import { useUser, useTheme } from '../../components/contexts'
 import { useRouter } from 'expo-router'
 import { DestructiveButton, SecondaryButton, Text } from '../../components/ui'
 import ThemeSelector from '../../components/settings/ThemeSelector'
-import { usePostHog } from 'posthog-react-native'
+import { useAnalytics } from '../../utils/analytics'
 import Constants from 'expo-constants'
 
 const APP_VERSION = Constants.expoConfig?.version || '0.2.0'
@@ -26,7 +26,7 @@ export default function Preferences() {
   const router = useRouter()
   const [isDeleting, setIsDeleting] = useState(false)
   const [showDeleteModal, setShowDeleteModal] = useState(false)
-  const posthog = usePostHog()
+  const { track } = useAnalytics()
   const currentYear = new Date().getFullYear()
 
   const textColor = isDark ? '#FAFAFA' : '#1C1917'
@@ -45,12 +45,15 @@ export default function Preferences() {
     try {
       const result = await deleteAccount()
       if (result.success) {
+        track('account_deleted', { source: 'settings' })
         setShowDeleteModal(false)
         router.replace('/auth')
       } else {
+        track('delete_account_failed', { source: 'settings', reason: result.message })
         Alert.alert('Error', result.message || 'Failed to delete account')
       }
     } catch (error) {
+      track('delete_account_failed', { source: 'settings', reason: 'exception' })
       Alert.alert('Error', 'Failed to delete account. Please try again.')
     } finally {
       setIsDeleting(false)
@@ -129,7 +132,7 @@ export default function Preferences() {
                 borderBottomColor: borderColor,
               }}
               onPress={() => {
-                posthog?.capture('privacy_policy_viewed')
+                track('privacy_policy_viewed')
                 router.push('/privacy')
               }}
             >
@@ -146,7 +149,7 @@ export default function Preferences() {
                 borderBottomColor: borderColor,
               }}
               onPress={() => {
-                posthog?.capture('terms_viewed')
+                track('terms_viewed')
                 router.push('/terms')
               }}
             >
@@ -161,7 +164,7 @@ export default function Preferences() {
                 padding: isNarrowWeb ? 20 : 28,
               }}
               onPress={() => {
-                posthog?.capture('cookie_policy_viewed')
+                track('cookie_policy_viewed')
                 router.push('/cookies')
               }}
             >
@@ -241,7 +244,7 @@ export default function Preferences() {
             </View>
             <DestructiveButton
               onPress={() => {
-                posthog?.capture('delete_account_started')
+                track('delete_account_started', { source: 'settings' })
                 setShowDeleteModal(true)
               }}
             >
@@ -315,7 +318,10 @@ export default function Preferences() {
             </View>
             <View style={{ flexDirection: 'row', gap: 12, marginTop: 8 }}>
               <View style={{ flex: 1 }}>
-                <SecondaryButton onPress={() => setShowDeleteModal(false)} disabled={isDeleting}>
+                <SecondaryButton onPress={() => {
+                  track('delete_account_cancelled', { source: 'settings' })
+                  setShowDeleteModal(false)
+                }} disabled={isDeleting}>
                   Cancel
                 </SecondaryButton>
               </View>

@@ -13,7 +13,7 @@ import { buildFeedPostFromMessage } from '../../components/feed/feedData'
 import { useUser } from '../../components/contexts'
 import { SeoHead } from '../../components/seo/SeoHead'
 import { buildCenterJsonLd } from '../../components/seo/jsonLd'
-import { usePostHog } from 'posthog-react-native'
+import { useAnalytics } from '../../utils/analytics'
 
 export default function CenterDetailWeb() {
   const { id: rawId } = useLocalSearchParams()
@@ -77,7 +77,7 @@ function LockedBoard({ colors }: { colors: DetailColors }) {
 function MobileCenterDetail({ centerId }: { centerId: string }) {
   const router = useRouter()
   const { user } = useUser()
-  const posthog = usePostHog()
+  const { track } = useAnalytics()
   const { center, events, loading } = useCenterDetail(centerId)
   const colors = useDetailColors()
   const appColors = useColors()
@@ -87,13 +87,13 @@ function MobileCenterDetail({ centerId }: { centerId: string }) {
   // event so web traffic isn't missing from PostHog. (#analytics)
   useEffect(() => {
     if (!loading && center?.id) {
-      posthog?.capture('center_viewed', {
+      track('center_viewed', {
         centerId: center.id,
         name: center.name,
         source: 'web_detail',
       })
     }
-  }, [loading, center?.id, center?.name, posthog])
+  }, [loading, center?.id, center?.name])
   const canPostToThread =
     !!user && (user.centerID === center?.id || (user.verificationLevel ?? 0) >= 107)
   const { posts: boardPosts, refetch: refetchBoard } = useBoard('center', center?.id, canPostToThread)
@@ -102,11 +102,13 @@ function MobileCenterDetail({ centerId }: { centerId: string }) {
   const handleCreateThreadPost = async (body: string) => {
     if (!center?.id) return
     await createBoardPost('center', center.id, body)
+    track('center_board_post_created', { centerId: center.id, source: 'web_detail' })
     await refetchBoard()
   }
 
   const openThreadPost = (message: BoardMessage) => {
     if (!center?.id) return
+    track('center_board_post_opened', { centerId: center.id, postId: message.id, source: 'web_detail' })
     setThreadDetailPost(
       buildFeedPostFromMessage(message, {
         groupId: `center-${center.id}`,
@@ -121,7 +123,7 @@ function MobileCenterDetail({ centerId }: { centerId: string }) {
   const closeThreadPost = () => setThreadDetailPost(null)
 
   const handleShare = () => {
-    posthog?.capture('center_shared', { centerId: center?.id ?? '', source: 'web_detail' })
+    track('center_shared', { centerId: center?.id ?? '', source: 'web_detail' })
     if (typeof navigator !== 'undefined' && navigator.share) {
       navigator.share({ title: center?.name || 'Center', text: `Check out ${center?.name} on Chinmaya Janata!` }).catch(() => {})
     } else if (typeof navigator !== 'undefined' && navigator.clipboard) {
@@ -131,25 +133,25 @@ function MobileCenterDetail({ centerId }: { centerId: string }) {
 
   const handleAddressPress = () => {
     if (!center?.address) return
-    posthog?.capture('center_address_pressed', { centerId: center.id, source: 'web_detail' })
+    track('center_address_pressed', { centerId: center.id, source: 'web_detail' })
     Linking.openURL(`https://maps.google.com/?q=${encodeURIComponent(center.address)}`)
   }
 
   const handleWebsitePress = () => {
     if (!center?.website) return
-    posthog?.capture('center_website_pressed', { centerId: center.id, source: 'web_detail' })
+    track('center_website_pressed', { centerId: center.id, source: 'web_detail' })
     const url = center.website.startsWith('http') ? center.website : `https://${center.website}`
     Linking.openURL(url)
   }
 
   const handlePhonePress = () => {
     if (!center?.phone) return
-    posthog?.capture('center_phone_pressed', { centerId: center.id, source: 'web_detail' })
+    track('center_phone_pressed', { centerId: center.id, source: 'web_detail' })
     Linking.openURL(`tel:${center.phone}`)
   }
 
   const handleEventPress = (event: EventDisplay) => {
-    posthog?.capture('center_event_pressed', { centerId: center?.id ?? '', eventId: event.id, source: 'web_detail' })
+    track('center_event_pressed', { centerId: center?.id ?? '', eventId: event.id, source: 'web_detail' })
     router.push(`/events/${event.id}`)
   }
 
@@ -165,7 +167,7 @@ function MobileCenterDetail({ centerId }: { centerId: string }) {
     return (
       <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: colors.panelBg }}>
         <Text style={{ color: colors.textSecondary, fontSize: 16 }}>Center not found</Text>
-        <Pressable onPress={() => router.back()} style={{ marginTop: 16 }}>
+        <Pressable onPress={() => { track('center_not_found_back_pressed', { centerId, source: 'web_detail' }); router.back() }} style={{ marginTop: 16 }}>
           <Text style={{ color: '#E8862A', fontSize: 16 }}>Go back</Text>
         </Pressable>
       </View>
@@ -178,7 +180,7 @@ function MobileCenterDetail({ centerId }: { centerId: string }) {
       <View style={{ flex: 1, backgroundColor: appColors.bg }}>
         <View style={{ paddingTop: 12 }}>
           <Pressable
-            onPress={closeThreadPost}
+            onPress={() => { track('center_board_thread_closed', { centerId: center?.id, source: 'web_detail' }); closeThreadPost() }}
             accessibilityRole="button"
             accessibilityLabel="Back to board"
             style={{ flexDirection: 'row', alignItems: 'center', gap: 6, paddingHorizontal: 16, paddingVertical: 10 }}
@@ -223,7 +225,7 @@ function MobileCenterDetail({ centerId }: { centerId: string }) {
       <View style={{ paddingHorizontal: 16, paddingTop: 16, paddingBottom: 12, gap: 12 }}>
         <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
           <Pressable
-            onPress={() => router.back()}
+            onPress={() => { track('center_back_pressed', { centerId: center?.id, source: 'web_detail' }); router.back() }}
             accessibilityRole="button"
             accessibilityLabel="Back"
             style={{ flexDirection: 'row', alignItems: 'center', gap: 4 }}

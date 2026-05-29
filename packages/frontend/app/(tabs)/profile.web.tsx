@@ -15,6 +15,7 @@ import { Text } from '../../components/ui'
 import BirthdatePicker from '../../components/profile/BirthdatePicker'
 import WebAvatarCropper from '../../components/profile/AvatarCropper.web'
 import { fetchCenters, CenterData } from '../../utils/api'
+import { useAnalytics } from '../../utils/analytics'
 
 type ProfileData = {
   name: string
@@ -55,6 +56,7 @@ const PREFERENCE_OPTIONS = [
 export default function Profile() {
   const { user, updateProfile, setUser } = useUser()
   const { isDark } = useTheme()
+  const { track } = useAnalytics()
   const [isEditing, setIsEditing] = useState(false)
   const [isSaving, setIsSaving] = useState(false)
   const [errors, setErrors] = useState<{ [key: string]: string }>({})
@@ -108,6 +110,7 @@ export default function Profile() {
   const fileInputRef = useRef<HTMLInputElement>(null)
 
   const handleAvatarPress = () => {
+    track('profile_avatar_edit_opened', { source: 'profile', has_existing_image: !!profileData.profileImage })
     // If user has an existing profile image, use the original (uncropped) if available in session
     if (originalImage || user?.originalImage) {
       setCropperImage(originalImage || user?.originalImage || null)
@@ -125,6 +128,7 @@ export default function Profile() {
       const url = URL.createObjectURL(file)
       setOriginalImage(url)
       setCropperImage(url)
+      track('profile_avatar_file_selected', { source: 'profile', file_type: file.type })
     }
   }
 
@@ -135,10 +139,12 @@ export default function Profile() {
     setProfileData((prev) => ({ ...prev, profileImage: url }))
     setProfileImageChanged(true)
     setCropperImage(null)
+    track('profile_avatar_cropped', { source: 'profile' })
   }
 
   const handleCropCancel = () => {
     setCropperImage(null)
+    track('profile_avatar_crop_cancelled', { source: 'profile' })
   }
 
   const handleReplacePhoto = () => {
@@ -266,6 +272,7 @@ export default function Profile() {
     savedProfileImage.current = profileData.profileImage
     savedCenterID.current = profileData.centerID
     setIsEditing(true)
+    track('profile_edit_started', { source: 'profile', username: user?.username })
   }
 
   const handleCancel = () => {
@@ -284,6 +291,7 @@ export default function Profile() {
     setProfileImageChanged(false)
     setErrors({})
     setIsEditing(false)
+    track('profile_edit_cancelled', { source: 'profile', username: user?.username })
   }
 
   const handleSave = async () => {
@@ -320,6 +328,7 @@ export default function Profile() {
             ...prev,
             profileImage: 'Failed to upload image. Please try again.',
           }))
+          track('profile_update_failed', { source: 'profile', username: user?.username, reason: 'image_upload_error' })
           setIsSaving(false)
           return
         }
@@ -337,6 +346,7 @@ export default function Profile() {
 
       if (!result.success) {
         setErrors((prev) => ({ ...prev, form: result.message || 'Failed to save profile' }))
+        track('profile_update_failed', { source: 'profile', username: user?.username, reason: result.message || 'api_error' })
         setIsSaving(false)
         return
       }
@@ -345,10 +355,12 @@ export default function Profile() {
       if (originalImage && user) {
         setUser({ ...user, originalImage: originalImage })
       }
+      track('profile_updated', { source: 'profile', username: user?.username })
       setIsEditing(false)
       setErrors({})
     } catch (error) {
       if (__DEV__) console.error('Error saving profile:', error)
+      track('profile_update_failed', { source: 'profile', username: user?.username, reason: 'exception' })
       setIsEditing(false)
       setErrors({})
     } finally {
@@ -358,12 +370,14 @@ export default function Profile() {
 
   const handlePreferenceToggle = (preference: string) => {
     if (!isEditing) return
+    const willSelect = !profileData.interests.includes(preference)
     setProfileData((prev) => ({
       ...prev,
       interests: prev.interests.includes(preference)
         ? prev.interests.filter((p) => p !== preference)
         : [...prev.interests, preference],
     }))
+    track('profile_interest_toggled', { source: 'profile', interest: preference, selected: willSelect })
   }
 
   const labelColor = isDark ? '#78716C' : '#A8A29E'
@@ -661,6 +675,7 @@ export default function Profile() {
                           setProfileData((prev) => ({ ...prev, centerID: center.centerID }))
                           setCenterSearch('')
                           setShowCenterPicker(false)
+                          track('profile_center_selected', { source: 'profile', center_id: center.centerID, center_name: center.name })
                         }}
                         style={{
                           paddingHorizontal: 16,
@@ -1191,6 +1206,7 @@ export default function Profile() {
                           setProfileData((prev) => ({ ...prev, centerID: center.centerID }))
                           setCenterSearch('')
                           setShowCenterPicker(false)
+                          track('profile_center_selected', { source: 'profile', center_id: center.centerID, center_name: center.name })
                         }}
                         style={{
                           paddingHorizontal: 16,

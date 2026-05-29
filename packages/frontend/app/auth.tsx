@@ -10,7 +10,7 @@ import {
 } from 'react-native'
 import { useRouter, useLocalSearchParams } from 'expo-router'
 import { Code, ArrowLeft } from 'lucide-react-native'
-import { usePostHog } from 'posthog-react-native'
+import { useAnalytics } from '../utils/analytics'
 import { AuthInput, Logo, PrimaryButton } from '../components/ui'
 import { useUser, useTheme } from '../components/contexts'
 import { validateEmail, validatePassword } from '../utils'
@@ -30,7 +30,7 @@ export default function AuthScreen() {
   const router = useRouter()
   const { isDark } = useTheme()
   const { checkUserExists, login, signup, loading } = useUser()
-  const posthog = usePostHog()
+  const { track } = useAnalytics()
 
   // Read params for deep-link support (e.g. from AuthPromptModal, or
   // /auth/forgot's "Back to sign in" button).
@@ -65,20 +65,20 @@ export default function AuthScreen() {
       return
     }
     try {
-      posthog?.capture('auth_email_submitted')
+      track('auth_email_submitted', { source: 'auth' })
       const exists = await checkUserExists(username)
       if (exists) {
-        posthog?.capture('auth_user_exists')
+        track('auth_user_exists', { source: 'auth' })
         setAuthStep('login')
       } else {
-        posthog?.capture('auth_user_new')
+        track('auth_user_new', { source: 'auth' })
         setAuthStep('invite-code')
       }
     } catch (e: any) {
-      posthog?.capture('auth_check_failed')
+      track('auth_check_failed', { source: 'auth' })
       setErrors({ form: e.message || 'Failed to connect to server.' })
     }
-  }, [username, checkUserExists, posthog])
+  }, [username, checkUserExists, track])
 
   const handleLogin = useCallback(async () => {
     setErrors({})
@@ -94,14 +94,17 @@ export default function AuthScreen() {
     try {
       const result = await login(username, password)
       if (result.success) {
+        track('login_success', { source: 'auth' })
         router.replace('/(tabs)')
       } else {
+        track('login_failed', { source: 'auth', reason: result.message })
         setErrors({ form: result.message || 'Username or password is incorrect.' })
       }
     } catch (e: any) {
+      track('login_failed', { source: 'auth', reason: 'network_error' })
       setErrors({ form: 'Failed to connect to server. Please try again.' })
     }
-  }, [username, password, login, router])
+  }, [username, password, login, router, track])
 
   const handleInviteCodeContinue = useCallback(async () => {
     setErrors({})
@@ -110,7 +113,7 @@ export default function AuthScreen() {
       return
     }
     try {
-      posthog?.capture('auth_invite_code_submitted')
+      track('auth_invite_code_submitted', { source: 'auth' })
       // Validate the invite code with the backend
       const response = await fetch(`${API_BASE_URL}/auth/validate-invite-code`, {
         method: 'POST',
@@ -119,17 +122,17 @@ export default function AuthScreen() {
       })
       const data = await response.json()
       if (data.valid) {
-        posthog?.capture('auth_invite_code_valid')
+        track('auth_invite_code_valid', { source: 'auth' })
         setAuthStep('signup')
       } else {
-        posthog?.capture('auth_invite_code_invalid')
+        track('auth_invite_code_invalid', { source: 'auth' })
         setErrors({ form: data.error || 'Invalid or inactive invite code.' })
       }
     } catch (e: any) {
-      posthog?.capture('auth_invite_code_check_failed')
+      track('auth_invite_code_check_failed', { source: 'auth' })
       setErrors({ form: 'Failed to validate invite code. Please try again.' })
     }
-  }, [inviteCode, posthog])
+  }, [inviteCode, track])
 
   const handleSignup = useCallback(async () => {
     setErrors({})
@@ -152,14 +155,17 @@ export default function AuthScreen() {
     try {
       const result = await signup(username, password, inviteCode)
       if (result.success) {
+        track('signup_success', { source: 'auth' })
         router.replace(params.returnTo ? `/onboarding?returnTo=${encodeURIComponent(params.returnTo)}` : '/onboarding')
       } else {
+        track('signup_failed', { source: 'auth', reason: result.message })
         setErrors({ form: result.message || 'Failed to sign up. Please try again.' })
       }
     } catch (e: any) {
+      track('signup_failed', { source: 'auth', reason: 'network_error' })
       setErrors({ form: 'Failed to connect to server. Please try again.' })
     }
-  }, [username, password, confirmPassword, inviteCode, signup, router])
+  }, [username, password, confirmPassword, inviteCode, signup, router, track])
 
   const handleSubmit = useCallback(
     (e?: any) => {
@@ -182,12 +188,13 @@ export default function AuthScreen() {
   )
 
   const handleBack = useCallback(() => {
+    track('auth_back_pressed', { source: 'auth', from_step: authStep })
     setAuthStep('initial')
     setPassword('')
     setConfirmPassword('')
     setInviteCode('')
     setErrors({})
-  }, [])
+  }, [authStep, track])
 
   const isButtonDisabled =
     loading ||
@@ -262,7 +269,7 @@ export default function AuthScreen() {
             )}
 
             {/* Janata Wordmark */}
-            <Pressable onPress={() => router.push('/landing')}>
+            <Pressable onPress={() => { track('auth_logo_pressed', { source: 'auth' }); router.push('/landing') }}>
               <Logo size={32} style={{ marginBottom: 32 }} />
             </Pressable>
 
@@ -388,7 +395,7 @@ export default function AuthScreen() {
               {authStep === 'login' && (
                 <Pressable
                   className="items-center mt-2"
-                  onPress={() => router.push('/auth/forgot')}
+                  onPress={() => { track('auth_forgot_password_pressed', { source: 'auth' }); router.push('/auth/forgot') }}
                 >
                   <Text className="text-primary font-sans font-medium">Forgot password?</Text>
                 </Pressable>
@@ -400,14 +407,14 @@ export default function AuthScreen() {
               By continuing, you agree to our{' '}
               <Text
                 className="text-primary font-sans"
-                onPress={() => router.push('/terms')}
+                onPress={() => { track('terms_viewed', { source: 'auth' }); router.push('/terms') }}
               >
                 Terms of Service
               </Text>
               {' '}and{' '}
               <Text
                 className="text-primary font-sans"
-                onPress={() => router.push('/privacy')}
+                onPress={() => { track('privacy_policy_viewed', { source: 'auth' }); router.push('/privacy') }}
               >
                 Privacy Policy
               </Text>

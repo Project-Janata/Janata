@@ -13,7 +13,7 @@ import { SafeAreaView } from 'react-native-safe-area-context'
 import { useLocalSearchParams, useRouter } from 'expo-router'
 import { ChevronLeft, ChevronDown } from 'lucide-react-native'
 import DateTimePicker from '@react-native-community/datetimepicker'
-import { usePostHog } from 'posthog-react-native'
+import { useAnalytics } from '../../utils/analytics'
 import { PrimaryButton } from '../../components/ui'
 import { useDetailColors, type DetailColors } from '../../hooks/useDetailColors'
 import {
@@ -162,7 +162,7 @@ export default function EventFormPage() {
   const isEdit = !!eventId
   const router = useRouter()
   const colors = useDetailColors()
-  const posthog = usePostHog()
+  const { track } = useAnalytics()
   const today = todayLocalISODate()
 
   const [loading, setLoading] = useState(isEdit)
@@ -309,16 +309,16 @@ export default function EventFormPage() {
       let savedId = eventId
       if (isEdit && eventId) {
         await updateEvent({ id: eventId, ...sharedFields })
-        posthog?.capture('event_updated', { eventId, title: title.trim() })
+        track('event_updated', { eventId, title: title.trim(), source: 'event_form' })
       } else {
         const created = await createEvent(sharedFields)
         savedId = created.id
-        posthog?.capture('event_created', { title: title.trim(), centerID })
+        track('event_created', { title: title.trim(), centerID, source: 'event_form' })
       }
       if (savedId) router.replace(`/events/${savedId}`)
     } catch (err: any) {
       const msg = err?.message || 'Something went wrong. Please try again.'
-      posthog?.capture('event_create_failed', { error: msg, isEdit })
+      track('event_create_failed', { error: msg, isEdit, source: 'event_form' })
       setErrors({ submit: msg })
     } finally {
       setSaving(false)
@@ -332,6 +332,7 @@ export default function EventFormPage() {
     if (!longitude && center.longitude) setLongitude(String(center.longitude))
     if (!address && center.address) setAddress(center.address)
     setShowCenterPicker(false)
+    track('event_form_center_selected', { centerID: center.centerID, centerName: center.name, source: 'event_form' })
   }
 
   // ── Input styling helper ────────────────────────────────────────────
@@ -373,7 +374,10 @@ export default function EventFormPage() {
     <SafeAreaView style={{ flex: 1, backgroundColor: colors.panelBg }}>
       <HeaderBar
         title={isEdit ? 'Edit Event' : 'Create Event'}
-        onBack={() => router.back()}
+        onBack={() => {
+          track('event_form_back_pressed', { isEdit, source: 'event_form' })
+          router.back()
+        }}
         colors={colors}
       />
 
@@ -429,7 +433,7 @@ export default function EventFormPage() {
         {/* Date */}
         <FieldRow label="Date" colors={colors} error={errors.date} required>
           <Pressable
-            onPress={() => setShowDatePicker(true)}
+            onPress={() => { setShowDatePicker(true); track('event_form_date_picker_opened', { source: 'event_form' }) }}
             style={pickerFieldStyle(!!errors.date)}
             accessibilityLabel="Pick a date"
           >
@@ -478,7 +482,7 @@ export default function EventFormPage() {
         {/* Time */}
         <FieldRow label="Time" colors={colors} error={errors.time}>
           <Pressable
-            onPress={() => setShowTimePicker(true)}
+            onPress={() => { setShowTimePicker(true); track('event_form_time_picker_opened', { source: 'event_form' }) }}
             style={pickerFieldStyle(!!errors.time)}
             accessibilityLabel="Pick a time"
           >
@@ -525,7 +529,7 @@ export default function EventFormPage() {
         {/* Center selection */}
         <FieldRow label="Center" colors={colors} error={errors.center} required hint="Picking a center auto-fills address & coordinates.">
           <Pressable
-            onPress={() => setShowCenterPicker(!showCenterPicker)}
+            onPress={() => { const next = !showCenterPicker; setShowCenterPicker(next); if (next) track('event_form_center_picker_opened', { source: 'event_form' }) }}
             style={pickerFieldStyle(!!errors.center)}
           >
             <Text
@@ -701,7 +705,7 @@ export default function EventFormPage() {
               </View>
               <Switch
                 value={allowJanataSignup}
-                onValueChange={setAllowJanataSignup}
+                onValueChange={(v) => { setAllowJanataSignup(v); track('event_form_janata_signup_toggled', { enabled: v, source: 'event_form' }) }}
                 trackColor={{ true: '#E8862A', false: colors.border }}
                 thumbColor="#FFFFFF"
                 ios_backgroundColor={colors.border}
@@ -713,7 +717,7 @@ export default function EventFormPage() {
         {/* Advanced: coordinates (auto-filled from center) */}
         <View style={{ gap: 10 }}>
           <Pressable
-            onPress={() => setShowAdvanced((v) => !v)}
+            onPress={() => setShowAdvanced((v) => { const next = !v; track('event_form_advanced_toggled', { expanded: next, source: 'event_form' }); return next })}
             style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}
             accessibilityLabel="Toggle advanced location options"
           >
@@ -776,7 +780,7 @@ export default function EventFormPage() {
               return (
                 <Pressable
                   key={opt.label}
-                  onPress={() => setCategory(opt.value)}
+                  onPress={() => { setCategory(opt.value); track('event_form_category_selected', { category: opt.label, value: opt.value ?? null, source: 'event_form' }) }}
                   style={{
                     paddingHorizontal: 16,
                     paddingVertical: 10,

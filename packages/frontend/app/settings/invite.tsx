@@ -14,6 +14,7 @@ import { useUser } from '../../components/contexts'
 import { StackHeader, GradientIconBadge, Card, IconBadge } from '../../components/ui'
 import { fetchCenters } from '../../utils/api'
 import { useColors } from '../../hooks/useColors'
+import { useAnalytics } from '../../utils/analytics'
 
 const MONO_FONT = Platform.select({
   ios: 'JetBrains Mono',
@@ -24,6 +25,7 @@ const MONO_FONT = Platform.select({
 export default function InviteScreen() {
   const { user } = useUser()
   const c = useColors()
+  const { track } = useAnalytics()
   const [centerName, setCenterName] = useState<string | null>(null)
   const [copied, setCopied] = useState(false)
   const [pressing, setPressing] = useState(false)
@@ -44,6 +46,7 @@ export default function InviteScreen() {
   const handleCopy = () => {
     if (!inviteUrl) return
     Share.share({ message: inviteUrl })
+    track('invite_link_shared', { source: 'invite_screen', method: 'share_button', invite_code: inviteCode })
     setCopied(true)
     setTimeout(() => setCopied(false), 2000)
   }
@@ -167,7 +170,10 @@ export default function InviteScreen() {
           </View>
           <Pressable
             style={{ gap: 8, alignItems: 'center' }}
-            onPress={() => Share.share({ message: inviteUrl ?? '' })}
+            onPress={() => {
+              Share.share({ message: inviteUrl ?? '' })
+              track('invite_link_shared', { source: 'invite_screen', method: 'other', invite_code: inviteCode })
+            }}
           >
             <IconBadge size={56} color="#6c757d">
               <EllipsisIcon size={32} color="#fff" strokeWidth={2} />

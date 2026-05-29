@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState, useRef } from 'react'
 import { View, Text, ScrollView, Pressable, ActivityIndicator, useWindowDimensions, Linking } from 'react-native'
 import { useLocalSearchParams, useRouter } from 'expo-router'
 import { ChevronLeft, Share2, MapPin, Users, User, Clock, Lock, Pencil, Trash2 } from 'lucide-react-native'
+import { useAnalytics } from '../../utils/analytics'
 import { useUser } from '../../components/contexts'
 import { useBoard, useEventDetail } from '../../hooks/useApiData'
 import { createBoardPost, removeEvent } from '../../utils/api'
@@ -75,6 +76,7 @@ function LockedComments({ colors }: { colors: DetailColors }) {
 
 function MobileEventDetail({ eventId }: { eventId: string }) {
   const router = useRouter()
+  const { track } = useAnalytics()
   const { user } = useUser()
   const { event, loading, toggleRegistration, isToggling, attendees, isCreator } = useEventDetail(eventId, user?.username, user?.id)
   const colors = useDetailColors()
@@ -82,6 +84,7 @@ function MobileEventDetail({ eventId }: { eventId: string }) {
   const [showAuthPrompt, setShowAuthPrompt] = useState(false)
   const [isDeleting, setIsDeleting] = useState(false)
   const [threadDetailPost, setThreadDetailPost] = useState<FeedPost | null>(null)
+  const hasTrackedView = useRef(false)
 
   const isPast = event?.date ? new Date(event.date + 'T23:59:59') < new Date() : false
   const canEdit = !!user && (isSuperAdmin(user) || isCreator)
@@ -90,14 +93,24 @@ function MobileEventDetail({ eventId }: { eventId: string }) {
   const { posts: boardPosts, refetch: refetchBoard } = useBoard('event', event?.id, canAccessEventBoard)
   const eventBoardMessages = useMemo(() => boardPosts.map(boardPostToMessage), [boardPosts])
 
+  useEffect(() => {
+    if (!loading && event && !hasTrackedView.current) {
+      hasTrackedView.current = true
+      const isPast = event.date ? new Date(event.date + 'T23:59:59') < new Date() : false
+      track('event_viewed', { eventId, title: event.title, isPast, source: 'event_detail' })
+    }
+  }, [loading, event, eventId])
+
   const handleCreateThreadPost = async (body: string) => {
     if (!event?.id) return
     await createBoardPost('event', event.id, body)
+    track('event_board_post_created', { eventId, source: 'event_detail' })
     await refetchBoard()
   }
 
   const openThreadPost = (message: BoardMessage) => {
     if (!event?.id) return
+    track('event_board_post_opened', { eventId, postId: message.id, source: 'event_detail' })
     setThreadDetailPost(
       buildFeedPostFromMessage(message, {
         groupId: `event-${event.id}`,
@@ -109,7 +122,10 @@ function MobileEventDetail({ eventId }: { eventId: string }) {
     )
   }
 
-  const closeThreadPost = () => setThreadDetailPost(null)
+  const closeThreadPost = () => {
+    track('event_board_thread_closed', { eventId, source: 'event_detail' })
+    setThreadDetailPost(null)
+  }
 
   const handleDelete = async () => {
     if (!event) return
@@ -117,6 +133,7 @@ function MobileEventDetail({ eventId }: { eventId: string }) {
     if (!ok) return
     try {
       setIsDeleting(true)
+      track('event_deleted', { eventId, source: 'event_detail' })
       await removeEvent(event.id)
       router.replace('/')
     } catch (err: any) {
@@ -206,7 +223,7 @@ function MobileEventDetail({ eventId }: { eventId: string }) {
         </Pressable>
         <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4 }}>
           {canEdit && !isPast && (
-            <Pressable onPress={() => router.push(`/events/form?id=${event.id}`)} style={{ padding: 8 }} accessibilityLabel="Edit event">
+            <Pressable onPress={() => { track('event_edit_opened', { eventId, source: 'event_detail' }); router.push(`/events/form?id=${event.id}`) }} style={{ padding: 8 }} accessibilityLabel="Edit event">
               <Pencil size={18} color={colors.textSecondary} />
             </Pressable>
           )}
@@ -217,6 +234,7 @@ function MobileEventDetail({ eventId }: { eventId: string }) {
           )}
           <Pressable
             onPress={() => {
+              track('event_shared', { eventId, source: 'event_detail' })
               if (typeof navigator !== 'undefined' && navigator.share) {
                 navigator.share({ title: event.title, text: `Check out ${event.title} on Chinmaya Janata!` }).catch(() => {})
               } else if (typeof navigator !== 'undefined' && navigator.clipboard) {
@@ -321,14 +339,28 @@ function MobileEventDetail({ eventId }: { eventId: string }) {
           {event.signupUrl && event.allowJanataSignup ? (
             <>
               {event.isRegistered ? (
-                <DestructiveButton onPress={() => user?.username && toggleRegistration(user.username)} disabled={isToggling} loading={isToggling}>
+                <DestructiveButton
+                  onPress={() => {
+                    if (user?.username) {
+                      track('event_unregistered', { eventId, source: 'event_detail' })
+                      toggleRegistration(user.username)
+                    }
+                  }}
+                  disabled={isToggling}
+                  loading={isToggling}
+                >
                   Cancel Registration
                 </DestructiveButton>
               ) : (
                 <PrimaryButton
                   onPress={() => {
-                    if (!user) setShowAuthPrompt(true)
-                    else if (user.username) toggleRegistration(user.username)
+                    if (!user) {
+                      track('event_auth_prompt_shown', { eventId, source: 'event_detail' })
+                      setShowAuthPrompt(true)
+                    } else if (user.username) {
+                      track('event_registered', { eventId, source: 'event_detail' })
+                      toggleRegistration(user.username)
+                    }
                   }}
                   disabled={isToggling}
                   loading={isToggling}
@@ -337,7 +369,10 @@ function MobileEventDetail({ eventId }: { eventId: string }) {
                 </PrimaryButton>
               )}
               <Pressable
-                onPress={() => Linking.openURL(event.signupUrl!)}
+                onPress={() => {
+                  track('event_external_signup_pressed', { eventId, signupUrl: event.signupUrl, source: 'event_detail' })
+                  Linking.openURL(event.signupUrl!)
+                }}
                 style={{ paddingVertical: 12, alignItems: 'center' }}
                 accessibilityLabel={`Sign up at ${hostnameOf(event.signupUrl)}`}
               >
@@ -348,7 +383,10 @@ function MobileEventDetail({ eventId }: { eventId: string }) {
             </>
           ) : event.signupUrl ? (
             <>
-              <PrimaryButton onPress={() => Linking.openURL(event.signupUrl!)}>
+              <PrimaryButton onPress={() => {
+                track('event_external_signup_pressed', { eventId, signupUrl: event.signupUrl, source: 'event_detail' })
+                Linking.openURL(event.signupUrl!)
+              }}>
                 Sign up at {hostnameOf(event.signupUrl)}
               </PrimaryButton>
               <Text style={{ fontFamily: 'Inclusive Sans', fontSize: 12, color: colors.textSecondary, textAlign: 'center', marginTop: 4 }}>
@@ -356,14 +394,28 @@ function MobileEventDetail({ eventId }: { eventId: string }) {
               </Text>
             </>
           ) : event.isRegistered ? (
-            <DestructiveButton onPress={() => user?.username && toggleRegistration(user.username)} disabled={isToggling} loading={isToggling}>
+            <DestructiveButton
+              onPress={() => {
+                if (user?.username) {
+                  track('event_unregistered', { eventId, source: 'event_detail' })
+                  toggleRegistration(user.username)
+                }
+              }}
+              disabled={isToggling}
+              loading={isToggling}
+            >
               Cancel Registration
             </DestructiveButton>
           ) : (
             <PrimaryButton
               onPress={() => {
-                if (!user) setShowAuthPrompt(true)
-                else if (user.username) toggleRegistration(user.username)
+                if (!user) {
+                  track('event_auth_prompt_shown', { eventId, source: 'event_detail' })
+                  setShowAuthPrompt(true)
+                } else if (user.username) {
+                  track('event_registered', { eventId, source: 'event_detail' })
+                  toggleRegistration(user.username)
+                }
               }}
               disabled={isToggling}
               loading={isToggling}

@@ -15,6 +15,7 @@ import {
   type BoardMessage,
   type PersonSummary,
 } from '../../components/boards'
+import { useAnalytics } from '../../utils/analytics'
 
 type GroupKind = 'center' | 'event'
 
@@ -99,6 +100,7 @@ export default function FeedPostDetail() {
   const router = useRouter()
   const { user } = useUser()
   const { isDark } = useTheme()
+  const { track } = useAnalytics()
   const { centers: allCenters } = useCenterList()
   const { events: myEvents } = useMyEvents(user?.username)
 
@@ -130,7 +132,10 @@ export default function FeedPostDetail() {
             Post not found
           </Text>
           <Pressable
-            onPress={() => router.back()}
+            onPress={() => {
+              track('feed_post_back_pressed', { post_id: id, source: 'feed_post_detail', reason: 'not_found' })
+              router.back()
+            }}
             style={{
               marginTop: 16,
               paddingVertical: 10,
@@ -165,7 +170,10 @@ export default function FeedPostDetail() {
         }}
       >
         <Pressable
-          onPress={() => router.back()}
+          onPress={() => {
+            track('feed_post_back_pressed', { post_id: id, source: 'feed_post_detail', group_id: post?.groupId, group_kind: post?.groupKind })
+            router.back()
+          }}
           accessibilityRole="button"
           accessibilityLabel="Back"
           hitSlop={10}

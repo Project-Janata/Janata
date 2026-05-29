@@ -12,11 +12,13 @@ import {
   fetchUserPosts,
   CenterData,
 } from '../../utils/api'
+import { useAnalytics } from '../../utils/analytics'
 
 export default function ProfileNative() {
   const router = useRouter()
   const { user, refreshUser } = useUser()
   const { isDark } = useTheme()
+  const { track } = useAnalytics()
   const [allCenters, setAllCenters] = useState<CenterData[]>([])
   const [postCount, setPostCount] = useState(0)
   const [eventCount, setEventCount] = useState(0)
@@ -91,6 +93,7 @@ export default function ProfileNative() {
         message: `Check out ${getDisplayName()} on Janata!`,
         title: getDisplayName(),
       })
+      track('profile_shared', { source: 'profile', username: user?.username })
     } catch {
       // Silently fail
     }
@@ -309,7 +312,10 @@ export default function ProfileNative() {
           }}
         >
           <Pressable
-            onPress={() => router.push('/edit-profile')}
+            onPress={() => {
+              track('profile_edit_opened', { source: 'profile', username: user?.username })
+              router.push('/edit-profile')
+            }}
             accessibilityRole="button"
             accessibilityLabel="Edit profile"
             style={{

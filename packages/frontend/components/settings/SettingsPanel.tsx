@@ -6,12 +6,14 @@ import { router, usePathname } from 'expo-router'
 import ThemeSelector from './ThemeSelector'
 import { Avatar } from '../ui'
 import { isSuperAdmin } from '../../utils/admin'
+import { useAnalytics } from '../../utils/analytics'
 
 function SettingsPanel({ visible, onClose, onLogout }) {
   const opacityAnim = useRef(new Animated.Value(0)).current
   const translateYAnim = useRef(new Animated.Value(-20)).current
   const { user } = useUser()
   const { preference: themePreference, setPreference: setThemePreference, isDark } = useTheme()
+  const { track } = useAnalytics()
   const pathname = usePathname()
   const themeOptions = ['light', 'dark', 'system']
   const optionWidth = 70
@@ -120,7 +122,10 @@ function SettingsPanel({ visible, onClose, onLogout }) {
           bottom: 0,
           zIndex: 99,
         }}
-        onPress={onClose}
+        onPress={() => {
+          track('settings_panel_dismissed', { source: 'backdrop' })
+          onClose()
+        }}
       />
 
       {/* Settings Panel */}
@@ -177,6 +182,7 @@ function SettingsPanel({ visible, onClose, onLogout }) {
               : 'hover:bg-gray-100 dark:hover:bg-neutral-800'
           }`}
           onPress={() => {
+            track('nav_profile_opened', { source: 'settings_panel' })
             onClose()
             router.push('/profile')
           }}
@@ -203,6 +209,7 @@ function SettingsPanel({ visible, onClose, onLogout }) {
               : 'hover:bg-gray-100 dark:hover:bg-neutral-800'
           }`}
           onPress={() => {
+            track('nav_settings_opened', { source: 'settings_panel', destination: 'preferences' })
             onClose()
             router.push('/settings/preferences')
           }}
@@ -226,6 +233,7 @@ function SettingsPanel({ visible, onClose, onLogout }) {
           <Pressable
             className="flex-row items-center mb-2 p-2 rounded-lg hover:bg-gray-100 dark:hover:bg-neutral-800"
             onPress={() => {
+              track('settings_admin_dashboard_opened', { source: 'settings_panel' })
               onClose()
               router.push('/admin' as any)
             }}
@@ -254,7 +262,10 @@ function SettingsPanel({ visible, onClose, onLogout }) {
 
         {/* Log Out Button */}
         <Pressable
-          onPress={onLogout}
+          onPress={() => {
+            track('logout', { source: 'settings_panel' })
+            onLogout()
+          }}
           className="flex-row items-center p-2 rounded-lg hover:bg-red-50 dark:hover:bg-red-900/20"
         >
           <LogOut size={16} color={isDark ? '#ef4444' : '#dc2626'} className="mr-3" />
