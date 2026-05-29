@@ -32,10 +32,22 @@ export function FeedList({
   }, [posts])
 
   if (posts.length === 0 && groups.length > 0 && !hasQuery) {
+    // The "no posts yet" / compose prompt lives in the detail pane (desktop)
+    // or below (mobile). Here we just list the boards the member can open —
+    // no duplicated empty-state copy.
     return (
       <View style={{ paddingTop: 4, gap: 10 }}>
-        <Text style={{ fontSize: 13, lineHeight: 19, color: colors.textMuted }}>
-          No posts yet. Be the first to share something on your boards.
+        <Text
+          style={{
+            fontSize: 11.5,
+            letterSpacing: 0.9,
+            textTransform: 'uppercase',
+            color: colors.textMuted,
+            paddingHorizontal: 2,
+            paddingBottom: 2,
+          }}
+        >
+          Your boards
         </Text>
         {groups.map((group) => (
           <BoardEmptyRow
@@ -132,7 +144,7 @@ function BoardEmptyRow({
           {group.eyebrow}
         </Text>
         <Text style={{ fontSize: 13, lineHeight: 18, color: colors.textMuted }} numberOfLines={2}>
-          No posts yet. Open this board to start the conversation.
+          Open to start the conversation
         </Text>
       </View>
       <ChevronRight size={18} color={colors.textFaint} />

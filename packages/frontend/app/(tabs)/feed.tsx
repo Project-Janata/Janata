@@ -486,6 +486,10 @@ export default function FeedScreen() {
             onRequestAccess={handleBoardAccessCta}
             onOpenGroup={openGroup}
             onSelectPost={openPost}
+            onCompose={() => {
+              track('feed_compose_pressed', { source: 'feed_empty_panel' })
+              setCreatePostOpen(true)
+            }}
             onPostChanged={loadBoards}
             onPostDeleted={() => {
               closeDetail()

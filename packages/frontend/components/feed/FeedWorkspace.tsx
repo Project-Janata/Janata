@@ -23,6 +23,7 @@ export function FeedWorkspace({
   onSelectPost,
   onPostChanged,
   onPostDeleted,
+  onCompose,
 }: {
   posts: FeedPost[]
   groups: GroupBoard[]
@@ -40,6 +41,7 @@ export function FeedWorkspace({
   onSelectPost: (id: string) => void
   onPostChanged?: () => void
   onPostDeleted?: () => void
+  onCompose?: () => void
 }) {
   if (!canAccessBoards) {
     return (
@@ -86,21 +88,26 @@ export function FeedWorkspace({
               onPostChanged={onPostChanged}
               onPostDeleted={onPostDeleted}
             />
-          ) : groups.length > 0 && !hasQuery ? (
+          ) : hasQuery ? (
             <EmptyPanel
-              title="Open a board"
-              subtitle="Choose your center or event board to start the conversation."
+              title="No posts found"
+              subtitle="Try a different search."
               colors={colors}
             />
           ) : (
+            // Single, friendly empty state with one clear action. The board
+            // list on the left lets members pick a board; this pane invites
+            // them to start the first post.
             <EmptyPanel
-              title={hasQuery ? 'No posts found' : 'No posts yet'}
+              title="Start the conversation"
               subtitle={
-                hasQuery
-                  ? 'Try a different search.'
-                  : 'No posts yet. Be the first to share something on your boards.'
+                groups.length > 0
+                  ? 'Pick a board on the left, or share the first post with your community.'
+                  : 'Join a center or register for an event to start posting with your community.'
               }
               colors={colors}
+              actionLabel={groups.length > 0 ? 'Write a post' : undefined}
+              onAction={groups.length > 0 ? onCompose : undefined}
             />
           )}
         </View>
