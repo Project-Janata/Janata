@@ -15,12 +15,14 @@ import { useTheme } from '../../components/contexts'
 import { PasswordStrength } from '../../components'
 import { authClient } from '../../src/auth/authClient'
 import { validateEmail, validatePassword } from '../../utils'
+import { useAnalytics } from '../../utils/analytics'
 
 type Step = 'enter-email' | 'enter-code-and-password' | 'done'
 
 export default function ForgotPasswordScreen() {
   const router = useRouter()
   const { isDark } = useTheme()
+  const { track } = useAnalytics()
 
   const [step, setStep] = useState<Step>('enter-email')
   const [email, setEmail] = useState('')
@@ -34,6 +36,7 @@ export default function ForgotPasswordScreen() {
 
   const goBack = useCallback(() => {
     if (step === 'enter-code-and-password') {
+      track('forgot_password_back_pressed', { source: 'forgot_password', step })
       setStep('enter-email')
       setCode('')
       setPassword('')
@@ -42,8 +45,9 @@ export default function ForgotPasswordScreen() {
       setResendNotice(null)
       return
     }
+    track('forgot_password_back_pressed', { source: 'forgot_password', step })
     router.back()
-  }, [step, router])
+  }, [step, router, track])
 
   const submitEmail = useCallback(async () => {
     setErrors({})
@@ -62,13 +66,15 @@ export default function ForgotPasswordScreen() {
     setSubmitting(false)
 
     if (!result.success) {
+      track('forgot_password_email_failed', { source: 'forgot_password', error: result.error.message })
       setErrors({ form: result.error.message || 'Could not send a reset code. Please try again.' })
       return
     }
     // Server always returns ok — advance regardless of whether the email
     // exists. Anti-enumeration design.
+    track('forgot_password_email_submitted', { source: 'forgot_password' })
     setStep('enter-code-and-password')
-  }, [email])
+  }, [email, track])
 
   const resend = useCallback(async () => {
     setResendNotice(null)
@@ -77,11 +83,13 @@ export default function ForgotPasswordScreen() {
     const result = await authClient.requestPasswordReset(email.trim())
     setResendBusy(false)
     if (!result.success) {
+      track('forgot_password_resend_failed', { source: 'forgot_password', error: result.error.message })
       setErrors({ form: result.error.message || 'Could not resend the code. Please try again.' })
       return
     }
+    track('forgot_password_code_resent', { source: 'forgot_password' })
     setResendNotice('We sent a new code. Check your inbox.')
-  }, [email])
+  }, [email, track])
 
   const submitReset = useCallback(async () => {
     setErrors({})
@@ -109,15 +117,18 @@ export default function ForgotPasswordScreen() {
     setSubmitting(false)
 
     if (!result.success) {
+      track('forgot_password_reset_failed', { source: 'forgot_password', error: result.error.message })
       setErrors({ form: result.error.message || 'Code invalid or expired.' })
       return
     }
+    track('forgot_password_code_submitted', { source: 'forgot_password' })
     setStep('done')
-  }, [code, password, confirmPassword, email])
+  }, [code, password, confirmPassword, email, track])
 
   const goToLogin = useCallback(() => {
+    track('forgot_password_signin_pressed', { source: 'forgot_password' })
     router.replace('/auth?mode=login')
-  }, [router])
+  }, [router, track])
 
   const errorMessages = Object.values(errors).filter(Boolean)
   const buttonDisabled =
@@ -155,7 +166,7 @@ export default function ForgotPasswordScreen() {
               </Text>
             </TouchableOpacity>
 
-            <Pressable onPress={() => router.push('/landing')}>
+            <Pressable onPress={() => { track('forgot_password_logo_pressed', { source: 'forgot_password' }); router.push('/landing') }}>
               <Logo size={32} style={{ marginBottom: 32 }} />
             </Pressable>
 

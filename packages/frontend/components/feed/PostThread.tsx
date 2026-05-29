@@ -31,6 +31,7 @@ import {
   optimisticReply,
 } from './feedData'
 import type { FeedPost } from './types'
+import { useAnalytics } from '../../utils/analytics'
 
 const REACTION_CHOICES = ['🙏', '❤️', '👍', '🎉']
 
@@ -52,6 +53,7 @@ export function PostThread({
   onPostDeleted?: () => void
 }) {
   const { user } = useUser()
+  const { track } = useAnalytics()
   const author = authorFromUser(user)
   const [replies, setReplies] = useState<BoardMessage[]>([])
   const [loadingReplies, setLoadingReplies] = useState(true)
@@ -84,6 +86,7 @@ export function PostThread({
     setMenuOpen(false)
     setActionBusy(true)
     setActionError(null)
+    track('feed_post_pin_toggled', { post_id: post.postId, pinned: !prev, source: 'post_thread' })
     try {
       await setBoardPostPinned(post.postId, !prev)
       onPostChanged?.()
@@ -103,9 +106,11 @@ export function PostThread({
       await deleteBoardPost(post.postId)
       setDeleted(true)
       setMenuOpen(false)
+      track('feed_post_deleted', { post_id: post.postId, source: 'post_thread' })
       // onPostDeleted already refreshes the feed; no separate change notice needed.
       onPostDeleted?.()
     } catch (err: any) {
+      track('feed_post_delete_failed', { post_id: post.postId, error: err?.message, source: 'post_thread' })
       setActionError(err?.message || 'Could not delete the post.')
     } finally {
       setActionBusy(false)
@@ -123,9 +128,11 @@ export function PostThread({
     try {
       const updated = await editBoardPost(post.postId, body)
       setPostBody(updated.body)
+      track('feed_post_edited', { post_id: post.postId, source: 'post_thread' })
       onPostChanged?.()
     } catch (err: any) {
       setPostBody(prev)
+      track('feed_post_edit_failed', { post_id: post.postId, error: err?.message, source: 'post_thread' })
       setActionError(err?.message || 'Could not save your edit.')
     } finally {
       setActionBusy(false)
@@ -135,6 +142,7 @@ export function PostThread({
   const handleReact = async (emoji: string) => {
     const prev = reactions
     setReactions(applyOptimisticReaction(prev, emoji))
+    track('feed_post_reacted', { post_id: post.postId, emoji, source: 'post_thread' })
     try {
       const res = await toggleBoardPostReaction(post.postId, emoji)
       setReactions(res.reactions)
@@ -195,11 +203,13 @@ export function PostThread({
       const created = await createBoardPostReply(post.postId, body)
       setReplies((prev) => prev.map((r) => (r.id === tempId ? boardPostToMessage(created) : r)))
       setRepliesLoaded(true)
+      track('feed_reply_sent', { post_id: post.postId, source: 'post_thread' })
     } catch (err: any) {
       // Roll back the optimistic reply and give the user their text back.
       setReplies((prev) => prev.filter((r) => r.id !== tempId))
       setDraft(body)
       setSendError(err?.message || 'Reply failed to send. Try again.')
+      track('feed_reply_failed', { post_id: post.postId, error: err?.message, source: 'post_thread' })
     } finally {
       setSending(false)
     }
@@ -230,7 +240,7 @@ export function PostThread({
           reactions={reactions}
           colors={colors}
           hasMenu={hasMenu}
-          onOpenMenu={() => setMenuOpen(true)}
+          onOpenMenu={() => { setMenuOpen(true); track('feed_post_menu_opened', { post_id: post.postId, source: 'post_thread' }) }}
           onReact={handleReact}
         />
       )}
@@ -379,12 +389,14 @@ export function PostThread({
         isAuthor={isAuthor}
         pinned={pinned}
         busy={actionBusy}
+        postId={post.postId}
         onClose={() => setMenuOpen(false)}
         onTogglePin={handleTogglePin}
         onEdit={() => {
           setMenuOpen(false)
           setEditDraft(postBody)
           setEditOpen(true)
+          track('feed_post_edit_opened', { post_id: post.postId, source: 'post_thread' })
         }}
         onDelete={handleDelete}
       />
@@ -395,7 +407,7 @@ export function PostThread({
         value={editDraft}
         busy={actionBusy}
         onChangeText={setEditDraft}
-        onCancel={() => setEditOpen(false)}
+        onCancel={() => { setEditOpen(false); track('feed_post_edit_cancelled', { post_id: post.postId, source: 'post_thread' }) }}
         onSave={handleSaveEdit}
       />
     </View>
@@ -573,6 +585,7 @@ function OriginalPost({
   onOpenMenu: () => void
   onReact: (emoji: string) => void
 }) {
+  const { track } = useAnalytics()
   const [pickerOpen, setPickerOpen] = useState(false)
   return (
     <View style={{ flexDirection: 'row', gap: 12 }}>
@@ -649,7 +662,7 @@ function OriginalPost({
             />
           ))}
           <Pressable
-            onPress={() => setPickerOpen((open) => !open)}
+            onPress={() => { const next = !pickerOpen; setPickerOpen(next); if (next) track('feed_post_reaction_picker_opened', { post_id: post.postId, source: 'post_thread' }) }}
             accessibilityRole="button"
             accessibilityLabel="Add reaction"
             style={{
@@ -706,6 +719,7 @@ function ActionMenuSheet({
   isAuthor,
   pinned,
   busy,
+  postId,
   onClose,
   onTogglePin,
   onEdit,
@@ -717,11 +731,13 @@ function ActionMenuSheet({
   isAuthor: boolean
   pinned: boolean
   busy: boolean
+  postId: string
   onClose: () => void
   onTogglePin: () => void
   onEdit: () => void
   onDelete: () => void
 }) {
+  const { track } = useAnalytics()
   const [confirmingDelete, setConfirmingDelete] = useState(false)
   useEffect(() => {
     if (!visible) setConfirmingDelete(false)
@@ -781,7 +797,7 @@ function ActionMenuSheet({
                 </Text>
                 <View style={{ flexDirection: 'row', gap: 10 }}>
                   <Pressable
-                    onPress={() => setConfirmingDelete(false)}
+                    onPress={() => { setConfirmingDelete(false); track('feed_post_delete_cancelled', { post_id: postId, source: 'post_thread' }) }}
                     disabled={busy}
                     accessibilityRole="button"
                     accessibilityLabel="Cancel delete"
@@ -825,7 +841,7 @@ function ActionMenuSheet({
                 colors={colors}
                 destructive
                 disabled={busy}
-                onPress={() => setConfirmingDelete(true)}
+                onPress={() => { setConfirmingDelete(true); track('feed_post_delete_confirm_shown', { post_id: postId, source: 'post_thread' }) }}
               />
             )
           ) : null}

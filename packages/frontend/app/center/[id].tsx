@@ -14,7 +14,7 @@ import {
   Users,
   Lock,
 } from 'lucide-react-native'
-import { usePostHog } from 'posthog-react-native'
+import { useAnalytics } from '../../utils/analytics'
 import { useBoard, useCenterDetail } from '../../hooks/useApiData'
 import { DetailSection } from '../../components/ui'
 import { createBoardPost, type EventDisplay } from '../../utils/api'
@@ -164,7 +164,7 @@ export default function CenterDetailPage() {
   const { id: rawId } = useLocalSearchParams()
   const id = Array.isArray(rawId) ? rawId[0] : rawId
   const router = useRouter()
-  const posthog = usePostHog()
+  const { track } = useAnalytics()
   const { user } = useUser()
   const { center, events, loading } = useCenterDetail(id as string)
   const colors = useDetailColors()
@@ -177,23 +177,25 @@ export default function CenterDetailPage() {
 
   useEffect(() => {
     if (!loading && center) {
-      posthog?.capture('center_viewed', { centerId: id, name: center.name })
+      track('center_viewed', { centerId: id, name: center.name })
     }
-  }, [loading, center, id, posthog])
+  }, [loading, center, id])
 
   const handleEventPress = (event: EventDisplay) => {
-    posthog?.capture('center_event_pressed', { centerId: id, eventId: event.id })
+    track('center_event_pressed', { centerId: id, eventId: event.id, source: 'center_detail' })
     router.push(`/events/${event.id}`)
   }
 
   const handleCreateThreadPost = async (body: string) => {
     if (!center?.id) return
     await createBoardPost('center', center.id, body)
+    track('center_board_post_created', { centerId: center.id, source: 'center_detail' })
     await refetchBoard()
   }
 
   const openThreadPost = (message: BoardMessage) => {
     if (!center?.id) return
+    track('center_board_post_opened', { centerId: center.id, postId: message.id, source: 'center_detail' })
     setThreadDetailPost(
       buildFeedPostFromMessage(message, {
         groupId: `center-${center.id}`,
@@ -208,7 +210,7 @@ export default function CenterDetailPage() {
   const closeThreadPost = () => setThreadDetailPost(null)
 
   const handleShare = async () => {
-    posthog?.capture('center_shared', { centerId: id })
+    track('center_shared', { centerId: id, source: 'center_detail' })
     try {
       const url = id ? `https://chinmayajanata.org/center/${id}` : 'https://chinmayajanata.org'
       await Share.share({
@@ -224,20 +226,20 @@ export default function CenterDetailPage() {
 
   const handleAddressPress = () => {
     if (!center?.address) return
-    posthog?.capture('center_address_pressed', { centerId: id })
+    track('center_address_pressed', { centerId: id, source: 'center_detail' })
     Linking.openURL(`https://maps.google.com/?q=${encodeURIComponent(center.address)}`)
   }
 
   const handleWebsitePress = () => {
     if (!center?.website) return
-    posthog?.capture('center_website_pressed', { centerId: id })
+    track('center_website_pressed', { centerId: id, source: 'center_detail' })
     const url = center.website.startsWith('http') ? center.website : `https://${center.website}`
     Linking.openURL(url)
   }
 
   const handlePhonePress = () => {
     if (!center?.phone) return
-    posthog?.capture('center_phone_pressed', { centerId: id })
+    track('center_phone_pressed', { centerId: id, source: 'center_detail' })
     Linking.openURL(`tel:${center.phone}`)
   }
 
@@ -256,7 +258,7 @@ export default function CenterDetailPage() {
           <Text style={{ fontSize: 22, fontFamily: 'Inclusive Sans', color: colors.text, marginBottom: 16 }}>
             Center not found
           </Text>
-          <Pressable onPress={() => router.back()} style={{ marginTop: 8, minHeight: 44, justifyContent: 'center' }}>
+          <Pressable onPress={() => { track('center_not_found_back_pressed', { centerId: id, source: 'center_detail' }); router.back() }} style={{ marginTop: 8, minHeight: 44, justifyContent: 'center' }}>
             <Text style={{ fontSize: 16, fontFamily: 'Inclusive Sans', color: '#E8862A' }}>Go Back</Text>
           </Pressable>
         </View>
@@ -271,7 +273,7 @@ export default function CenterDetailPage() {
       <SafeAreaView style={{ flex: 1, backgroundColor: appColors.bg }} edges={['top']}>
         <View style={{ paddingTop: 6 }}>
           <Pressable
-            onPress={closeThreadPost}
+            onPress={() => { track('center_board_thread_closed', { centerId: center?.id, source: 'center_detail' }); closeThreadPost() }}
             accessibilityRole="button"
             accessibilityLabel="Back to board"
             style={{ flexDirection: 'row', alignItems: 'center', gap: 6, paddingHorizontal: 16, paddingVertical: 12 }}
@@ -306,7 +308,7 @@ export default function CenterDetailPage() {
     <SafeAreaView style={{ flex: 1, backgroundColor: colors.panelBg }} edges={['top']}>
       <HeaderBar
         title={center.name}
-        onBack={() => router.back()}
+        onBack={() => { track('center_back_pressed', { centerId: id, source: 'center_detail' }); router.back() }}
         onShare={handleShare}
         colors={colors}
         memberCount={center.memberCount}

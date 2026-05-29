@@ -4,6 +4,7 @@ import Logo from '../../components/ui/Logo'
 import PasswordStrength from '../../components/auth/PasswordStrength'
 import { authClient } from '../../src/auth/authClient'
 import { validateEmail, validatePassword } from '../../utils'
+import { useAnalytics } from '../../utils/analytics'
 
 // One-time CSS injection for placeholder + hover + iOS zoom prevention.
 if (typeof document !== 'undefined') {
@@ -51,6 +52,7 @@ const focusedInput: React.CSSProperties = {
 
 export default function ForgotPasswordScreen() {
   const router = useRouter()
+  const { track } = useAnalytics()
 
   const [step, setStep] = useState<Step>('enter-email')
   const [email, setEmail] = useState('')
@@ -80,6 +82,7 @@ export default function ForgotPasswordScreen() {
 
   const goBack = useCallback(() => {
     if (step === 'enter-code-and-password') {
+      track('forgot_password_back_pressed', { source: 'forgot_password', step })
       setStep('enter-email')
       setCode('')
       setPassword('')
@@ -88,8 +91,9 @@ export default function ForgotPasswordScreen() {
       setResendNotice(null)
       return
     }
+    track('forgot_password_back_pressed', { source: 'forgot_password', step })
     router.replace('/auth?mode=login')
-  }, [step, router])
+  }, [step, router, track])
 
   const submitEmail = useCallback(async () => {
     setErrors({})
@@ -106,13 +110,15 @@ export default function ForgotPasswordScreen() {
     const result = await authClient.requestPasswordReset(trimmed)
     setSubmitting(false)
     if (!result.success) {
+      track('forgot_password_email_failed', { source: 'forgot_password', error: result.error.message })
       setErrors({
         form: result.error.message || 'Could not send a reset code. Please try again.',
       })
       return
     }
+    track('forgot_password_email_submitted', { source: 'forgot_password' })
     setStep('enter-code-and-password')
-  }, [email])
+  }, [email, track])
 
   const resend = useCallback(async () => {
     setResendNotice(null)
@@ -121,13 +127,15 @@ export default function ForgotPasswordScreen() {
     const result = await authClient.requestPasswordReset(email.trim())
     setResendBusy(false)
     if (!result.success) {
+      track('forgot_password_resend_failed', { source: 'forgot_password', error: result.error.message })
       setErrors({
         form: result.error.message || 'Could not resend the code. Please try again.',
       })
       return
     }
+    track('forgot_password_code_resent', { source: 'forgot_password' })
     setResendNotice('We sent a new code. Check your inbox.')
-  }, [email])
+  }, [email, track])
 
   const submitReset = useCallback(async () => {
     setErrors({})
@@ -153,11 +161,13 @@ export default function ForgotPasswordScreen() {
     const result = await authClient.confirmPasswordReset(email.trim(), trimmedCode, password)
     setSubmitting(false)
     if (!result.success) {
+      track('forgot_password_reset_failed', { source: 'forgot_password', error: result.error.message })
       setErrors({ form: result.error.message || 'Code invalid or expired.' })
       return
     }
+    track('forgot_password_code_submitted', { source: 'forgot_password' })
     setStep('done')
-  }, [code, password, confirmPassword, email])
+  }, [code, password, confirmPassword, email, track])
 
   const onSubmit = useCallback(
     (e: React.FormEvent) => {
@@ -235,7 +245,7 @@ export default function ForgotPasswordScreen() {
       >
         <div style={{ maxWidth: 400, width: '100%' }}>
           <div
-            onClick={() => router.push('/landing')}
+            onClick={() => { track('forgot_password_logo_pressed', { source: 'forgot_password' }); router.push('/landing') }}
             role="link"
             style={{ marginBottom: isMobile ? 32 : 48, cursor: 'pointer' }}
           >
@@ -316,7 +326,7 @@ export default function ForgotPasswordScreen() {
           {step === 'done' ? (
             <button
               className="auth-submit"
-              onClick={() => router.replace('/auth?mode=login')}
+              onClick={() => { track('forgot_password_signin_pressed', { source: 'forgot_password' }); router.replace('/auth?mode=login') }}
               style={{
                 width: '100%',
                 height: 48,

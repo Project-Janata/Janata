@@ -13,7 +13,7 @@ import {
 import { useUser, useTheme } from '../../components/contexts'
 import { Avatar, Text, Section, StackHeader } from '../../components/ui'
 import ThemeSelector from '../../components/settings/ThemeSelector'
-import { usePostHog } from 'posthog-react-native'
+import { useAnalytics } from '../../utils/analytics'
 import Constants from 'expo-constants'
 
 const APP_VERSION = Constants.expoConfig?.version || '0.2.0'
@@ -23,7 +23,7 @@ export default function PreferencesNative() {
   const { user, logout } = useUser()
   const { isDark } = useTheme()
   const { deleteAccount } = useUser()
-  const posthog = usePostHog()
+  const { track } = useAnalytics()
   const [isDeleting, setIsDeleting] = useState(false)
   const [showDeleteModal, setShowDeleteModal] = useState(false)
   const currentYear = new Date().getFullYear()
@@ -36,7 +36,7 @@ export default function PreferencesNative() {
   const pageBg = isDark ? '#1A1A1A' : '#F5F5F4'
 
   const handleLogout = async () => {
-    posthog?.capture('nav_logout')
+    track('nav_logout')
     await logout()
     router.replace('/auth')
   }
@@ -46,12 +46,15 @@ export default function PreferencesNative() {
     try {
       const result = await deleteAccount()
       if (result.success) {
+        track('account_deleted', { source: 'settings' })
         setShowDeleteModal(false)
         router.replace('/auth')
       } else {
+        track('delete_account_failed', { source: 'settings', reason: result.message })
         Alert.alert('Error', result.message || 'Failed to delete account')
       }
     } catch (error) {
+      track('delete_account_failed', { source: 'settings', reason: 'exception' })
       Alert.alert('Error', 'Failed to delete account. Please try again.')
     } finally {
       setIsDeleting(false)
@@ -175,7 +178,10 @@ export default function PreferencesNative() {
               marginHorizontal: -16,
             }}
           >
-            <MenuRow onPress={() => router.push('/settings/invite')}>
+            <MenuRow onPress={() => {
+              track('settings_invite_pressed', { source: 'settings' })
+              router.push('/settings/invite')
+            }}>
               <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12 }}>
                 <UserPlus size={20} color={textColor} />
                 <Text style={{ fontSize: 15, color: textColor }}>Invite Friends</Text>
@@ -195,7 +201,7 @@ export default function PreferencesNative() {
           >
             <MenuRow
               onPress={() => {
-                posthog?.capture('privacy_policy_viewed')
+                track('privacy_policy_viewed')
                 router.push('/privacy')
               }}
             >
@@ -206,7 +212,7 @@ export default function PreferencesNative() {
             </MenuRow>
             <MenuRow
               onPress={() => {
-                posthog?.capture('terms_viewed')
+                track('terms_viewed')
                 router.push('/terms')
               }}
             >
@@ -217,7 +223,7 @@ export default function PreferencesNative() {
             </MenuRow>
             <MenuRow
               onPress={() => {
-                posthog?.capture('cookie_policy_viewed')
+                track('cookie_policy_viewed')
                 router.push('/cookies')
               }}
             >
@@ -267,7 +273,7 @@ export default function PreferencesNative() {
             </MenuRow>
             <MenuRow
               onPress={() => {
-                posthog?.capture('delete_account_started')
+                track('delete_account_started', { source: 'settings' })
                 setShowDeleteModal(true)
               }}
               showArrow={false}
@@ -345,7 +351,10 @@ export default function PreferencesNative() {
             </View>
             <View style={{ flexDirection: 'row', gap: 12, marginTop: 8 }}>
               <Pressable
-                onPress={() => setShowDeleteModal(false)}
+                onPress={() => {
+                  track('delete_account_cancelled', { source: 'settings' })
+                  setShowDeleteModal(false)
+                }}
                 disabled={isDeleting}
                 style={{
                   flex: 1,

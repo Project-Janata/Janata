@@ -11,7 +11,7 @@ import {
 } from 'react-native'
 import { useFocusEffect, useNavigation, useRouter } from 'expo-router'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
-import { usePostHog } from 'posthog-react-native'
+import { useAnalytics } from '../../utils/analytics'
 import { useUser } from '../../components/contexts'
 import { useColors } from '../../hooks/useColors'
 import { toThreadColors } from '../../tokens'
@@ -144,7 +144,7 @@ export default function FeedScreen() {
   const colors = useColors()
   const { width } = useWindowDimensions()
   const insets = useSafeAreaInsets()
-  const posthog = usePostHog()
+  const { track } = useAnalytics()
   const detailTranslateX = useRef(new Animated.Value(width)).current
   const {
     events: myEvents,
@@ -308,17 +308,32 @@ export default function FeedScreen() {
     setSelectedPostId('')
   }
 
+  // Track non-empty search queries with a short debounce so rapid keystrokes
+  // are collapsed into a single event.
+  const searchDebounceRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+  useEffect(() => {
+    if (searchDebounceRef.current) clearTimeout(searchDebounceRef.current)
+    if (!query.trim()) return
+    searchDebounceRef.current = setTimeout(() => {
+      track('feed_searched', { query: query.trim(), source: 'feed' })
+    }, 600)
+    return () => {
+      if (searchDebounceRef.current) clearTimeout(searchDebounceRef.current)
+    }
+  }, [query])
+
   const handleBoardAccessCta = () => {
     if (!user) {
-      posthog?.capture('connect_signin_pressed', { source: 'feed_cta' })
+      track('connect_signin_pressed', { source: 'feed_cta' })
       router.push('/auth')
       return
     }
-    posthog?.capture('connect_explore_pressed', { source: 'feed_cta' })
+    track('connect_explore_pressed', { source: 'feed_cta' })
     router.push('/explore' as never)
   }
 
   const closeDetail = () => {
+    track('feed_post_detail_closed', { postId: selectedPostId, source: 'feed' })
     if (Platform.OS !== 'web' && nativeDetailOpen) {
       detailTranslateX.stopAnimation()
       Animated.timing(detailTranslateX, {
@@ -337,14 +352,14 @@ export default function FeedScreen() {
   }
 
   const openPost = (id: string) => {
-    posthog?.capture('connect_feed_post_selected', { postId: id })
+    track('connect_feed_post_selected', { postId: id, source: 'feed' })
     primeNativeDetailTransition()
     setSelectedPostId(id)
   }
 
   const openGroup = (group: GroupBoard) => {
     if (!group.routeHref) return
-    posthog?.capture('connect_empty_board_opened', { groupId: group.id, kind: group.kind })
+    track('connect_empty_board_opened', { groupId: group.id, kind: group.kind, source: 'feed' })
     router.push(group.routeHref as never)
   }
 
@@ -352,8 +367,14 @@ export default function FeedScreen() {
     group: { kind: 'center' | 'event'; parentId: string },
     body: string
   ) => {
-    await createBoardPost(group.kind, group.parentId, body)
-    await loadBoards()
+    try {
+      await createBoardPost(group.kind, group.parentId, body)
+      track('feed_post_created', { kind: group.kind, parentId: group.parentId, source: 'feed' })
+      await loadBoards()
+    } catch (err) {
+      track('feed_post_create_failed', { kind: group.kind, parentId: group.parentId, source: 'feed' })
+      throw err
+    }
   }
 
   return (
@@ -383,7 +404,7 @@ export default function FeedScreen() {
             subtitle="Your member feed, group boards, and announcements live here."
             colors={colors}
             onPress={() => {
-              posthog?.capture('connect_signin_pressed')
+              track('connect_signin_pressed', { source: 'feed_banner' })
               router.push('/auth')
             }}
           />
@@ -537,7 +558,10 @@ export default function FeedScreen() {
         visible={createPostOpen}
         colors={colors}
         groups={groupsWithMessages}
-        onClose={() => setCreatePostOpen(false)}
+        onClose={() => {
+          track('feed_create_post_dismissed', { source: 'feed' })
+          setCreatePostOpen(false)
+        }}
         onSubmit={handleCreatePost}
       />
     </View>

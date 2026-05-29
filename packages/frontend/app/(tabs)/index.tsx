@@ -2,7 +2,7 @@ import React, { useCallback, useMemo } from 'react'
 import { ActivityIndicator, Platform, Pressable, ScrollView, Text, View, useWindowDimensions } from 'react-native'
 import { CalendarCheck, ChevronRight, Compass, MapPin, MessageCircle } from 'lucide-react-native'
 import { useFocusEffect, useRouter } from 'expo-router'
-import { usePostHog } from 'posthog-react-native'
+import { useAnalytics } from '../../utils/analytics'
 import { useUser } from '../../components/contexts'
 import { useColors } from '../../hooks/useColors'
 import { useDetailColors } from '../../hooks/useDetailColors'
@@ -56,7 +56,7 @@ function liveEventToWeekItem(event: EventDisplay, onPress: () => void): WeekItem
 export default function HomeScreen() {
   const router = useRouter()
   const { width } = useWindowDimensions()
-  const posthog = usePostHog()
+  const { track } = useAnalytics()
   const { user } = useUser()
   const c = useColors()
   const detailColors = useDetailColors()
@@ -120,11 +120,11 @@ export default function HomeScreen() {
     if (pool.length === 0) return []
     return pool.slice(0, 4).map((event) =>
       liveEventToWeekItem(event, () => {
-        posthog?.capture('home_event_pressed', { eventId: event.id, source: 'this_week' })
+        track('home_event_pressed', { eventId: event.id, source: 'this_week' })
         router.push(`/events/${event.id}`)
       })
     )
-  }, [featured, posthog, router, signedUpEvents, upcomingExploreEvents])
+  }, [featured, track, router, signedUpEvents, upcomingExploreEvents])
 
   const greetingName = user?.firstName || user?.username || 'friend'
   const todayLabel = new Date().toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric' })
@@ -169,35 +169,38 @@ export default function HomeScreen() {
             center={userCenter}
             peek={boardPeek}
             onExplore={() => {
-              posthog?.capture('home_first_run_explore_pressed')
+              track('home_first_run_explore_pressed')
               router.push('/explore' as never)
             }}
             onFeed={() => {
-              posthog?.capture('home_first_run_feed_pressed')
+              track('home_first_run_feed_pressed')
               router.push('/feed' as never)
             }}
             onChooseCenter={() => {
-              posthog?.capture('home_first_run_center_pressed')
+              track('home_first_run_center_pressed')
               router.push('/center-picker' as never)
             }}
             onOpenCenter={(id) => {
-              posthog?.capture('home_first_run_center_opened', { centerId: id })
+              track('home_first_run_center_opened', { centerId: id })
               router.push(`/center/${id}`)
             }}
             onPeekPress={(id) => {
-              posthog?.capture('home_board_peek_pressed', { postId: id })
+              track('home_board_peek_pressed', { postId: id, source: 'first_run_peek' })
               router.push('/feed' as never)
             }}
           />
         ) : null}
 
         {!isNewUser || featured ? (
-          <SectionHeader eyebrow="UP NEXT FOR YOU" trailing="See all" accentColor={c.accent} faintColor={c.textFaint} onTrailingPress={() => router.push('/' as never)}>
+          <SectionHeader eyebrow="UP NEXT FOR YOU" trailing="See all" accentColor={c.accent} faintColor={c.textFaint} onTrailingPress={() => {
+            track('home_see_all_pressed', { section: 'up_next' })
+            router.push('/' as never)
+          }}>
             {featured ? (
               <FeaturedEventCard
                 featured={featured}
                 onPress={() => {
-                  posthog?.capture('home_featured_event_pressed', { eventId: featured.event.id })
+                  track('home_featured_event_pressed', { eventId: featured.event.id })
                   router.push(`/events/${featured.event.id}`)
                 }}
               />
@@ -210,7 +213,10 @@ export default function HomeScreen() {
                   </Text>
                 </View>
                 <Pressable
-                  onPress={() => router.push('/explore' as never)}
+                  onPress={() => {
+                    track('home_explore_fallback_pressed', { source: 'up_next_empty' })
+                    router.push('/explore' as never)
+                  }}
                   style={{ alignSelf: 'flex-start', paddingVertical: 8, paddingHorizontal: 12, borderRadius: 999, backgroundColor: c.accentSoft }}
                 >
                   <Text style={{ fontFamily: 'Inclusive Sans', fontSize: 13, color: c.accent }}>Explore</Text>
@@ -231,7 +237,10 @@ export default function HomeScreen() {
             trailing="Open Feed"
             accentColor={c.accent}
             faintColor={c.textFaint}
-            onTrailingPress={() => router.push('/feed' as never)}
+            onTrailingPress={() => {
+              track('home_open_feed_pressed', { source: 'boards_section_header' })
+              router.push('/feed' as never)
+            }}
           >
             {boardPeek.length > 0 ? (
               <View>
@@ -242,7 +251,7 @@ export default function HomeScreen() {
                     colors={detailColors}
                     showSource
                     onPress={() => {
-                      posthog?.capture('home_board_peek_pressed', { postId: message.id })
+                      track('home_board_peek_pressed', { postId: message.id, source: 'boards_section' })
                       router.push('/feed' as never)
                     }}
                   />
@@ -267,7 +276,10 @@ export default function HomeScreen() {
             trailing="See all"
             accentColor={c.accent}
             faintColor={c.textFaint}
-            onTrailingPress={() => router.push('/' as never)}
+            onTrailingPress={() => {
+              track('home_see_all_pressed', { section: signedUpEvents.length > 0 ? 'this_week' : 'coming_up' })
+              router.push('/' as never)
+            }}
           >
             {weekItems.length > 0 ? (
               <View style={{ gap: 8 }}>

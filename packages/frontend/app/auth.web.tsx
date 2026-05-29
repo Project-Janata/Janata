@@ -1,6 +1,7 @@
 import React, { useState, useCallback, useEffect } from 'react'
 import { useRouter } from 'expo-router'
 import { useUser } from '../components/contexts'
+import { useAnalytics } from '../utils/analytics'
 import { validateEmail, validatePassword } from '../utils'
 import PasswordStrength from '../components/auth/PasswordStrength'
 import { ImageCarousel } from '../components/auth/ImageCarousel'
@@ -49,6 +50,7 @@ const AUTH_CAROUSEL_IMAGES = [
 export default function AuthScreen() {
   const router = useRouter()
   const { checkUserExists, login, signup, loading } = useUser()
+  const { track } = useAnalytics()
 
   // Read mode, returnTo, inviteCode, and email from URL params
   const urlParams = typeof window !== 'undefined' ? new URLSearchParams(window.location.search) : null
@@ -103,16 +105,20 @@ export default function AuthScreen() {
       return
     }
     try {
+      track('auth_email_submitted', { source: 'auth' })
       const exists = await checkUserExists(username)
       if (exists) {
+        track('auth_user_exists', { source: 'auth' })
         setAuthStep('login')
       } else {
+        track('auth_user_new', { source: 'auth' })
         setAuthStep('invite-code')
       }
     } catch (e: any) {
+      track('auth_check_failed', { source: 'auth' })
       setErrors({ form: e.message || 'Failed to connect to server.' })
     }
-  }, [username, checkUserExists])
+  }, [username, checkUserExists, track])
 
   const handleLogin = useCallback(async () => {
     setErrors({})
@@ -127,14 +133,17 @@ export default function AuthScreen() {
     try {
       const result = await login(username, password)
       if (result.success) {
+        track('login_success', { source: 'auth' })
         router.replace(returnTo || '/(tabs)')
       } else {
+        track('login_failed', { source: 'auth', reason: result.message })
         setErrors({ form: result.message || 'Username or password is incorrect.' })
       }
     } catch (e: any) {
+      track('login_failed', { source: 'auth', reason: 'network_error' })
       setErrors({ form: 'Failed to connect to server. Please try again.' })
     }
-  }, [username, password, login, router])
+  }, [username, password, login, router, track])
 
   const handleSignup = useCallback(async () => {
     setErrors({})
@@ -157,14 +166,17 @@ export default function AuthScreen() {
     try {
       const result = await signup(username, password, inviteCode)
       if (result.success) {
+        track('signup_success', { source: 'auth' })
         router.replace(returnTo ? `/onboarding?returnTo=${encodeURIComponent(returnTo)}` : '/onboarding')
       } else {
+        track('signup_failed', { source: 'auth', reason: result.message })
         setErrors({ form: result.message || 'Failed to sign up. Please try again.' })
       }
     } catch (e: any) {
+      track('signup_failed', { source: 'auth', reason: 'network_error' })
       setErrors({ form: 'Failed to connect to server. Please try again.' })
     }
-  }, [username, password, confirmPassword, inviteCode, signup, router])
+  }, [username, password, confirmPassword, inviteCode, signup, router, track])
 
   const handleInviteCodeContinue = useCallback(async () => {
     setErrors({})
@@ -173,6 +185,7 @@ export default function AuthScreen() {
       return
     }
     try {
+      track('auth_invite_code_submitted', { source: 'auth' })
       // Validate the invite code with the backend
       const response = await fetch(`${API_BASE_URL}/auth/validate-invite-code`, {
         method: 'POST',
@@ -181,14 +194,17 @@ export default function AuthScreen() {
       })
       const data = await response.json()
       if (data.valid) {
+        track('auth_invite_code_valid', { source: 'auth' })
         setAuthStep('signup')
       } else {
+        track('auth_invite_code_invalid', { source: 'auth' })
         setErrors({ form: data.error || 'Invalid or inactive invite code.' })
       }
     } catch (e: any) {
+      track('auth_invite_code_check_failed', { source: 'auth' })
       setErrors({ form: 'Failed to validate invite code. Please try again.' })
     }
-  }, [inviteCode])
+  }, [inviteCode, track])
 
   const handleSubmit = useCallback(
     (e?: any) => {
@@ -210,12 +226,13 @@ export default function AuthScreen() {
   )
 
   const handleBack = useCallback(() => {
+    track('auth_back_pressed', { source: 'auth', from_step: authStep })
     setAuthStep('initial')
     setPassword('')
     setConfirmPassword('')
     setInviteCode('')
     setErrors({})
-  }, [])
+  }, [authStep, track])
 
   const handleUsernameChange = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
     setUsername(e.target.value)
@@ -349,7 +366,7 @@ export default function AuthScreen() {
           }}
         >
           <button
-            onClick={() => router.push('/landing')}
+            onClick={() => { track('auth_back_to_home_pressed', { source: 'auth' }); router.push('/landing') }}
             style={{
               background: 'none',
               border: 'none',
@@ -367,7 +384,7 @@ export default function AuthScreen() {
             &larr; Back to home
           </button>
           <button
-            onClick={() => router.push('/(tabs)')}
+            onClick={() => { track('auth_discover_pressed', { source: 'auth' }); router.push('/(tabs)') }}
             style={{
               background: 'none',
               border: 'none',
@@ -423,7 +440,7 @@ export default function AuthScreen() {
 
           {/* Janata logo */}
           <div
-            onClick={() => router.push('/landing')}
+            onClick={() => { track('auth_logo_pressed', { source: 'auth' }); router.push('/landing') }}
             role="link"
             style={{ marginBottom: isMobile ? 32 : 48, cursor: 'pointer' }}
           >
@@ -613,6 +630,7 @@ export default function AuthScreen() {
                     setErrors({ username: 'You must enter a valid email address.' })
                     return
                   }
+                  track('auth_create_account_pressed', { source: 'auth' })
                   try {
                     const exists = await checkUserExists(username)
                     if (exists) {
@@ -636,6 +654,7 @@ export default function AuthScreen() {
                       setErrors({ username: 'You must enter a valid email address.' })
                       return
                     }
+                    track('auth_create_account_pressed', { source: 'auth' })
                     try {
                       const exists = await checkUserExists(username)
                       if (exists) {
@@ -675,10 +694,11 @@ export default function AuthScreen() {
               <span
                 role="button"
                 tabIndex={0}
-                onClick={() => router.push('/auth/forgot')}
+                onClick={() => { track('auth_forgot_password_pressed', { source: 'auth' }); router.push('/auth/forgot') }}
                 onKeyDown={(e) => {
                   if (e.key === 'Enter' || e.key === ' ') {
                     e.preventDefault()
+                    track('auth_forgot_password_pressed', { source: 'auth' })
                     router.push('/auth/forgot')
                   }
                 }}
@@ -744,8 +764,8 @@ export default function AuthScreen() {
             <span
               role="link"
               tabIndex={0}
-              onClick={() => router.push('/terms')}
-              onKeyDown={(e) => { if (e.key === 'Enter') router.push('/terms') }}
+              onClick={() => { track('terms_viewed', { source: 'auth' }); router.push('/terms') }}
+              onKeyDown={(e) => { if (e.key === 'Enter') { track('terms_viewed', { source: 'auth' }); router.push('/terms') } }}
               style={{ color: '#C2410C', cursor: 'pointer' }}
             >
               Terms of Service
@@ -754,8 +774,8 @@ export default function AuthScreen() {
             <span
               role="link"
               tabIndex={0}
-              onClick={() => router.push('/privacy')}
-              onKeyDown={(e) => { if (e.key === 'Enter') router.push('/privacy') }}
+              onClick={() => { track('privacy_policy_viewed', { source: 'auth' }); router.push('/privacy') }}
+              onKeyDown={(e) => { if (e.key === 'Enter') { track('privacy_policy_viewed', { source: 'auth' }); router.push('/privacy') } }}
               style={{ color: '#C2410C', cursor: 'pointer' }}
             >
               Privacy Policy

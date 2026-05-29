@@ -11,6 +11,7 @@ import {
 } from 'react-native'
 import { useLocalSearchParams, useRouter } from 'expo-router'
 import { ChevronLeft, ChevronDown } from 'lucide-react-native'
+import { useAnalytics } from '../../utils/analytics'
 import { useTheme } from '../../components/contexts'
 import { useDetailColors, type DetailColors } from '../../hooks/useDetailColors'
 import { PrimaryButton, SecondaryButton } from '../../components/ui'
@@ -131,6 +132,7 @@ export default function EventFormPage() {
   const isEdit = !!eventId
   const router = useRouter()
   const colors = useDetailColors()
+  const { track } = useAnalytics()
   const { isDark } = useTheme()
   const today = todayLocalISODate()
   const { width: viewportWidth } = useWindowDimensions()
@@ -278,13 +280,17 @@ export default function EventFormPage() {
       }
       if (isEdit && eventId) {
         await updateEvent({ id: eventId, ...sharedFields })
+        track('event_updated', { eventId, title: title.trim(), source: 'event_form' })
         router.replace(`/events/${eventId}`)
       } else {
         const created = await createEvent(sharedFields)
+        track('event_created', { title: title.trim(), centerID, source: 'event_form' })
         router.replace(`/events/${created.id}`)
       }
     } catch (err: any) {
-      setErrors({ submit: err?.message || 'Something went wrong. Please try again.' })
+      const msg = err?.message || 'Something went wrong. Please try again.'
+      track('event_create_failed', { error: msg, isEdit, source: 'event_form' })
+      setErrors({ submit: msg })
     } finally {
       setSaving(false)
     }
@@ -297,6 +303,7 @@ export default function EventFormPage() {
     if (!longitude && center.longitude) setLongitude(String(center.longitude))
     if (!address && center.address) setAddress(center.address)
     setShowCenterPicker(false)
+    track('event_form_center_selected', { centerID: center.centerID, centerName: center.name, source: 'event_form' })
   }
 
   const inputStyle = (hasError?: boolean) => ({
@@ -343,7 +350,7 @@ export default function EventFormPage() {
       >
         <View style={{ gap: 4 }}>
           <Pressable
-            onPress={() => router.back()}
+            onPress={() => { track('event_form_back_pressed', { isEdit, source: 'event_form' }); router.back() }}
             style={{ flexDirection: 'row', alignItems: 'center', gap: 4, marginBottom: 8 }}
           >
             <ChevronLeft size={18} color={colors.iconHeader} />
@@ -449,7 +456,7 @@ export default function EventFormPage() {
         {/* Center selection */}
         <FieldRow label="Center" colors={colors} error={errors.center} required hint="Picking a center auto-fills address & coordinates.">
           <Pressable
-            onPress={() => setShowCenterPicker(!showCenterPicker)}
+            onPress={() => { const next = !showCenterPicker; setShowCenterPicker(next); if (next) track('event_form_center_picker_opened', { source: 'event_form' }) }}
             style={{
               ...inputStyle(!!errors.center),
               flexDirection: 'row',
@@ -628,7 +635,7 @@ export default function EventFormPage() {
               </View>
               <Switch
                 value={allowJanataSignup}
-                onValueChange={setAllowJanataSignup}
+                onValueChange={(v) => { setAllowJanataSignup(v); track('event_form_janata_signup_toggled', { enabled: v, source: 'event_form' }) }}
                 trackColor={{ true: '#E8862A', false: colors.border }}
                 thumbColor="#FFFFFF"
                 ios_backgroundColor={colors.border}
@@ -645,7 +652,7 @@ export default function EventFormPage() {
               return (
                 <Pressable
                   key={opt.label}
-                  onPress={() => setCategory(opt.value)}
+                  onPress={() => { setCategory(opt.value); track('event_form_category_selected', { category: opt.label, value: opt.value ?? null, source: 'event_form' }) }}
                   style={{
                     paddingHorizontal: 18,
                     paddingVertical: 10,
@@ -673,7 +680,7 @@ export default function EventFormPage() {
         {/* Advanced: coordinates (collapsed by default — auto-filled from center) */}
         <View style={{ gap: 12, marginTop: 4 }}>
           <Pressable
-            onPress={() => setShowAdvanced((v) => !v)}
+            onPress={() => setShowAdvanced((v) => { const next = !v; track('event_form_advanced_toggled', { expanded: next, source: 'event_form' }); return next })}
             style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}
             accessibilityLabel="Toggle advanced location options"
           >
@@ -747,7 +754,7 @@ export default function EventFormPage() {
         }}
       >
         <SecondaryButton
-          onPress={() => router.back()}
+          onPress={() => { track('event_form_back_pressed', { isEdit, source: 'event_form' }); router.back() }}
           style={{ paddingHorizontal: 24, paddingVertical: 12 }}
         >
           Cancel

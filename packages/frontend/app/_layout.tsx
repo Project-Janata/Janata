@@ -28,6 +28,7 @@ import {
 } from '../components/contexts'
 import { ErrorBoundary, ErrorBoundaryWithAnalytics } from '../components/ui/ErrorBoundary'
 import WebBottomNav from '../components/ui/WebBottomNav'
+import { AnalyticsScreenTracker } from '../utils/analytics'
 import { getIntroShown } from '../utils/introStorage'
 import '../globals.css'
 
@@ -85,7 +86,21 @@ export default function RootLayout() {
   if (!fontsLoaded) return null
 
   return posthogEnabled ? (
-    <PostHogProvider apiKey={posthogKey!.trim()} options={{ host: posthogHost }}>
+    <PostHogProvider
+      apiKey={posthogKey!.trim()}
+      options={{
+        host: posthogHost,
+        // Capture app opened / backgrounded / became active lifecycle events.
+        captureAppLifecycleEvents: true,
+      }}
+      // Screens are tracked manually via <AnalyticsScreenTracker /> below, and
+      // touch autocapture is too noisy — disable both, keep autocapture off.
+      autocapture={{
+        captureScreens: false,
+        captureTouches: false,
+      }}
+    >
+      <AnalyticsScreenTracker />
       <ErrorBoundaryWithAnalytics>
         <CustomThemeProvider>
           <UserProvider>

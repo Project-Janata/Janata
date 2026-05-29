@@ -10,11 +10,18 @@ import InviteCodesTab from '../components/admin/InviteCodesTab'
 import NotificationsTab from '../components/admin/NotificationsTab'
 import ModerationTab from '../components/admin/ModerationTab'
 import { isSuperAdmin as checkSuperAdmin } from '../utils/admin'
+import { useAnalytics } from '../utils/analytics'
 
 export default function AdminPage() {
   const { user, loading } = useUser()
   const { isDark } = useTheme()
+  const { track } = useAnalytics()
   const [activeTab, setActiveTab] = useState<AdminTab>('Centers')
+
+  const handleTabChange = (tab: AdminTab) => {
+    setActiveTab(tab)
+    track('admin_tab_changed', { tab, source: 'admin' })
+  }
 
   // TODO: backend must enforce admin auth on all admin-specific endpoints
   const isAdmin = checkSuperAdmin(user)
@@ -41,7 +48,7 @@ export default function AdminPage() {
 
   return (
     <View style={{ flex: 1, flexDirection: 'row', backgroundColor: pageBg }}>
-      <AdminSidebar activeTab={activeTab} onTabChange={setActiveTab} />
+      <AdminSidebar activeTab={activeTab} onTabChange={handleTabChange} />
       {activeTab === 'Centers' && <CentersTab />}
       {activeTab === 'Events' && <EventsTab />}
       {activeTab === 'Users' && <UsersTab />}

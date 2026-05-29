@@ -15,7 +15,7 @@ import {
   Pencil,
   Trash2,
 } from 'lucide-react-native'
-import { usePostHog } from 'posthog-react-native'
+import { useAnalytics } from '../../utils/analytics'
 import { useBoard, useEventDetail } from '../../hooks/useApiData'
 import { useUser } from '../../components/contexts'
 import { Badge, Avatar, PrimaryButton, DestructiveButton, DetailSection } from '../../components/ui'
@@ -166,6 +166,7 @@ function HeaderBar({
   onBack,
   onEdit,
   onDelete,
+  onShare,
   colors,
 }: {
   title: string
@@ -176,6 +177,7 @@ function HeaderBar({
   onBack: () => void
   onEdit?: () => void
   onDelete?: () => void
+  onShare?: () => void
   colors: DetailColors
 }) {
   const router = useRouter()
@@ -235,6 +237,7 @@ function HeaderBar({
           {!isPast && (
             <Pressable
               onPress={() => {
+                onShare?.()
                 const url = eventId ? `https://chinmayajanata.org/events/${eventId}` : 'https://chinmayajanata.org'
                 Share.share({
                   message: `Check out ${title} on Chinmaya Janata! ${url}`,
@@ -441,6 +444,7 @@ function ActionBar({
   isToggling,
   signupUrl,
   allowJanataSignup,
+  onExternalSignup,
   colors,
 }: {
   isRegistered?: boolean
@@ -449,6 +453,7 @@ function ActionBar({
   isToggling: boolean
   signupUrl?: string | null
   allowJanataSignup?: boolean
+  onExternalSignup?: () => void
   colors: DetailColors
 }) {
   if (isPast) return null
@@ -475,7 +480,10 @@ function ActionBar({
           </PrimaryButton>
         )}
         <Pressable
-          onPress={() => Linking.openURL(signupUrl)}
+          onPress={() => {
+            onExternalSignup?.()
+            Linking.openURL(signupUrl)
+          }}
           style={{ paddingVertical: 12, alignItems: 'center', justifyContent: 'center' }}
           accessibilityLabel={`Sign up at ${hostnameOf(signupUrl)}`}
         >
@@ -490,7 +498,7 @@ function ActionBar({
   if (signupUrl) {
     return (
       <View style={wrapperStyle}>
-        <PrimaryButton onPress={() => Linking.openURL(signupUrl)}>
+        <PrimaryButton onPress={() => { onExternalSignup?.(); Linking.openURL(signupUrl) }}>
           Sign up at {hostnameOf(signupUrl)}
         </PrimaryButton>
         <Text
@@ -569,7 +577,7 @@ export default function EventDetailPage() {
   const { id: rawId } = useLocalSearchParams()
   const id = Array.isArray(rawId) ? rawId[0] : rawId
   const router = useRouter()
-  const posthog = usePostHog()
+  const { track } = useAnalytics()
   const userContext = useUser()
   const { user, authStatus } = userContext
   const username = authStatus === 'authenticated' ? user?.username : undefined
@@ -592,12 +600,12 @@ export default function EventDetailPage() {
   useEffect(() => {
     if (!loading && event && !hasTrackedView.current) {
       hasTrackedView.current = true
-      posthog?.capture('event_viewed', { eventId: id, title: event.title, isPast })
+      track('event_viewed', { eventId: id, title: event.title, isPast })
     }
-  }, [loading, event, id, isPast, posthog])
+  }, [loading, event, id, isPast])
 
   const handleEditPress = () => {
-    posthog?.capture('event_edit_opened', { eventId: id })
+    track('event_edit_opened', { eventId: id, source: 'event_detail' })
   }
 
   const handleDeletePress = () => {
@@ -612,7 +620,7 @@ export default function EventDetailPage() {
           style: 'destructive',
           onPress: async () => {
             try {
-              posthog?.capture('event_deleted', { eventId: id })
+              track('event_deleted', { eventId: id, source: 'event_detail' })
               await removeEvent(id as string)
               router.replace('/')
             } catch (err: any) {
@@ -627,11 +635,11 @@ export default function EventDetailPage() {
   const handleToggleRegistration = async () => {
     if (!user?.username) return
     try {
-      posthog?.capture(event?.isRegistered ? 'event_unregistered' : 'event_registered', { eventId: id })
+      track(event?.isRegistered ? 'event_unregistered' : 'event_registered', { eventId: id, source: 'event_detail' })
       await toggleRegistration(user.username)
     } catch (err: any) {
       const message = err?.message || ''
-      posthog?.capture('event_registration_failed', { eventId: id, error: message })
+      track('event_registration_failed', { eventId: id, error: message, source: 'event_detail' })
       if (message.includes('Already registered')) {
         Alert.alert('Already Registered', 'You are already registered for this event.')
       } else if (message.includes('Not registered')) {
@@ -645,12 +653,13 @@ export default function EventDetailPage() {
   const handleCreateThreadPost = async (body: string) => {
     if (!event?.id) return
     await createBoardPost('event', event.id, body)
+    track('event_board_post_created', { eventId: id, source: 'event_detail' })
     await refetchBoard()
   }
 
   const openThreadPost = (message: BoardMessage) => {
     if (!event?.id) return
-    posthog?.capture('event_board_post_opened', { eventId: id, postId: message.id })
+    track('event_board_post_opened', { eventId: id, postId: message.id, source: 'event_detail' })
     setThreadDetailPost(
       buildFeedPostFromMessage(message, {
         groupId: `event-${event.id}`,
@@ -662,7 +671,10 @@ export default function EventDetailPage() {
     )
   }
 
-  const closeThreadPost = () => setThreadDetailPost(null)
+  const closeThreadPost = () => {
+    track('event_board_thread_closed', { eventId: id, source: 'event_detail' })
+    setThreadDetailPost(null)
+  }
 
   // ── Loading state ────────────────────────────────────────────────────
 
@@ -745,6 +757,7 @@ export default function EventDetailPage() {
         onBack={() => router.back()}
         onEdit={handleEditPress}
         onDelete={canEdit ? handleDeletePress : undefined}
+        onShare={() => track('event_shared', { eventId: id, source: 'event_detail' })}
         colors={colors}
       />
 
@@ -825,6 +838,7 @@ export default function EventDetailPage() {
         isToggling={isToggling}
         signupUrl={event.signupUrl}
         allowJanataSignup={event.allowJanataSignup}
+        onExternalSignup={() => track('event_external_signup_pressed', { eventId: id, signupUrl: event.signupUrl, source: 'event_detail' })}
         colors={colors}
       />
     </SafeAreaView>

@@ -23,6 +23,7 @@ import {
 } from 'react-native'
 import { MapPin, Search, Building2, Users, ChevronUp, ChevronDown } from 'lucide-react-native'
 import { useRouter, useLocalSearchParams, useFocusEffect } from 'expo-router'
+import { useAnalytics } from '../../utils/analytics'
 import { useTheme, useUser } from '../../components/contexts'
 import { FilterChip, Badge, UnderlineTabBar, Avatar } from '../../components/ui'
 import FilterPickerModal, { type FilterPickerOption } from '../../components/ui/FilterPickerModal'
@@ -465,6 +466,7 @@ type SheetSnap = 'peek' | 'collapsed' | 'mid' | 'expanded'
 function MobileDiscoverFallback() {
   const router = useRouter()
   const { isDark } = useTheme()
+  const { track } = useAnalytics()
   const [activeFilter, setActiveFilter] = useState<DiscoverFilter>('Events')
   const [searchQuery, setSearchQuery] = useState('')
   const [selectedDate, setSelectedDate] = useState<string | null>(null)
@@ -581,19 +583,21 @@ function MobileDiscoverFallback() {
 
   const handlePointPress = useCallback(
     (point: MapPoint) => {
+      track('map_point_pressed', { type: point.type, id: point.id, source: 'discover' })
       if (point.type === 'center') {
         router.push(`/center/${point.id}`)
       } else {
         router.push(`/events/${point.id}`)
       }
     },
-    [router]
+    [router, track]
   )
 
   const handleFilterPress = useCallback((f: DiscoverFilter) => {
+    track('discover_filter_changed', { filter: f, source: 'discover' })
     setActiveFilter(f)
     setSelectedDate(null)
-  }, [])
+  }, [track])
 
   const eventDates = useMemo(
     () => new Set(allEvents.filter((e) => e.date).map((e) => e.date)),
@@ -697,11 +701,13 @@ function MobileDiscoverFallback() {
   const toggleSection = useCallback((label: string) => {
     setCollapsedSections((prev) => {
       const next = new Set(prev)
-      if (next.has(label)) next.delete(label)
-      else next.add(label)
+      const willCollapse = !next.has(label)
+      if (willCollapse) next.add(label)
+      else next.delete(label)
+      track('discover_section_toggled', { label, collapsed: willCollapse, source: 'discover' })
       return next
     })
-  }, [])
+  }, [track])
 
   return (
     <div
@@ -806,6 +812,11 @@ function MobileDiscoverFallback() {
                 value={searchQuery}
                 onChangeText={setSearchQuery}
                 onFocus={() => setSheetSnap('expanded')}
+                onEndEditing={() => {
+                  if (searchQuery.trim()) {
+                    track('discover_search', { query: searchQuery.trim(), source: 'discover' })
+                  }
+                }}
               />
             </View>
 
@@ -826,20 +837,32 @@ function MobileDiscoverFallback() {
                   label="Today"
                   variant="outline"
                   active={selectedDate === todayStr}
-                  onPress={() => setSelectedDate((prev) => (prev === todayStr ? null : todayStr))}
+                  onPress={() => {
+                    setSelectedDate((prev) => {
+                      const next = prev === todayStr ? null : todayStr
+                      if (next) track('discover_date_selected', { date: next, source: 'discover' })
+                      return next
+                    })
+                  }}
                 />
                 <FilterChip
                   label={centerChipLabel}
                   variant="outline"
                   active={selectedCenter !== null}
-                  onPress={() => setShowCenterModal(true)}
+                  onPress={() => {
+                    track('discover_center_filter_opened', { source: 'discover' })
+                    setShowCenterModal(true)
+                  }}
                 />
                 {user && (
                   <FilterChip
                     label="Going"
                     variant="outline"
                     active={showGoingOnly}
-                    onPress={() => setShowGoingOnly((prev: boolean) => !prev)}
+                    onPress={() => {
+                      track('discover_going_filter_toggled', { enabled: !showGoingOnly, source: 'discover' })
+                      setShowGoingOnly((prev: boolean) => !prev)
+                    }}
                   />
                 )}
               </View>
@@ -919,7 +942,10 @@ function MobileDiscoverFallback() {
                     key={`event-${item.data.id}`}
                     event={item.data as EventDisplay}
                     centerName={allCenters.find((c) => c.id === (item.data as EventDisplay).centerId)?.name}
-                    onPress={() => router.push(`/events/${item.data.id}`)}
+                    onPress={() => {
+                      track('event_list_item_pressed', { eventId: item.data.id, source: 'discover' })
+                      router.push(`/events/${item.data.id}`)
+                    }}
                   />
                 )
               }
@@ -930,7 +956,10 @@ function MobileDiscoverFallback() {
                   key={`center-${item.data.id}`}
                   center={item.data as DiscoverCenter}
                   isMyCenter={!!user?.centerID && item.data.id === user.centerID}
-                  onPress={() => router.push(`/center/${item.data.id}`)}
+                  onPress={() => {
+                    track('center_list_item_pressed', { centerId: item.data.id, source: 'discover' })
+                    router.push(`/center/${item.data.id}`)
+                  }}
                 />
               )
             })}
@@ -962,6 +991,7 @@ export default function DiscoverScreenWeb() {
   const router = useRouter()
   const { isDark } = useTheme()
   const { user } = useUser()
+  const { track } = useAnalytics()
   const isAdmin = user?.email === ADMIN_EMAIL || (user?.verificationLevel !== undefined && user.verificationLevel >= 107)
   // Beta: any signed-in user can create events. Backend enforces auth-only;
   // post-beta this becomes a coordinator-tier gate (see issue tracker).
@@ -1118,19 +1148,22 @@ export default function DiscoverScreenWeb() {
     : 'Center'
 
   const handleFilterPress = useCallback((f: DiscoverFilter) => {
+    track('discover_filter_changed', { filter: f, source: 'discover' })
     setActiveFilter(f)
     setSelectedDate(null)
-  }, [])
+  }, [track])
 
   const [collapsedSections, setCollapsedSections] = useState<Set<string>>(new Set())
   const toggleSection = useCallback((label: string) => {
     setCollapsedSections((prev) => {
       const next = new Set(prev)
-      if (next.has(label)) next.delete(label)
-      else next.add(label)
+      const willCollapse = !next.has(label)
+      if (willCollapse) next.add(label)
+      else next.delete(label)
+      track('discover_section_toggled', { label, collapsed: willCollapse, source: 'discover' })
       return next
     })
-  }, [])
+  }, [track])
 
   // Map popover state
   const mapPanelRef = useRef<View>(null)
@@ -1180,9 +1213,10 @@ export default function DiscoverScreenWeb() {
   const handlePopoverView = useCallback(() => {
     if (!clickPopover) return
     const { point } = clickPopover
+    track('map_point_pressed', { type: point.type, id: point.id, source: 'discover_map_popover' })
     setSelectedItem({ type: point.type === 'center' ? 'center' : 'event', id: point.id })
     setClickPopover(null)
-  }, [clickPopover])
+  }, [clickPopover, track])
 
   // Look up details for popover from hook data (not sample constants)
   const clickEventDetail = useMemo(() => {
@@ -1196,8 +1230,9 @@ export default function DiscoverScreenWeb() {
   }, [clickPopover, allCenters])
 
   const handlePointPress = useCallback((point: MapPoint) => {
+    track('map_point_pressed', { type: point.type, id: point.id, source: 'discover' })
     setSelectedItem({ type: point.type === 'center' ? 'center' : 'event', id: point.id })
-  }, [])
+  }, [track])
 
   const handleMapMove = useCallback(() => {
     setClickPopover(null)
@@ -1311,6 +1346,11 @@ export default function DiscoverScreenWeb() {
                     value={searchQuery}
                     onChangeText={setSearchQuery}
                     style={{ paddingVertical: 8 }}
+                    onEndEditing={() => {
+                      if (searchQuery.trim()) {
+                        track('discover_search', { query: searchQuery.trim(), source: 'discover' })
+                      }
+                    }}
                   />
                 </View>
               </View>
@@ -1333,22 +1373,32 @@ export default function DiscoverScreenWeb() {
                   label="Today"
                   variant="outline"
                   active={selectedDate === todayStrDesktop}
-                  onPress={() =>
-                    setSelectedDate((prev) => (prev === todayStrDesktop ? null : todayStrDesktop))
-                  }
+                  onPress={() => {
+                    setSelectedDate((prev) => {
+                      const next = prev === todayStrDesktop ? null : todayStrDesktop
+                      if (next) track('discover_date_selected', { date: next, source: 'discover' })
+                      return next
+                    })
+                  }}
                 />
                 <FilterChip
                   label={centerChipLabelDesktop}
                   variant="outline"
                   active={selectedCenterDesktop !== null}
-                  onPress={() => setShowCenterModalDesktop(true)}
+                  onPress={() => {
+                    track('discover_center_filter_opened', { source: 'discover' })
+                    setShowCenterModalDesktop(true)
+                  }}
                 />
                 {user && (
                   <FilterChip
                     label="Going"
                     variant="outline"
                     active={showGoingOnly}
-                    onPress={() => setShowGoingOnly((prev: boolean) => !prev)}
+                    onPress={() => {
+                      track('discover_going_filter_toggled', { enabled: !showGoingOnly, source: 'discover' })
+                      setShowGoingOnly((prev: boolean) => !prev)
+                    }}
                   />
                 )}
               </View>
@@ -1392,7 +1442,10 @@ export default function DiscoverScreenWeb() {
                       key={`event-${item.data.id}`}
                       event={item.data as EventDisplay}
                       centerName={allCenters.find((c) => c.id === (item.data as EventDisplay).centerId)?.name}
-                      onPress={() => setSelectedItem({ type: 'event', id: item.data.id })}
+                      onPress={() => {
+                        track('event_list_item_pressed', { eventId: item.data.id, source: 'discover' })
+                        setSelectedItem({ type: 'event', id: item.data.id })
+                      }}
                     />
                   )
                 }
@@ -1403,7 +1456,10 @@ export default function DiscoverScreenWeb() {
                     key={`center-${item.data.id}`}
                     center={item.data as DiscoverCenter}
                     isMyCenter={!!user?.centerID && item.data.id === user.centerID}
-                    onPress={() => setSelectedItem({ type: 'center', id: item.data.id })}
+                    onPress={() => {
+                      track('center_list_item_pressed', { centerId: item.data.id, source: 'discover' })
+                      setSelectedItem({ type: 'center', id: item.data.id })
+                    }}
                   />
                 )
               })}

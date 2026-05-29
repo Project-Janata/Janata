@@ -22,7 +22,7 @@ import {
   Plus,
 } from 'lucide-react-native'
 import { useRouter, useFocusEffect, useNavigation } from 'expo-router'
-import { usePostHog } from 'posthog-react-native'
+import { useAnalytics } from '../../utils/analytics'
 import { useTheme } from '../../components/contexts'
 import { Badge, UnderlineTabBar, Avatar, FilterChip } from '../../components/ui'
 import FilterPickerModal, { type FilterPickerOption } from '../../components/ui/FilterPickerModal'
@@ -232,7 +232,7 @@ function CenterItem({ center, onPress, isMyCenter }: { center: DiscoverCenter; o
 export default function DiscoverScreen() {
   const router = useRouter()
   const { isDark } = useTheme()
-  const posthog = usePostHog()
+  const { track } = useAnalytics()
   const [activeFilter, setActiveFilter] = useState<DiscoverFilter>('Events')
   const [searchQuery, setSearchQuery] = useState('')
   const [selectedDate, setSelectedDate] = useState<string | null>(null)
@@ -435,13 +435,13 @@ export default function DiscoverScreen() {
   )
 
   const handleFilterPress = (f: DiscoverFilter) => {
-    posthog?.capture('discover_filter_changed', { filter: f })
+    track('discover_filter_changed', { filter: f, source: 'discover' })
     setActiveFilter(f)
     setSelectedDate(null)
   }
 
   const handlePointPress = (point: { id: string; type: 'center' | 'event' }) => {
-    posthog?.capture('map_point_pressed', { type: point.type, id: point.id })
+    track('map_point_pressed', { type: point.type, id: point.id, source: 'discover' })
     if (point.type === 'center') {
       router.push(`/center/${point.id}`)
     } else {
@@ -506,7 +506,7 @@ export default function DiscoverScreen() {
                 onChangeText={setSearchQuery}
                 onEndEditing={() => {
                   if (searchQuery.trim()) {
-                    posthog?.capture('discover_search', { query: searchQuery.trim() })
+                    track('discover_search', { query: searchQuery.trim(), source: 'discover' })
                   }
                 }}
               />
@@ -533,7 +533,7 @@ export default function DiscoverScreen() {
                     onPress={() => {
                       setSelectedDate((prev) => {
                         const next = prev === todayStr ? null : todayStr
-                        if (next) posthog?.capture('discover_date_selected', { date: next })
+                        if (next) track('discover_date_selected', { date: next, source: 'discover' })
                         return next
                       })
                     }}
@@ -542,14 +542,20 @@ export default function DiscoverScreen() {
                     label={centerChipLabel}
                     variant="outline"
                     active={selectedCenter !== null}
-                    onPress={() => setShowCenterModal(true)}
+                    onPress={() => {
+                      track('discover_center_filter_opened', { source: 'discover' })
+                      setShowCenterModal(true)
+                    }}
                   />
                   {user && (
                     <FilterChip
                       label="Going"
                       variant="outline"
                       active={showGoingOnly}
-                      onPress={() => setShowGoingOnly((prev) => !prev)}
+                      onPress={() => {
+                        track('discover_going_filter_toggled', { enabled: !showGoingOnly, source: 'discover' })
+                        setShowGoingOnly((prev) => !prev)
+                      }}
                     />
                   )}
                 </View>
@@ -559,7 +565,7 @@ export default function DiscoverScreen() {
                     accessibilityLabel="Create event"
                     hitSlop={8}
                     onPress={() => {
-                      posthog?.capture('nav_create_event', { source: 'discover' })
+                      track('nav_create_event', { source: 'discover' })
                       router.push('/events/form')
                     }}
                     className="flex-row items-center active:opacity-70"
@@ -608,7 +614,10 @@ export default function DiscoverScreen() {
                 return (
                   <Pressable
                     key={`section-${idx}`}
-                    onPress={() => toggleSection(label)}
+                    onPress={() => {
+                      track('discover_section_toggled', { label, collapsed: !collapsedSections.has(label), source: 'discover' })
+                      toggleSection(label)
+                    }}
                     className={`bg-white dark:bg-neutral-900 ${idx > 0 ? 'border-t border-stone-200 dark:border-neutral-800' : ''}`}
                   >
                     <View
@@ -635,7 +644,7 @@ export default function DiscoverScreen() {
                     event={item.data as EventDisplay}
                     centerName={allCenters.find((c) => c.id === (item.data as EventDisplay).centerId)?.name}
                     onPress={() => {
-                      posthog?.capture('event_list_item_pressed', { eventId: item.data.id, source: 'discover' })
+                      track('event_list_item_pressed', { eventId: item.data.id, source: 'discover' })
                       router.push(`/events/${item.data.id}`)
                     }}
                   />
@@ -649,7 +658,7 @@ export default function DiscoverScreen() {
                   center={item.data as DiscoverCenter}
                   isMyCenter={!!user?.centerID && item.data.id === user.centerID}
                   onPress={() => {
-                    posthog?.capture('center_list_item_pressed', { centerId: item.data.id, source: 'discover' })
+                    track('center_list_item_pressed', { centerId: item.data.id, source: 'discover' })
                     router.push(`/center/${item.data.id}`)
                   }}
                 />

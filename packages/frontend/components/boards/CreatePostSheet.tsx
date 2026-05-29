@@ -3,6 +3,7 @@ import { KeyboardAvoidingView, Modal, Platform, Pressable, ScrollView, Text, Tex
 import { Building2, CalendarDays, ChevronDown, X } from 'lucide-react-native'
 import { Avatar } from '../ui'
 import type { AppColors } from '../../tokens'
+import { useAnalytics } from '../../utils/analytics'
 
 type GroupOption = {
   id: string
@@ -24,6 +25,7 @@ export function CreatePostSheet({
   onClose: () => void
   onSubmit?: (group: GroupOption, body: string) => Promise<void> | void
 }) {
+  const { track } = useAnalytics()
   const [body, setBody] = useState('')
   const [groupId, setGroupId] = useState<string | undefined>()
   const [groupPickerOpen, setGroupPickerOpen] = useState(false)
@@ -47,8 +49,22 @@ export function CreatePostSheet({
     try {
       setSubmitting(true)
       await onSubmit?.(selectedGroup, body.trim())
+      track('board_post_created', {
+        source: 'create_post_sheet',
+        group_id: selectedGroup.id,
+        group_kind: selectedGroup.kind,
+        group_title: selectedGroup.title,
+        body_length: body.trim().length,
+      })
       setBody('')
       onClose()
+    } catch (err) {
+      track('board_post_create_failed', {
+        source: 'create_post_sheet',
+        group_id: selectedGroup.id,
+        group_kind: selectedGroup.kind,
+      })
+      throw err
     } finally {
       setSubmitting(false)
     }
@@ -68,7 +84,7 @@ export function CreatePostSheet({
       >
         {/* Header */}
         <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: Platform.OS === 'ios' ? 20 : 16, paddingTop: Platform.OS === 'ios' ? 14 : 18, paddingBottom: 12, borderBottomWidth: 1, borderBottomColor: colors.border }}>
-          <Pressable onPress={onClose} hitSlop={8} style={{ minWidth: 64 }}>
+          <Pressable onPress={() => { track('board_post_dismissed', { source: 'create_post_sheet', body_length: body.trim().length }); onClose() }} hitSlop={8} style={{ minWidth: 64 }}>
             <X size={22} color={colors.textMuted} />
           </Pressable>
           <Text style={{ fontFamily: 'Inclusive Sans', fontSize: 16, color: colors.text }}>New post</Text>
@@ -86,7 +102,7 @@ export function CreatePostSheet({
               POST TO
             </Text>
             <Pressable
-              onPress={() => setGroupPickerOpen((o) => !o)}
+              onPress={() => setGroupPickerOpen((o) => { const next = !o; if (next) track('board_group_picker_opened', { source: 'create_post_sheet', current_group_id: selectedGroup?.id, current_group_kind: selectedGroup?.kind }); return next })}
               style={{ flexDirection: 'row', alignItems: 'center', gap: 10, paddingHorizontal: 12, paddingVertical: 11, borderRadius: 12, borderWidth: 1, borderColor: colors.border, backgroundColor: colors.card }}
             >
               <View style={{ width: 28, height: 28, borderRadius: 9, backgroundColor: colors.accentSoft, alignItems: 'center', justifyContent: 'center' }}>
@@ -114,7 +130,7 @@ export function CreatePostSheet({
                   return (
                     <Pressable
                       key={group.id}
-                      onPress={() => { setGroupId(group.id); setGroupPickerOpen(false) }}
+                      onPress={() => { track('board_group_selected', { source: 'create_post_sheet', group_id: group.id, group_kind: group.kind, group_title: group.title }); setGroupId(group.id); setGroupPickerOpen(false) }}
                       style={{ flexDirection: 'row', alignItems: 'center', gap: 10, paddingHorizontal: 12, paddingVertical: 11, backgroundColor: active ? colors.accentSoft : colors.card, borderBottomWidth: index < sortedGroups.length - 1 ? 1 : 0, borderBottomColor: colors.border }}
                     >
                       <View style={{ width: 24, height: 24, borderRadius: 7, backgroundColor: colors.panel, alignItems: 'center', justifyContent: 'center' }}>

@@ -10,7 +10,7 @@ import {
 } from 'react-native'
 import { useNavigation, useRouter } from 'expo-router'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
-import { usePostHog } from 'posthog-react-native'
+import { useAnalytics } from '../../utils/analytics'
 import { useUser } from '../../components/contexts'
 import { useColors } from '../../hooks/useColors'
 import {
@@ -76,7 +76,7 @@ export default function ChatScreen() {
   const colors = useColors()
   const { width } = useWindowDimensions()
   const insets = useSafeAreaInsets()
-  const posthog = usePostHog()
+  const { track } = useAnalytics()
   const detailTranslateX = useRef(new Animated.Value(width)).current
 
   const isDesktop = width >= 980
@@ -156,6 +156,10 @@ export default function ChatScreen() {
   }
 
   const closeDetail = () => {
+    track('connect_conversation_closed', {
+      conversationId: selectedConversationId,
+      source: 'chat',
+    })
     if (Platform.OS !== 'web' && nativeDetailOpen) {
       detailTranslateX.stopAnimation()
       Animated.timing(detailTranslateX, {
@@ -175,7 +179,7 @@ export default function ChatScreen() {
   }
 
   const openConversation = (id: string) => {
-    posthog?.capture('connect_conversation_selected', { conversationId: id })
+    track('connect_conversation_selected', { conversationId: id, source: 'chat' })
     if (Platform.OS === 'web' && isDesktop) {
       primeNativeDetailTransition()
       setSelectedConversationId(id)
@@ -212,7 +216,7 @@ export default function ChatScreen() {
             subtitle="Your group chats, requests, and DMs live here."
             colors={colors}
             onPress={() => {
-              posthog?.capture('connect_signin_pressed')
+              track('connect_signin_pressed', { source: 'chat' })
               router.push('/auth')
             }}
           />

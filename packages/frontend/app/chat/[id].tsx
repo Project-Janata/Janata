@@ -6,6 +6,7 @@ import { ArrowLeft } from 'lucide-react-native'
 import { useTheme } from '../../components/contexts'
 import { Avatar } from '../../components/ui'
 import { groupChats, inboxThreads, type PersonSummary } from '../../components/boards'
+import { useAnalytics } from '../../utils/analytics'
 
 type GroupKind = 'center' | 'event'
 
@@ -79,6 +80,7 @@ export default function ChatConversationDetail() {
   const { id } = useLocalSearchParams<{ id: string }>()
   const router = useRouter()
   const { isDark } = useTheme()
+  const { track } = useAnalytics()
 
   const colors = useMemo(
     () => ({
@@ -108,7 +110,10 @@ export default function ChatConversationDetail() {
             Conversation not found
           </Text>
           <Pressable
-            onPress={() => router.back()}
+            onPress={() => {
+              track('chat_not_found_back_pressed', { conversation_id: id, source: 'chat_detail' })
+              router.back()
+            }}
             style={{ marginTop: 16, paddingVertical: 10, paddingHorizontal: 20, borderRadius: 12, backgroundColor: colors.orange }}
           >
             <Text style={{ fontFamily: 'Inclusive Sans', fontSize: 14, color: '#FFFFFF' }}>Go back</Text>
@@ -132,7 +137,10 @@ export default function ChatConversationDetail() {
         }}
       >
         <Pressable
-          onPress={() => router.back()}
+          onPress={() => {
+            track('chat_back_pressed', { conversation_id: id, conversation_type: conversation.type, source: 'chat_detail' })
+            router.back()
+          }}
           accessibilityRole="button"
           accessibilityLabel="Back"
           hitSlop={10}
