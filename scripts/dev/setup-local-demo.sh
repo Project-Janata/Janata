@@ -29,7 +29,8 @@ for f in migrations/0[0-9][0-9][0-9]_*.sql; do
   npx wrangler d1 execute "$DB" --local --file="$f" --config "$CFG" >/dev/null
 done
 
-echo "▶ (3/5) seed centers + events"
+echo "▶ (3/5) seed real centers + demo events"
+npx wrangler d1 execute "$DB" --local --file=packages/backend/src/seed/centers.sql --config "$CFG" >/dev/null
 npx wrangler d1 execute "$DB" --local --file=migrations/seed_preview_data.sql --config "$CFG" >/dev/null
 
 echo "▶ (4/5) start a temp backend to register the 5 role accounts"

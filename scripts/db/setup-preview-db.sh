@@ -50,7 +50,10 @@ for f in migrations/0[0-9][0-9][0-9]_*.sql; do
     || { echo "✗ FAILED on $base" >&2; exit 1; }
 done
 
-echo "▶ Loading preview dummy data (centers + events with badge/verified flags)"
+echo "▶ Loading real centers (packages/backend/src/seed/centers.sql)"
+npx wrangler d1 execute "$DB_NAME" --remote --file=packages/backend/src/seed/centers.sql --config "$CONFIG" >/dev/null 2>&1 \
+  || { echo "✗ FAILED seeding real centers" >&2; exit 1; }
+echo "▶ Loading preview demo events (on top of real centers)"
 npx wrangler d1 execute "$DB_NAME" --remote --file=migrations/seed_preview_data.sql --config "$CONFIG" >/dev/null 2>&1 \
   || { echo "✗ FAILED seeding preview data" >&2; exit 1; }
 

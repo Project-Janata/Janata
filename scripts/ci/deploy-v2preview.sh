@@ -69,7 +69,9 @@ for f in migrations/0[0-9][0-9][0-9]_*.sql; do
   echo "  → $base"
   WR d1 execute "$DB_NAME" --remote --config "$CONFIG" --file="$f"
 done
-echo "  → seed_preview_data.sql"
+echo "  → real centers (packages/backend/src/seed/centers.sql)"
+WR d1 execute "$DB_NAME" --remote --config "$CONFIG" --file=packages/backend/src/seed/centers.sql
+echo "  → seed_preview_data.sql (demo events on top of real centers)"
 WR d1 execute "$DB_NAME" --remote --config "$CONFIG" --file=migrations/seed_preview_data.sql
 
 echo "▶ (3/7) Deploy preview worker"
