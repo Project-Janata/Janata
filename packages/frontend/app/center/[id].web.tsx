@@ -26,7 +26,10 @@ export default function CenterDetailWeb() {
 
   useEffect(() => {
     if (!initiallyMobile.current && id) {
-      router.replace(`/?detail=center&id=${id}`)
+      // Desktop detail is rendered by the Explore screen's panel (it consumes
+      // ?detail=&id= and shows the CenterDetailPanel column). Route there, not
+      // to "/" — Home has no detail consumer, so the panel never opened.
+      router.replace(`/explore?detail=center&id=${id}`)
     } else if (!id) {
       router.replace('/')
     }

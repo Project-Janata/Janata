@@ -32,7 +32,11 @@ export default function EventDetailWeb() {
 
   useEffect(() => {
     if (!initiallyMobile.current && id) {
-      router.replace(`/?detail=event&id=${id}`)
+      // Desktop detail is rendered by the Explore screen's panel (it consumes
+      // ?detail=&id=, shows the EventDetailPanel column, and pans the map).
+      // Route there, not to "/" (Home has no detail consumer, so the panel
+      // never opened — the desktop detail bug).
+      router.replace(`/explore?detail=event&id=${id}`)
     } else if (!id) {
       router.replace('/')
     }
