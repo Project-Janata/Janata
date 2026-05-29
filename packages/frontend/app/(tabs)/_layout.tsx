@@ -213,17 +213,11 @@ export default function TabLayout() {
               tabBarShowLabel: false,
               title: 'Explore',
               headerTransparent: !isDesktopWeb,
+              // No header create action — creating an event lives in the Explore
+              // sheet itself, so the mobile header just shows the profile avatar.
               header: isDesktopWeb
                 ? () => <WebHeader />
-                : () => (
-                    <TabHeader
-                      transparent
-                      borderAvatar
-                      {...(Platform.OS === 'web'
-                        ? { action: 'create' as const, onActionPress: () => router.push('/events/form') }
-                        : {})}
-                    />
-                  ),
+                : () => <TabHeader transparent borderAvatar />,
               tabBarIcon: ({ color, size }) => <Compass size={size} color={color} />,
             }}
           />
