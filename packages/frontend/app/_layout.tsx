@@ -234,6 +234,7 @@ function RootLayoutNav({ onAuthReady }: { onAuthReady: () => void }) {
           <Stack.Screen name="landing" options={{ headerShown: false }} />
           <Stack.Screen name="onboarding" options={{ headerShown: false, gestureEnabled: false }} />
           <Stack.Screen name="settings" options={{ headerShown: false }} />
+          <Stack.Screen name="notifications" options={{ headerShown: false }} />
           <Stack.Screen
             name="events/index"
             options={{ headerShown: true, title: 'My Events', headerBackTitle: '' }}

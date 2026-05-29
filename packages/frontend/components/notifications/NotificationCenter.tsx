@@ -15,12 +15,23 @@ import {
   deleteNotification,
 } from '../../utils/notificationService'
 import { NotificationItem } from './NotificationItem'
+import { useColors } from '../../hooks/useColors'
 
 interface NotificationCenterProps {
   onNotificationPress?: (notification: Notification) => void
+  /**
+   * Render the built-in "Notifications" title row. Defaults to true.
+   * Pass false when the hosting screen already supplies a header
+   * (e.g. the /notifications route uses StackHeader for the title + back).
+   */
+  showHeader?: boolean
 }
 
-export const NotificationCenter: React.FC<NotificationCenterProps> = ({ onNotificationPress }) => {
+export const NotificationCenter: React.FC<NotificationCenterProps> = ({
+  onNotificationPress,
+  showHeader = true,
+}) => {
+  const c = useColors()
   const [notifications, setNotifications] = useState<Notification[]>([])
   const [loading, setLoading] = useState(true)
   const [hasMore, setHasMore] = useState(true)
@@ -122,32 +133,40 @@ export const NotificationCenter: React.FC<NotificationCenterProps> = ({ onNotifi
   const unreadCount = notifications.filter((n) => !n.isRead).length
 
   return (
-    <View style={styles.container}>
+    <View style={[styles.container, { backgroundColor: c.bg }]}>
       {/* Header */}
-      <View style={styles.header}>
-        <Text style={styles.headerTitle}>Notifications</Text>
-        {unreadCount > 0 && (
-          <View style={styles.badge}>
-            <Text style={styles.badgeText}>{unreadCount}</Text>
-          </View>
-        )}
-      </View>
+      {showHeader && (
+        <View style={[styles.header, { borderBottomColor: c.divider }]}>
+          <Text style={[styles.headerTitle, { color: c.text }]}>Notifications</Text>
+          {unreadCount > 0 && (
+            <View style={[styles.badge, { backgroundColor: c.accent }]}>
+              <Text style={[styles.badgeText, { color: c.textInverse }]}>{unreadCount}</Text>
+            </View>
+          )}
+        </View>
+      )}
 
       {/* Filters */}
-      <View style={styles.filterContainer}>
+      <View style={[styles.filterContainer, { borderBottomColor: c.divider }]}>
         <TouchableOpacity
-          style={[styles.filterButton, filter === 'all' && styles.filterButtonActive]}
+          style={[
+            styles.filterButton,
+            { backgroundColor: filter === 'all' ? c.accent : c.surface },
+          ]}
           onPress={() => setFilter('all')}
         >
-          <Text style={[styles.filterText, filter === 'all' && styles.filterTextActive]}>
+          <Text style={[styles.filterText, { color: filter === 'all' ? c.textInverse : c.textMuted }]}>
             All
           </Text>
         </TouchableOpacity>
         <TouchableOpacity
-          style={[styles.filterButton, filter === 'unread' && styles.filterButtonActive]}
+          style={[
+            styles.filterButton,
+            { backgroundColor: filter === 'unread' ? c.accent : c.surface },
+          ]}
           onPress={() => setFilter('unread')}
         >
-          <Text style={[styles.filterText, filter === 'unread' && styles.filterTextActive]}>
+          <Text style={[styles.filterText, { color: filter === 'unread' ? c.textInverse : c.textMuted }]}>
             Unread ({unreadCount})
           </Text>
         </TouchableOpacity>
@@ -156,7 +175,7 @@ export const NotificationCenter: React.FC<NotificationCenterProps> = ({ onNotifi
             style={styles.markAllButton}
             onPress={handleMarkAllAsRead}
           >
-            <Text style={styles.markAllText}>Mark all as read</Text>
+            <Text style={[styles.markAllText, { color: c.accent }]}>Mark all as read</Text>
           </TouchableOpacity>
         )}
       </View>
@@ -164,12 +183,12 @@ export const NotificationCenter: React.FC<NotificationCenterProps> = ({ onNotifi
       {/* Content */}
       {loading && notifications.length === 0 ? (
         <View style={styles.centerContent}>
-          <ActivityIndicator size="large" color="#007AFF" />
-          <Text style={styles.loadingText}>Loading notifications...</Text>
+          <ActivityIndicator size="large" color={c.accent} />
+          <Text style={[styles.loadingText, { color: c.textMuted }]}>Loading notifications...</Text>
         </View>
       ) : notifications.length === 0 ? (
         <View style={styles.centerContent}>
-          <Text style={styles.emptyText}>
+          <Text style={[styles.emptyText, { color: c.textMuted }]}>
             {filter === 'unread' ? 'No unread notifications' : 'No notifications yet'}
           </Text>
         </View>
@@ -189,7 +208,7 @@ export const NotificationCenter: React.FC<NotificationCenterProps> = ({ onNotifi
           onEndReached={loadMore}
           onEndReachedThreshold={0.3}
           ListFooterComponent={
-            hasMore ? <ActivityIndicator size="small" color="#007AFF" style={styles.footer} /> : null
+            hasMore ? <ActivityIndicator size="small" color={c.accent} style={styles.footer} /> : null
           }
         />
       )}
@@ -200,7 +219,6 @@ export const NotificationCenter: React.FC<NotificationCenterProps> = ({ onNotifi
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#fff',
   },
   header: {
     flexDirection: 'row',
@@ -209,23 +227,20 @@ const styles = StyleSheet.create({
     paddingVertical: 16,
     paddingHorizontal: 16,
     borderBottomWidth: 1,
-    borderBottomColor: '#f0f0f0',
   },
   headerTitle: {
     fontSize: 20,
     fontWeight: 'bold',
-    color: '#000',
   },
   badge: {
-    backgroundColor: '#007AFF',
     borderRadius: 12,
-    width: 24,
+    minWidth: 24,
     height: 24,
+    paddingHorizontal: 6,
     justifyContent: 'center',
     alignItems: 'center',
   },
   badgeText: {
-    color: '#fff',
     fontSize: 12,
     fontWeight: 'bold',
   },
@@ -235,25 +250,16 @@ const styles = StyleSheet.create({
     paddingVertical: 8,
     gap: 8,
     borderBottomWidth: 1,
-    borderBottomColor: '#f0f0f0',
     alignItems: 'center',
   },
   filterButton: {
     paddingHorizontal: 12,
     paddingVertical: 6,
     borderRadius: 16,
-    backgroundColor: '#f0f0f0',
-  },
-  filterButtonActive: {
-    backgroundColor: '#007AFF',
   },
   filterText: {
     fontSize: 12,
-    color: '#666',
     fontWeight: '500',
-  },
-  filterTextActive: {
-    color: '#fff',
   },
   markAllButton: {
     marginLeft: 'auto',
@@ -262,7 +268,6 @@ const styles = StyleSheet.create({
   },
   markAllText: {
     fontSize: 12,
-    color: '#007AFF',
     fontWeight: '500',
   },
   centerContent: {
@@ -273,11 +278,9 @@ const styles = StyleSheet.create({
   loadingText: {
     marginTop: 12,
     fontSize: 14,
-    color: '#666',
   },
   emptyText: {
     fontSize: 16,
-    color: '#999',
   },
   footer: {
     paddingVertical: 16,
