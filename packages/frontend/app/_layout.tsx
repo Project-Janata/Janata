@@ -26,7 +26,7 @@ import {
   ThemeProvider as CustomThemeProvider,
   useTheme,
 } from '../components/contexts'
-import { ErrorBoundary, ErrorBoundaryWithAnalytics } from '../components/ui/ErrorBoundary'
+import { ErrorBoundaryWithAnalytics } from '../components/ui/ErrorBoundary'
 import WebBottomNav from '../components/ui/WebBottomNav'
 import { AnalyticsScreenTracker } from '../utils/analytics'
 import { getIntroShown } from '../utils/introStorage'
@@ -85,22 +85,28 @@ export default function RootLayout() {
 
   if (!fontsLoaded) return null
 
-  return posthogEnabled ? (
+  // Always provide a PostHog context so usePostHog() (UserContext, useAnalytics,
+  // ErrorBoundaryWithAnalytics, AnalyticsScreenTracker) never throws. Without a
+  // key (local/dev, or a preview built without one) the client is `disabled` —
+  // no network, capture() is a no-op — rather than rendering no provider at all,
+  // which made usePostHog() crash the app on load.
+  return (
     <PostHogProvider
-      apiKey={posthogKey!.trim()}
+      apiKey={posthogEnabled ? posthogKey!.trim() : 'phc_disabled'}
       options={{
         host: posthogHost,
+        disabled: !posthogEnabled,
         // Capture app opened / backgrounded / became active lifecycle events.
-        captureAppLifecycleEvents: true,
+        captureAppLifecycleEvents: posthogEnabled,
       }}
       // Screens are tracked manually via <AnalyticsScreenTracker /> below, and
-      // touch autocapture is too noisy — disable both, keep autocapture off.
+      // touch autocapture is too noisy — disable both.
       autocapture={{
         captureScreens: false,
         captureTouches: false,
       }}
     >
-      <AnalyticsScreenTracker />
+      {posthogEnabled ? <AnalyticsScreenTracker /> : null}
       <ErrorBoundaryWithAnalytics>
         <CustomThemeProvider>
           <UserProvider>
@@ -109,14 +115,6 @@ export default function RootLayout() {
         </CustomThemeProvider>
       </ErrorBoundaryWithAnalytics>
     </PostHogProvider>
-  ) : (
-    <ErrorBoundary>
-      <CustomThemeProvider>
-        <UserProvider>
-          <RootLayoutNav onAuthReady={handleAuthReady} />
-        </UserProvider>
-      </CustomThemeProvider>
-    </ErrorBoundary>
   )
 }
 
@@ -178,7 +176,10 @@ function RootLayoutNav({ onAuthReady }: { onAuthReady: () => void }) {
       // intercepted, so shared/indexed links open directly. Skip → /auth always
       // works (it sets intro-shown), so the user is never trapped.
       const isEntrySurface = pathname === '/' || inLandingPage
-      if (!introShown && isEntrySurface && !inIntroPage) {
+      // Native-only first-run: the /intro explainer is for first-time iOS app
+      // users. On web, visitors land on the marketing site (/landing) — don't
+      // bounce them into /intro (which also broke "Back to home" from /auth).
+      if (Platform.OS !== 'web' && !introShown && isEntrySurface && !inIntroPage) {
         router.replace('/intro')
         return
       }
