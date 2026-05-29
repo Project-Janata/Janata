@@ -2,20 +2,19 @@ import { View, Text, Pressable } from 'react-native'
 import { usePathname, useRouter } from 'expo-router'
 import { House, Compass, Newspaper } from 'lucide-react-native'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
-import { useUser, useTheme } from '../contexts'
-import Avatar from './Avatar'
+import { useTheme } from '../contexts'
 
+// Profile is no longer a bottom-bar tab — it's reached via the avatar in the
+// top-right of TabHeader (matching iOS). Bottom nav is just the primary tabs.
 const NAV_ITEMS = [
   { label: 'Home', href: '/', icon: House },
   { label: 'Explore', href: '/explore', icon: Compass },
   { label: 'Feed', href: '/feed', icon: Newspaper },
-  { label: 'Profile', href: '/profile', icon: null },
 ] as const
 
 export default function WebBottomNav() {
   const pathname = usePathname()
   const router = useRouter()
-  const { user } = useUser()
   const { isDark } = useTheme()
   const insets = useSafeAreaInsets()
 
@@ -49,20 +48,7 @@ export default function WebBottomNav() {
             accessibilityLabel={label}
             style={{ flex: 1, alignItems: 'center', justifyContent: 'center', gap: 2 }}
           >
-            {href === '/profile' ? (
-              <Avatar
-                image={user?.profileImage ?? undefined}
-                name={
-                  user?.firstName
-                    ? `${user.firstName} ${user.lastName ?? ''}`.trim()
-                    : user?.username
-                }
-                size={24}
-                style={{ borderWidth: on ? 2 : 0, borderColor: ACTIVE }}
-              />
-            ) : Icon ? (
-              <Icon size={24} color={color} />
-            ) : null}
+            <Icon size={24} color={color} />
             <Text style={{ fontFamily: 'Inclusive Sans', fontSize: 10, color }}>{label}</Text>
           </Pressable>
         )
