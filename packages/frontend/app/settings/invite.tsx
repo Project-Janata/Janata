@@ -1,4 +1,4 @@
-import { View, Text, Share, Pressable, Platform } from 'react-native'
+import { View, Text, Share, Pressable, Platform, Linking } from 'react-native'
 import { useState, useEffect } from 'react'
 import {
   UserPlus,
@@ -43,12 +43,48 @@ export default function InviteScreen() {
       .catch(() => {})
   }, [user])
 
-  const handleCopy = () => {
+  const isWeb = Platform.OS === 'web'
+
+  // Primary action: copy on web (clipboard), native share sheet on device.
+  const handleCopy = async () => {
     if (!inviteUrl) return
-    Share.share({ message: inviteUrl })
-    track('invite_link_shared', { source: 'invite_screen', method: 'share_button', invite_code: inviteCode })
+    try {
+      if (isWeb && typeof navigator !== 'undefined' && navigator.clipboard) {
+        await navigator.clipboard.writeText(inviteUrl)
+      } else {
+        await Share.share({ message: inviteUrl })
+      }
+    } catch {
+      // user dismissed share / clipboard blocked — no-op
+    }
+    track('invite_link_shared', { source: 'invite_screen', method: isWeb ? 'copy' : 'share_button', invite_code: inviteCode })
     setCopied(true)
     setTimeout(() => setCopied(false), 2000)
+  }
+
+  // Share-via tiles. Linking.openURL works on web (new tab / app handler) and
+  // native; "Other" uses the native share sheet or the Web Share API.
+  const openVia = (url: string, method: string) => {
+    if (!inviteUrl) return
+    Linking.openURL(url).catch(() => {})
+    track('invite_link_shared', { source: 'invite_screen', method, invite_code: inviteCode })
+  }
+  const shareOther = async () => {
+    if (!inviteUrl) return
+    try {
+      if (isWeb && typeof navigator !== 'undefined' && (navigator as any).share) {
+        await (navigator as any).share({ text: inviteUrl, url: inviteUrl })
+      } else if (isWeb && typeof navigator !== 'undefined' && navigator.clipboard) {
+        await navigator.clipboard.writeText(inviteUrl)
+        setCopied(true)
+        setTimeout(() => setCopied(false), 2000)
+      } else {
+        await Share.share({ message: inviteUrl })
+      }
+    } catch {
+      // dismissed — no-op
+    }
+    track('invite_link_shared', { source: 'invite_screen', method: 'other', invite_code: inviteCode })
   }
 
   return (
@@ -124,7 +160,9 @@ export default function InviteScreen() {
               {copied ? (
                 <Check size={14} color={c.accent} strokeWidth={2.5} />
               ) : (
-                <Text style={{ fontSize: 13, color: '#fff', fontWeight: '600' }}>Share</Text>
+                <Text style={{ fontSize: 13, color: '#fff', fontWeight: '600' }}>
+                  {isWeb ? 'Copy' : 'Share'}
+                </Text>
               )}
             </Pressable>
           </View>
@@ -150,30 +188,45 @@ export default function InviteScreen() {
         <View
           style={{ flexDirection: 'row', gap: 36, alignItems: 'flex-start', alignSelf: 'center' }}
         >
-          <View style={{ gap: 8, alignItems: 'center' }}>
+          <Pressable
+            style={{ gap: 8, alignItems: 'center' }}
+            disabled={!inviteUrl}
+            onPress={() => openVia(`sms:&body=${encodeURIComponent(inviteUrl ?? '')}`, 'messages')}
+          >
             <IconBadge size={56} color="#5ec26a">
               <MessageCircle size={32} color="#fff" strokeWidth={2} />
             </IconBadge>
             <Text style={{ fontSize: 12, color: c.text, fontWeight: '500' }}>Messages</Text>
-          </View>
-          <View style={{ gap: 8, alignItems: 'center' }}>
+          </Pressable>
+          <Pressable
+            style={{ gap: 8, alignItems: 'center' }}
+            disabled={!inviteUrl}
+            onPress={() => openVia(`https://wa.me/?text=${encodeURIComponent(inviteUrl ?? '')}`, 'whatsapp')}
+          >
             <IconBadge size={56} color="#25D366">
               <FontAwesome5 name="whatsapp" size={32} color="#fff" />
             </IconBadge>
             <Text style={{ fontSize: 12, color: c.text, fontWeight: '500' }}>WhatsApp</Text>
-          </View>
-          <View style={{ gap: 8, alignItems: 'center' }}>
+          </Pressable>
+          <Pressable
+            style={{ gap: 8, alignItems: 'center' }}
+            disabled={!inviteUrl}
+            onPress={() =>
+              openVia(
+                `mailto:?subject=${encodeURIComponent('Join me on Janata')}&body=${encodeURIComponent(inviteUrl ?? '')}`,
+                'email'
+              )
+            }
+          >
             <IconBadge size={56} color="#4d81ee">
               <Mail size={32} color="#fff" strokeWidth={2} />
             </IconBadge>
             <Text style={{ fontSize: 12, color: c.text, fontWeight: '500' }}>Email</Text>
-          </View>
+          </Pressable>
           <Pressable
             style={{ gap: 8, alignItems: 'center' }}
-            onPress={() => {
-              Share.share({ message: inviteUrl ?? '' })
-              track('invite_link_shared', { source: 'invite_screen', method: 'other', invite_code: inviteCode })
-            }}
+            disabled={!inviteUrl}
+            onPress={shareOther}
           >
             <IconBadge size={56} color="#6c757d">
               <EllipsisIcon size={32} color="#fff" strokeWidth={2} />
