@@ -1,6 +1,6 @@
 import React from 'react'
 import { Pressable, Text, TextInput, View } from 'react-native'
-import { Building2, CalendarDays, ChevronLeft, PencilLine, Search } from 'lucide-react-native'
+import { Building2, CalendarDays, PencilLine, Search } from 'lucide-react-native'
 import { BoardPostCard, EmptyPanel, ThreadPanel, type ThreadPanelColors } from '../boards'
 import { Avatar } from '../ui'
 import { useUser } from '../contexts'
@@ -82,18 +82,7 @@ export function FeedWorkspace({
     const multiSource = new Set(posts.map((p) => p.sourceTitle)).size > 1
     // The primary column is a single social feed (Twitter-style). Selecting a
     // post swaps the column in place to the thread; the context rail stays put.
-    const column = selectedPost ? (
-      <View style={{ gap: 14 }}>
-        <BackRow label={selectedPost.sourceLabel} colors={colors} onBack={onBack} />
-        <PostThread
-          post={selectedPost}
-          colors={colors}
-          hideSourceChip
-          onPostChanged={onPostChanged}
-          onPostDeleted={onPostDeleted}
-        />
-      </View>
-    ) : posts.length === 0 ? (
+    const column = posts.length === 0 ? (
       hasQuery ? (
         <EmptyPanel title="No posts found" subtitle="Try a different search." colors={colors} />
       ) : (
@@ -114,21 +103,32 @@ export function FeedWorkspace({
         {groups.length > 0 ? (
           <ComposePrompt colors={colors} centerName={centerName} onPress={onCompose} />
         ) : null}
-        {/* Individual post cards, same component as the Home feed peek, so the
-            feed reads consistently with the rest of the app. The per-post board
-            label only appears when the feed actually spans more than one board
-            (otherwise the rail already names the single board). */}
+        {/* Single feed stream. Tapping a card expands it IN PLACE to reveal the
+            thread (replies + composer) instead of navigating to a separate
+            view; the rest of the feed stays put. One card expanded at a time. */}
         <View style={{ gap: 12 }}>
-          {posts.map((post) => (
-            <BoardPostCard
-              key={post.id}
-              message={post}
-              colors={threadColors}
-              asCard
-              showSource={multiSource}
-              onPress={() => onSelectPost(post.id)}
-            />
-          ))}
+          {posts.map((post) =>
+            post.id === selectedPost?.id ? (
+              <PostThread
+                key={post.id}
+                post={post}
+                colors={colors}
+                hideSourceChip
+                onCollapse={onBack}
+                onPostChanged={onPostChanged}
+                onPostDeleted={onPostDeleted}
+              />
+            ) : (
+              <BoardPostCard
+                key={post.id}
+                message={post}
+                colors={threadColors}
+                asCard
+                showSource={multiSource}
+                onPress={() => onSelectPost(post.id)}
+              />
+            )
+          )}
         </View>
       </View>
     )
@@ -170,50 +170,6 @@ export function FeedWorkspace({
       onOpenGroup={onOpenGroup}
       onSelectPost={onSelectPost}
     />
-  )
-}
-
-// "← Feed" + the board chip, shown above the thread when a post is open.
-function BackRow({
-  label,
-  colors,
-  onBack,
-}: {
-  label?: string
-  colors: AppColors
-  onBack?: () => void
-}) {
-  return (
-    <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12 }}>
-      <Pressable
-        onPress={onBack}
-        accessibilityRole="button"
-        accessibilityLabel="Back to feed"
-        hitSlop={8}
-        style={{ flexDirection: 'row', alignItems: 'center', gap: 2 }}
-      >
-        <ChevronLeft size={18} color={colors.textSecondary} />
-        <Text style={{ fontFamily: 'Inclusive Sans', fontSize: 14, color: colors.textSecondary }}>Feed</Text>
-      </Pressable>
-      {label ? (
-        <View
-          style={{
-            flexDirection: 'row',
-            alignItems: 'center',
-            gap: 5,
-            backgroundColor: colors.accentSoft,
-            borderRadius: 8,
-            paddingHorizontal: 9,
-            paddingVertical: 4,
-          }}
-        >
-          <Building2 size={12} color={colors.accent} strokeWidth={2.3} />
-          <Text style={{ fontSize: 12, fontWeight: '600', color: colors.accent }} numberOfLines={1}>
-            {label}
-          </Text>
-        </View>
-      ) : null}
-    </View>
   )
 }
 
