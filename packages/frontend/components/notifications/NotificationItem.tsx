@@ -5,7 +5,7 @@
  */
 
 import React from 'react'
-import { View, Text, TouchableOpacity, StyleSheet } from 'react-native'
+import { View, Text, TouchableOpacity } from 'react-native'
 import type { Notification } from '../../utils/notificationService'
 import { getNotificationTypeName } from '../../utils/notificationService'
 import { useColors } from '../../hooks/useColors'
@@ -25,17 +25,21 @@ export const NotificationItem: React.FC<NotificationItemProps> = ({
   onArchive,
   onDelete,
 }) => {
-  const c = useColors()
   const timestamp = new Date(notification.createdAt)
   const timeString = getTimeString(timestamp)
+  const c = useColors()
 
   return (
     <TouchableOpacity
-      style={[
-        styles.container,
-        { borderBottomColor: c.divider, backgroundColor: c.card },
-        !notification.isRead && { backgroundColor: c.cardActive },
-      ]}
+      style={{
+        flexDirection: 'row',
+        paddingVertical: 12,
+        paddingHorizontal: 16,
+        borderBottomWidth: 1,
+        borderBottomColor: c.border,
+        backgroundColor: notification.isRead ? c.card : c.surface,
+        alignItems: 'center',
+      }}
       onPress={() => {
         if (!notification.isRead && onMarkAsRead) {
           onMarkAsRead()
@@ -44,45 +48,50 @@ export const NotificationItem: React.FC<NotificationItemProps> = ({
       }}
       activeOpacity={0.7}
     >
-      <View style={styles.content}>
-        <View style={styles.header}>
-          <Text
-            style={[
-              styles.title,
-              { color: c.text },
-              !notification.isRead && styles.unreadTitle,
-            ]}
-          >
+      <View style={{ flex: 1, marginRight: 8 }}>
+        <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 4 }}>
+          <Text style={{
+            fontSize: 16,
+            fontWeight: notification.isRead ? '500' : '700',
+            color: c.text,
+            flex: 1,
+          }}>
             {notification.title}
           </Text>
-          <Text style={[styles.time, { color: c.textFaint }]}>{timeString}</Text>
+          <Text style={{ fontSize: 12, color: c.textFaint, marginLeft: 8 }}>{timeString}</Text>
         </View>
-        <Text style={[styles.message, { color: c.textSecondary }]} numberOfLines={2}>
+        <Text style={{ fontSize: 14, color: c.textSecondary, marginBottom: 4, lineHeight: 20 }} numberOfLines={2}>
           {notification.message}
         </Text>
-        <Text style={[styles.type, { color: c.textMuted }]}>
+        <Text style={{ fontSize: 12, color: c.textFaint, fontStyle: 'italic' }}>
           {getNotificationTypeName(notification.typeId)}
         </Text>
       </View>
 
       {!notification.isRead && (
-        <View style={[styles.unreadIndicator, { backgroundColor: c.accent }]} />
+        <View style={{
+          width: 8,
+          height: 8,
+          borderRadius: 4,
+          backgroundColor: c.accent,
+          marginRight: 8,
+        }} />
       )}
 
-      <View style={styles.actions}>
+      <View style={{ flexDirection: 'row', gap: 4 }}>
         {!notification.isRead && onMarkAsRead && (
-          <TouchableOpacity onPress={onMarkAsRead} style={[styles.actionButton, { backgroundColor: c.surface }]}>
-            <Text style={[styles.actionText, { color: c.text }]}>✓</Text>
+          <TouchableOpacity onPress={onMarkAsRead} style={{ width: 32, height: 32, borderRadius: 4, backgroundColor: c.surface, justifyContent: 'center', alignItems: 'center' }}>
+            <Text style={{ fontSize: 16 }}>✓</Text>
           </TouchableOpacity>
         )}
         {onArchive && (
-          <TouchableOpacity onPress={onArchive} style={[styles.actionButton, { backgroundColor: c.surface }]}>
-            <Text style={styles.actionText}>📥</Text>
+          <TouchableOpacity onPress={onArchive} style={{ width: 32, height: 32, borderRadius: 4, backgroundColor: c.surface, justifyContent: 'center', alignItems: 'center' }}>
+            <Text style={{ fontSize: 16 }}>📥</Text>
           </TouchableOpacity>
         )}
         {onDelete && (
-          <TouchableOpacity onPress={onDelete} style={[styles.actionButton, { backgroundColor: c.surface }]}>
-            <Text style={[styles.actionText, { color: c.text }]}>✕</Text>
+          <TouchableOpacity onPress={onDelete} style={{ width: 32, height: 32, borderRadius: 4, backgroundColor: c.surface, justifyContent: 'center', alignItems: 'center' }}>
+            <Text style={{ fontSize: 16 }}>✕</Text>
           </TouchableOpacity>
         )}
       </View>
@@ -104,64 +113,3 @@ function getTimeString(date: Date): string {
 
   return date.toLocaleDateString()
 }
-
-const styles = StyleSheet.create({
-  container: {
-    flexDirection: 'row',
-    paddingVertical: 12,
-    paddingHorizontal: 16,
-    borderBottomWidth: 1,
-    alignItems: 'center',
-  },
-  content: {
-    flex: 1,
-    marginRight: 8,
-  },
-  header: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    marginBottom: 4,
-  },
-  title: {
-    fontSize: 16,
-    fontWeight: '500',
-    flex: 1,
-  },
-  unreadTitle: {
-    fontWeight: '700',
-  },
-  time: {
-    fontSize: 12,
-    marginLeft: 8,
-  },
-  message: {
-    fontSize: 14,
-    marginBottom: 4,
-    lineHeight: 20,
-  },
-  type: {
-    fontSize: 12,
-    fontStyle: 'italic',
-  },
-  unreadIndicator: {
-    width: 8,
-    height: 8,
-    borderRadius: 4,
-    marginRight: 8,
-  },
-  actions: {
-    flexDirection: 'row',
-    gap: 4,
-  },
-  actionButton: {
-    width: 32,
-    height: 32,
-    borderRadius: 4,
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  actionText: {
-    fontSize: 16,
-  },
-})
