@@ -9,7 +9,7 @@ import {
   Platform,
   useWindowDimensions,
 } from 'react-native'
-import { Camera, Pencil, MapPin } from 'lucide-react-native'
+import { Camera, Pencil, MapPin, BadgeCheck } from 'lucide-react-native'
 import { useUser, useTheme } from '../../components/contexts'
 import { Text } from '../../components/ui'
 import BirthdatePicker from '../../components/profile/BirthdatePicker'
@@ -520,6 +520,16 @@ export default function Profile() {
                 (user?.username ? `@${user.username}` : '') ||
                 '—'}
             </Text>
+            {user?.isVerified ? (
+              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4, marginTop: 6 }}>
+                <BadgeCheck size={14} color="#E8862A" />
+                <Text style={{ fontFamily: 'Inclusive Sans', fontSize: 13, color: '#E8862A' }}>
+                  {allCenters.find((c) => c.centerID === profileData.centerID)?.name
+                    ? `Verified by ${allCenters.find((c) => c.centerID === profileData.centerID)?.name}`
+                    : 'Verified'}
+                </Text>
+              </View>
+            ) : null}
             {isEditing && user?.email && user.email !== user.username && (
               <Text
                 style={{
@@ -1051,6 +1061,16 @@ export default function Profile() {
                 (user?.username ? `@${user.username}` : '') ||
                 '—'}
             </Text>
+            {user?.isVerified ? (
+              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4, marginTop: 6 }}>
+                <BadgeCheck size={14} color="#E8862A" />
+                <Text style={{ fontFamily: 'Inclusive Sans', fontSize: 13, color: '#E8862A' }}>
+                  {allCenters.find((c) => c.centerID === profileData.centerID)?.name
+                    ? `Verified by ${allCenters.find((c) => c.centerID === profileData.centerID)?.name}`
+                    : 'Verified'}
+                </Text>
+              </View>
+            ) : null}
             {isEditing && user?.email && user.email !== user.username && (
               <Text style={{ fontFamily: 'Inclusive Sans', fontSize: 13, color: mutedTextColor }}>
                 @{user.username}
