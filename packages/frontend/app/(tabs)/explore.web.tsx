@@ -385,7 +385,7 @@ function EventPanelInner({
       <AuthPromptModal
         visible={showAuthPrompt}
         onClose={() => setShowAuthPrompt(false)}
-        returnTo={`/?detail=event&id=${eventId}`}
+        returnTo={`/explore?detail=event&id=${eventId}`}
         eventTitle={event.title}
       />
     </>
