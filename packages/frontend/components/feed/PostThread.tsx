@@ -3,6 +3,7 @@ import { ActivityIndicator, Modal, Pressable, ScrollView, Text, TextInput, View 
 import {
   Building2,
   CalendarDays,
+  ChevronUp,
   MoreHorizontal,
   Pencil,
   Pin,
@@ -41,6 +42,7 @@ export function PostThread({
   fullScreen = false,
   bottomInset = 0,
   hideSourceChip = false,
+  onCollapse,
   onPostChanged,
   onPostDeleted,
 }: {
@@ -51,6 +53,9 @@ export function PostThread({
   // Desktop renders its own "← Feed" + board chip above the thread, so the
   // card's SourceBoardChip would just repeat it. Hide it in that case.
   hideSourceChip?: boolean
+  // When set, the thread is an inline-expanded feed card: render a "Hide"
+  // control so the user can collapse it back to a normal post card.
+  onCollapse?: () => void
   // Refresh the feed list after a pin/edit/reaction so it reflects the change.
   onPostChanged?: () => void
   // Close the detail surface after the post is deleted.
@@ -228,7 +233,7 @@ export function PostThread({
         // Desktop renders the thread inside a card, so the content needs real
         // padding on all sides (the old 4/0 was for the master-detail pane).
         paddingHorizontal: fullScreen ? 16 : 18,
-        paddingTop: fullScreen ? 14 : 18,
+        paddingTop: fullScreen ? 14 : onCollapse ? 6 : 18,
         paddingBottom: 16,
       }}
     >
@@ -356,11 +361,33 @@ export function PostThread({
           style={{
             borderRadius: 20,
             borderWidth: 1,
-            borderColor: colors.border,
+            borderColor: colors.accentSoft,
             backgroundColor: colors.card,
             overflow: 'hidden',
           }}
         >
+          {onCollapse ? (
+            <Pressable
+              onPress={onCollapse}
+              accessibilityRole="button"
+              accessibilityLabel="Hide replies"
+              hitSlop={6}
+              style={{
+                flexDirection: 'row',
+                alignItems: 'center',
+                justifyContent: 'flex-end',
+                gap: 4,
+                paddingHorizontal: 18,
+                paddingTop: 12,
+                paddingBottom: 2,
+              }}
+            >
+              <ChevronUp size={15} color={colors.textMuted} />
+              <Text style={{ fontFamily: 'Inclusive Sans', fontSize: 12.5, color: colors.textMuted }}>
+                Hide
+              </Text>
+            </Pressable>
+          ) : null}
           {content}
           {composer}
         </View>
