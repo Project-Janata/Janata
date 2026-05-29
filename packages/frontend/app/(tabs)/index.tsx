@@ -341,13 +341,16 @@ export default function HomeScreen() {
       }}
       showsVerticalScrollIndicator={false}
     >
+      {/* Mobile single column: lead with the schedule (the desktop "main"
+          column — Up Next + Coming Up), then wrap the center/boards content
+          (the desktop right rail) below it, so the order matches desktop. */}
       <View style={{ width: '100%', maxWidth: 640, alignSelf: 'center', gap: 22 }}>
         {greeting}
         {welcomeBanner}
-        {firstRunOverview}
         {upNextSection}
-        {boardsSection}
         {weekSection}
+        {firstRunOverview}
+        {boardsSection}
       </View>
     </ScrollView>
   )
