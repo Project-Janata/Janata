@@ -204,24 +204,24 @@ function SettingsPanel({ visible, onClose, onLogout }) {
         </Pressable>
         <Pressable
           className={`flex-row items-center mb-2 p-2 rounded-lg ${
-            pathname === '/settings/preferences'
+            pathname === '/settings'
               ? 'bg-primary'
               : 'hover:bg-gray-100 dark:hover:bg-neutral-800'
           }`}
           onPress={() => {
             track('nav_settings_opened', { source: 'settings_panel', destination: 'preferences' })
             onClose()
-            router.push('/settings/preferences')
+            router.push('/settings')
           }}
         >
           <Settings
             size={16}
-            color={pathname === '/settings/preferences' ? '#fff' : isDark ? '#fff' : '#374151'}
+            color={pathname === '/settings' ? '#fff' : isDark ? '#fff' : '#374151'}
             className="mr-3"
           />
           <Text
             className={`font-sans ${
-              pathname === '/settings/preferences'
+              pathname === '/settings'
                 ? 'text-white font-sans'
                 : 'text-content dark:text-content-dark'
             }`}
