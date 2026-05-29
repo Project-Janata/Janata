@@ -3,7 +3,7 @@ import { Platform, View, Text, Pressable, Image, StatusBar, useWindowDimensions 
 import { useState, useEffect } from 'react'
 import { useUser, useTheme } from '../../components/contexts'
 import { HeaderActionProvider } from '../../components/contexts/HeaderActionContext'
-import { House, Newspaper, Compass, Plus, Bell } from 'lucide-react-native'
+import { House, Newspaper, Compass, Bell } from 'lucide-react-native'
 import SettingsPanel from '../../components/settings/SettingsPanel'
 import Logo from '../../components/ui/Logo'
 import TabHeader from '../../components/ui/TabHeader'
@@ -15,7 +15,6 @@ export default function TabLayout() {
   const { user, loading, logout } = useUser()
   const { isDark } = useTheme()
   const [settingsVisible, setSettingsVisible] = useState(false)
-  const canCreate = !!user
   const { track } = useAnalytics()
   const tabBarShowLabel = Platform.OS === 'web'
   const { width } = useWindowDimensions()
@@ -108,31 +107,9 @@ export default function TabLayout() {
           </View>
         </View>
 
-        {/* Right: Actions + Profile */}
+        {/* Right: Actions + Profile. (Create Event lives on the Explore page,
+            not the nav, to keep the top bar focused on navigation.) */}
         <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
-          {canCreate && (
-            <Pressable
-              style={{
-                paddingHorizontal: 12,
-                paddingVertical: 8,
-                borderRadius: 999,
-                flexDirection: 'row',
-                alignItems: 'center',
-                gap: 6,
-                borderWidth: 1.5,
-                borderColor: '#E8862A',
-              }}
-              onPress={() => {
-                track('nav_create_event', { source: 'web_header' })
-                router.push('/explore?action=create')
-              }}
-            >
-              <Plus size={16} color="#E8862A" />
-              <Text style={{ fontFamily: 'Inclusive Sans', fontSize: 13, color: '#E8862A' }}>
-                Create Event
-              </Text>
-            </Pressable>
-          )}
           {user && (
             <Pressable
               accessibilityRole="button"
