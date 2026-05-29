@@ -27,13 +27,12 @@ describe('WebBottomNav', () => {
     ;(useUser as jest.Mock).mockReturnValue({ user: { username: 'kish' } })
   })
 
-  it('renders all five tabs', () => {
+  it('renders the primary tabs (Profile lives in the header, not the bottom bar)', () => {
     render(<WebBottomNav />)
     expect(screen.getByText('Home')).toBeTruthy()
     expect(screen.getByText('Explore')).toBeTruthy()
     expect(screen.getByText('Feed')).toBeTruthy()
-    expect(screen.getByText('Messages')).toBeTruthy()
-    expect(screen.getByText('Profile')).toBeTruthy()
+    expect(screen.queryByText('Profile')).toBeNull()
   })
 
   it('navigates to the tab route when pressed', () => {

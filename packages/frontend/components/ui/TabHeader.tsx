@@ -1,5 +1,5 @@
 import React from 'react'
-import { View, Text, Pressable, Platform } from 'react-native'
+import { View, Text, Pressable } from 'react-native'
 import { useRouter } from 'expo-router'
 import { Plus, Settings, Bell } from 'lucide-react-native'
 import { usePostHog } from 'posthog-react-native'
@@ -21,8 +21,8 @@ interface TabHeaderProps {
   rightContent?: React.ReactNode
   /**
    * Show the profile avatar as a top-right entry point to `/profile`.
-   * Native only — on web the profile entry lives in WebHeader / WebBottomNav.
-   * Defaults to true; pass false on the profile screen itself.
+   * Shown on native and on mobile web (matching iOS); desktop web uses its
+   * own WebHeader avatar. Defaults to true; pass false on the profile screen.
    */
   showProfile?: boolean
 }
@@ -144,7 +144,7 @@ export default function TabHeader({
             <ActionIcon />
           </Pressable>
         )}
-        {showProfile && Platform.OS !== 'web' && user && (
+        {showProfile && user && (
           <Pressable
             onPress={() => {
               posthog?.capture('nav_profile_opened')
