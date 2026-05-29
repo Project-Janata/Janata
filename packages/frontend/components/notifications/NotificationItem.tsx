@@ -8,6 +8,7 @@ import React from 'react'
 import { View, Text, TouchableOpacity, StyleSheet } from 'react-native'
 import type { Notification } from '../../utils/notificationService'
 import { getNotificationTypeName } from '../../utils/notificationService'
+import { useColors } from '../../hooks/useColors'
 
 interface NotificationItemProps {
   notification: Notification
@@ -24,6 +25,7 @@ export const NotificationItem: React.FC<NotificationItemProps> = ({
   onArchive,
   onDelete,
 }) => {
+  const c = useColors()
   const timestamp = new Date(notification.createdAt)
   const timeString = getTimeString(timestamp)
 
@@ -31,7 +33,8 @@ export const NotificationItem: React.FC<NotificationItemProps> = ({
     <TouchableOpacity
       style={[
         styles.container,
-        !notification.isRead && styles.unread,
+        { borderBottomColor: c.divider, backgroundColor: c.card },
+        !notification.isRead && { backgroundColor: c.cardActive },
       ]}
       onPress={() => {
         if (!notification.isRead && onMarkAsRead) {
@@ -43,35 +46,43 @@ export const NotificationItem: React.FC<NotificationItemProps> = ({
     >
       <View style={styles.content}>
         <View style={styles.header}>
-          <Text style={[styles.title, !notification.isRead && styles.unreadTitle]}>
+          <Text
+            style={[
+              styles.title,
+              { color: c.text },
+              !notification.isRead && styles.unreadTitle,
+            ]}
+          >
             {notification.title}
           </Text>
-          <Text style={styles.time}>{timeString}</Text>
+          <Text style={[styles.time, { color: c.textFaint }]}>{timeString}</Text>
         </View>
-        <Text style={styles.message} numberOfLines={2}>
+        <Text style={[styles.message, { color: c.textSecondary }]} numberOfLines={2}>
           {notification.message}
         </Text>
-        <Text style={styles.type}>
+        <Text style={[styles.type, { color: c.textMuted }]}>
           {getNotificationTypeName(notification.typeId)}
         </Text>
       </View>
 
-      {!notification.isRead && <View style={styles.unreadIndicator} />}
+      {!notification.isRead && (
+        <View style={[styles.unreadIndicator, { backgroundColor: c.accent }]} />
+      )}
 
       <View style={styles.actions}>
         {!notification.isRead && onMarkAsRead && (
-          <TouchableOpacity onPress={onMarkAsRead} style={styles.actionButton}>
-            <Text style={styles.actionText}>✓</Text>
+          <TouchableOpacity onPress={onMarkAsRead} style={[styles.actionButton, { backgroundColor: c.surface }]}>
+            <Text style={[styles.actionText, { color: c.text }]}>✓</Text>
           </TouchableOpacity>
         )}
         {onArchive && (
-          <TouchableOpacity onPress={onArchive} style={styles.actionButton}>
+          <TouchableOpacity onPress={onArchive} style={[styles.actionButton, { backgroundColor: c.surface }]}>
             <Text style={styles.actionText}>📥</Text>
           </TouchableOpacity>
         )}
         {onDelete && (
-          <TouchableOpacity onPress={onDelete} style={styles.actionButton}>
-            <Text style={styles.actionText}>✕</Text>
+          <TouchableOpacity onPress={onDelete} style={[styles.actionButton, { backgroundColor: c.surface }]}>
+            <Text style={[styles.actionText, { color: c.text }]}>✕</Text>
           </TouchableOpacity>
         )}
       </View>
@@ -100,12 +111,7 @@ const styles = StyleSheet.create({
     paddingVertical: 12,
     paddingHorizontal: 16,
     borderBottomWidth: 1,
-    borderBottomColor: '#f0f0f0',
-    backgroundColor: '#fff',
     alignItems: 'center',
-  },
-  unread: {
-    backgroundColor: '#f9f9f9',
   },
   content: {
     flex: 1,
@@ -120,7 +126,6 @@ const styles = StyleSheet.create({
   title: {
     fontSize: 16,
     fontWeight: '500',
-    color: '#333',
     flex: 1,
   },
   unreadTitle: {
@@ -128,25 +133,21 @@ const styles = StyleSheet.create({
   },
   time: {
     fontSize: 12,
-    color: '#999',
     marginLeft: 8,
   },
   message: {
     fontSize: 14,
-    color: '#666',
     marginBottom: 4,
     lineHeight: 20,
   },
   type: {
     fontSize: 12,
-    color: '#999',
     fontStyle: 'italic',
   },
   unreadIndicator: {
     width: 8,
     height: 8,
     borderRadius: 4,
-    backgroundColor: '#007AFF',
     marginRight: 8,
   },
   actions: {
@@ -157,7 +158,6 @@ const styles = StyleSheet.create({
     width: 32,
     height: 32,
     borderRadius: 4,
-    backgroundColor: '#f0f0f0',
     justifyContent: 'center',
     alignItems: 'center',
   },
