@@ -156,16 +156,22 @@ export default function HomeScreen() {
     </View>
   )
 
+  const welcomeBanner = isNewUser ? (
+    <WelcomeBanner
+      c={c}
+      onExplore={() => {
+        track('home_first_run_explore_pressed')
+        router.push('/explore' as never)
+      }}
+    />
+  ) : null
+
   const firstRunOverview = isNewUser ? (
     <FirstRunOverview
       c={c}
       detailColors={detailColors}
       center={userCenter}
       peek={boardPeek}
-      onExplore={() => {
-        track('home_first_run_explore_pressed')
-        router.push('/explore' as never)
-      }}
       onFeed={() => {
         track('home_first_run_feed_pressed')
         router.push('/feed' as never)
@@ -306,6 +312,7 @@ export default function HomeScreen() {
       >
         <View style={{ width: '100%', maxWidth: 1040, alignSelf: 'center', gap: 28 }}>
           {greeting}
+          {welcomeBanner}
           <View style={{ flexDirection: 'row', alignItems: 'flex-start', gap: 32 }}>
             <View style={{ flex: 1, minWidth: 0, gap: 28 }}>
               {upNextSection}
@@ -333,6 +340,7 @@ export default function HomeScreen() {
     >
       <View style={{ width: '100%', maxWidth: 640, alignSelf: 'center', gap: 22 }}>
         {greeting}
+        {welcomeBanner}
         {firstRunOverview}
         {upNextSection}
         {boardsSection}
@@ -342,17 +350,46 @@ export default function HomeScreen() {
   )
 }
 
-// First-run overview shown to members who haven't engaged yet. A single tight
-// welcome line (orient + Explore), a card for their center (or a prompt to pick
-// one), and a peek at their board feed when there's activity. The greeting and
-// the real Up Next / Coming Up sections render around it, so Home leads with
-// useful content instead of a redundant feature tour.
+// One tight welcome line (orient + Explore) instead of a 3-row feature tour —
+// the real content (Your Center, Up Next, Coming Up) already shows what the app
+// does, so a single orienting sentence + Explore CTA is enough. Rendered as a
+// full-width top row on desktop and inline at the top of the column on mobile.
+function WelcomeBanner({ c, onExplore }: { c: AppColors; onExplore: () => void }) {
+  const cardBase = { borderRadius: 18, borderWidth: 1, borderColor: c.border, backgroundColor: c.card } as const
+  return (
+    <View style={[cardBase, { flexDirection: 'row', alignItems: 'center', gap: 14, padding: 16 }]}>
+      <View style={{ width: 44, height: 44, borderRadius: 13, backgroundColor: c.accentSoft, alignItems: 'center', justifyContent: 'center' }}>
+        <Compass size={21} color={c.accent} />
+      </View>
+      <View style={{ flex: 1, gap: 2 }}>
+        <Text style={{ fontFamily: 'Inclusive Sans', fontSize: 16, color: c.text }}>
+          Welcome to Janata
+        </Text>
+        <Text style={{ fontSize: 13.5, lineHeight: 19, color: c.textMuted }}>
+          Find satsangs, camps, and classes near you — and RSVP in a tap.
+        </Text>
+      </View>
+      <Pressable
+        onPress={onExplore}
+        accessibilityRole="button"
+        accessibilityLabel="Explore events"
+        style={{ paddingVertical: 9, paddingHorizontal: 16, borderRadius: 999, backgroundColor: c.accent }}
+      >
+        <Text style={{ fontFamily: 'Inclusive Sans', fontSize: 13.5, color: c.textInverse }}>Explore</Text>
+      </Pressable>
+    </View>
+  )
+}
+
+// First-run overview shown to members who haven't engaged yet: a card for their
+// center (or a prompt to pick one) and a peek at their board feed when there's
+// activity. The greeting, WelcomeBanner, and the real Up Next / Coming Up
+// sections render around it, so Home leads with useful content.
 function FirstRunOverview({
   c,
   detailColors,
   center,
   peek,
-  onExplore,
   onFeed,
   onChooseCenter,
   onOpenCenter,
@@ -362,7 +399,6 @@ function FirstRunOverview({
   detailColors: ReturnType<typeof useDetailColors>
   center?: DiscoverCenter
   peek: BoardMessage[]
-  onExplore: () => void
   onFeed: () => void
   onChooseCenter: () => void
   onOpenCenter: (id: string) => void
@@ -375,31 +411,6 @@ function FirstRunOverview({
 
   return (
     <View style={{ gap: 22 }}>
-      {/* One tight welcome line instead of a 3-row feature tour — the real
-          content below (Your Center, Up Next, Coming Up) already shows what
-          the app does, so a single orienting sentence + Explore CTA is enough. */}
-      <View style={[cardBase, { flexDirection: 'row', alignItems: 'center', gap: 14, padding: 16 }]}>
-        <View style={{ width: 44, height: 44, borderRadius: 13, backgroundColor: c.accentSoft, alignItems: 'center', justifyContent: 'center' }}>
-          <Compass size={21} color={c.accent} />
-        </View>
-        <View style={{ flex: 1, gap: 2 }}>
-          <Text style={{ fontFamily: 'Inclusive Sans', fontSize: 16, color: c.text }}>
-            Welcome to Janata
-          </Text>
-          <Text style={{ fontSize: 13.5, lineHeight: 19, color: c.textMuted }}>
-            Find satsangs, camps, and classes near you — and RSVP in a tap.
-          </Text>
-        </View>
-        <Pressable
-          onPress={onExplore}
-          accessibilityRole="button"
-          accessibilityLabel="Explore events"
-          style={{ paddingVertical: 9, paddingHorizontal: 16, borderRadius: 999, backgroundColor: c.accent }}
-        >
-          <Text style={{ fontFamily: 'Inclusive Sans', fontSize: 13.5, color: c.textInverse }}>Explore</Text>
-        </Pressable>
-      </View>
-
       <View style={{ gap: 10 }}>
         <Text style={eyebrow}>{center ? 'YOUR CENTER' : 'GET CONNECTED'}</Text>
         {center ? (
