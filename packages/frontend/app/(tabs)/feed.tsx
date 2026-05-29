@@ -86,6 +86,13 @@ function formatDistance(distanceMi?: number) {
   return `${Math.round(distanceMi)} mi`
 }
 
+// "Nearby" already reads as a place, so it never takes " away" — only numeric
+// distances do ("2.3 mi away"). Avoids the "Nearby away" subtitle bug.
+function distancePhrase(distanceLabel?: string) {
+  if (!distanceLabel) return null
+  return distanceLabel === 'Nearby' ? 'Nearby' : `${distanceLabel} away`
+}
+
 function centerToGroup(center: DiscoverCenter, distanceMi?: number): GroupBoard {
   const distanceLabel = formatDistance(distanceMi)
   const locationLabel = extractCityState(center.address) || center.address || 'Center board'
@@ -94,7 +101,7 @@ function centerToGroup(center: DiscoverCenter, distanceMi?: number): GroupBoard 
     kind: 'center',
     title: center.name,
     eyebrow: 'Center board',
-    subtitle: [locationLabel, distanceLabel ? `${distanceLabel} away` : null].filter(Boolean).join(' - '),
+    subtitle: [locationLabel, distancePhrase(distanceLabel)].filter(Boolean).join(' · '),
     meta: 'No posts yet',
     preview: 'No posts yet. Be the first to share something on your boards.',
     unreadCount: 0,
@@ -112,8 +119,8 @@ function eventToGroup(event: EventDisplay, fallbackCenterName?: string, distance
     kind: 'event',
     title: event.title,
     eyebrow: formatEventDateLabel(event.date),
-    subtitle: `${fallbackCenterName || event.location || 'Event board'} - ${event.attendees || 0} going`,
-    meta: distanceLabel ? `${distanceLabel} away` : 'No posts yet',
+    subtitle: `${fallbackCenterName || event.location || 'Event board'} · ${event.attendees || 0} going`,
+    meta: distancePhrase(distanceLabel) || 'No posts yet',
     preview: 'No posts yet. Be the first to share something on your boards.',
     unreadCount: 0,
     messages: [],
@@ -253,7 +260,12 @@ export default function FeedScreen() {
     )
   }, [feedPosts, query])
 
-  const selectedPost = feedPosts.find((post) => post.id === selectedPostId) ?? feedPosts[0]
+  // No implicit default: the desktop feed shows the post stream until the user
+  // explicitly opens a post (in-place swap to the thread). Only resolve a
+  // selected post when there is a real selection.
+  const selectedPost = selectedPostId
+    ? feedPosts.find((post) => post.id === selectedPostId)
+    : undefined
   const mobilePostOpen = !isDesktop && !!selectedPostId
   const nativeDetailOpen = Platform.OS !== 'web' && mobilePostOpen
   const listTopPadding = Platform.OS === 'web' ? 20 : 8
@@ -382,7 +394,7 @@ export default function FeedScreen() {
       <ScrollView
         contentContainerStyle={{
           width: '100%',
-          maxWidth: isDesktop ? 1180 : 640,
+          maxWidth: isDesktop ? 1040 : 640,
           alignSelf: 'center',
           paddingHorizontal: isDesktop ? 24 : 16,
           paddingTop: listTopPadding,
@@ -390,13 +402,17 @@ export default function FeedScreen() {
         }}
         showsVerticalScrollIndicator={false}
       >
-        <FeedHeader
-          query={query}
-          colors={colors}
-          mobileInDetail={mobilePostOpen && !nativeDetailOpen}
-          onBack={closeDetail}
-          onChangeQuery={setQuery}
-        />
+        {/* Desktop moves search into the right context rail (Twitter-style),
+            so only render the full-width search header on mobile/narrow web. */}
+        {!isDesktop ? (
+          <FeedHeader
+            query={query}
+            colors={colors}
+            mobileInDetail={mobilePostOpen && !nativeDetailOpen}
+            onBack={closeDetail}
+            onChangeQuery={setQuery}
+          />
+        ) : null}
 
         {!user ? (
           <SignInCallout
@@ -479,6 +495,9 @@ export default function FeedScreen() {
             threadColors={threadColors}
             isDesktop={isDesktop}
             hasQuery={query.trim().length > 0}
+            query={query}
+            onChangeQuery={setQuery}
+            onBack={closeDetail}
             canAccessBoards={canAccessBoards}
             isSignedIn={!!user}
             nativeDetailOpen={nativeDetailOpen}

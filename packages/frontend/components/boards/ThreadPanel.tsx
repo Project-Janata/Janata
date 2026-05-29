@@ -291,17 +291,22 @@ export function BoardPostCard({
   colors,
   onPress,
   showSource = false,
+  asCard = false,
 }: {
   message: BoardMessage
   colors: ThreadPanelColors
   onPress?: () => void
   showSource?: boolean
+  // Render the white rounded card chrome without forcing the source line.
+  // (showSource still controls the board/event label; asCard just gives the
+  // card frame so single-board feeds can use cards without redundant labels.)
+  asCard?: boolean
 }) {
   const replies = message.replyCount ?? 0
   const reactions = message.reactions ?? []
   const accent = colors.accent ?? '#E8862A'
   const accentSoft = colors.accentSoft ?? '#FFF7ED'
-  const isFeedCard = showSource
+  const isFeedCard = showSource || asCard
   const sourceIcon =
     message.sourceKind === 'event' ? (
       <CalendarDays size={11} color={accent} strokeWidth={2.4} />
@@ -334,7 +339,7 @@ export function BoardPostCard({
         shadowOffset: { width: 0, height: 4 },
       }}
     >
-      {isFeedCard && message.sourceLabel ? (
+      {showSource && message.sourceLabel ? (
         <View style={{ flexDirection: 'row', alignItems: 'center', gap: 7, marginBottom: 10 }}>
           <View
             style={{

@@ -40,6 +40,7 @@ export function PostThread({
   colors,
   fullScreen = false,
   bottomInset = 0,
+  hideSourceChip = false,
   onPostChanged,
   onPostDeleted,
 }: {
@@ -47,6 +48,9 @@ export function PostThread({
   colors: AppColors
   fullScreen?: boolean
   bottomInset?: number
+  // Desktop renders its own "← Feed" + board chip above the thread, so the
+  // card's SourceBoardChip would just repeat it. Hide it in that case.
+  hideSourceChip?: boolean
   // Refresh the feed list after a pin/edit/reaction so it reflects the change.
   onPostChanged?: () => void
   // Close the detail surface after the post is deleted.
@@ -221,12 +225,14 @@ export function PostThread({
   const content = (
     <View
       style={{
-        paddingHorizontal: fullScreen ? 16 : 4,
-        paddingTop: fullScreen ? 14 : 0,
+        // Desktop renders the thread inside a card, so the content needs real
+        // padding on all sides (the old 4/0 was for the master-detail pane).
+        paddingHorizontal: fullScreen ? 16 : 18,
+        paddingTop: fullScreen ? 14 : 18,
         paddingBottom: 16,
       }}
     >
-      <SourceBoardChip post={post} colors={colors} />
+      {hideSourceChip ? null : <SourceBoardChip post={post} colors={colors} />}
       {deleted ? (
         <Text style={{ fontSize: 15, color: colors.textFaint, paddingVertical: 12 }}>
           This post was deleted.
@@ -329,32 +335,10 @@ export function PostThread({
 
   return (
     <View style={{ flex: fullScreen ? 1 : undefined, backgroundColor: colors.bg }}>
-      {!fullScreen ? (
-        <View style={{ paddingHorizontal: 4, paddingTop: 6, paddingBottom: 14, gap: 8 }}>
-          <Text style={{ fontFamily: 'Inclusive Sans', fontSize: 12, color: colors.accent }}>
-            {post.sourceLabel}
-          </Text>
-          <Text
-            style={{
-              fontFamily: 'Inclusive Sans',
-              fontSize: 24,
-              lineHeight: 29,
-              color: colors.text,
-            }}
-          >
-            Post
-          </Text>
-          <Text
-            style={{
-              fontSize: 14,
-              lineHeight: 20,
-              color: colors.textMuted,
-            }}
-          >
-            {post.sourceSubtitle}
-          </Text>
-        </View>
-      ) : null}
+      {/* No standalone header here: the card below leads with SourceBoardChip +
+          the original post, and the desktop feed renders its own "← Feed" back
+          row + board chip above this. (Removed the old literal "Post" title and
+          the malformed sourceSubtitle that read "Boston, MA - Nearby away".) */}
       {fullScreen ? (
         <>
           <ScrollView
@@ -1021,9 +1005,11 @@ function ThreadReplyComposer({
         borderTopWidth: 1,
         borderTopColor: colors.border,
         backgroundColor: colors.surface,
-        paddingTop: compact ? 9 : 10,
-        paddingHorizontal: 12,
-        paddingBottom: compact ? 12 : Math.max(bottomInset, 8) + 8,
+        paddingTop: compact ? 12 : 10,
+        // Align the composer's horizontal inset with the thread content above
+        // it (18 on the desktop card) so the avatars line up.
+        paddingHorizontal: compact ? 18 : 12,
+        paddingBottom: compact ? 14 : Math.max(bottomInset, 8) + 8,
       }}
     >
       {error ? (
