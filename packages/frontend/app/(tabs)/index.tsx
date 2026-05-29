@@ -195,7 +195,7 @@ export default function HomeScreen() {
   const upNextSection = !isNewUser || featured ? (
     <SectionHeader eyebrow="UP NEXT FOR YOU" trailing="See all" accentColor={c.accent} faintColor={c.textFaint} onTrailingPress={() => {
       track('home_see_all_pressed', { section: 'up_next' })
-      router.push('/' as never)
+      router.push('/explore' as never)
     }}>
       {featured ? (
         <FeaturedEventCard
@@ -277,7 +277,7 @@ export default function HomeScreen() {
       faintColor={c.textFaint}
       onTrailingPress={() => {
         track('home_see_all_pressed', { section: signedUpEvents.length > 0 ? 'this_week' : 'coming_up' })
-        router.push('/' as never)
+        router.push((signedUpEvents.length > 0 ? '/events' : '/explore') as never)
       }}
     >
       {weekItems.length > 0 ? (
