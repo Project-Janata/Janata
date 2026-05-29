@@ -1,6 +1,6 @@
 import React, { useCallback, useMemo } from 'react'
 import { ActivityIndicator, Platform, Pressable, ScrollView, Text, View, useWindowDimensions } from 'react-native'
-import { CalendarCheck, ChevronRight, Compass, MapPin, MessageCircle } from 'lucide-react-native'
+import { ChevronRight, Compass, MapPin } from 'lucide-react-native'
 import { useFocusEffect, useRouter } from 'expo-router'
 import { useAnalytics } from '../../utils/analytics'
 import { useUser } from '../../components/contexts'
@@ -130,10 +130,10 @@ export default function HomeScreen() {
   const todayLabel = new Date().toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric' })
 
   // First run: a member still in discovery mode — hasn't joined an event yet.
-  // Rather than a sparse, hard-to-read home, give them a short tour of what
-  // Janata does, a card for their center, and a peek at their board feed when
-  // there's activity — so they grasp the whole app at a glance and have clear
-  // next steps. Real events still render below. Self-resolves once they RSVP.
+  // Give them one tight welcome line, a card for their center, and a peek at
+  // their board feed when there's activity. Real Up Next / Coming Up content
+  // still renders below, so Home leads with useful content rather than a
+  // redundant feature tour. Self-resolves once they RSVP.
   const isNewUser = !!user && signedUpEvents.length === 0
 
   if (discoverLoading || (user ? myEventsLoading : false)) {
@@ -300,49 +300,11 @@ export default function HomeScreen() {
   )
 }
 
-// One row of the first-run feature tour: icon tile, title + one-liner, chevron.
-// Tapping routes to the matching tab so the tour doubles as navigation.
-function FeatureRow({
-  c,
-  icon: Icon,
-  title,
-  subtitle,
-  onPress,
-  first = false,
-}: {
-  c: AppColors
-  icon: typeof Compass
-  title: string
-  subtitle: string
-  onPress: () => void
-  first?: boolean
-}) {
-  return (
-    <View>
-      {!first ? <View style={{ height: 1, backgroundColor: c.border, marginLeft: 68 }} /> : null}
-      <Pressable
-        onPress={onPress}
-        accessibilityRole="button"
-        accessibilityLabel={title}
-        style={{ flexDirection: 'row', alignItems: 'center', gap: 14, paddingVertical: 14, paddingHorizontal: 14 }}
-      >
-        <View style={{ width: 40, height: 40, borderRadius: 12, backgroundColor: c.accentSoft, alignItems: 'center', justifyContent: 'center' }}>
-          <Icon size={20} color={c.accent} />
-        </View>
-        <View style={{ flex: 1, gap: 2 }}>
-          <Text style={{ fontFamily: 'Inclusive Sans', fontSize: 15.5, color: c.text }}>{title}</Text>
-          <Text style={{ fontSize: 13, lineHeight: 18, color: c.textMuted }}>{subtitle}</Text>
-        </View>
-        <ChevronRight size={18} color={c.textFaint} />
-      </Pressable>
-    </View>
-  )
-}
-
-// First-run overview shown to members who haven't engaged yet. Three parts:
-// a short feature tour, a card for their center (or a prompt to pick one), and
-// a peek at their board feed when there's activity. Gives new users the whole
-// app at a glance plus real, personal content.
+// First-run overview shown to members who haven't engaged yet. A single tight
+// welcome line (orient + Explore), a card for their center (or a prompt to pick
+// one), and a peek at their board feed when there's activity. The greeting and
+// the real Up Next / Coming Up sections render around it, so Home leads with
+// useful content instead of a redundant feature tour.
 function FirstRunOverview({
   c,
   detailColors,
@@ -371,32 +333,29 @@ function FirstRunOverview({
 
   return (
     <View style={{ gap: 22 }}>
-      <View style={{ gap: 10 }}>
-        <Text style={eyebrow}>WELCOME TO JANATA</Text>
-        <View style={[cardBase, { overflow: 'hidden' }]}>
-          <FeatureRow
-            first
-            c={c}
-            icon={Compass}
-            title="Discover events & centers"
-            subtitle="Satsangs, camps, and classes near you"
-            onPress={onExplore}
-          />
-          <FeatureRow
-            c={c}
-            icon={CalendarCheck}
-            title="RSVP in a tap"
-            subtitle="Save your spot and never miss a gathering"
-            onPress={onExplore}
-          />
-          <FeatureRow
-            c={c}
-            icon={MessageCircle}
-            title="Join the conversation"
-            subtitle="Center and event boards keep CHYKs connected"
-            onPress={onFeed}
-          />
+      {/* One tight welcome line instead of a 3-row feature tour — the real
+          content below (Your Center, Up Next, Coming Up) already shows what
+          the app does, so a single orienting sentence + Explore CTA is enough. */}
+      <View style={[cardBase, { flexDirection: 'row', alignItems: 'center', gap: 14, padding: 16 }]}>
+        <View style={{ width: 44, height: 44, borderRadius: 13, backgroundColor: c.accentSoft, alignItems: 'center', justifyContent: 'center' }}>
+          <Compass size={21} color={c.accent} />
         </View>
+        <View style={{ flex: 1, gap: 2 }}>
+          <Text style={{ fontFamily: 'Inclusive Sans', fontSize: 16, color: c.text }}>
+            Welcome to Janata
+          </Text>
+          <Text style={{ fontSize: 13.5, lineHeight: 19, color: c.textMuted }}>
+            Find satsangs, camps, and classes near you — and RSVP in a tap.
+          </Text>
+        </View>
+        <Pressable
+          onPress={onExplore}
+          accessibilityRole="button"
+          accessibilityLabel="Explore events"
+          style={{ paddingVertical: 9, paddingHorizontal: 16, borderRadius: 999, backgroundColor: c.accent }}
+        >
+          <Text style={{ fontFamily: 'Inclusive Sans', fontSize: 13.5, color: c.textInverse }}>Explore</Text>
+        </Pressable>
       </View>
 
       <View style={{ gap: 10 }}>
