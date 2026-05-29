@@ -10,7 +10,7 @@ import {
   useWindowDimensions,
 } from 'react-native'
 import { SafeAreaView } from 'react-native-safe-area-context'
-import { Eye, Shield, Info, ExternalLink, AlertTriangle } from 'lucide-react-native'
+import { Eye, Shield, Info, ExternalLink, AlertTriangle, UserPlus, LogOut, ChevronRight } from 'lucide-react-native'
 import { useUser, useTheme } from '../../components/contexts'
 import { useRouter } from 'expo-router'
 import { DestructiveButton, SecondaryButton, Text } from '../../components/ui'
@@ -22,7 +22,7 @@ const APP_VERSION = Constants.expoConfig?.version || '0.2.0'
 
 export default function Preferences() {
   const { isDark } = useTheme()
-  const { deleteAccount } = useUser()
+  const { deleteAccount, logout } = useUser()
   const router = useRouter()
   const [isDeleting, setIsDeleting] = useState(false)
   const [showDeleteModal, setShowDeleteModal] = useState(false)
@@ -39,6 +39,12 @@ export default function Preferences() {
   const { width: viewportWidth } = useWindowDimensions()
   const isNarrowWeb = Platform.OS === 'web' && viewportWidth < 768
   const webPaddingH = isNarrowWeb ? 16 : viewportWidth < 1024 ? 32 : 60
+
+  const handleLogout = async () => {
+    track('nav_logout', { source: 'settings_web' })
+    await logout()
+    router.replace('/auth')
+  }
 
   const handleDeleteAccount = async () => {
     setIsDeleting(true)
@@ -86,6 +92,53 @@ export default function Preferences() {
           <Text style={{ fontSize: 15, color: mutedTextColor, marginTop: 4 }}>
             Manage your app preferences
           </Text>
+        </View>
+
+        {/* Account Section (invite + log out — parity with the native settings) */}
+        <View>
+          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: 12 }}>
+            <UserPlus size={20} color={iconColor} />
+            <Text style={{ fontSize: 17, fontWeight: '600', color: textColor }}>Account</Text>
+          </View>
+          <View
+            style={{
+              backgroundColor: cardBg,
+              borderRadius: 20,
+              borderWidth: 1,
+              borderColor,
+              overflow: 'hidden',
+            }}
+          >
+            <Pressable
+              style={{
+                flexDirection: 'row',
+                alignItems: 'center',
+                justifyContent: 'space-between',
+                padding: isNarrowWeb ? 20 : 28,
+                borderBottomWidth: 1,
+                borderBottomColor: borderColor,
+              }}
+              onPress={() => {
+                track('settings_invite_pressed', { source: 'settings_web' })
+                router.push('/settings/invite')
+              }}
+            >
+              <Text style={{ fontSize: 15, color: textColor }}>Invite Friends</Text>
+              <ChevronRight size={18} color={iconColor} />
+            </Pressable>
+            <Pressable
+              style={{
+                flexDirection: 'row',
+                alignItems: 'center',
+                justifyContent: 'space-between',
+                padding: isNarrowWeb ? 20 : 28,
+              }}
+              onPress={handleLogout}
+            >
+              <Text style={{ fontSize: 15, color: '#DC2626' }}>Log Out</Text>
+              <LogOut size={18} color="#DC2626" />
+            </Pressable>
+          </View>
         </View>
 
         {/* Appearance Section */}
