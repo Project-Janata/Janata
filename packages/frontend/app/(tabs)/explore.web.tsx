@@ -21,12 +21,12 @@ import {
   ActivityIndicator,
   Image,
 } from 'react-native'
-import { MapPin, Search, Building2, ChevronUp, ChevronDown, ChevronRight, Check, Globe, Plus } from 'lucide-react-native'
+import { MapPin, Search, Building2, ChevronDown, ChevronRight, Check, Globe, Plus } from 'lucide-react-native'
 import { useRouter, useLocalSearchParams, useFocusEffect } from 'expo-router'
 import { useAnalytics } from '../../utils/analytics'
 import { useTheme, useUser } from '../../components/contexts'
-import { FilterChip, Badge, UnderlineTabBar, Avatar } from '../../components/ui'
-import FilterPickerModal, { type FilterPickerOption } from '../../components/ui/FilterPickerModal'
+import { FilterChip, Badge, Avatar } from '../../components/ui'
+import { type FilterPickerOption } from '../../components/ui/FilterPickerModal'
 const Map = lazy(() => import('../../components/map/Map'))
 import MapPopover from '../../components/map/MapPopover'
 import {
@@ -45,11 +45,6 @@ import { removeEvent } from '../../utils/api'
 import { extractCityState } from '../../utils/addressParsing'
 import { WeekCalendar } from '../../components'
 import { ADMIN_EMAIL, isLocal } from '../../utils/admin'
-
-const FILTERS: { label: DiscoverFilter }[] = [
-  { label: 'Events' },
-  { label: 'Centers' },
-]
 
 function formatDatePill(dateStr: string): { month: string; day: string } {
   const d = new Date(dateStr + 'T00:00:00')
@@ -242,51 +237,6 @@ function EventItem({
           resizeMode="cover"
         />
       )}
-    </Pressable>
-  )
-}
-
-// ─── Center Item (Desktop) ──────────────────────────────
-
-function CenterItem({ center, onPress, isMyCenter }: { center: DiscoverCenter; onPress: () => void; isMyCenter?: boolean }) {
-  return (
-    <Pressable
-      onPress={onPress}
-      className={`flex-row gap-4 p-4 rounded-2xl active:opacity-80 border border-transparent hover:border-stone-200 dark:hover:border-neutral-700 ${
-        center.isMember || isMyCenter ? 'bg-orange-50/80 dark:bg-orange-950/20' : 'bg-white dark:bg-neutral-900'
-      }`}
-      style={{ minHeight: 72 }}
-    >
-      {/* Icon pill */}
-      <View className="w-[52px] h-[60px] rounded-xl bg-orange-100 dark:bg-orange-900/30 items-center justify-center overflow-hidden">
-        {center.image ? (
-          <Image source={{ uri: center.image }} style={{ width: 52, height: 60 }} resizeMode="cover" />
-        ) : (
-          <Building2 size={22} color="#9A3412" />
-        )}
-      </View>
-
-      {/* Content */}
-      <View className="flex-1 gap-1">
-        <View className="flex-row items-center gap-2">
-          <Text
-            className="text-content dark:text-content-dark font-sans text-base leading-tight flex-1"
-            numberOfLines={1}
-          >
-            {center.name}
-          </Text>
-          {isMyCenter && <Badge label="My Center" variant="going" />}
-          {!isMyCenter && center.isMember && <Badge label="Member" variant="member" />}
-        </View>
-        <Text className="text-stone-500 dark:text-stone-400 font-sans text-sm">
-          {extractCityState(center.address) || 'Center'}{center.distanceMi != null ? ` · ${center.distanceMi} mi` : ''}
-        </Text>
-        {center.eventCount != null && center.eventCount > 0 && (
-          <Text className="text-primary font-sans text-xs">
-            {center.eventCount} events this week
-          </Text>
-        )}
-      </View>
     </Pressable>
   )
 }
@@ -1051,13 +1001,20 @@ export default function DiscoverScreenWeb() {
   // Beta: any signed-in user can create events. Backend enforces auth-only;
   // post-beta this becomes a coordinator-tier gate (see issue tracker).
   const canCreate = !!user
-  const [activeFilter, setActiveFilter] = useState<DiscoverFilter>('Events')
+  // Events-first: the desktop sidebar always shows the events list (the old
+  // Events/Centers tab model was dropped to match native explore.tsx and the
+  // mobile-web fallback).
+  const activeFilter: DiscoverFilter = 'Events'
   const [searchQuery, setSearchQuery] = useState('')
   const [selectedDate, setSelectedDate] = useState<string | null>(null)
   const [showGoingOnly, setShowGoingOnly] = useState(false)
   const [showPastEvents, setShowPastEvents] = useState(false)
+  // Center dropdown — picks which center's *area* to show events for, mirroring
+  // the mobile fallback. "__all__" = every center (no proximity scoping); null =
+  // default to the member's home center; any id = that center's area.
   const [selectedCenterDesktop, setSelectedCenterDesktop] = useState<string | null>(null)
-  const [showCenterModalDesktop, setShowCenterModalDesktop] = useState(false)
+  // The in-panel center picker opens a list inline (not a modal).
+  const [centerPickerOpenDesktop, setCenterPickerOpenDesktop] = useState(false)
   const [selectedItem, setSelectedItem] = useState<{ type: 'event' | 'center'; id: string } | null>(
     null
   )
@@ -1073,6 +1030,24 @@ export default function DiscoverScreenWeb() {
 
   // Get user's center for map initial location
   const { center: userCenter } = useCenterDetail(user?.centerID || '')
+
+  // The center whose area we're showing events for (mirrors MobileDiscoverFallback).
+  const isAllCentersDesktop = selectedCenterDesktop === '__all__'
+  const areaCenterIdDesktop = isAllCentersDesktop
+    ? null
+    : selectedCenterDesktop ?? user?.centerID ?? null
+  const userCenterFromList = useMemo(
+    () => allCenters.find((c) => c.id === user?.centerID),
+    [allCenters, user?.centerID]
+  )
+  const areaCenterDesktop = useMemo(
+    () =>
+      isAllCentersDesktop
+        ? undefined
+        : allCenters.find((c) => c.id === areaCenterIdDesktop) ?? userCenterFromList,
+    [isAllCentersDesktop, allCenters, areaCenterIdDesktop, userCenterFromList]
+  )
+  const isHomeAreaDesktop = !!areaCenterDesktop && areaCenterDesktop.id === user?.centerID
 
   useFocusEffect(
     useCallback(() => {
@@ -1144,24 +1119,6 @@ export default function DiscoverScreenWeb() {
     [allEvents]
   )
 
-  // "Coming up" hint shown when there's a real gap between today and the
-  // next event. Bridges the dead air for users browsing an empty week.
-  const comingUpHint = useMemo(() => {
-    if (selectedDate || showPastEvents || activeFilter !== 'Events' || searchQuery.trim()) return null
-    const todayStr = new Date().toISOString().split('T')[0]
-    const upcoming = allEvents
-      .filter((e) => e.date && e.date >= todayStr)
-      .sort((a, b) => a.date.localeCompare(b.date))
-    if (upcoming.length === 0) return null
-    const next = upcoming[0]
-    const todayMs = Date.parse(todayStr + 'T00:00:00')
-    const nextMs = Date.parse(next.date + 'T00:00:00')
-    if (isNaN(todayMs) || isNaN(nextMs)) return null
-    const days = Math.round((nextMs - todayMs) / 86400000)
-    if (days < 7) return null  // only worth showing when there's a real gap
-    return { days, title: next.title }
-  }, [allEvents, selectedDate, showPastEvents, activeFilter, searchQuery])
-
   const displayItems = useMemo(() => {
     let result = items
     if (selectedDate) {
@@ -1169,14 +1126,18 @@ export default function DiscoverScreenWeb() {
         (item) => item.type === 'event' && (item.data as EventDisplay).date === selectedDate
       )
     }
-    if (selectedCenterDesktop) {
-      result = result.filter((item) => {
-        if (item.type !== 'event') return true
-        return (item.data as EventDisplay).centerId === selectedCenterDesktop
-      })
+    // Order events by nearness to the selected area center so "what's on around
+    // <center>" surfaces first. Sorting (not filtering) keeps the list from ever
+    // going empty — same approach as MobileDiscoverFallback.
+    if (areaCenterDesktop && result.length > 0 && result.every((i) => i.type === 'event')) {
+      result = [...result].sort(
+        (a, b) =>
+          milesBetween(areaCenterDesktop, a.data as EventDisplay) -
+          milesBetween(areaCenterDesktop, b.data as EventDisplay)
+      )
     }
     return result
-  }, [items, selectedDate, selectedCenterDesktop])
+  }, [items, selectedDate, areaCenterDesktop])
 
   // Filter chip helpers — counts over upcoming events
   const todayStrDesktop = new Date().toISOString().split('T')[0]
@@ -1190,35 +1151,18 @@ export default function DiscoverScreenWeb() {
       if (e.centerId) counts[e.centerId] = (counts[e.centerId] ?? 0) + 1
     }
     return [...allCenters]
-      .map((c) => ({ value: c.id, label: c.name, sublabel: c.address, count: counts[c.id] ?? 0 }))
-      .filter((o) => (o.count ?? 0) > 0)
+      .map((c) => ({
+        value: c.id,
+        label: c.name,
+        sublabel: extractCityState(c.address) || c.address,
+        count: counts[c.id] ?? 0,
+      }))
       .sort((a, b) => {
         if (user?.centerID && a.value === user.centerID) return -1
         if (user?.centerID && b.value === user.centerID) return 1
         return a.label.localeCompare(b.label)
       })
   }, [allCenters, eventsForCountsDesktop, user?.centerID])
-  const centerChipLabelDesktop = selectedCenterDesktop
-    ? centerOptionsDesktop.find((o) => o.value === selectedCenterDesktop)?.label ?? 'Center'
-    : 'Center'
-
-  const handleFilterPress = useCallback((f: DiscoverFilter) => {
-    track('discover_filter_changed', { filter: f, source: 'discover' })
-    setActiveFilter(f)
-    setSelectedDate(null)
-  }, [track])
-
-  const [collapsedSections, setCollapsedSections] = useState<Set<string>>(new Set())
-  const toggleSection = useCallback((label: string) => {
-    setCollapsedSections((prev) => {
-      const next = new Set(prev)
-      const willCollapse = !next.has(label)
-      if (willCollapse) next.add(label)
-      else next.delete(label)
-      track('discover_section_toggled', { label, collapsed: willCollapse, source: 'discover' })
-      return next
-    })
-  }, [track])
 
   // Map popover state
   const mapPanelRef = useRef<View>(null)
@@ -1385,79 +1329,153 @@ export default function DiscoverScreenWeb() {
             style={{ width: rightPanelWidth }}
             className="border-l border-stone-200 dark:border-neutral-800 bg-white dark:bg-neutral-900"
           >
-            {/* Panel Header */}
-            <View style={{ paddingHorizontal: 20, paddingTop: 20, paddingBottom: 0 }}>
-              {/* Search + Create */}
-              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
-                <View
-                  className="flex-row items-center px-3 rounded-xl bg-stone-100 dark:bg-neutral-800"
-                  style={{ minHeight: 40, flex: 1 }}
+            {/* Panel Header — search + center dropdown + filter chips */}
+            <View style={{ paddingHorizontal: 16, paddingTop: 20, paddingBottom: 4 }}>
+              {/* Search */}
+              <View
+                className="flex-row items-center px-3 rounded-xl bg-stone-100 dark:bg-neutral-800"
+                style={{ minHeight: 40 }}
+              >
+                <Search size={16} color="#9CA3AF" />
+                <TextInput
+                  className="flex-1 ml-2 text-sm font-sans text-content dark:text-content-dark outline-none"
+                  placeholder="Search events and centers..."
+                  placeholderTextColor="#9CA3AF"
+                  value={searchQuery}
+                  onChangeText={setSearchQuery}
+                  style={{ paddingVertical: 8 }}
+                  onEndEditing={() => {
+                    if (searchQuery.trim()) {
+                      track('discover_search', { query: searchQuery.trim(), source: 'discover' })
+                    }
+                  }}
+                />
+              </View>
+
+              {/* Center dropdown — picks which center's area to show events for.
+                  Defaults to the member's home center; clicking opens the in-panel
+                  center list so they can see what's on around any center. */}
+              {!centerPickerOpenDesktop && user && (isAllCentersDesktop || areaCenterDesktop) && (
+                <Pressable
+                  onPress={() => {
+                    track('explore_area_center_opened', { centerId: areaCenterDesktop?.id ?? 'all' })
+                    setCenterPickerOpenDesktop(true)
+                  }}
+                  accessibilityRole="button"
+                  accessibilityLabel={
+                    isAllCentersDesktop
+                      ? 'Showing events from all centers. Click to change.'
+                      : `Showing events near ${areaCenterDesktop?.name}. Click to change center.`
+                  }
+                  className="flex-row items-center px-3 rounded-2xl active:opacity-70"
+                  style={{
+                    marginTop: 10,
+                    minHeight: 58,
+                    gap: 12,
+                    backgroundColor: isDark ? 'rgba(232,134,42,0.12)' : '#FFF7ED',
+                    borderWidth: 1,
+                    borderColor: isDark ? 'rgba(232,134,42,0.22)' : '#FDE8D0',
+                  }}
                 >
-                  <Search size={16} color="#9CA3AF" />
-                  <TextInput
-                    className="flex-1 ml-2 text-sm font-sans text-content dark:text-content-dark outline-none"
-                    placeholder="Search events and centers..."
-                    placeholderTextColor="#9CA3AF"
-                    value={searchQuery}
-                    onChangeText={setSearchQuery}
-                    style={{ paddingVertical: 8 }}
-                    onEndEditing={() => {
-                      if (searchQuery.trim()) {
-                        track('discover_search', { query: searchQuery.trim(), source: 'discover' })
-                      }
-                    }}
-                  />
+                  <View
+                    className="w-10 h-10 rounded-xl items-center justify-center"
+                    style={{ backgroundColor: isDark ? 'rgba(232,134,42,0.18)' : '#FDE8D0' }}
+                  >
+                    {isAllCentersDesktop ? <Globe size={18} color="#E8862A" /> : <Building2 size={18} color="#E8862A" />}
+                  </View>
+                  <View style={{ flex: 1 }}>
+                    <Text className="text-content dark:text-content-dark font-sans" style={{ fontSize: 15 }} numberOfLines={1}>
+                      {isAllCentersDesktop ? 'All centers' : areaCenterDesktop?.name}
+                    </Text>
+                    <Text className="text-stone-500 dark:text-stone-400 font-sans" style={{ fontSize: 12.5 }} numberOfLines={1}>
+                      {isAllCentersDesktop
+                        ? 'Events everywhere · click to change'
+                        : isHomeAreaDesktop
+                          ? `Your center${areaCenterDesktop?.memberCount ? ` · ${areaCenterDesktop.memberCount} members` : ''}`
+                          : 'Events near here · click to change'}
+                    </Text>
+                  </View>
+                  <ChevronDown size={18} color="#a8a29e" />
+                </Pressable>
+              )}
+
+              {/* In-panel center picker header — title + Close. The list itself
+                  renders in the ScrollView below. */}
+              {centerPickerOpenDesktop && (
+                <View
+                  className="flex-row items-center justify-between"
+                  style={{ paddingHorizontal: 4, paddingTop: 14, paddingBottom: 4 }}
+                >
+                  <Text className="font-sans text-stone-500 dark:text-stone-400 uppercase" style={{ fontSize: 11.5, letterSpacing: 0.9 }}>
+                    Show events near
+                  </Text>
+                  <Pressable onPress={() => setCenterPickerOpenDesktop(false)} hitSlop={8}>
+                    <Text style={{ fontSize: 13, fontWeight: '500', color: '#E8862A' }}>Close</Text>
+                  </Pressable>
                 </View>
-              </View>
-            </View>
+              )}
 
-            {/* Filter tabs */}
-            <View style={{ paddingTop: 8, marginBottom: 12 }}>
-              <UnderlineTabBar
-                tabs={FILTERS.map((f) => f.label)}
-                activeTab={selectedDate ? '' : activeFilter}
-                onTabChange={(tab) => handleFilterPress(tab as DiscoverFilter)}
-                counts={{ Events: allEvents.length, Centers: allCenters.length }}
-              />
+              {/* Filter chips — Today / Going + Create */}
+              {!centerPickerOpenDesktop && (
+                <View
+                  className="flex-row items-center"
+                  style={{ marginTop: 10, gap: 8 }}
+                >
+                  <View className="flex-1 flex-row flex-wrap items-center" style={{ gap: 8 }}>
+                    <FilterChip
+                      label="Today"
+                      variant="outline"
+                      active={selectedDate === todayStrDesktop}
+                      onPress={() => {
+                        setSelectedDate((prev) => {
+                          const next = prev === todayStrDesktop ? null : todayStrDesktop
+                          if (next) track('discover_date_selected', { date: next, source: 'discover' })
+                          return next
+                        })
+                      }}
+                    />
+                    {user && (
+                      <FilterChip
+                        label="Going"
+                        variant="outline"
+                        active={showGoingOnly}
+                        onPress={() => {
+                          track('discover_going_filter_toggled', { enabled: !showGoingOnly, source: 'discover' })
+                          setShowGoingOnly((prev: boolean) => !prev)
+                        }}
+                      />
+                    )}
+                  </View>
+                  {canCreate && (
+                    <Pressable
+                      accessibilityRole="button"
+                      accessibilityLabel="Create event"
+                      hitSlop={8}
+                      onPress={() => {
+                        track('nav_create_event', { source: 'discover' })
+                        setSelectedItem(null)
+                        setFormPanel({})
+                      }}
+                      className="flex-row items-center active:opacity-70"
+                      style={{
+                        flexShrink: 0,
+                        gap: 4,
+                        paddingHorizontal: 12,
+                        paddingVertical: 6,
+                        borderRadius: 999,
+                        borderWidth: 1.5,
+                        borderColor: '#E8862A',
+                      }}
+                    >
+                      <Plus size={16} color="#E8862A" strokeWidth={2.5} />
+                      <Text style={{ fontWeight: '600', fontSize: 13, lineHeight: 18, color: '#E8862A' }}>
+                        Create
+                      </Text>
+                    </Pressable>
+                  )}
+                </View>
+              )}
             </View>
-
-            {/* Filter chips — Today / Center / Going (max 4) */}
-            {activeFilter === 'Events' && (
-              <View style={{ flexDirection: 'row', flexWrap: 'wrap', alignItems: 'center', paddingHorizontal: 20, paddingVertical: 6, gap: 8 }}>
-                <FilterChip
-                  label="Today"
-                  variant="outline"
-                  active={selectedDate === todayStrDesktop}
-                  onPress={() => {
-                    setSelectedDate((prev) => {
-                      const next = prev === todayStrDesktop ? null : todayStrDesktop
-                      if (next) track('discover_date_selected', { date: next, source: 'discover' })
-                      return next
-                    })
-                  }}
-                />
-                <FilterChip
-                  label={centerChipLabelDesktop}
-                  variant="outline"
-                  active={selectedCenterDesktop !== null}
-                  onPress={() => {
-                    track('discover_center_filter_opened', { source: 'discover' })
-                    setShowCenterModalDesktop(true)
-                  }}
-                />
-                {user && (
-                  <FilterChip
-                    label="Going"
-                    variant="outline"
-                    active={showGoingOnly}
-                    onPress={() => {
-                      track('discover_going_filter_toggled', { enabled: !showGoingOnly, source: 'discover' })
-                      setShowGoingOnly((prev: boolean) => !prev)
-                    }}
-                  />
-                )}
-              </View>
-            )}
 
             {/* Loading skeleton */}
             {loading && (
@@ -1472,48 +1490,110 @@ export default function DiscoverScreenWeb() {
               contentContainerStyle={{ paddingHorizontal: 4, paddingTop: 12, paddingBottom: 24, gap: 4 }}
               showsVerticalScrollIndicator={false}
             >
-              {!loading && displayItems.length === 0 && (
+              {/* In-panel center picker — "Show events near <center>". */}
+              {centerPickerOpenDesktop && (
+                <>
+                  {/* All centers — show events from every center, no area scoping. */}
+                  <Pressable
+                    onPress={() => {
+                      track('explore_area_all_selected')
+                      setSelectedCenterDesktop('__all__')
+                      setCenterPickerOpenDesktop(false)
+                    }}
+                    accessibilityRole="button"
+                    accessibilityLabel="Show events from all centers"
+                    className="flex-row items-center px-4 active:opacity-60"
+                    style={{ minHeight: 56, gap: 12 }}
+                  >
+                    <View
+                      className="w-10 h-10 rounded-xl items-center justify-center"
+                      style={{ backgroundColor: isDark ? 'rgba(232,134,42,0.18)' : '#FDE8D0' }}
+                    >
+                      <Globe size={18} color="#E8862A" />
+                    </View>
+                    <View style={{ flex: 1 }}>
+                      <Text className="text-content dark:text-content-dark font-sans" style={{ fontSize: 15 }} numberOfLines={1}>
+                        All centers
+                      </Text>
+                      <Text className="text-stone-500 dark:text-stone-400 font-sans" style={{ fontSize: 12.5 }} numberOfLines={1}>
+                        Events from every center
+                      </Text>
+                    </View>
+                    {isAllCentersDesktop ? <Check size={18} color="#E8862A" /> : null}
+                  </Pressable>
+
+                  {centerOptionsDesktop.map((opt) => (
+                    <View key={opt.value}>
+                      <View className="bg-stone-200/70 dark:bg-neutral-800" style={{ height: 1, marginHorizontal: 16 }} />
+                      <View className="flex-row items-center px-4" style={{ minHeight: 56, gap: 8 }}>
+                        {/* Click the row to scope events to this center's area. */}
+                        <Pressable
+                          onPress={() => {
+                            track('explore_area_center_selected', { centerId: opt.value })
+                            setSelectedCenterDesktop(opt.value)
+                            setCenterPickerOpenDesktop(false)
+                          }}
+                          accessibilityRole="button"
+                          accessibilityLabel={`Show events near ${opt.label}`}
+                          className="flex-1 flex-row items-center active:opacity-60"
+                          style={{ gap: 12, minHeight: 56 }}
+                        >
+                          <View
+                            className="w-10 h-10 rounded-xl items-center justify-center"
+                            style={{ backgroundColor: isDark ? 'rgba(232,134,42,0.18)' : '#FDE8D0' }}
+                          >
+                            <Building2 size={18} color="#E8862A" />
+                          </View>
+                          <View style={{ flex: 1 }}>
+                            <Text className="text-content dark:text-content-dark font-sans" style={{ fontSize: 15 }} numberOfLines={1}>
+                              {opt.label}
+                            </Text>
+                            <Text className="text-stone-500 dark:text-stone-400 font-sans" style={{ fontSize: 12.5 }} numberOfLines={1}>
+                              {opt.sublabel}{opt.count ? ` · ${opt.count} event${opt.count === 1 ? '' : 's'}` : ''}
+                            </Text>
+                          </View>
+                        </Pressable>
+                        {opt.value === areaCenterIdDesktop ? <Check size={18} color="#E8862A" /> : null}
+                        {/* Distinct "view this center's page in the panel" action. */}
+                        <Pressable
+                          onPress={() => {
+                            track('explore_center_page_opened', { centerId: opt.value })
+                            setCenterPickerOpenDesktop(false)
+                            setSelectedItem({ type: 'center', id: opt.value })
+                          }}
+                          accessibilityRole="button"
+                          accessibilityLabel={`View ${opt.label} page`}
+                          hitSlop={6}
+                          className="items-center justify-center active:opacity-60"
+                          style={{
+                            width: 30,
+                            height: 30,
+                            borderRadius: 15,
+                            backgroundColor: isDark ? '#262626' : '#F3F4F6',
+                          }}
+                        >
+                          <ChevronRight size={16} color={isDark ? '#A8A29E' : '#78716C'} />
+                        </Pressable>
+                      </View>
+                    </View>
+                  ))}
+                </>
+              )}
+
+              {!centerPickerOpenDesktop && !loading && displayItems.length === 0 && (
                 <EmptyState variant={selectedDate ? 'date' : searchQuery ? 'search' : 'events'} />
               )}
-              {displayItems.map((item, idx) => {
-                if (item.type === 'section') {
-                  const label = item.data.label
-                  const isCollapsed = collapsedSections.has(label)
-                  return (
-                    <Pressable key={`section-${idx}`} onPress={() => toggleSection(label)} style={{ marginTop: idx > 0 ? 16 : 0, marginBottom: 4 }}>
-                      <View className="flex-row items-center gap-2 px-1">
-                        <Text className="text-xs font-sans text-stone-400 dark:text-stone-500 uppercase" style={{ letterSpacing: 0.5 }}>
-                          {label}
-                        </Text>
-                        <View className="flex-1 h-px bg-stone-200 dark:bg-neutral-700" />
-                        {isCollapsed ? <ChevronDown size={14} color="#a8a29e" /> : <ChevronUp size={14} color="#a8a29e" />}
-                      </View>
-                    </Pressable>
-                  )
-                }
-                if (item.type === 'event') {
-                  return (
-                    <EventItem
-                      key={`event-${item.data.id}`}
-                      event={item.data as EventDisplay}
-                      centerName={allCenters.find((c) => c.id === (item.data as EventDisplay).centerId)?.name}
-                      onPress={() => {
-                        track('event_list_item_pressed', { eventId: item.data.id, source: 'discover' })
-                        setSelectedItem({ type: 'event', id: item.data.id })
-                      }}
-                    />
-                  )
-                }
-                const sectionLabel = displayItems.slice(0, idx).reverse().find((i) => i.type === 'section')?.data?.label
-                if (sectionLabel && collapsedSections.has(sectionLabel)) return null
+
+              {!centerPickerOpenDesktop && displayItems.map((item) => {
+                if (item.type !== 'event') return null
                 return (
-                  <CenterItem
-                    key={`center-${item.data.id}`}
-                    center={item.data as DiscoverCenter}
-                    isMyCenter={!!user?.centerID && item.data.id === user.centerID}
+                  <EventItem
+                    key={`event-${item.data.id}`}
+                    event={item.data as EventDisplay}
+                    centerName={allCenters.find((c) => c.id === (item.data as EventDisplay).centerId)?.name}
                     onPress={() => {
-                      track('center_list_item_pressed', { centerId: item.data.id, source: 'discover' })
-                      setSelectedItem({ type: 'center', id: item.data.id })
+                      track('event_list_item_pressed', { eventId: item.data.id, source: 'discover' })
+                      setSelectedItem({ type: 'event', id: item.data.id })
                     }}
                   />
                 )
@@ -1522,16 +1602,6 @@ export default function DiscoverScreenWeb() {
           </View>
         )}
       </View>
-
-      <FilterPickerModal
-        visible={showCenterModalDesktop}
-        title="Center"
-        options={centerOptionsDesktop}
-        selected={selectedCenterDesktop}
-        onSelect={setSelectedCenterDesktop}
-        onClear={() => setSelectedCenterDesktop(null)}
-        onClose={() => setShowCenterModalDesktop(false)}
-      />
     </View>
   )
 }
