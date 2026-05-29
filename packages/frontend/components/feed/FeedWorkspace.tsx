@@ -9,6 +9,7 @@ import type { FeedPost, GroupBoard } from './types'
 import { FeedList } from './FeedList'
 import { PostThread } from './PostThread'
 import { authorFromUser } from './feedData'
+import { DesktopColumns } from '../layout/DesktopColumns'
 
 export function FeedWorkspace({
   posts,
@@ -133,9 +134,9 @@ export function FeedWorkspace({
     )
 
     return (
-      <View style={{ flexDirection: 'row', gap: 24, alignItems: 'flex-start', justifyContent: 'center' }}>
-        <View style={{ flexGrow: 0, flexShrink: 1, flexBasis: 600, maxWidth: 600, minWidth: 0 }}>{column}</View>
-        <View style={{ flexGrow: 0, flexShrink: 0, flexBasis: 320, width: 320 }}>
+      <DesktopColumns
+        main={column}
+        rail={
           <FeedContextRail
             groups={groups}
             colors={colors}
@@ -143,8 +144,8 @@ export function FeedWorkspace({
             onChangeQuery={onChangeQuery}
             onOpenGroup={onOpenGroup}
           />
-        </View>
-      </View>
+        }
+      />
     )
   }
 

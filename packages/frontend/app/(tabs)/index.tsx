@@ -12,6 +12,7 @@ import { extractCityState } from '../../utils/addressParsing'
 import { FeaturedEventCard, type FeaturedSource } from '../../components/home/FeaturedEventCard'
 import { MiniEventRow, type WeekItem } from '../../components/home/MiniEventRow'
 import { BoardPostCard, boardPostToMessage, type BoardMessage } from '../../components/boards'
+import { DesktopColumns, desktopScrollContent, useDesktopLayout } from '../../components/layout/DesktopColumns'
 import type { AppColors } from '../../tokens'
 
 function formatDatePill(dateStr: string): { month: string; day: string } {
@@ -92,7 +93,7 @@ export default function HomeScreen() {
 
   // Desktop two-column composition is web-only and gated on a wide breakpoint.
   // Mobile web and native always render the original single centered column.
-  const isWideDesktop = Platform.OS === 'web' && width >= 1024
+  const isWideDesktop = useDesktopLayout(width)
   const isDesktop = width >= 860
 
   const signedUpEvents = useMemo(() => {
@@ -307,22 +308,24 @@ export default function HomeScreen() {
     return (
       <ScrollView
         style={{ flex: 1, backgroundColor: c.bg }}
-        contentContainerStyle={{ paddingHorizontal: 40, paddingTop: 28, paddingBottom: 56 }}
+        contentContainerStyle={desktopScrollContent}
         showsVerticalScrollIndicator={false}
       >
-        <View style={{ width: '100%', maxWidth: 1040, alignSelf: 'center', gap: 28 }}>
-          {greeting}
-          {welcomeBanner}
-          <View style={{ flexDirection: 'row', alignItems: 'flex-start', gap: 32 }}>
-            <View style={{ flex: 1, minWidth: 0, gap: 28 }}>
+        <DesktopColumns
+          header={
+            <>
+              {greeting}
+              {welcomeBanner}
+            </>
+          }
+          main={
+            <>
               {upNextSection}
               {weekSection}
-            </View>
-            <View style={{ width: 320, gap: 22 }}>
-              {rail}
-            </View>
-          </View>
-        </View>
+            </>
+          }
+          rail={rail}
+        />
       </ScrollView>
     )
   }

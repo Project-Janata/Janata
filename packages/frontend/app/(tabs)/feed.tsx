@@ -28,6 +28,13 @@ import {
   type GroupBoard,
 } from '../../components/feed'
 import { buildFeedPosts } from '../../components/feed/feedData'
+import {
+  DESKTOP_MAX_WIDTH,
+  DESKTOP_PAGE_BOTTOM,
+  DESKTOP_PAGE_PADDING,
+  DESKTOP_PAGE_TOP,
+  useDesktopLayout,
+} from '../../components/layout/DesktopColumns'
 import type { DiscoverCenter, EventDisplay } from '../../utils/api'
 
 function formatEventDateLabel(date: string) {
@@ -160,7 +167,7 @@ export default function FeedScreen() {
   } = useMyEvents(user?.username)
   const { centers: allCenters, loading: centersLoading, refetch: refetchCenters } = useCenterList()
 
-  const isDesktop = width >= 980
+  const isDesktop = useDesktopLayout(width)
   const [query, setQuery] = useState('')
   const [selectedPostId, setSelectedPostId] = useState('')
   const [createPostOpen, setCreatePostOpen] = useState(false)
@@ -394,11 +401,11 @@ export default function FeedScreen() {
       <ScrollView
         contentContainerStyle={{
           width: '100%',
-          maxWidth: isDesktop ? 1040 : 640,
+          maxWidth: isDesktop ? DESKTOP_MAX_WIDTH : 640,
           alignSelf: 'center',
-          paddingHorizontal: isDesktop ? 24 : 16,
-          paddingTop: listTopPadding,
-          paddingBottom: Platform.OS === 'web' ? 40 : 112,
+          paddingHorizontal: isDesktop ? DESKTOP_PAGE_PADDING : 16,
+          paddingTop: isDesktop ? DESKTOP_PAGE_TOP : listTopPadding,
+          paddingBottom: isDesktop ? DESKTOP_PAGE_BOTTOM : Platform.OS === 'web' ? 40 : 112,
         }}
         showsVerticalScrollIndicator={false}
       >
