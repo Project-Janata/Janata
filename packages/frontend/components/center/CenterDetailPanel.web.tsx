@@ -179,7 +179,7 @@ export default function CenterDetailPanel({
             tabs={['About', 'Thread', 'Events']}
             activeTab={activeTab}
             onTabChange={setActiveTab}
-            counts={{ Thread: board.messages.length, Events: events.length }}
+            counts={{ Thread: boardMessages.length, Events: events.length }}
           />
         </View>
 
