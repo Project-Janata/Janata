@@ -366,7 +366,7 @@ function WelcomeBanner({ c, onExplore }: { c: AppColors; onExplore: () => void }
           Welcome to Janata
         </Text>
         <Text style={{ fontSize: 13.5, lineHeight: 19, color: c.textMuted }}>
-          Find satsangs, camps, and classes near you — and RSVP in a tap.
+          Find satsangs, camps, and classes near you.
         </Text>
       </View>
       <Pressable

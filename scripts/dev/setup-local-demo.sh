@@ -51,11 +51,29 @@ UPDATE users SET verification_level=54,  center_id='$CENTER', first_name='Sevak'
 UPDATE users SET verification_level=108, center_id='$CENTER', first_name='Brahmachari', last_name='Demo', profile_complete=1 WHERE username='brahmachari@chinmayajanata.org';
 UPDATE users SET verification_level=110, center_id='$CENTER', first_name='Admin', last_name='Demo', profile_complete=1 WHERE username='admin@chinmayajanata.org';
 " >/dev/null
+
+echo "▶ (5b/5) seed a few center-board posts (so Home shows a real feed preview)"
+# The temp backend from step 4 is still alive; post as a couple of roles via the
+# API so the posts go through the normal create path (boards auto-create, authors
+# resolve). Best-effort — a failure here doesn't block local testing.
+tok() { curl -fsS -X POST "$API/auth/authenticate" -H 'Content-Type: application/json' \
+          -d "{\"username\":\"$1\",\"password\":\"$PW\"}" \
+          | python3 -c 'import sys,json;print(json.load(sys.stdin).get("token",""))' 2>/dev/null || true; }
+bpost() { curl -fsS -X POST "$API/boards/center/$CENTER/posts" -H "Authorization: Bearer $2" \
+            -H 'Content-Type: application/json' -d "{\"body\":$1}" >/dev/null 2>&1 || true; }
+MT="$(tok member@chinmayajanata.org)"; ST="$(tok sevak@chinmayajanata.org)"; BT="$(tok brahmachari@chinmayajanata.org)"
+if [ -n "$MT" ]; then
+  bpost '"Welcome to the Boston CHYK board! 🙏 Carpools for MSC are forming here — drop your area + seats."' "$MT"
+  bpost '"Reminder: Bhagavad Gita study group meets this Sunday at 10am. Newcomers welcome 🌸"' "${ST:-$MT}"
+  bpost '"Anyone driving up from the South Bay on Aug 1? Happy to split gas 🚗"' "$MT"
+  bpost '"Seva sign-ups for the Mahasamadhi Aradhana Camp are open — kitchen, registration, and setup crews needed."' "${BT:-$MT}"
+fi
+
 pkill -f "wrangler dev --port 8787" 2>/dev/null || true
 sleep 1
 
 echo
-echo "✓ Local demo DB ready (5 roles + 10 centers + 4 events seeded)."
+echo "✓ Local demo DB ready (5 roles + 10 centers + 4 events + sample board posts seeded)."
 echo "  Next:  npm run dev      # web → http://localhost:8081 ; press 'i' for iOS sim"
 echo "  Sign-in screen → bottom-left circle → pick a role, or 'New user'."
 echo "  Manual login (password: $PW):"
