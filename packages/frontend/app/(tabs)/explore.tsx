@@ -627,81 +627,89 @@ export default function DiscoverScreen() {
               scrollEnabled={true}
               stickyHeaderIndices={stickyHeaderIndices}
             >
-              {!loading && displayItems.length === 0 && (
+              {!loading && activeFilter === 'Seva' && (
+                <EmptyState
+                  message="Seva — coming soon"
+                  subtitle="Service opportunities will be listed here."
+                />
+              )}
+              {!loading && activeFilter !== 'Seva' && displayItems.length === 0 && (
                 <EmptyState variant={selectedDate ? 'date' : searchQuery ? 'search' : 'events'} />
               )}
-              {displayItems.map((item, idx) => {
-                if (item.type === 'section') {
-                  const label = item.data.label
-                  const isCollapsed = collapsedSections.has(label)
-                  return (
-                    <Pressable
-                      key={`section-${idx}`}
-                      onPress={() => toggleSection(label)}
-                      className={`bg-white dark:bg-neutral-900 ${idx > 0 ? 'border-t border-stone-200 dark:border-neutral-800' : ''}`}
-                    >
-                      <View
-                        style={{
-                          paddingHorizontal: 12,
-                          paddingVertical: 14,
-                          flexDirection: 'row',
-                          alignItems: 'center',
-                          justifyContent: 'space-between',
-                        }}
+              {activeFilter !== 'Seva' &&
+                displayItems.map((item, idx) => {
+                  if (item.type === 'section') {
+                    const label = item.data.label
+                    const isCollapsed = collapsedSections.has(label)
+                    return (
+                      <Pressable
+                        key={`section-${idx}`}
+                        onPress={() => toggleSection(label)}
+                        className={`bg-white dark:bg-neutral-900 ${idx > 0 ? 'border-t border-stone-200 dark:border-neutral-800' : ''}`}
                       >
-                        <Text
-                          className="text-xs font-sans text-stone-500 dark:text-stone-400 uppercase"
-                          style={{ letterSpacing: 0.6 }}
+                        <View
+                          style={{
+                            paddingHorizontal: 12,
+                            paddingVertical: 14,
+                            flexDirection: 'row',
+                            alignItems: 'center',
+                            justifyContent: 'space-between',
+                          }}
                         >
-                          {label}
-                        </Text>
-                        {isCollapsed ? (
-                          <CaretDown size={16} color={c.iconMuted} />
-                        ) : (
-                          <CaretUp size={16} color={c.iconMuted} />
-                        )}
-                      </View>
-                    </Pressable>
-                  )
-                }
-                if (item.type === 'event') {
+                          <Text
+                            className="text-xs font-sans text-stone-500 dark:text-stone-400 uppercase"
+                            style={{ letterSpacing: 0.6 }}
+                          >
+                            {label}
+                          </Text>
+                          {isCollapsed ? (
+                            <CaretDown size={16} color={c.iconMuted} />
+                          ) : (
+                            <CaretUp size={16} color={c.iconMuted} />
+                          )}
+                        </View>
+                      </Pressable>
+                    )
+                  }
+                  if (item.type === 'event') {
+                    return (
+                      <EventItem
+                        key={`event-${item.data.id}`}
+                        event={item.data as EventDisplay}
+                        centerName={
+                          allCenters.find((c) => c.id === (item.data as EventDisplay).centerId)
+                            ?.name
+                        }
+                        onPress={() => {
+                          posthog?.capture('event_list_item_pressed', {
+                            eventId: item.data.id,
+                            source: 'discover',
+                          })
+                          router.push(`/events/${item.data.id}`)
+                        }}
+                      />
+                    )
+                  }
+                  const sectionLabel = displayItems
+                    .slice(0, idx)
+                    .reverse()
+                    .find((i) => i.type === 'section')?.data?.label
+                  if (sectionLabel && collapsedSections.has(sectionLabel)) return null
                   return (
-                    <EventItem
-                      key={`event-${item.data.id}`}
-                      event={item.data as EventDisplay}
-                      centerName={
-                        allCenters.find((c) => c.id === (item.data as EventDisplay).centerId)?.name
-                      }
+                    <CenterItem
+                      key={`center-${item.data.id}`}
+                      center={item.data as DiscoverCenter}
+                      isMyCenter={!!user?.centerID && item.data.id === user.centerID}
                       onPress={() => {
-                        posthog?.capture('event_list_item_pressed', {
-                          eventId: item.data.id,
+                        posthog?.capture('center_list_item_pressed', {
+                          centerId: item.data.id,
                           source: 'discover',
                         })
-                        router.push(`/events/${item.data.id}`)
+                        router.push(`/center/${item.data.id}`)
                       }}
                     />
                   )
-                }
-                const sectionLabel = displayItems
-                  .slice(0, idx)
-                  .reverse()
-                  .find((i) => i.type === 'section')?.data?.label
-                if (sectionLabel && collapsedSections.has(sectionLabel)) return null
-                return (
-                  <CenterItem
-                    key={`center-${item.data.id}`}
-                    center={item.data as DiscoverCenter}
-                    isMyCenter={!!user?.centerID && item.data.id === user.centerID}
-                    onPress={() => {
-                      posthog?.capture('center_list_item_pressed', {
-                        centerId: item.data.id,
-                        source: 'discover',
-                      })
-                      router.push(`/center/${item.data.id}`)
-                    }}
-                  />
-                )
-              })}
+                })}
             </ScrollView>
           </View>
         </Animated.View>
