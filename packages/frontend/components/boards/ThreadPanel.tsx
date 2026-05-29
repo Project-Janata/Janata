@@ -166,13 +166,17 @@ function BoardComposer({
           borderRadius: 16,
           backgroundColor: colors.iconBoxBg,
           flexDirection: 'row',
+          // Send button sits at the bottom; the avatar is pinned to the top so
+          // the row reads top-to-bottom as the input grows vertically.
           alignItems: 'flex-end',
           paddingHorizontal: 16,
           paddingVertical: 10,
           gap: 12,
         }}
       >
-        <Avatar name="You" initials="YO" size={36} backgroundColor="#0478A5" />
+        <View style={{ alignSelf: 'flex-start' }}>
+          <Avatar name="You" initials="YO" size={36} backgroundColor="#0478A5" />
+        </View>
         <TextInput
           editable={!!onSubmit && !submitting}
           multiline
