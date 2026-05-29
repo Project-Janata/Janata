@@ -1,9 +1,9 @@
-import React, { useMemo, useState } from 'react'
+import React, { useMemo } from 'react'
 import { View, Text, Image, ScrollView, Pressable, ActivityIndicator, Linking } from 'react-native'
 import { MapPin, Users, User, Clock, CheckCircle, ChevronLeft, Pencil, ExternalLink, Trash2 } from 'lucide-react-native'
 import CopyLinkButton from '../ui/CopyLinkButton'
 import Badge from '../ui/Badge'
-import UnderlineTabBar from '../ui/UnderlineTabBar'
+import { DetailSection } from '../ui'
 import Avatar from '../ui/Avatar'
 import PrimaryButton from '../ui/buttons/PrimaryButton'
 import DestructiveButton from '../ui/buttons/DestructiveButton'
@@ -663,54 +663,41 @@ function RegisteredContent({
   boardMessages: BoardMessage[]
   onSubmitPost: (body: string) => Promise<void>
 }) {
-  const [activeTab, setActiveTab] = useState('Details')
-
   return (
     <View style={{ flex: 1 }}>
-      <View style={{ paddingTop: 8 }}>
-        <UnderlineTabBar
-          tabs={['Details', 'Thread', 'People']}
-          activeTab={activeTab}
-          onTabChange={setActiveTab}
-          counts={{ Thread: boardMessages.length }}
-        />
-      </View>
-
       <ScrollView
         style={{ flex: 1 }}
         showsVerticalScrollIndicator={false}
       >
-        {activeTab === 'Details' && (
-          <View
-            style={{
-              paddingHorizontal: 24,
-              paddingTop: 20,
-              paddingBottom: 24,
-              gap: 20,
-            }}
-          >
-            {/* Date & time */}
-            <View className="flex-row items-center" style={{ gap: 12 }}>
-              <MetaIcon icon={Clock} color="#E8862A" colors={colors} />
-              <Text
-                style={{
-                  fontFamily: 'Inclusive Sans',
-                  fontSize: 14,
-                  color: colors.text,
-                }}
-              >
-                {formatRelativeDateTime(event.date, event.time)}
-              </Text>
-            </View>
-
-            <MetaSection event={event} attendees={attendees} colors={colors} />
-            {event.description && (
-              <AboutSection description={event.description} colors={colors} />
-            )}
+        {/* ── DETAILS ───────────────────────────────────────────── */}
+        <DetailSection title="Details" first contentStyle={{ gap: 20 }}>
+          {/* Date & time */}
+          <View className="flex-row items-center" style={{ gap: 12 }}>
+            <MetaIcon icon={Clock} color="#E8862A" colors={colors} />
+            <Text
+              style={{
+                fontFamily: 'Inclusive Sans',
+                fontSize: 14,
+                color: colors.text,
+              }}
+            >
+              {formatRelativeDateTime(event.date, event.time)}
+            </Text>
           </View>
-        )}
 
-        {activeTab === 'Thread' && (
+          <MetaSection event={event} attendees={attendees} colors={colors} />
+          {event.description && (
+            <AboutSection description={event.description} colors={colors} />
+          )}
+        </DetailSection>
+
+        {/* ── PEOPLE ────────────────────────────────────────────── */}
+        <DetailSection title="People" count={attendees.length} contentStyle={{ paddingHorizontal: 0 }}>
+          <PeopleTab attendees={attendees} colors={colors} />
+        </DetailSection>
+
+        {/* ── DISCUSSION ────────────────────────────────────────── */}
+        <DetailSection title="Discussion" count={boardMessages.length} contentStyle={{ paddingHorizontal: 0 }}>
           <ThreadPanel
             messages={boardMessages}
             colors={colors}
@@ -720,10 +707,7 @@ function RegisteredContent({
             composerState={canPostToThread ? 'open' : 'locked'}
             onSubmitPost={onSubmitPost}
           />
-        )}
-
-        {activeTab === 'People' && <PeopleTab attendees={attendees} colors={colors} />}
-
+        </DetailSection>
       </ScrollView>
     </View>
   )

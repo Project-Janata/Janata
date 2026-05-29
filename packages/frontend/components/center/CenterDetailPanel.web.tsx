@@ -1,8 +1,8 @@
-import React, { useMemo, useState } from 'react'
+import React, { useMemo } from 'react'
 import { View, Text, Image, ScrollView, Pressable, Linking } from 'react-native'
 import { MapPin, Globe, Phone, User, ChevronLeft, Navigation, BadgeCheck, Users } from 'lucide-react-native'
 import CopyLinkButton from '../ui/CopyLinkButton'
-import UnderlineTabBar from '../ui/UnderlineTabBar'
+import { DetailSection } from '../ui'
 import { useBoard, type CenterDisplay } from '../../hooks/useApiData'
 import { createBoardPost, type EventDisplay } from '../../utils/api'
 import { useDetailColors } from '../../hooks/useDetailColors'
@@ -39,7 +39,6 @@ export default function CenterDetailPanel({
 }: CenterDetailPanelProps) {
   const colors = useDetailColors()
   const { user } = useUser()
-  const [activeTab, setActiveTab] = useState('About')
 
   const handleAddressPress = () => {
     const query = encodeURIComponent(center.address)
@@ -174,19 +173,8 @@ export default function CenterDetailPanel({
           resizeMode="cover"
         />
 
-        <View style={{ paddingTop: 8 }}>
-          <UnderlineTabBar
-            tabs={['About', 'Thread', 'Events']}
-            activeTab={activeTab}
-            onTabChange={setActiveTab}
-            counts={{ Thread: boardMessages.length, Events: events.length }}
-          />
-        </View>
-
-        {/* Content area */}
-        <View style={{ paddingHorizontal: 24, paddingTop: 20, paddingBottom: 32 }}>
-          {activeTab === 'About' && (
-            <>
+        {/* ── DETAILS ─────────────────────────────────────────────── */}
+        <DetailSection title="Details" first>
           {/* Point of contact subtitle */}
           {center.pointOfContact ? (
             <Text
@@ -358,24 +346,11 @@ export default function CenterDetailPanel({
               </View>
             ) : null}
           </View>
-            </>
-          )}
+        </DetailSection>
 
-          {activeTab === 'Thread' && (
-            <ThreadPanel
-              messages={boardMessages}
-              colors={colors}
-              emptyTitle="Be the first to post"
-              emptySubtitle={`Ask about rides, what to bring, or anything else for ${center.name}.`}
-              composerPlaceholder="Write to the board..."
-              composerState={canPostToThread ? 'open' : 'locked'}
-              onSubmitPost={handleCreateThreadPost}
-            />
-          )}
-
-          {activeTab === 'Events' && (
-            <>
-              {events.length > 0 ? (
+        {/* ── UPCOMING EVENTS ──────────────────────────────────────── */}
+        <DetailSection title="Upcoming Events" count={events.length} contentStyle={{ gap: 8 }}>
+          {events.length > 0 ? (
                 <View style={{ gap: 8 }}>
                   {events.map((event) => {
                     const { month, day } = formatDateCallout(event.date)
@@ -466,9 +441,20 @@ export default function CenterDetailPanel({
                   </Text>
                 </View>
               )}
-            </>
-          )}
-        </View>
+        </DetailSection>
+
+        {/* ── BOARD ───────────────────────────────────────────────── */}
+        <DetailSection title="Board" count={boardMessages.length} contentStyle={{ paddingHorizontal: 0 }}>
+          <ThreadPanel
+            messages={boardMessages}
+            colors={colors}
+            emptyTitle="Be the first to post"
+            emptySubtitle={`Ask about rides, what to bring, or anything else for ${center.name}.`}
+            composerPlaceholder="Write to the board..."
+            composerState={canPostToThread ? 'open' : 'locked'}
+            onSubmitPost={handleCreateThreadPost}
+          />
+        </DetailSection>
       </ScrollView>
     </View>
   )
