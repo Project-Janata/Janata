@@ -5,17 +5,19 @@
  */
 
 import React, { useEffect, useState } from 'react'
-import { View, Text, ScrollView, StyleSheet, Switch, ActivityIndicator, Alert } from 'react-native'
+import { View, Text, ScrollView, Switch, ActivityIndicator, Alert } from 'react-native'
 import type { NotificationPreferences } from '../../utils/notificationService'
 import {
   getNotificationPreferences,
   updateNotificationPreferences,
 } from '../../utils/notificationService'
+import { useColors } from '../../hooks/useColors'
 
 export const NotificationPreferencesPanel: React.FC = () => {
   const [preferences, setPreferences] = useState<NotificationPreferences | null>(null)
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
+  const c = useColors()
 
   useEffect(() => {
     loadPreferences()
@@ -55,25 +57,27 @@ export const NotificationPreferencesPanel: React.FC = () => {
 
   if (loading) {
     return (
-      <View style={styles.container}>
-        <ActivityIndicator size="large" color="#007AFF" />
+      <View style={{ flex: 1, backgroundColor: c.card, justifyContent: 'center', alignItems: 'center' }}>
+        <ActivityIndicator size="large" color={c.accent} />
       </View>
     )
   }
 
   if (!preferences) {
     return (
-      <View style={styles.container}>
-        <Text style={styles.errorText}>Failed to load preferences</Text>
+      <View style={{ flex: 1, backgroundColor: c.card, justifyContent: 'center', alignItems: 'center' }}>
+        <Text style={{ fontSize: 14, color: c.error, textAlign: 'center' }}>Failed to load preferences</Text>
       </View>
     )
   }
 
   return (
-    <ScrollView style={styles.container} contentContainerStyle={styles.content}>
+    <ScrollView style={{ flex: 1, backgroundColor: c.card }} contentContainerStyle={{ padding: 16 }}>
       {/* Main Channels */}
-      <View style={styles.section}>
-        <Text style={styles.sectionTitle}>Notification Channels</Text>
+      <View style={{ marginBottom: 24 }}>
+        <Text style={{ fontSize: 16, fontWeight: '600', color: c.text, marginBottom: 12, paddingBottom: 8, borderBottomWidth: 1, borderBottomColor: c.border }}>
+          Notification Channels
+        </Text>
 
         <PreferenceRow
           label="In-App Notifications"
@@ -98,8 +102,10 @@ export const NotificationPreferencesPanel: React.FC = () => {
       </View>
 
       {/* Notification Types */}
-      <View style={styles.section}>
-        <Text style={styles.sectionTitle}>Notification Types</Text>
+      <View style={{ marginBottom: 24 }}>
+        <Text style={{ fontSize: 16, fontWeight: '600', color: c.text, marginBottom: 12, paddingBottom: 8, borderBottomWidth: 1, borderBottomColor: c.border }}>
+          Notification Types
+        </Text>
 
         <PreferenceRow
           label="Event Reminders"
@@ -151,14 +157,16 @@ export const NotificationPreferencesPanel: React.FC = () => {
       </View>
 
       {/* Quiet Hours (Future) */}
-      <View style={styles.section}>
-        <Text style={styles.sectionTitle}>Quiet Hours (Coming Soon)</Text>
-        <Text style={styles.infoText}>
+      <View style={{ marginBottom: 24 }}>
+        <Text style={{ fontSize: 16, fontWeight: '600', color: c.text, marginBottom: 12, paddingBottom: 8, borderBottomWidth: 1, borderBottomColor: c.border }}>
+          Quiet Hours (Coming Soon)
+        </Text>
+        <Text style={{ fontSize: 14, color: c.textMuted, fontStyle: 'italic' }}>
           Mute notifications during specific hours
         </Text>
       </View>
 
-      <View style={styles.spacer} />
+      <View style={{ height: 24 }} />
     </ScrollView>
   )
 }
@@ -178,78 +186,20 @@ const PreferenceRow: React.FC<PreferenceRowProps> = ({
   onValueChange,
   disabled,
 }) => {
+  const c = useColors()
   return (
-    <View style={styles.row}>
-      <View style={styles.rowContent}>
-        <Text style={styles.rowLabel}>{label}</Text>
-        {description && <Text style={styles.rowDescription}>{description}</Text>}
+    <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingVertical: 12, borderBottomWidth: 1, borderBottomColor: c.divider }}>
+      <View style={{ flex: 1, marginRight: 12 }}>
+        <Text style={{ fontSize: 15, fontWeight: '500', color: c.text, marginBottom: 4 }}>{label}</Text>
+        {description && <Text style={{ fontSize: 13, color: c.textMuted, marginTop: 4 }}>{description}</Text>}
       </View>
       <Switch
         value={value}
         onValueChange={onValueChange}
         disabled={disabled}
-        trackColor={{ false: '#ccc', true: '#81C784' }}
-        thumbColor={value ? '#4CAF50' : '#f4f3f4'}
+        trackColor={{ false: c.border, true: c.success }}
+        thumbColor={value ? c.card : c.surface}
       />
     </View>
   )
 }
-
-const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: '#fff',
-  },
-  content: {
-    padding: 16,
-  },
-  section: {
-    marginBottom: 24,
-  },
-  sectionTitle: {
-    fontSize: 16,
-    fontWeight: '600',
-    color: '#000',
-    marginBottom: 12,
-    paddingBottom: 8,
-    borderBottomWidth: 1,
-    borderBottomColor: '#f0f0f0',
-  },
-  row: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    paddingVertical: 12,
-    paddingHorizontal: 0,
-    borderBottomWidth: 1,
-    borderBottomColor: '#f9f9f9',
-  },
-  rowContent: {
-    flex: 1,
-    marginRight: 12,
-  },
-  rowLabel: {
-    fontSize: 15,
-    fontWeight: '500',
-    color: '#000',
-    marginBottom: 4,
-  },
-  rowDescription: {
-    fontSize: 13,
-    color: '#666',
-    marginTop: 4,
-  },
-  infoText: {
-    fontSize: 14,
-    color: '#666',
-    fontStyle: 'italic',
-  },
-  errorText: {
-    fontSize: 14,
-    color: '#d32f2f',
-    textAlign: 'center',
-  },
-  spacer: {
-    height: 24,
-  },
-})
