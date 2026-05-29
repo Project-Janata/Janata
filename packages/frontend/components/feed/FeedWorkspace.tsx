@@ -87,15 +87,15 @@ export function FeedWorkspace({
         <EmptyPanel title="No posts found" subtitle="Try a different search." colors={colors} />
       ) : (
         <EmptyPanel
-          title="Start the conversation"
+          title={groups.length > 0 ? 'Start the conversation' : 'Your community feed'}
           subtitle={
             groups.length > 0
-              ? 'Share the first post with your community.'
-              : 'Join a center or register for an event to start posting with your community.'
+              ? "You're in. Share the first post with your center and event boards."
+              : 'Posts from your center and the events you RSVP to show up here. Find your center or an event in Explore to join the conversation.'
           }
           colors={colors}
-          actionLabel={groups.length > 0 ? 'Write a post' : undefined}
-          onAction={groups.length > 0 ? onCompose : undefined}
+          actionLabel={groups.length > 0 ? 'Write a post' : 'Go to Explore'}
+          onAction={groups.length > 0 ? onCompose : onRequestAccess}
         />
       )
     ) : (

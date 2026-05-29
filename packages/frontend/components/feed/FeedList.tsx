@@ -63,12 +63,14 @@ export function FeedList({
 
   if (posts.length === 0) {
     return (
-      <View style={{ paddingVertical: 40, alignItems: 'center', gap: 8 }}>
-        <Text style={{ fontSize: 16, color: colors.text }}>No posts yet</Text>
-        <Text style={{ fontSize: 13, color: colors.textMuted, textAlign: 'center' }}>
+      <View style={{ paddingVertical: 40, paddingHorizontal: 16, alignItems: 'center', gap: 8 }}>
+        <Text style={{ fontSize: 16, color: colors.text }}>
+          {hasQuery ? 'No posts found' : 'Your community feed'}
+        </Text>
+        <Text style={{ fontSize: 13, lineHeight: 19, color: colors.textMuted, textAlign: 'center' }}>
           {hasQuery
             ? 'No board posts match that search.'
-            : 'No posts yet. Be the first to share something on your boards.'}
+            : 'Posts from your center and the events you RSVP to show up here. Use the Explore tab to find your center or an event and join the conversation.'}
         </Text>
       </View>
     )
