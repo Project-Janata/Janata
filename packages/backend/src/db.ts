@@ -83,6 +83,18 @@ export async function getUserByUsername(
   return result ?? null
 }
 
+export async function getUserByEmail(
+  db: D1Database,
+  email: string,
+): Promise<UserRow | null> {
+  const normalized = email.trim().toLowerCase()
+  const result = await db
+    .prepare('SELECT * FROM users WHERE email = ?1')
+    .bind(normalized)
+    .first<UserRow>()
+  return result ?? null
+}
+
 export async function getUserById(
   db: D1Database,
   userId: string,

@@ -1,18 +1,4 @@
-# Local-only secrets for `wrangler dev`. Copy this file to `.dev.vars` and fill
-# in real values. Never commit `.dev.vars` — it's gitignored.
-#
-# For staging/prod, set these via:
-#   npx wrangler secret put <NAME> --config wrangler.staging.toml
-#   npx wrangler secret put <NAME>   # (production)
-
-# JWT signing secrets. Generate fresh random strings for staging/prod.
-JWT_SECRET=dev-secret-key-change-in-production
-JWT_REFRESH_SECRET=dev-refresh-secret-key-change-in-production
-
-# Resend API key for outbound email (verification emails, password reset, etc.)
-# Get from https://resend.com/api-keys (chinmayajanata.org domain must be verified)
-RESEND_API_KEY=re_xxx_replace_me
-
-# Optional: lets adminMiddleware skip auth on localhost. Never set in any
-# wrangler.*.toml — local only.
-# DEV_BYPASS_ADMIN_AUTH=true
+JWT_SECRET="dev-local-jwt-secret-not-for-production"
+JWT_REFRESH_SECRET="dev-local-refresh-secret-not-for-production"
+EMAIL_SEND_DISABLED="true"
+# RESEND_API_KEY="re_..."   # only needed if you want email to actually send locally

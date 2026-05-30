@@ -424,7 +424,10 @@ app.post('/auth/authenticate', rateLimit(5, 60_000), async (c) => {
     return c.json({ message: 'Username and password are required.' }, 400)
   }
 
-  const user = await db.getUserByUsername(c.env.DB, normalizedUsername.toLowerCase())
+  const identifier = normalizedUsername.toLowerCase()
+  const user =
+    (await db.getUserByUsername(c.env.DB, identifier)) ??
+    (await db.getUserByEmail(c.env.DB, identifier))
   if (!user) {
     return c.json({ message: 'Invalid credentials' }, 401)
   }

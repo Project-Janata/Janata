@@ -11,7 +11,8 @@
     "test": "vitest run",
     "test:cloudflare": "vitest run",
     "test:cloudflare:app": "vitest run src/__tests__/app.test.ts",
-    "test:watch": "vitest"
+    "test:watch": "vitest",
+    "seed:dev-users": "node src/seed/dev-users.mjs"
   },
   "dependencies": {
     "hono": "^4.7.0",
