@@ -11,6 +11,7 @@ import {
 } from 'react-native'
 import { useFocusEffect, useNavigation, useRouter } from 'expo-router'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
+import { Building2, CalendarDays, Megaphone } from 'lucide-react-native'
 import { useAnalytics } from '../../utils/analytics'
 import { useUser } from '../../components/contexts'
 import { useColors } from '../../hooks/useColors'
@@ -423,17 +424,20 @@ export default function FeedScreen() {
 
         {!user ? (
           <SignInCallout
-            title="Sign in for Feed"
-            subtitle="Your member feed, group boards, and announcements live here."
+            title="Your community feed"
+            subtitle="One place for your center and the events you attend."
+            features={[
+              { icon: Building2, label: 'Your center board', hint: 'Stay in the loop with members at your home center.' },
+              { icon: CalendarDays, label: 'Event boards', hint: 'Coordinate around every event you RSVP to.' },
+              { icon: Megaphone, label: 'Announcements', hint: "What's new across Chinmaya Mission, as it happens." },
+            ]}
             colors={colors}
             onPress={() => {
               track('connect_signin_pressed', { source: 'feed_banner' })
               router.push('/auth')
             }}
           />
-        ) : null}
-
-        {isLoading ? (
+        ) : isLoading ? (
           <View style={{ gap: 12, paddingTop: 8 }}>
             {Array.from({ length: 3 }).map((_, i) => (
               <View
