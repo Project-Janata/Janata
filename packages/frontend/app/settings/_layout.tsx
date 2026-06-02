@@ -1,32 +1,20 @@
 import React from 'react'
-import { View, Text, Pressable, ScrollView, Platform, useWindowDimensions } from 'react-native'
+import { View, Pressable, Platform } from 'react-native'
 import { SafeAreaView } from 'react-native-safe-area-context'
-import { useRouter, usePathname, Slot, Stack } from 'expo-router'
-import { ArrowLeft, User, Settings as SettingsIcon } from 'lucide-react-native'
+import { useRouter, Slot, Stack } from 'expo-router'
+import { ArrowLeft } from 'lucide-react-native'
 import { useTheme } from '../../components/contexts'
+import { Text } from '../../components/ui'
 
-const SETTINGS_TABS = [
-  { id: 'profile', label: 'Profile', icon: User, path: '/settings/profile' },
-  { id: 'index', label: 'Preferences', icon: SettingsIcon, path: '/settings' },
-]
-
+// Settings is one combined page (Profile section + preferences) on web, and a
+// stack on native. The old web sidebar (Profile / Preferences tabs) was removed
+// because Profile now lives as the top section of the page — see
+// settings/index.web.tsx. The /settings/profile route redirects here (#346).
 export default function SettingsLayout() {
   const router = useRouter()
-  const pathname = usePathname()
   const { isDark } = useTheme()
-  const { width } = useWindowDimensions()
 
-  const showSidebar = Platform.OS === 'web' && width >= 768
-
-  const handleTabPress = (path: string) => {
-    router.push(path as any)
-  }
-
-  const handleClose = () => {
-    router.push('/')
-  }
-
-  // Native: Stack with slide animation
+  // Native: stack with slide animation (unchanged)
   if (Platform.OS !== 'web') {
     return (
       <Stack screenOptions={{ headerShown: false, animation: 'slide_from_right' }}>
@@ -36,105 +24,41 @@ export default function SettingsLayout() {
     )
   }
 
-  // Web: sidebar layout
+  const handleClose = () => {
+    if (router.canGoBack()) router.back()
+    else router.push('/')
+  }
+
   return (
-    <>
-      <Stack.Screen options={{ headerShown: false }} />
-      <SafeAreaView
-        style={{ flex: 1, backgroundColor: isDark ? '#171717' : '#FFFFFF' }}
-        edges={['bottom']}
+    <SafeAreaView
+      style={{ flex: 1, backgroundColor: isDark ? '#1A1A1A' : '#F5F5F4' }}
+      edges={['top', 'bottom']}
+    >
+      <View
+        style={{
+          flexDirection: 'row',
+          alignItems: 'center',
+          gap: 8,
+          paddingHorizontal: 12,
+          paddingVertical: 10,
+          borderBottomWidth: 1,
+          borderBottomColor: isDark ? '#262626' : '#E7E5E4',
+          backgroundColor: isDark ? '#171717' : '#FFFFFF',
+        }}
       >
-        <View style={{ flex: 1, flexDirection: 'row' }}>
-          {showSidebar && (
-            <View
-              style={{
-                width: 256,
-                borderRightWidth: 1,
-                borderRightColor: isDark ? '#44403C' : '#E7E5E4',
-                backgroundColor: isDark ? '#1C1917' : '#FAFAF9',
-              }}
-            >
-              <View
-                style={{
-                  padding: 24,
-                  borderBottomWidth: 1,
-                  borderBottomColor: isDark ? '#44403C' : '#E7E5E4',
-                }}
-              >
-                <View
-                  style={{
-                    flexDirection: 'row',
-                    alignItems: 'center',
-                    justifyContent: 'space-between',
-                    marginBottom: 8,
-                  }}
-                >
-                  <Pressable
-                    onPress={handleClose}
-                    style={{
-                      minWidth: 44,
-                      minHeight: 44,
-                      justifyContent: 'center',
-                      alignItems: 'center',
-                    }}
-                  >
-                    <ArrowLeft size={20} color={isDark ? '#a1a1aa' : '#71717a'} />
-                  </Pressable>
-                  <Text
-                    style={{
-                      fontFamily: 'Inclusive Sans',
-                      fontSize: 24,
-                      color: isDark ? '#FAFAF9' : '#1C1917',
-                    }}
-                  >
-                    Settings
-                  </Text>
-                  <View style={{ width: 44 }} />
-                </View>
-              </View>
-              <ScrollView style={{ flex: 1, padding: 12 }}>
-                {SETTINGS_TABS.map((tab) => {
-                  const isActive = pathname === tab.path || pathname.startsWith(tab.path + '/')
-                  const Icon = tab.icon
-                  return (
-                    <Pressable
-                      key={tab.id}
-                      onPress={() => handleTabPress(tab.path)}
-                      style={{
-                        flexDirection: 'row',
-                        alignItems: 'center',
-                        gap: 12,
-                        paddingHorizontal: 16,
-                        paddingVertical: 12,
-                        borderRadius: 12,
-                        marginBottom: 4,
-                        minHeight: 44,
-                        backgroundColor: isActive ? '#E8862A' : 'transparent',
-                      }}
-                    >
-                      <Icon
-                        size={20}
-                        color={isActive ? '#FFFFFF' : isDark ? '#A8A29E' : '#78716C'}
-                      />
-                      <Text
-                        style={{
-                          fontSize: 16,
-                          color: isActive ? '#FFFFFF' : isDark ? '#FAFAF9' : '#1C1917',
-                        }}
-                      >
-                        {tab.label}
-                      </Text>
-                    </Pressable>
-                  )
-                })}
-              </ScrollView>
-            </View>
-          )}
-          <View style={{ flex: 1 }}>
-            <Slot />
-          </View>
-        </View>
-      </SafeAreaView>
-    </>
+        <Pressable
+          onPress={handleClose}
+          accessibilityRole="button"
+          accessibilityLabel="Back"
+          style={{ width: 40, height: 40, justifyContent: 'center', alignItems: 'center' }}
+        >
+          <ArrowLeft size={22} color={isDark ? '#a1a1aa' : '#71717a'} />
+        </Pressable>
+        <Text style={{ fontSize: 18, color: isDark ? '#FAFAF9' : '#1C1917' }}>Settings</Text>
+      </View>
+      <View style={{ flex: 1 }}>
+        <Slot />
+      </View>
+    </SafeAreaView>
   )
 }

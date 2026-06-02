@@ -10,10 +10,10 @@ import {
   useWindowDimensions,
 } from 'react-native'
 import { SafeAreaView } from 'react-native-safe-area-context'
-import { Eye, Shield, Info, ExternalLink, AlertTriangle, UserPlus, LogOut, ChevronRight } from 'lucide-react-native'
+import { Eye, Shield, Info, ExternalLink, AlertTriangle, UserPlus, LogOut, ChevronRight, User } from 'lucide-react-native'
 import { useUser, useTheme } from '../../components/contexts'
 import { useRouter } from 'expo-router'
-import { DestructiveButton, SecondaryButton, Text } from '../../components/ui'
+import { DestructiveButton, SecondaryButton, Text, Avatar } from '../../components/ui'
 import ThemeSelector from '../../components/settings/ThemeSelector'
 import { useAnalytics } from '../../utils/analytics'
 import Constants from 'expo-constants'
@@ -22,8 +22,20 @@ const APP_VERSION = Constants.expoConfig?.version || '0.2.0'
 
 export default function Preferences() {
   const { isDark } = useTheme()
-  const { deleteAccount, logout } = useUser()
+  const { deleteAccount, logout, user } = useUser()
   const router = useRouter()
+  const displayName =
+    user?.firstName && user?.lastName
+      ? `${user.firstName} ${user.lastName}`
+      : user?.firstName || user?.username || 'You'
+  const vl = user?.verificationLevel ?? 0
+  const roleLabel =
+    vl >= 1000008 ? 'Global Head'
+      : vl >= 1008 ? 'Swami'
+      : vl >= 108 ? 'Brahmachari'
+      : vl >= 54 ? 'Sevak'
+      : vl >= 45 ? 'Verified member'
+      : null
   const [isDeleting, setIsDeleting] = useState(false)
   const [showDeleteModal, setShowDeleteModal] = useState(false)
   const { track } = useAnalytics()
@@ -78,20 +90,47 @@ export default function Preferences() {
           gap: isNarrowWeb ? 24 : 36,
         }}
       >
-        {/* Header */}
+        {/* Profile — top section of the combined Settings page (#346/#330) */}
         <View>
-          <Text
+          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: 12 }}>
+            <User size={20} color={iconColor} />
+            <Text style={{ fontSize: 17, fontWeight: '600', color: textColor }}>Profile</Text>
+          </View>
+          <View
             style={{
-              fontSize: 30,
-              color: textColor,
-              letterSpacing: -0.5,
+              backgroundColor: cardBg,
+              borderRadius: 20,
+              borderWidth: 1,
+              borderColor,
+              padding: isNarrowWeb ? 20 : 28,
+              flexDirection: 'row',
+              alignItems: 'center',
+              gap: 16,
             }}
           >
-            Preferences
-          </Text>
-          <Text style={{ fontSize: 15, color: mutedTextColor, marginTop: 4 }}>
-            Manage your app preferences
-          </Text>
+            <Avatar image={user?.profileImage || undefined} name={displayName} size={isNarrowWeb ? 56 : 64} />
+            <View style={{ flex: 1, minWidth: 0 }}>
+              <Text style={{ fontSize: 18, color: textColor }} numberOfLines={1}>
+                {displayName}
+              </Text>
+              {user?.username ? (
+                <Text style={{ fontSize: 14, color: mutedTextColor, marginTop: 1 }} numberOfLines={1}>
+                  @{user.username}
+                </Text>
+              ) : null}
+              {roleLabel ? (
+                <Text style={{ fontSize: 13, color: '#C2410C', marginTop: 3 }}>{roleLabel}</Text>
+              ) : null}
+            </View>
+            <SecondaryButton
+              onPress={() => {
+                track('nav_edit_profile', { source: 'settings_web' })
+                router.push('/edit-profile')
+              }}
+            >
+              Edit
+            </SecondaryButton>
+          </View>
         </View>
 
         {/* Account Section (invite + log out — parity with the native settings) */}
