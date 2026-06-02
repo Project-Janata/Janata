@@ -406,6 +406,14 @@ export default function DiscoverScreen() {
         (item) => item.type === 'event' && (item.data as EventDisplay).date === selectedDate
       )
     }
+    // An explicit center pick filters events to that center + a ~100mi radius.
+    // The default / home-center case below only sorts, so the list never starts empty.
+    if (areaCenter && selectedCenter && !isAllCenters && result.every((i) => i.type === 'event')) {
+      result = result.filter((item) => {
+        const e = item.data as EventDisplay
+        return e.centerId === areaCenter.id || milesBetween(areaCenter, e) <= 100
+      })
+    }
     // Order the events by nearness to the selected area center so "what's on
     // around <center>" surfaces first. Sorting (not filtering) keeps the list
     // from ever going empty. Only applies to a flat events list.
@@ -417,7 +425,15 @@ export default function DiscoverScreen() {
       )
     }
     return result
-  }, [items, selectedDate, areaCenter])
+  }, [items, selectedDate, areaCenter, selectedCenter, isAllCenters])
+
+  // Map markers honor the same explicit-center radius filter as the list.
+  const mapPoints = useMemo(() => {
+    if (!areaCenter || !selectedCenter || isAllCenters) return filteredPoints
+    return filteredPoints.filter(
+      (p) => p.id === areaCenter.id || milesBetween(areaCenter, p) <= 100
+    )
+  }, [filteredPoints, areaCenter, selectedCenter, isAllCenters])
 
   // Count of items under each section header (e.g. centers per state) so the
   // grouped list shows "CALIFORNIA  3" — counts the rows even while collapsed.
@@ -518,7 +534,7 @@ export default function DiscoverScreen() {
     >
       {/* Map — full bleed behind the sheet */}
       <View style={StyleSheet.absoluteFill}>
-        <Map points={filteredPoints} onPointPress={handlePointPress} userCenterID={user?.centerID} bottomPadding={90} />
+        <Map points={mapPoints} onPointPress={handlePointPress} userCenterID={user?.centerID} bottomPadding={90} />
       </View>
 
       {/* Bottom Sheet — hidden until we measure the container */}
@@ -577,7 +593,7 @@ export default function DiscoverScreen() {
             {/* Center dropdown — picks which center's area to show events for.
                 Defaults to the member's home center; tapping opens the center
                 list so they can see what's on around any center. */}
-            {!centerPickerOpen && user && (isAllCenters || areaCenter || allCenters.length > 0) && (
+            {!centerPickerOpen && (isAllCenters || areaCenter || allCenters.length > 0) && (
               <Pressable
                 onPress={() => {
                   track('explore_area_center_opened', { centerId: areaCenter?.id ?? 'all' })
