@@ -479,6 +479,9 @@ function MobileDiscoverFallback() {
     [isAllCenters, allCenters, areaCenterId, userCenter]
   )
   const isHomeArea = !!areaCenter && areaCenter.id === user?.centerID
+  // Users without a home center (or none selected) get the "All centers" view
+  // so the filter still renders and they can pick a center from the picker.
+  const showAllCenters = isAllCenters || !areaCenter
 
   useFocusEffect(
     useCallback(() => {
@@ -747,7 +750,7 @@ function MobileDiscoverFallback() {
             {/* Center dropdown — picks which center's area to show events for.
                 Defaults to the member's home center; tapping opens the in-sheet
                 center list so they can see what's on around any center. */}
-            {!centerPickerOpen && user && (isAllCenters || areaCenter) && (
+            {!centerPickerOpen && user && (isAllCenters || areaCenter || allCenters.length > 0) && (
               <Pressable
                 onPress={() => {
                   track('explore_area_center_opened', { centerId: areaCenter?.id ?? 'all' })
@@ -756,7 +759,7 @@ function MobileDiscoverFallback() {
                 }}
                 accessibilityRole="button"
                 accessibilityLabel={
-                  isAllCenters
+                  showAllCenters
                     ? 'Showing events from all centers. Tap to change.'
                     : `Showing events near ${areaCenter?.name}. Tap to change center.`
                 }
@@ -773,14 +776,14 @@ function MobileDiscoverFallback() {
                   className="w-10 h-10 rounded-xl items-center justify-center"
                   style={{ backgroundColor: isDark ? 'rgba(232,134,42,0.18)' : '#FDE8D0' }}
                 >
-                  {isAllCenters ? <Globe size={18} color="#E8862A" /> : <Building2 size={18} color="#E8862A" />}
+                  {showAllCenters ? <Globe size={18} color="#E8862A" /> : <Building2 size={18} color="#E8862A" />}
                 </View>
                 <View style={{ flex: 1 }}>
                   <Text className="text-content dark:text-content-dark font-sans" style={{ fontSize: 15 }} numberOfLines={1}>
-                    {isAllCenters ? 'All centers' : areaCenter?.name}
+                    {showAllCenters ? 'All centers' : areaCenter?.name}
                   </Text>
                   <Text className="text-stone-500 dark:text-stone-400 font-sans" style={{ fontSize: 12.5 }} numberOfLines={1}>
-                    {isAllCenters
+                    {showAllCenters
                       ? 'Events everywhere · tap to change'
                       : isHomeArea
                         ? `Your center${areaCenter?.memberCount ? ` · ${areaCenter.memberCount} members` : ''}`
@@ -1054,6 +1057,9 @@ export default function DiscoverScreenWeb() {
     [isAllCentersDesktop, allCenters, areaCenterIdDesktop, userCenterFromList]
   )
   const isHomeAreaDesktop = !!areaCenterDesktop && areaCenterDesktop.id === user?.centerID
+  // Users without a home center (or none selected) get the "All centers" view
+  // so the filter still renders and they can pick a center from the picker.
+  const showAllCentersDesktop = isAllCentersDesktop || !areaCenterDesktop
 
   useFocusEffect(
     useCallback(() => {
@@ -1361,7 +1367,7 @@ export default function DiscoverScreenWeb() {
               {/* Center dropdown — picks which center's area to show events for.
                   Defaults to the member's home center; clicking opens the in-panel
                   center list so they can see what's on around any center. */}
-              {!centerPickerOpenDesktop && user && (isAllCentersDesktop || areaCenterDesktop) && (
+              {!centerPickerOpenDesktop && user && (isAllCentersDesktop || areaCenterDesktop || allCenters.length > 0) && (
                 <Pressable
                   onPress={() => {
                     track('explore_area_center_opened', { centerId: areaCenterDesktop?.id ?? 'all' })
@@ -1369,7 +1375,7 @@ export default function DiscoverScreenWeb() {
                   }}
                   accessibilityRole="button"
                   accessibilityLabel={
-                    isAllCentersDesktop
+                    showAllCentersDesktop
                       ? 'Showing events from all centers. Click to change.'
                       : `Showing events near ${areaCenterDesktop?.name}. Click to change center.`
                   }
@@ -1387,14 +1393,14 @@ export default function DiscoverScreenWeb() {
                     className="w-10 h-10 rounded-xl items-center justify-center"
                     style={{ backgroundColor: isDark ? 'rgba(232,134,42,0.18)' : '#FDE8D0' }}
                   >
-                    {isAllCentersDesktop ? <Globe size={18} color="#E8862A" /> : <Building2 size={18} color="#E8862A" />}
+                    {showAllCentersDesktop ? <Globe size={18} color="#E8862A" /> : <Building2 size={18} color="#E8862A" />}
                   </View>
                   <View style={{ flex: 1 }}>
                     <Text className="text-content dark:text-content-dark font-sans" style={{ fontSize: 15 }} numberOfLines={1}>
-                      {isAllCentersDesktop ? 'All centers' : areaCenterDesktop?.name}
+                      {showAllCentersDesktop ? 'All centers' : areaCenterDesktop?.name}
                     </Text>
                     <Text className="text-stone-500 dark:text-stone-400 font-sans" style={{ fontSize: 12.5 }} numberOfLines={1}>
-                      {isAllCentersDesktop
+                      {showAllCentersDesktop
                         ? 'Events everywhere · click to change'
                         : isHomeAreaDesktop
                           ? `Your center${areaCenterDesktop?.memberCount ? ` · ${areaCenterDesktop.memberCount} members` : ''}`
