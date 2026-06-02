@@ -292,6 +292,9 @@ export default function DiscoverScreen() {
     [isAllCenters, allCenters, areaCenterId, userCenter]
   )
   const isHomeArea = !!areaCenter && areaCenter.id === user?.centerID
+  // Users without a home center (or none selected) get the "All centers" view
+  // so the filter still renders and they can pick a center from the picker.
+  const showAllCenters = isAllCenters || !areaCenter
 
   useFocusEffect(
     useCallback(() => {
@@ -574,7 +577,7 @@ export default function DiscoverScreen() {
             {/* Center dropdown — picks which center's area to show events for.
                 Defaults to the member's home center; tapping opens the center
                 list so they can see what's on around any center. */}
-            {!centerPickerOpen && user && (isAllCenters || areaCenter) && (
+            {!centerPickerOpen && user && (isAllCenters || areaCenter || allCenters.length > 0) && (
               <Pressable
                 onPress={() => {
                   track('explore_area_center_opened', { centerId: areaCenter?.id ?? 'all' })
@@ -582,7 +585,7 @@ export default function DiscoverScreen() {
                 }}
                 accessibilityRole="button"
                 accessibilityLabel={
-                  isAllCenters
+                  showAllCenters
                     ? 'Showing events from all centers. Tap to change.'
                     : `Showing events near ${areaCenter?.name}. Tap to change center.`
                 }
@@ -599,14 +602,14 @@ export default function DiscoverScreen() {
                   className="w-10 h-10 rounded-xl items-center justify-center"
                   style={{ backgroundColor: isDark ? 'rgba(232,134,42,0.18)' : '#FDE8D0' }}
                 >
-                  {isAllCenters ? <Globe size={18} color="#E8862A" /> : <Building2 size={18} color="#E8862A" />}
+                  {showAllCenters ? <Globe size={18} color="#E8862A" /> : <Building2 size={18} color="#E8862A" />}
                 </View>
                 <View style={{ flex: 1 }}>
                   <Text className="text-content dark:text-content-dark font-sans" style={{ fontSize: 15 }} numberOfLines={1}>
-                    {isAllCenters ? 'All centers' : areaCenter?.name}
+                    {showAllCenters ? 'All centers' : areaCenter?.name}
                   </Text>
                   <Text className="text-stone-500 dark:text-stone-400 font-sans" style={{ fontSize: 12.5 }} numberOfLines={1}>
-                    {isAllCenters
+                    {showAllCenters
                       ? 'Events everywhere · tap to change'
                       : isHomeArea
                         ? `Your center${areaCenter?.memberCount ? ` · ${areaCenter.memberCount} members` : ''}`
