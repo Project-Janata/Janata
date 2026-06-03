@@ -16,6 +16,7 @@ export interface CenterData {
   image: string | null
   acharya: string | null
   pointOfContact: string | null
+  description?: string | null
   memberCount: number
   isVerified: boolean
   createdAt?: string
@@ -544,10 +545,14 @@ export async function createBoardPost(
 // Upload an image for a board post (#283) and return its hosted URL. Pass the
 // URL to createBoardPost as `imageUrl`. Multipart, so it does not go through the
 // JSON apiFetch wrapper.
-export async function uploadBoardImage(file: File | Blob): Promise<string> {
+export async function uploadBoardImage(
+  file: File | Blob | { uri: string; name: string; type: string }
+): Promise<string> {
   const token = await getStoredToken()
   const form = new FormData()
-  form.append('file', file)
+  // Web passes a File/Blob; native passes a { uri, name, type } descriptor,
+  // which React Native's FormData accepts directly.
+  form.append('file', file as any)
   const response = await fetch(`${API_BASE_URL}/board/uploadImage`, {
     method: 'POST',
     headers: token ? { Authorization: `Bearer ${token}` } : undefined,

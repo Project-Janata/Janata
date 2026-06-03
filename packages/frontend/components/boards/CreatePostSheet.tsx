@@ -6,6 +6,11 @@ import type { AppColors } from '../../tokens'
 import { useAnalytics } from '../../utils/analytics'
 import { uploadBoardImage } from '../../utils/api'
 
+let ImagePicker: typeof import('expo-image-picker') | null = null
+try {
+  ImagePicker = require('expo-image-picker')
+} catch {}
+
 type GroupOption = {
   id: string
   kind: 'center' | 'event'
@@ -31,7 +36,7 @@ export function CreatePostSheet({
   const [groupId, setGroupId] = useState<string | undefined>()
   const [groupPickerOpen, setGroupPickerOpen] = useState(false)
   const [submitting, setSubmitting] = useState(false)
-  const [imageFile, setImageFile] = useState<File | null>(null)
+  const [imageFile, setImageFile] = useState<File | { uri: string; name: string; type: string } | null>(null)
   const [imagePreview, setImagePreview] = useState<string | null>(null)
 
   const clearImage = () => {
@@ -40,8 +45,7 @@ export function CreatePostSheet({
     setImagePreview(null)
   }
 
-  // Web image picker via a transient file input. Native photo attach (expo-
-  // image-picker) is a follow-up, so the button is web-only for now.
+  // Web image picker via a transient file input. Native uses pickImageNative.
   const pickImageWeb = () => {
     if (typeof document === 'undefined') return
     const input = document.createElement('input')
@@ -57,6 +61,28 @@ export function CreatePostSheet({
       }
     }
     input.click()
+  }
+
+  // Native image picker (expo-image-picker). Mirrors the web flow; the upload
+  // takes the { uri, name, type } descriptor RN's FormData accepts.
+  const pickImageNative = async () => {
+    if (!ImagePicker) return
+    const perm = await ImagePicker.requestMediaLibraryPermissionsAsync()
+    if (!perm.granted) return
+    const result = await ImagePicker.launchImageLibraryAsync({
+      mediaTypes: 'images',
+      quality: 0.85,
+    })
+    if (result.canceled || !result.assets.length) return
+    const asset = result.assets[0]
+    clearImage()
+    setImageFile({
+      uri: asset.uri,
+      name: asset.fileName || `photo-${asset.assetId ?? 'board'}.jpg`,
+      type: asset.mimeType || 'image/jpeg',
+    })
+    setImagePreview(asset.uri)
+    track('board_post_image_added', { source: 'create_post_sheet' })
   }
 
   const sortedGroups = useMemo(
@@ -210,16 +236,16 @@ export function CreatePostSheet({
                 <X size={15} color="#fff" />
               </Pressable>
             </View>
-          ) : Platform.OS === 'web' ? (
+          ) : (
             <Pressable
-              onPress={pickImageWeb}
+              onPress={Platform.OS === 'web' ? pickImageWeb : pickImageNative}
               accessibilityRole="button"
               style={{ marginTop: 14, flexDirection: 'row', alignItems: 'center', gap: 8, alignSelf: 'flex-start', paddingVertical: 9, paddingHorizontal: 14, borderRadius: 999, borderWidth: 1, borderColor: colors.border }}
             >
               <ImagePlus size={17} color={colors.accent} />
               <Text style={{ fontSize: 14, color: colors.text }}>Add photo</Text>
             </Pressable>
-          ) : null}
+          )}
 
           <Text style={{ marginTop: 16, fontSize: 12, lineHeight: 18, color: colors.textFaint }}>
             Visible to members in {selectedGroup?.title || 'your group'}.
