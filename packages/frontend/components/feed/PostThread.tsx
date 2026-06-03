@@ -13,6 +13,7 @@ import {
   Trash2,
 } from 'lucide-react-native'
 import { Avatar } from '../ui'
+import ImageLightbox from '../ui/ImageLightbox'
 import { useUser } from '../contexts'
 import type { AppColors } from '../../tokens'
 import { boardPostToMessage, type BoardMessage } from '../boards'
@@ -463,6 +464,7 @@ function PostMessageBlock({
   original?: boolean
 }) {
   const reactions = message.reactions ?? []
+  const [lightboxOpen, setLightboxOpen] = useState(false)
 
   return (
     <View style={{ flexDirection: 'row', gap: original ? 12 : 10 }}>
@@ -513,6 +515,34 @@ function PostMessageBlock({
         >
           {message.body}
         </Text>
+
+        {message.imageUrl ? (
+          <>
+            <View
+              style={{
+                marginTop: 8,
+                width: '100%',
+                maxWidth: 480,
+                borderRadius: 14,
+                overflow: 'hidden',
+                minWidth: 0,
+              }}
+            >
+              <Pressable onPress={() => setLightboxOpen(true)} accessibilityRole="button" accessibilityLabel="View image">
+                <Image
+                  source={{ uri: message.imageUrl }}
+                  style={{ width: '100%', aspectRatio: 16 / 9, maxHeight: 360 }}
+                  resizeMode="cover"
+                />
+              </Pressable>
+            </View>
+            <ImageLightbox
+              visible={lightboxOpen}
+              imageUrl={message.imageUrl}
+              onClose={() => setLightboxOpen(false)}
+            />
+          </>
+        ) : null}
 
         {reactions.length > 0 ? (
           <View
@@ -598,6 +628,7 @@ function OriginalPost({
 }) {
   const { track } = useAnalytics()
   const [pickerOpen, setPickerOpen] = useState(false)
+  const [lightboxOpen, setLightboxOpen] = useState(false)
   return (
     <View style={{ flexDirection: 'row', gap: 12 }}>
       <Avatar
@@ -654,11 +685,31 @@ function OriginalPost({
         </Text>
 
         {post.imageUrl ? (
-          <Image
-            source={{ uri: post.imageUrl }}
-            style={{ marginTop: 12, width: '100%', maxWidth: 420, height: 280, borderRadius: 16, backgroundColor: colors.surface }}
-            resizeMode="cover"
-          />
+          <>
+            <View
+              style={{
+                marginTop: 10,
+                width: '100%',
+                maxWidth: 480,
+                borderRadius: 16,
+                overflow: 'hidden',
+                minWidth: 0,
+              }}
+            >
+              <Pressable onPress={() => setLightboxOpen(true)} accessibilityRole="button" accessibilityLabel="View image">
+                <Image
+                  source={{ uri: post.imageUrl }}
+                  style={{ width: '100%', aspectRatio: 16 / 9, maxHeight: 360 }}
+                  resizeMode="cover"
+                />
+              </Pressable>
+            </View>
+            <ImageLightbox
+              visible={lightboxOpen}
+              imageUrl={post.imageUrl}
+              onClose={() => setLightboxOpen(false)}
+            />
+          </>
         ) : null}
 
         <View

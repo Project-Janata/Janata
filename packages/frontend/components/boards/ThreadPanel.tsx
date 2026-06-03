@@ -2,6 +2,7 @@ import React, { useState } from 'react'
 import { Image, Pressable, ScrollView, Text, TextInput, View } from 'react-native'
 import { Building2, CalendarDays, Lock, MessageCircle, MoreHorizontal, Send } from 'lucide-react-native'
 import { Avatar } from '../ui'
+import ImageLightbox from '../ui/ImageLightbox'
 import type { BoardMessage } from './__mocks__/mockData'
 
 export type ComposerState = 'open' | 'locked'
@@ -311,6 +312,7 @@ export function BoardPostCard({
   const accent = colors.accent ?? '#E8862A'
   const accentSoft = colors.accentSoft ?? '#FFF7ED'
   const isFeedCard = showSource || asCard
+  const [lightboxOpen, setLightboxOpen] = useState(false)
   const sourceIcon =
     message.sourceKind === 'event' ? (
       <CalendarDays size={11} color={accent} strokeWidth={2.4} />
@@ -443,11 +445,31 @@ export function BoardPostCard({
           </Text>
 
           {message.imageUrl ? (
-            <Image
-              source={{ uri: message.imageUrl }}
-              style={{ marginTop: 8, width: '100%', maxWidth: 360, height: 220, borderRadius: 16, backgroundColor: colors.iconBoxBg }}
-              resizeMode="cover"
-            />
+            <>
+              <View
+                style={{
+                  marginTop: 8,
+                  width: '100%',
+                  maxWidth: 480,
+                  borderRadius: 16,
+                  overflow: 'hidden',
+                  minWidth: 0,
+                }}
+              >
+                <Pressable onPress={() => setLightboxOpen(true)} accessibilityRole="button" accessibilityLabel="View image">
+                  <Image
+                    source={{ uri: message.imageUrl }}
+                    style={{ width: '100%', aspectRatio: 16 / 9, maxHeight: 360, backgroundColor: colors.iconBoxBg }}
+                    resizeMode="cover"
+                  />
+                </Pressable>
+              </View>
+              <ImageLightbox
+                visible={lightboxOpen}
+                imageUrl={message.imageUrl}
+                onClose={() => setLightboxOpen(false)}
+              />
+            </>
           ) : null}
 
           <View

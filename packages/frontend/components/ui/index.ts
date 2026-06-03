@@ -21,6 +21,7 @@ import Logo from './Logo'
 import UnderlineTabBar from './UnderlineTabBar'
 import Avatar from './Avatar'
 import AuthPromptModal from './AuthPromptModal'
+import ImageLightbox from './ImageLightbox'
 import CopyLinkButton from './CopyLinkButton'
 import TabHeader from './TabHeader'
 import StackHeader from './StackHeader'
@@ -45,6 +46,7 @@ export {
   UnderlineTabBar,
   Avatar,
   AuthPromptModal,
+  ImageLightbox,
   CopyLinkButton,
   TabHeader,
   StackHeader,
