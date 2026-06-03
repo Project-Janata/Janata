@@ -74,6 +74,7 @@ export interface CenterRow {
   latitude: number
   longitude: number
   address: string | null
+  description: string | null
   website: string | null
   phone: string | null
   image: string | null
