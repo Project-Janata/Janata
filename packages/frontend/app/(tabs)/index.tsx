@@ -134,6 +134,21 @@ export default function HomeScreen() {
   const greetingName = user?.firstName || user?.username || 'friend'
   const todayLabel = new Date().toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric' })
 
+  // Role + login personalization (goal): under the name, reflect who the member
+  // is — their verification role and home center — so Home greets a Sevak at
+  // Chinmaya San Jose differently from a brand-new guest. Empty for guests and
+  // for members with neither a role nor a center (the GET CONNECTED card leads
+  // those users instead).
+  const vl = user?.verificationLevel ?? 0
+  const roleLabel =
+    vl >= 1000008 ? 'Global Head'
+      : vl >= 1008 ? 'Swami'
+      : vl >= 108 ? 'Brahmachari'
+      : vl >= 54 ? 'Sevak'
+      : vl >= 45 ? 'Verified member'
+      : null
+  const greetingSubline = user ? [roleLabel, centerName].filter(Boolean).join('  ·  ') : ''
+
   // First run: a member still in discovery mode — hasn't joined an event yet.
   // Give them one tight welcome line, a card for their center, and a peek at
   // their board feed when there's activity. Real Up Next / Coming Up content
@@ -155,6 +170,11 @@ export default function HomeScreen() {
       <Text style={{ fontFamily: 'Inclusive Sans', fontSize: 30, lineHeight: 34, letterSpacing: -0.5, color: c.text }} numberOfLines={1}>
         {user ? `Namaste, ${greetingName}` : 'Namaste'}
       </Text>
+      {greetingSubline ? (
+        <Text style={{ fontSize: 13.5, color: c.textMuted, marginTop: 1 }} numberOfLines={1}>
+          {greetingSubline}
+        </Text>
+      ) : null}
     </View>
   )
 
