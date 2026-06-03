@@ -227,7 +227,9 @@ export default function HomeScreen() {
     />
   ) : null
 
-  const firstRunOverview = isNewUser ? (
+  // Only a verified new member gets the first-run overview; it can surface the
+  // user's center + board peek, which the not-verified home must not show.
+  const firstRunOverview = isNewUser && isVerifiedMember ? (
     <FirstRunOverview
       c={c}
       detailColors={detailColors}
