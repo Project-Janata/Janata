@@ -6,7 +6,6 @@ import Badge from '../ui/Badge'
 import { DetailSection } from '../ui'
 import Avatar from '../ui/Avatar'
 import PrimaryButton from '../ui/buttons/PrimaryButton'
-import DestructiveButton from '../ui/buttons/DestructiveButton'
 import { useDetailColors, type DetailColors } from '../../hooks/useDetailColors'
 import { useBoard } from '../../hooks/useApiData'
 import { createBoardPost } from '../../utils/api'
@@ -787,6 +786,55 @@ function googleCalendarUrl(e: {
   return `https://calendar.google.com/calendar/render?action=TEMPLATE&text=${text}&dates=${dates}&details=${details}&location=${location}`
 }
 
+function QuietCancelButton({
+  onPress,
+  disabled,
+  loading,
+  colors,
+}: {
+  onPress: () => void
+  disabled?: boolean
+  loading?: boolean
+  colors: DetailColors
+}) {
+  const isDisabled = disabled || loading
+  return (
+    <Pressable
+      onPress={!isDisabled ? onPress : undefined}
+      disabled={isDisabled}
+      accessibilityRole="button"
+      accessibilityLabel="Cancel registration"
+      style={({ pressed }) => ({
+        borderWidth: 1,
+        borderColor: pressed ? '#FCA5A5' : colors.border,
+        backgroundColor: pressed ? '#FEF2F2' : 'transparent',
+        paddingHorizontal: 16,
+        paddingVertical: 11,
+        borderRadius: 999,
+        alignItems: 'center',
+        justifyContent: 'center',
+        opacity: isDisabled ? 0.55 : 1,
+      })}
+    >
+      {loading ? (
+        <ActivityIndicator size="small" color={colors.textMuted} />
+      ) : (
+        <Text
+          style={{
+            fontFamily: 'Inclusive Sans',
+            fontSize: 14,
+            lineHeight: 20,
+            color: '#B91C1C',
+            textAlign: 'center',
+          }}
+        >
+          Cancel Registration
+        </Text>
+      )}
+    </Pressable>
+  )
+}
+
 function ActionBar({
   isRegistered,
   isPast,
@@ -820,13 +868,12 @@ function ActionBar({
         }}
       >
         {isRegistered ? (
-          <DestructiveButton
+          <QuietCancelButton
             onPress={onToggleRegistration}
             disabled={isToggling}
             loading={isToggling}
-          >
-            Cancel Registration
-          </DestructiveButton>
+            colors={colors}
+          />
         ) : (
           <PrimaryButton
             onPress={onToggleRegistration}
@@ -898,13 +945,12 @@ function ActionBar({
           backgroundColor: colors.panelBg,
         }}
       >
-        <DestructiveButton
+        <QuietCancelButton
           onPress={onToggleRegistration}
           disabled={isToggling}
           loading={isToggling}
-        >
-          Cancel Registration
-        </DestructiveButton>
+          colors={colors}
+        />
       </View>
     )
   }

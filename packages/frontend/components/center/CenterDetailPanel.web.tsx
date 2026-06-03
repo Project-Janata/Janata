@@ -354,92 +354,88 @@ export default function CenterDetailPanel({
         </DetailSection>
 
         {/* ── UPCOMING EVENTS ──────────────────────────────────────── */}
-        <DetailSection title="Upcoming Events" count={events.length} contentStyle={{ gap: 8 }}>
+        <DetailSection title="Upcoming Events" count={events.length} contentStyle={{ gap: 10 }}>
           {events.length > 0 ? (
-                <View style={{ gap: 8 }}>
-                  {events.map((event) => {
-                    const { month, day } = formatDateCallout(event.date)
-                    return (
-                      <Pressable
-                        key={event.id}
-                        onPress={() => onEventPress(event.id)}
+            <View style={{ gap: 10 }}>
+              {events.map((event) => {
+                const { month, day } = formatDateCallout(event.date)
+                return (
+                  <Pressable
+                    key={event.id}
+                    onPress={() => onEventPress(event.id)}
+                    style={{
+                      flexDirection: 'row',
+                      alignItems: 'center',
+                      backgroundColor: colors.cardBg,
+                      borderRadius: 10,
+                      paddingVertical: 10,
+                      paddingHorizontal: 12,
+                      gap: 12,
+                      minHeight: 44,
+                    }}
+                  >
+                    <View
+                      style={{
+                        width: 48,
+                        minHeight: 50,
+                        borderRadius: 10,
+                        backgroundColor: colors.iconBoxBg,
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        flexShrink: 0,
+                      }}
+                    >
+                      <Text
                         style={{
-                          flexDirection: 'row',
-                          alignItems: 'center',
-                          backgroundColor: colors.cardBg,
-                          borderRadius: 8,
-                          paddingVertical: 12,
-                          paddingHorizontal: 14,
-                          minHeight: 44,
+                          fontFamily: 'Inclusive Sans',
+                          fontSize: 11,
+                          color: '#E8862A',
+                          textTransform: 'uppercase',
+                          lineHeight: 14,
                         }}
                       >
-                        <View
-                          style={{
-                            width: 52,
-                            alignItems: 'center',
-                            justifyContent: 'center',
-                            flexShrink: 0,
-                          }}
-                        >
-                          <Text
-                            style={{
-                              fontFamily: 'Inclusive Sans',
-                              fontSize: 11,
-                              color: '#E8862A',
-                              textTransform: 'uppercase',
-                              lineHeight: 14,
-                            }}
-                          >
-                            {month}
-                          </Text>
-                          <Text
-                            style={{
-                              fontFamily: 'Inclusive Sans',
-                              fontSize: 22,
-                              color: colors.text,
-                              lineHeight: 28,
-                            }}
-                          >
-                            {day}
-                          </Text>
-                        </View>
-                        <View
-                          style={{
-                            width: 1,
-                            backgroundColor: colors.border,
-                            alignSelf: 'stretch',
-                            marginHorizontal: 12,
-                          }}
-                        />
-                        <View style={{ flex: 1 }}>
-                          <Text
-                            style={{
-                              fontFamily: 'Inclusive Sans',
-                              fontSize: 14,
-                              color: colors.text,
-                              lineHeight: 20,
-                            }}
-                            numberOfLines={2}
-                          >
-                            {event.title}
-                          </Text>
-                          <Text
-                            style={{
-                              fontFamily: 'Inclusive Sans',
-                              fontSize: 12,
-                              color: colors.textSecondary,
-                              lineHeight: 16,
-                              marginTop: 2,
-                            }}
-                          >
-                            {event.time} {event.attendees > 0 ? `\u00B7 ${event.attendees} attending` : ''}
-                          </Text>
-                        </View>
-                      </Pressable>
-                    )
-                  })}
-                </View>
-              ) : (
+                        {month}
+                      </Text>
+                      <Text
+                        style={{
+                          fontFamily: 'Inclusive Sans',
+                          fontSize: 22,
+                          color: colors.text,
+                          lineHeight: 28,
+                        }}
+                      >
+                        {day}
+                      </Text>
+                    </View>
+                    <View style={{ flex: 1 }}>
+                      <Text
+                        style={{
+                          fontFamily: 'Inclusive Sans',
+                          fontSize: 14,
+                          color: colors.text,
+                          lineHeight: 20,
+                        }}
+                        numberOfLines={2}
+                      >
+                        {event.title}
+                      </Text>
+                      <Text
+                        style={{
+                          fontFamily: 'Inclusive Sans',
+                          fontSize: 12,
+                          color: colors.textSecondary,
+                          lineHeight: 16,
+                          marginTop: 2,
+                        }}
+                      >
+                        {event.time} {event.attendees > 0 ? `\u00B7 ${event.attendees} attending` : ''}
+                      </Text>
+                    </View>
+                  </Pressable>
+                )
+              })}
+            </View>
+          ) : (
                 <View style={{ alignItems: 'center', paddingVertical: 32 }}>
                   <Text style={{ fontFamily: 'Inclusive Sans', fontSize: 14, color: colors.textSecondary }}>
                     No upcoming events yet
