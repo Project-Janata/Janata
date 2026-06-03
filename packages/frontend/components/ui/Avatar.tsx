@@ -1,5 +1,6 @@
 import React from 'react'
 import { View, Text, Image } from 'react-native'
+import { User } from 'lucide-react-native'
 
 interface AvatarProps {
   image?: string
@@ -13,16 +14,18 @@ interface AvatarProps {
 export default function Avatar({ image, initials, name, size = 40, style, backgroundColor }: AvatarProps) {
   const [imageError, setImageError] = React.useState(false)
 
-  const getInitials = () => {
+  // Returns initials text, or null when there is nothing usable (show icon instead).
+  const getInitials = (): string | null => {
     if (initials) return initials
-    if (name) {
-      const parts = name.split(' ')
+    const trimmed = name?.trim()
+    if (trimmed) {
+      const parts = trimmed.split(' ')
       if (parts.length >= 2) {
         return `${parts[0][0]}${parts[1][0]}`.toUpperCase()
       }
-      return name.slice(0, 2).toUpperCase()
+      return trimmed.slice(0, 2).toUpperCase()
     }
-    return '?'
+    return null
   }
 
   const fontSize = size * 0.4
@@ -54,6 +57,8 @@ export default function Avatar({ image, initials, name, size = 40, style, backgr
     )
   }
 
+  const text = getInitials()
+
   return (
     <View
       style={[
@@ -68,15 +73,19 @@ export default function Avatar({ image, initials, name, size = 40, style, backgr
         style,
       ]}
     >
-      <Text
-        style={{
-          color: 'white',
-          fontSize,
-          fontWeight: '600',
-        }}
-      >
-        {getInitials()}
-      </Text>
+      {text ? (
+        <Text
+          style={{
+            color: 'white',
+            fontSize,
+            fontWeight: '600',
+          }}
+        >
+          {text}
+        </Text>
+      ) : (
+        <User color="#FFFFFF" size={Math.round(size * 0.55)} />
+      )}
     </View>
   )
 }

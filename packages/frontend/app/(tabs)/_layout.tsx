@@ -1,5 +1,5 @@
 import { Link, Tabs, useRouter } from 'expo-router'
-import { Platform, View, Text, Pressable, Image, StatusBar } from 'react-native'
+import { Platform, View, Text, Pressable, StatusBar } from 'react-native'
 import { useState, useEffect } from 'react'
 import { useUser, useTheme } from '../../components/contexts'
 import { Plus, User } from 'lucide-react-native'
@@ -80,14 +80,9 @@ export default function TabLayout() {
       )
     }
     if (Platform.OS === 'web') {
-      const webProfileImage = user?.profileImage
-      const getInitials = () => {
-        if (user?.firstName && user?.lastName)
-          return `${user.firstName[0]}${user.lastName[0]}`.toUpperCase()
-        if (user?.firstName) return user.firstName[0].toUpperCase()
-        if (user?.username) return user.username[0].toUpperCase()
-        return '?'
-      }
+      const displayName = user?.firstName
+        ? `${user.firstName} ${user.lastName ?? ''}`.trim()
+        : user?.username
 
       return (
         <View className="flex-row items-center" style={{ gap: 8 }}>
@@ -119,31 +114,13 @@ export default function TabLayout() {
             </Pressable>
           )}
           <Pressable
-            className="mr-4 rounded-full overflow-hidden"
-            style={{ width: 36, height: 36 }}
+            className="mr-4"
             onPress={() => {
               posthog?.capture('nav_menu_opened')
               setSettingsVisible(true)
             }}
           >
-            {webProfileImage ? (
-              <Image source={{ uri: webProfileImage }} style={{ width: 36, height: 36 }} />
-            ) : (
-              <View
-                style={{
-                  width: 36,
-                  height: 36,
-                  borderRadius: 18,
-                  backgroundColor: '#C2410C',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                }}
-              >
-                <Text style={{ color: '#fff', fontSize: 14, fontWeight: '600' }}>
-                  {getInitials()}
-                </Text>
-              </View>
-            )}
+            <Avatar image={user?.profileImage ?? undefined} name={displayName} size={36} />
           </Pressable>
           <SettingsPanel
             visible={settingsVisible}
