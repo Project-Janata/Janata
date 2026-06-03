@@ -7,7 +7,7 @@ import React, { useState, useCallback } from 'react'
 import { ScrollView, View, Pressable, Image, Share } from 'react-native'
 import { useRouter, useFocusEffect } from 'expo-router'
 import {
-  Pencil, Share2, ChevronRight, BadgeCheck, MapPin,
+  Pencil, Share2, ChevronRight, BadgeCheck, MapPin, UserPlus,
   Megaphone, CalendarDays, Building2,
 } from 'lucide-react-native'
 import { useUser, useTheme } from '../../components/contexts'
@@ -84,7 +84,7 @@ export default function Profile() {
       track('profile_shared', { source: 'profile', username: user?.username })
     } catch { /* dismissed */ }
   }
-  const onSettings = () => { track('nav_settings_opened', { source: 'profile', destination: 'preferences' }); router.push('/settings') }
+  const onInvite = () => { track('settings_invite_pressed', { source: 'profile' }); router.push('/settings/invite') }
   const onExplore = () => { track('profile_explore_cta', { source: 'profile' }); router.push('/explore') }
 
   const card = { backgroundColor: c.card, borderWidth: 1, borderColor: c.border, borderRadius: 20 } as const
@@ -140,7 +140,6 @@ export default function Profile() {
             </View>
           )}
           <Text style={{ fontSize: 21, fontWeight: '700', color: c.text, marginTop: 14, textAlign: 'center' }}>{displayName}</Text>
-          {user?.username ? <Text style={{ fontSize: 14, color: c.textMuted, marginTop: 1 }}>@{user.username}</Text> : null}
           {roleLabel ? (
             <View style={{ flexDirection: 'row', alignItems: 'center', gap: 5, marginTop: 10, backgroundColor: c.accentSoft, paddingHorizontal: 12, paddingVertical: 5, borderRadius: 999 }}>
               <BadgeCheck size={14} color="#C2410C" />
@@ -185,10 +184,13 @@ export default function Profile() {
         ) : null}
 
         <Pressable
-          onPress={onSettings}
+          onPress={onInvite}
           style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginTop: 18, paddingTop: 16, borderTopWidth: 1, borderTopColor: c.border }}
         >
-          <Text style={{ fontSize: 14, color: c.textSecondary }}>Account &amp; Settings</Text>
+          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+            <UserPlus size={16} color={c.textSecondary} />
+            <Text style={{ fontSize: 14, color: c.textSecondary }}>Invite Friends</Text>
+          </View>
           <ChevronRight size={18} color={c.iconMuted} />
         </Pressable>
       </View>
