@@ -27,6 +27,9 @@ export interface MapProps {
   /** Extra bottom padding so controls stay above a bottom sheet (native only, ignored on web) */
   bottomPadding?: number
   showControls?: boolean
+  /** Imperatively pan/zoom the map to a point. Bump `key` to re-trigger on the
+   * same coordinates. `zoom` follows the web Map's slippy-tile convention. */
+  flyTo?: { latitude: number; longitude: number; key: number; zoom?: number } | null
 }
 
 const DEFAULT_REGION: Region = {
@@ -124,6 +127,7 @@ const Map = memo<MapProps>(function Map({
   userCenterID,
   bottomPadding = 0,
   showControls = true,
+  flyTo,
 }) {
   const mapRef = useRef<MapView>(null)
 
@@ -273,6 +277,27 @@ const Map = memo<MapProps>(function Map({
       500
     )
   }, [])
+
+  // Imperative pan/zoom (e.g. picking a center in Discover). Keyed on flyTo.key
+  // so re-selecting the same center re-pans. Converts the web zoom level to a
+  // region delta (360 / 2^zoom ≈ the slippy-tile span); defaults to a ~city
+  // view. Marks animatedOnceRef so the auto-fit effects don't fight it.
+  useEffect(() => {
+    if (!flyTo) return
+    if (!isValidCoord(flyTo.latitude, flyTo.longitude)) return
+    const delta = flyTo.zoom ? 360 / Math.pow(2, flyTo.zoom) : 0.35
+    animatedOnceRef.current = true
+    mapRef.current?.animateToRegion(
+      {
+        latitude: flyTo.latitude,
+        longitude: flyTo.longitude,
+        latitudeDelta: delta,
+        longitudeDelta: delta,
+      },
+      500
+    )
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [flyTo?.key])
 
   return (
     <View style={styles.container}>

@@ -263,6 +263,9 @@ export default function DiscoverScreen() {
   const [selectedCenter, setSelectedCenter] = useState<string | null>(null)
   // The center dropdown opens an in-sheet list (not a modal) — view, pick one, or close.
   const [centerPickerOpen, setCenterPickerOpen] = useState(false)
+  // Imperative map pan target — bumped when a center is picked so the map flies
+  // to focus on it (parity with web Discover). zoom 10 ≈ the ~100mi area view.
+  const [mapFlyTo, setMapFlyTo] = useState<{ latitude: number; longitude: number; key: number; zoom?: number } | null>(null)
     const { user } = useUser()
     const {
     items,
@@ -527,6 +530,81 @@ export default function DiscoverScreen() {
     }
   }
 
+  // One center row in the picker (parity with web Discover). Centers WITH events
+  // scope the list + fly the map to that area; centers WITHOUT events only open
+  // the center page (no point scoping an area with nothing on).
+  const renderCenterRow = (opt: FilterPickerOption<string>) => {
+    const count = opt.count ?? 0
+    const selectable = count > 0
+    const openPage = () => {
+      track('explore_center_page_opened', { centerId: opt.value })
+      setCenterPickerOpen(false)
+      router.push(`/center/${opt.value}`)
+    }
+    const scopeToCenter = () => {
+      track('explore_area_center_selected', { centerId: opt.value })
+      setSelectedCenter(opt.value)
+      setCenterPickerOpen(false)
+      setSearchQuery('')
+      const c = allCenters.find((cc) => cc.id === opt.value)
+      if (c && Number.isFinite(c.latitude) && Number.isFinite(c.longitude)) {
+        setMapFlyTo((prev) => ({
+          latitude: c.latitude as number,
+          longitude: c.longitude as number,
+          zoom: 10,
+          key: (prev?.key ?? 0) + 1,
+        }))
+      }
+    }
+    return (
+      <View key={opt.value}>
+        <View className="bg-stone-200/70 dark:bg-neutral-800" style={{ height: 1, marginHorizontal: 16 }} />
+        <View className="flex-row items-center px-4" style={{ minHeight: 56, gap: 8 }}>
+          <Pressable
+            onPress={selectable ? scopeToCenter : openPage}
+            accessibilityRole="button"
+            accessibilityLabel={selectable ? `Show events near ${opt.label}` : `View ${opt.label} page`}
+            className="flex-1 flex-row items-center active:opacity-60"
+            style={{ gap: 12, minHeight: 56 }}
+          >
+            <View
+              className="w-10 h-10 rounded-xl items-center justify-center"
+              style={{ backgroundColor: isDark ? 'rgba(232,134,42,0.18)' : '#FDE8D0' }}
+            >
+              <Building2 size={18} color="#E8862A" />
+            </View>
+            <View style={{ flex: 1 }}>
+              <Text className="text-content dark:text-content-dark font-sans" style={{ fontSize: 15 }} numberOfLines={1}>
+                {opt.label}
+              </Text>
+              <Text className="text-stone-500 dark:text-stone-400 font-sans" style={{ fontSize: 12.5 }} numberOfLines={1}>
+                {opt.sublabel}
+              </Text>
+            </View>
+          </Pressable>
+          {selectable ? (
+            <View className="rounded-full px-2.5 py-1" style={{ backgroundColor: isDark ? 'rgba(232,134,42,0.18)' : '#FDE8D0' }}>
+              <Text className="font-sans" style={{ fontSize: 12, fontWeight: '600', color: '#E8862A' }}>
+                {count} {count === 1 ? 'event' : 'events'}
+              </Text>
+            </View>
+          ) : null}
+          {opt.value === areaCenterId ? <Check size={18} color="#E8862A" /> : null}
+          <Pressable
+            onPress={openPage}
+            accessibilityRole="button"
+            accessibilityLabel={`View ${opt.label} page`}
+            hitSlop={6}
+            className="items-center justify-center active:opacity-60"
+            style={{ width: 30, height: 30, borderRadius: 15, backgroundColor: isDark ? '#262626' : '#F3F4F6' }}
+          >
+            <ChevronRight size={16} color={isDark ? '#A8A29E' : '#78716C'} />
+          </Pressable>
+        </View>
+      </View>
+    )
+  }
+
   return (
     <View
       style={styles.container}
@@ -534,7 +612,7 @@ export default function DiscoverScreen() {
     >
       {/* Map — full bleed behind the sheet */}
       <View style={StyleSheet.absoluteFill}>
-        <Map points={mapPoints} onPointPress={handlePointPress} userCenterID={user?.centerID} bottomPadding={90} />
+        <Map points={mapPoints} onPointPress={handlePointPress} userCenterID={user?.centerID} bottomPadding={90} flyTo={mapFlyTo} />
       </View>
 
       {/* Bottom Sheet — hidden until we measure the container */}
@@ -756,60 +834,32 @@ export default function DiscoverScreen() {
                   {isAllCenters ? <Check size={18} color="#E8862A" /> : null}
                 </Pressable>
 
-                {centerOptions.map((opt) => (
-                  <View key={opt.value}>
-                    <View className="bg-stone-200/70 dark:bg-neutral-800" style={{ height: 1, marginHorizontal: 16 }} />
-                    <View className="flex-row items-center px-4" style={{ minHeight: 56, gap: 8 }}>
-                      {/* Tap the row to scope events to this center's area. */}
-                      <Pressable
-                        onPress={() => {
-                          track('explore_area_center_selected', { centerId: opt.value })
-                          setSelectedCenter(opt.value)
-                          setCenterPickerOpen(false)
-                        }}
-                        accessibilityRole="button"
-                        accessibilityLabel={`Show events near ${opt.label}`}
-                        className="flex-1 flex-row items-center active:opacity-60"
-                        style={{ gap: 12, minHeight: 56 }}
-                      >
-                        <View
-                          className="w-10 h-10 rounded-xl items-center justify-center"
-                          style={{ backgroundColor: isDark ? 'rgba(232,134,42,0.18)' : '#FDE8D0' }}
-                        >
-                          <Building2 size={18} color="#E8862A" />
-                        </View>
-                        <View style={{ flex: 1 }}>
-                          <Text className="text-content dark:text-content-dark font-sans" style={{ fontSize: 15 }} numberOfLines={1}>
-                            {opt.label}
-                          </Text>
-                          <Text className="text-stone-500 dark:text-stone-400 font-sans" style={{ fontSize: 12.5 }} numberOfLines={1}>
-                            {opt.sublabel}{opt.count ? ` · ${opt.count} event${opt.count === 1 ? '' : 's'}` : ''}
-                          </Text>
-                        </View>
-                      </Pressable>
-                      {opt.value === areaCenterId ? <Check size={18} color="#E8862A" /> : null}
-                      {/* Distinct "view this center's page" action. */}
-                      <Pressable
-                        onPress={() => {
-                          track('explore_center_page_opened', { centerId: opt.value })
-                          router.push(`/center/${opt.value}`)
-                        }}
-                        accessibilityRole="button"
-                        accessibilityLabel={`View ${opt.label} page`}
-                        hitSlop={6}
-                        className="items-center justify-center active:opacity-60"
-                        style={{
-                          width: 30,
-                          height: 30,
-                          borderRadius: 15,
-                          backgroundColor: isDark ? '#262626' : '#F3F4F6',
-                        }}
-                      >
-                        <ChevronRight size={16} color={isDark ? '#A8A29E' : '#78716C'} />
-                      </Pressable>
-                    </View>
-                  </View>
-                ))}
+                {(() => {
+                  // Search filters the picker too; group centers with events
+                  // (scopeable + fly) above the rest (page-only), like web.
+                  const q = searchQuery.trim().toLowerCase()
+                  const matches = q
+                    ? centerOptions.filter((o) => o.label.toLowerCase().includes(q) || (o.sublabel ?? '').toLowerCase().includes(q))
+                    : centerOptions
+                  const withEvents = matches.filter((o) => (o.count ?? 0) > 0)
+                  const withoutEvents = matches.filter((o) => (o.count ?? 0) === 0)
+                  return (
+                    <>
+                      {withEvents.length > 0 && (
+                        <Text className="font-sans text-stone-400 dark:text-stone-500 uppercase px-4 pt-3 pb-1" style={{ fontSize: 11, letterSpacing: 0.8 }}>
+                          Centers with events
+                        </Text>
+                      )}
+                      {withEvents.map(renderCenterRow)}
+                      {withoutEvents.length > 0 && (
+                        <Text className="font-sans text-stone-400 dark:text-stone-500 uppercase px-4 pt-5 pb-1" style={{ fontSize: 11, letterSpacing: 0.8 }}>
+                          Other centers
+                        </Text>
+                      )}
+                      {withoutEvents.map(renderCenterRow)}
+                    </>
+                  )
+                })()}
               </>
             )}
             {!centerPickerOpen && !loading && displayItems.length === 0 && (
