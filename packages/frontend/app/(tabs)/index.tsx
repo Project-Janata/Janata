@@ -216,6 +216,7 @@ export default function HomeScreen() {
   const welcomeBanner = isNewUser ? (
     <WelcomeBanner
       c={c}
+      centerName={centerName || undefined}
       onExplore={() => {
         track('home_first_run_explore_pressed')
         router.push('/explore' as never)
@@ -420,8 +421,15 @@ export default function HomeScreen() {
 // the real content (Your Center, Up Next, Coming Up) already shows what the app
 // does, so a single orienting sentence + Explore CTA is enough. Rendered as a
 // full-width top row on desktop and inline at the top of the column on mobile.
-function WelcomeBanner({ c, onExplore }: { c: AppColors; onExplore: () => void }) {
+function WelcomeBanner({ c, onExplore, centerName }: { c: AppColors; onExplore: () => void; centerName?: string }) {
   const cardBase = { borderRadius: 18, borderWidth: 1, borderColor: c.border, backgroundColor: c.card } as const
+  // Login/role-state personalization: a member who's already joined a center
+  // isn't "new" — greet them by their center and nudge toward RSVPing, rather
+  // than the generic "Welcome to Janata" shown to first-touch/no-center users.
+  const title = centerName ? `You're all set at ${centerName}` : 'Welcome to Janata'
+  const subtitle = centerName
+    ? 'Nothing on your calendar yet — find an event to RSVP to.'
+    : 'Find satsangs, camps, and classes near you.'
   return (
     <View style={[cardBase, { flexDirection: 'row', alignItems: 'center', gap: 14, padding: 16 }]}>
       <View style={{ width: 44, height: 44, borderRadius: 13, backgroundColor: c.accentSoft, alignItems: 'center', justifyContent: 'center' }}>
@@ -429,10 +437,10 @@ function WelcomeBanner({ c, onExplore }: { c: AppColors; onExplore: () => void }
       </View>
       <View style={{ flex: 1, gap: 2 }}>
         <Text style={{ fontFamily: 'Inclusive Sans', fontSize: 16, color: c.text }}>
-          Welcome to Janata
+          {title}
         </Text>
         <Text style={{ fontSize: 13.5, lineHeight: 19, color: c.textMuted }}>
-          Find satsangs, camps, and classes near you.
+          {subtitle}
         </Text>
       </View>
       <Pressable
