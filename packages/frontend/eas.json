@@ -34,7 +34,8 @@
         "resourceClass": "m-medium"
       },
       "env": {
-        "EXPO_NO_TELEMETRY": "1"
+        "EXPO_NO_TELEMETRY": "1",
+        "EXPO_PUBLIC_POSTHOG_KEY": "phc_5o67MgFjj113GN0QKduyyIs0BmEQkpWc8D2eDi6ju7Q"
       }
     }
   },
