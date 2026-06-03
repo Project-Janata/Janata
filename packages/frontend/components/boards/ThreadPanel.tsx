@@ -143,6 +143,7 @@ function BoardComposer({
     user?.firstName && user?.lastName ? `${user.firstName} ${user.lastName}`
       : user?.firstName || user?.username || 'You'
   const [body, setBody] = useState('')
+  const [focused, setFocused] = useState(false)
   const [submitting, setSubmitting] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const canSubmit = !!onSubmit && body.trim().length > 0 && !submitting
@@ -164,62 +165,65 @@ function BoardComposer({
   }
 
   return (
-    <View style={{ paddingHorizontal: 20, paddingTop: 18, paddingBottom: visibleLabel ? 16 : 10 }}>
-      <View
-        style={{
-          minHeight: 58,
-          borderRadius: 16,
-          backgroundColor: colors.iconBoxBg,
-          flexDirection: 'row',
-          // Send button sits at the bottom; the avatar is pinned to the top so
-          // the row reads top-to-bottom as the input grows vertically.
-          alignItems: 'flex-end',
-          paddingHorizontal: 16,
-          paddingVertical: 10,
-          gap: 12,
-        }}
-      >
-        <View style={{ alignSelf: 'flex-start' }}>
-          <Avatar image={user?.profileImage || undefined} name={composerName} size={36} backgroundColor={accent} />
-        </View>
-        <TextInput
-          editable={!!onSubmit && !submitting}
-          multiline
-          value={body}
-          onChangeText={setBody}
-          placeholder={placeholder}
-          placeholderTextColor={colors.textMuted}
+    <View style={{ paddingHorizontal: 20, paddingTop: 12, paddingBottom: visibleLabel ? 14 : 10 }}>
+      <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10 }}>
+        <Avatar image={user?.profileImage || undefined} name={composerName} size={30} backgroundColor={accent} />
+        <View
           style={{
             flex: 1,
-            minHeight: 38,
-            maxHeight: 120,
-            paddingTop: 8,
-            paddingBottom: 8,
-            fontFamily: 'Inclusive Sans',
-            fontSize: 16,
-            lineHeight: 22,
-            color: colors.text,
-            textAlignVertical: 'top',
-          }}
-        />
-        <Pressable
-          accessibilityLabel="Post to board"
-          disabled={!canSubmit}
-          onPress={handleSubmit}
-          style={{
-            width: 38,
-            height: 38,
-            borderRadius: 19,
-            alignItems: 'center',
-            justifyContent: 'center',
-            backgroundColor: canSubmit ? accent : colors.cardBg ?? colors.panelBg,
-            borderWidth: canSubmit ? 0 : 1,
-            borderColor: colors.border,
-            opacity: submitting ? 0.7 : 1,
+            minHeight: 46,
+            borderRadius: 12,
+            backgroundColor: colors.cardBg ?? colors.panelBg,
+            borderWidth: 1,
+            borderColor: focused || body.length > 0 ? colors.border : 'transparent',
+            flexDirection: 'row',
+            alignItems: 'flex-end',
+            paddingLeft: 12,
+            paddingRight: 6,
+            paddingVertical: 5,
+            gap: 8,
           }}
         >
-          <Send size={17} color={canSubmit ? '#FFFFFF' : colors.textMuted} strokeWidth={2.3} />
-        </Pressable>
+          <TextInput
+            editable={!!onSubmit && !submitting}
+            multiline
+            value={body}
+            onChangeText={setBody}
+            onFocus={() => setFocused(true)}
+            onBlur={() => setFocused(false)}
+            placeholder={placeholder}
+            placeholderTextColor={colors.textMuted}
+            style={{
+              flex: 1,
+              minHeight: 34,
+              maxHeight: 120,
+              paddingTop: 7,
+              paddingBottom: 6,
+              fontFamily: 'Inclusive Sans',
+              fontSize: 15,
+              lineHeight: 21,
+              color: colors.text,
+              textAlignVertical: 'top',
+              outlineStyle: 'none',
+            } as any}
+          />
+          <Pressable
+            accessibilityLabel="Post to board"
+            disabled={!canSubmit}
+            onPress={handleSubmit}
+            style={{
+              width: 32,
+              height: 32,
+              borderRadius: 16,
+              alignItems: 'center',
+              justifyContent: 'center',
+              backgroundColor: canSubmit ? accent : 'transparent',
+              opacity: submitting ? 0.7 : 1,
+            }}
+          >
+            <Send size={15} color={canSubmit ? '#FFFFFF' : colors.textMuted} strokeWidth={2.3} />
+          </Pressable>
+        </View>
       </View>
       {visibleLabel ? (
         <Text
