@@ -22,7 +22,7 @@ const tabs: { key: AdminTab; label: string; Icon: typeof Building2 }[] = [
   { key: 'Centers', label: 'Centers', Icon: Building2 },
   { key: 'Events', label: 'Events', Icon: CalendarDays },
   { key: 'Users', label: 'Users', Icon: Users },
-  { key: 'Invite Codes', label: 'Invite Codes', Icon: Ticket },
+  { key: 'Invite Codes', label: 'Invite Links', Icon: Ticket },
   { key: 'Moderation', label: 'Moderation', Icon: ShieldAlert },
   { key: 'Notifications', label: 'Notifications', Icon: Bell },
 ]
