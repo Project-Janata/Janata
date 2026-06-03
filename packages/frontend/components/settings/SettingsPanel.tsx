@@ -162,7 +162,7 @@ function SettingsPanel({ visible, onClose, onLogout }) {
               {displayName}
             </Text>
             <Text
-              className="text-sm font-sans text-contentStrong dark:text-contentStrong-dark"
+              className="text-sm font-sans text-stone-500 dark:text-stone-400"
               numberOfLines={1}
               ellipsizeMode="tail"
             >

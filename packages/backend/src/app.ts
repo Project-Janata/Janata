@@ -2093,7 +2093,9 @@ app.post('/profile/uploadImage', authMiddleware, async (c) => {
     },
   })
 
-  const baseUrl = 'https://avatars.chinmayajanata.org/avatars'
+  // R2 custom domain is bound at the bucket root → public URL is domain + key
+  // (key already includes the avatars/ folder). No extra "/avatars" segment.
+  const baseUrl = 'https://avatars.chinmayajanata.org'
   const url = `${baseUrl}/${key}`
 
   // Update user profile with new image URL
@@ -2134,7 +2136,10 @@ app.post('/board/uploadImage', authMiddleware, async (c) => {
     customMetadata: { userId: user.id, originalFileName: file.name },
   })
 
-  const url = `https://avatars.chinmayajanata.org/avatars/${key}`
+  // The R2 custom domain is bound at the bucket root, so the public URL is
+  // domain + object key (the key already namespaces under boards/). A previous
+  // extra "/avatars" segment 404'd — board photos showed as a grey box.
+  const url = `https://avatars.chinmayajanata.org/${key}`
   return c.json({ message: 'Image uploaded', imageUrl: url })
 })
 
