@@ -1,7 +1,7 @@
-import React from 'react'
+import React, { useState } from 'react'
 import { Image, Pressable, Text, View } from 'react-native'
 import { Building2, CalendarDays, MessageCircle } from 'lucide-react-native'
-import { Avatar } from '../ui'
+import { Avatar, ImageLightbox } from '../ui'
 import type { AppColors } from '../../tokens'
 import type { FeedPost } from './types'
 
@@ -16,6 +16,7 @@ export function FeedPostCard({
 }) {
   const reactions = post.reactions ?? [{ emoji: '🙏', count: 2 }]
   const replies = post.replyCount ?? 2
+  const [lightboxOpen, setLightboxOpen] = useState(false)
 
   return (
     <Pressable
@@ -76,11 +77,17 @@ export function FeedPostCard({
           <Text style={{ fontSize: 14, lineHeight: 20, color: colors.text }}>{post.body}</Text>
 
           {post.imageUrl ? (
-            <Image
-              source={{ uri: post.imageUrl }}
-              style={{ marginTop: 8, width: '100%', height: 200, borderRadius: 14, backgroundColor: colors.panel }}
-              resizeMode="cover"
-            />
+            <>
+              <Pressable
+                onPress={() => setLightboxOpen(true)}
+                accessibilityRole="button"
+                accessibilityLabel="View image full screen"
+                style={{ marginTop: 8, width: '100%', height: 200, borderRadius: 14, overflow: 'hidden', backgroundColor: colors.panel }}
+              >
+                <Image source={{ uri: post.imageUrl }} style={{ width: '100%', height: '100%' }} resizeMode="cover" />
+              </Pressable>
+              <ImageLightbox uri={post.imageUrl} visible={lightboxOpen} onClose={() => setLightboxOpen(false)} />
+            </>
           ) : null}
 
           <View style={{ flexDirection: 'row', alignItems: 'center', gap: 16, marginTop: 6 }}>
