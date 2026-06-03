@@ -43,7 +43,10 @@
     "production": {
       "ios": {
         "appleId": "kishparikh18@gmail.com",
-        "ascAppId": "6761746513"
+        "ascAppId": "6761746513",
+        "ascApiKeyPath": "$EXPO_ASC_API_KEY_PATH",
+        "ascApiKeyId": "9LGHH7UKJV",
+        "ascApiKeyIssuerId": "1027ee60-03e2-42ff-8b82-c10d9870cc90"
       }
     }
   }
