@@ -2,6 +2,7 @@ import React, { useState, useEffect, useMemo } from 'react'
 import { ActivityIndicator, Image, KeyboardAvoidingView, Modal, Platform, Pressable, ScrollView, Text, TextInput, View } from 'react-native'
 import { Building2, CalendarDays, ChevronDown, ImagePlus, X } from 'lucide-react-native'
 import { Avatar } from '../ui'
+import { useUser } from '../contexts'
 import type { AppColors } from '../../tokens'
 import { useAnalytics } from '../../utils/analytics'
 import { uploadBoardImage } from '../../utils/api'
@@ -32,6 +33,10 @@ export function CreatePostSheet({
   onSubmit?: (group: GroupOption, body: string, imageUrl?: string | null) => Promise<void> | void
 }) {
   const { track } = useAnalytics()
+  const { user } = useUser()
+  const composerName =
+    user?.firstName && user?.lastName ? `${user.firstName} ${user.lastName}`
+      : user?.firstName || user?.username || 'You'
   const [body, setBody] = useState('')
   const [groupId, setGroupId] = useState<string | undefined>()
   const [groupPickerOpen, setGroupPickerOpen] = useState(false)
@@ -208,7 +213,7 @@ export function CreatePostSheet({
 
           {/* Composer */}
           <View style={{ flexDirection: 'row', gap: 12, marginTop: 4 }}>
-            <Avatar name="You" initials="YO" size={38} backgroundColor={colors.accent} />
+            <Avatar image={user?.profileImage || undefined} name={composerName} size={38} backgroundColor={colors.accent} />
             <TextInput
               autoFocus
               multiline
