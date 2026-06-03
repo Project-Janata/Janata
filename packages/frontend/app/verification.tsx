@@ -27,7 +27,8 @@ export default function VerificationScreen() {
   const unlocks = [
     'Post and reply on your center and event boards',
     'RSVP to events and see who else is going',
-    'Message other members',
+    // Messaging/DMs are deferred post-MSC (PRD §5.4) — don't promise them here.
+    'View member profiles across your community',
   ]
 
   return (
