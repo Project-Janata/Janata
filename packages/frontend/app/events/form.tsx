@@ -14,6 +14,7 @@ import { useLocalSearchParams, useRouter } from 'expo-router'
 import { ChevronLeft, ChevronDown } from 'lucide-react-native'
 import DateTimePicker from '@react-native-community/datetimepicker'
 import { useAnalytics } from '../../utils/analytics'
+import { useUser } from '../../components/contexts'
 import { PrimaryButton } from '../../components/ui'
 import { useDetailColors, type DetailColors } from '../../hooks/useDetailColors'
 import {
@@ -163,7 +164,13 @@ export default function EventFormPage() {
   const router = useRouter()
   const colors = useDetailColors()
   const { track } = useAnalytics()
+  const { user, loading: userLoading } = useUser()
   const today = todayLocalISODate()
+
+  // Creating/editing an event is members-only — bounce guests to sign-in.
+  useEffect(() => {
+    if (Platform.OS !== 'web' && !userLoading && !user) router.replace('/auth')
+  }, [user, userLoading])
 
   const [loading, setLoading] = useState(isEdit)
   const [saving, setSaving] = useState(false)

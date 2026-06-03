@@ -9,6 +9,7 @@ import {
   TouchableOpacity,
 } from 'react-native'
 import { useRouter, useLocalSearchParams } from 'expo-router'
+import { useSafeAreaInsets } from 'react-native-safe-area-context'
 import { Code, ArrowLeft } from 'lucide-react-native'
 import { useAnalytics } from '../utils/analytics'
 import { AuthInput, Logo, PrimaryButton } from '../components/ui'
@@ -29,6 +30,7 @@ type AuthStep = 'initial' | 'login' | 'invite-code' | 'signup'
 
 export default function AuthScreen() {
   const router = useRouter()
+  const insets = useSafeAreaInsets()
   const { isDark } = useTheme()
   const { checkUserExists, login, signup, loading } = useUser()
   const { track } = useAnalytics()
@@ -96,7 +98,7 @@ export default function AuthScreen() {
       const result = await login(username, password)
       if (result.success) {
         track('login_success', { source: 'auth' })
-        router.replace('/(tabs)')
+        router.replace(params.returnTo ? (params.returnTo as never) : '/(tabs)')
       } else {
         track('login_failed', { source: 'auth', reason: result.message })
         setErrors({ form: result.message || 'Username or password is incorrect.' })
@@ -238,6 +240,20 @@ export default function AuthScreen() {
         className="flex-1 bg-[#FAFAF7] dark:bg-background-dark"
         keyboardShouldPersistTaps="handled"
       >
+        {/* Discover link, top-right, initial step only. Lets a logged-out
+            user browse the app before signing up (mirrors the web version). */}
+        {authStep === 'initial' && (
+          <Pressable
+            onPress={() => { track('auth_discover_pressed', { source: 'auth' }); router.push('/(tabs)') }}
+            className="absolute right-5"
+            style={{ top: insets.top + 12, paddingHorizontal: 4, paddingVertical: 8 }}
+          >
+            <Text className="font-sans" style={{ fontSize: 14.5, fontWeight: '500', color: '#C2410C' }}>
+              Discover →
+            </Text>
+          </Pressable>
+        )}
+
         {/* Main content */}
         <View
           className="flex-1 justify-center items-center w-full px-6"
