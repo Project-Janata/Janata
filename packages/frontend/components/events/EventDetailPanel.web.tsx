@@ -1,6 +1,6 @@
 import React, { useMemo } from 'react'
 import { View, Text, Image, ScrollView, Pressable, ActivityIndicator, Linking } from 'react-native'
-import { MapPin, Users, User, Clock, CheckCircle, ChevronLeft, Pencil, ExternalLink, Trash2 } from 'lucide-react-native'
+import { MapPin, Users, User, Clock, CheckCircle, ChevronLeft, Pencil, ExternalLink, Trash2, CalendarPlus } from 'lucide-react-native'
 import CopyLinkButton from '../ui/CopyLinkButton'
 import Badge from '../ui/Badge'
 import { DetailSection } from '../ui'
@@ -399,6 +399,26 @@ function MetaSection({
         </View>
       )}
 
+      {/* Add to calendar (universal events pattern — Luma/Partiful) */}
+      {(() => {
+        const cal = googleCalendarUrl(event)
+        if (!cal) return null
+        return (
+          <Pressable
+            onPress={() => Linking.openURL(cal)}
+            accessibilityRole="button"
+            accessibilityLabel="Add to calendar"
+            className="flex-row items-center"
+            style={{ gap: 12 }}
+          >
+            <MetaIcon icon={CalendarPlus} color="#E8862A" colors={colors} />
+            <Text style={{ fontFamily: 'Inclusive Sans', fontSize: 14, color: '#E8862A' }}>
+              Add to calendar
+            </Text>
+          </Pressable>
+        )
+      })()}
+
       {/* Point of contact row */}
       {event.pointOfContact && (
         <View className="flex-row items-center" style={{ gap: 12 }}>
@@ -729,6 +749,42 @@ function hostnameOf(url: string): string {
   } catch {
     return 'official site'
   }
+}
+
+// Build a Google Calendar "add event" link from the event (a universal events
+// pattern — Luma/Partiful). Returns null if the date is unusable; falls back to
+// an all-day entry when the time can't be parsed.
+function googleCalendarUrl(e: {
+  title?: string
+  date?: string
+  time?: string
+  location?: string
+  address?: string
+  description?: string
+}): string | null {
+  const ymd = (e.date || '').replace(/-/g, '')
+  if (!/^\d{8}$/.test(ymd)) return null
+  const text = encodeURIComponent(e.title || 'Event')
+  const location = encodeURIComponent(e.location || e.address || '')
+  const details = encodeURIComponent(e.description || '')
+  let dates: string
+  const m = (e.time || '').match(/(\d{1,2}):(\d{2})\s*(am|pm)?/i)
+  if (m) {
+    let h = parseInt(m[1], 10)
+    const min = m[2]
+    const ap = m[3]?.toLowerCase()
+    if (ap === 'pm' && h < 12) h += 12
+    if (ap === 'am' && h === 12) h = 0
+    const sh = String(h).padStart(2, '0')
+    const eh = String((h + 2) % 24).padStart(2, '0')
+    dates = `${ymd}T${sh}${min}00/${ymd}T${eh}${min}00`
+  } else {
+    const d = new Date(`${e.date}T00:00:00`)
+    d.setDate(d.getDate() + 1)
+    const next = `${d.getFullYear()}${String(d.getMonth() + 1).padStart(2, '0')}${String(d.getDate()).padStart(2, '0')}`
+    dates = `${ymd}/${next}`
+  }
+  return `https://calendar.google.com/calendar/render?action=TEMPLATE&text=${text}&dates=${dates}&details=${details}&location=${location}`
 }
 
 function ActionBar({
