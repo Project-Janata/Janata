@@ -19,6 +19,7 @@ import { useHeaderAction } from '../../components/contexts/HeaderActionContext'
 import { useCenterList, useMyEvents } from '../../hooks/useApiData'
 import { extractCityState } from '../../utils/addressParsing'
 import { CreatePostSheet, boardPostToMessage, type BoardMessage } from '../../components/boards'
+import AuthPromptModal from '../../components/ui/AuthPromptModal'
 import { centerPickerStore } from '../../utils/centerPickerStore'
 import { createBoardPost, createPublicPost, fetchAggregatedFeed, fetchBoard } from '../../utils/api'
 import {
@@ -189,6 +190,7 @@ export default function FeedScreen() {
   const [query, setQuery] = useState('')
   const [selectedPostId, setSelectedPostId] = useState('')
   const [createPostOpen, setCreatePostOpen] = useState(false)
+  const [authPromptOpen, setAuthPromptOpen] = useState(false)
   const [boardMessagesByGroup, setBoardMessagesByGroup] = useState<Record<string, BoardMessage[]>>({})
   const [boardsLoading, setBoardsLoading] = useState(false)
   const { setCreateHandler } = useHeaderAction()
@@ -212,6 +214,26 @@ export default function FeedScreen() {
 
   const canAccessBoards = !!user
   const userCenter = allCenters.find((item) => item.id === user?.centerID)
+
+  useEffect(() => {
+    if (!user || !centerPickerStore.result) return
+
+    const centerId = centerPickerStore.result
+    centerPickerStore.result = null
+    updateProfile({ centerID: centerId })
+      .then((result) => {
+        if (result.success) {
+          track('feed_setup_center_joined', { center_id: centerId, source: 'feed_empty_auth_return' })
+          refetchCenters()
+        } else {
+          track('feed_setup_center_join_failed', { center_id: centerId, source: 'feed_empty_auth_return' })
+        }
+      })
+      .catch(() => {
+        track('feed_setup_center_join_failed', { center_id: centerId, source: 'feed_empty_auth_return' })
+      })
+  }, [user, updateProfile, track, refetchCenters])
+
   const groups = useMemo<GroupBoard[]>(() => {
     const nextGroups: GroupBoard[] = []
 
@@ -383,8 +405,8 @@ export default function FeedScreen() {
 
   const handleSignIn = useCallback(() => {
     track('connect_signin_pressed', { source: 'feed_setup' })
-    router.push('/auth')
-  }, [router, track])
+    setAuthPromptOpen(true)
+  }, [track])
 
   const handleBrowseEvents = useCallback(() => {
     track('connect_explore_pressed', { source: 'feed_setup' })
@@ -400,7 +422,7 @@ export default function FeedScreen() {
       if (!user) {
         centerPickerStore.result = centerId
         track('feed_setup_center_pick_guest', { center_id: centerId, source: 'feed_empty' })
-        router.push('/auth')
+        setAuthPromptOpen(true)
         return false
       }
       const result = await updateProfile({ centerID: centerId })
@@ -412,7 +434,7 @@ export default function FeedScreen() {
       track('feed_setup_center_join_failed', { center_id: centerId, source: 'feed_empty' })
       return false
     },
-    [user, updateProfile, router, track, refetchCenters]
+    [user, updateProfile, track, refetchCenters]
   )
 
   const closeDetail = () => {
@@ -610,6 +632,19 @@ export default function FeedScreen() {
           setCreatePostOpen(false)
         }}
         onSubmit={handleCreatePost}
+      />
+
+      <AuthPromptModal
+        visible={authPromptOpen}
+        onClose={() => setAuthPromptOpen(false)}
+        returnTo="/feed"
+        title="Join the conversation."
+        subtitle="Sign in or create an account to follow your center, RSVP to events, and join your boards."
+        bullets={[
+          'Follow your center board and stay in the loop',
+          'Join event boards after you RSVP',
+          'Post updates, questions, and reflections with your sangha',
+        ]}
       />
     </View>
   )

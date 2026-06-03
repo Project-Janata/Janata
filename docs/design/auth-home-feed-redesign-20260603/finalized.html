@@ -1,0 +1,1358 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Janata Auth, Home, Feed Redesign</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inclusive+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --bg: #f5f5f4;
+      --paper: #fbfaf7;
+      --card: #ffffff;
+      --panel: #f7f4ef;
+      --surface: #f0ede8;
+      --border: #e7e5e4;
+      --border-strong: #d6d3d1;
+      --text: #1c1917;
+      --muted: #78716c;
+      --faint: #a8a29e;
+      --accent: #e8862a;
+      --accent-deep: #c2410c;
+      --accent-soft: #fff7ed;
+      --teal: #0f766e;
+      --green: #059669;
+      --blue: #2563eb;
+      --ink: #292524;
+      --shadow: 0 22px 60px rgba(28, 25, 23, 0.16);
+      --radius: 18px;
+      --phone-w: 390px;
+      --phone-h: 844px;
+      color-scheme: light;
+    }
+
+    @media (prefers-color-scheme: dark) {
+      :root {
+        --bg: #1a1a1a;
+        --paper: #171717;
+        --card: #262626;
+        --panel: #1f1f1f;
+        --surface: #171717;
+        --border: #3a3a3a;
+        --border-strong: #525252;
+        --text: #fafafa;
+        --muted: #a8a29e;
+        --faint: #737373;
+        --accent-soft: rgba(232, 134, 42, 0.12);
+        --shadow: 0 22px 60px rgba(0, 0, 0, 0.36);
+        color-scheme: dark;
+      }
+    }
+
+    * {
+      box-sizing: border-box;
+    }
+
+    html,
+    body {
+      min-height: 100%;
+      margin: 0;
+      background:
+        linear-gradient(90deg, rgba(28, 25, 23, 0.035) 1px, transparent 1px),
+        linear-gradient(180deg, rgba(28, 25, 23, 0.035) 1px, transparent 1px),
+        var(--bg);
+      background-size: 96px 96px;
+      color: var(--text);
+      font-family: "Inclusive Sans", system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      letter-spacing: 0;
+    }
+
+    button,
+    input {
+      font: inherit;
+    }
+
+    button {
+      border: 0;
+      cursor: pointer;
+    }
+
+    button:focus-visible,
+    input:focus-visible,
+    [contenteditable="true"]:focus-visible {
+      outline: 3px solid rgba(232, 134, 42, 0.34);
+      outline-offset: 3px;
+    }
+
+    .page {
+      width: min(1440px, 100%);
+      margin: 0 auto;
+      padding: 32px 28px 56px;
+    }
+
+    .hero {
+      display: grid;
+      grid-template-columns: minmax(0, 1fr) auto;
+      gap: 28px;
+      align-items: end;
+      margin-bottom: 28px;
+    }
+
+    .kicker {
+      color: var(--accent-deep);
+      font-size: 13px;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0;
+      margin: 0 0 10px;
+    }
+
+    h1 {
+      font-size: clamp(34px, 5vw, 68px);
+      line-height: 0.98;
+      margin: 0;
+      font-weight: 500;
+      letter-spacing: 0;
+      max-width: 900px;
+    }
+
+    .hero p {
+      margin: 14px 0 0;
+      max-width: 720px;
+      color: var(--muted);
+      font-size: 18px;
+      line-height: 1.45;
+    }
+
+    .decision-card {
+      width: min(380px, 100%);
+      border: 1px solid var(--border);
+      background: var(--card);
+      border-radius: var(--radius);
+      padding: 16px;
+      box-shadow: 0 10px 30px rgba(28, 25, 23, 0.08);
+    }
+
+    .decision-card h2 {
+      margin: 0 0 8px;
+      font-size: 18px;
+      font-weight: 600;
+    }
+
+    .decision-card p {
+      margin: 0;
+      font-size: 14px;
+      line-height: 1.4;
+      color: var(--muted);
+    }
+
+    .flow-strip {
+      display: grid;
+      grid-template-columns: repeat(4, minmax(0, 1fr));
+      gap: 10px;
+      margin: 0 0 32px;
+    }
+
+    .state-pill {
+      border: 1px solid var(--border);
+      background: var(--card);
+      border-radius: 14px;
+      padding: 12px;
+      min-height: 74px;
+    }
+
+    .state-pill strong {
+      display: block;
+      font-size: 14px;
+      margin-bottom: 4px;
+    }
+
+    .state-pill span {
+      display: block;
+      font-size: 12px;
+      line-height: 1.35;
+      color: var(--muted);
+    }
+
+    .screens {
+      display: grid;
+      grid-template-columns: repeat(3, minmax(300px, 1fr));
+      gap: 28px;
+      align-items: start;
+    }
+
+    .screen-card {
+      min-width: 0;
+    }
+
+    .screen-label {
+      margin: 0 0 10px;
+      color: var(--muted);
+      font-size: 14px;
+      font-weight: 600;
+    }
+
+    .phone {
+      width: min(var(--phone-w), 100%);
+      height: var(--phone-h);
+      margin: 0 auto;
+      background: var(--paper);
+      border: 1px solid var(--border-strong);
+      border-radius: 44px;
+      box-shadow: var(--shadow);
+      overflow: hidden;
+      position: relative;
+    }
+
+    .dynamic-island {
+      position: absolute;
+      top: 16px;
+      left: 50%;
+      transform: translateX(-50%);
+      width: 132px;
+      height: 36px;
+      border-radius: 999px;
+      background: #050505;
+      z-index: 5;
+    }
+
+    .phone-top {
+      height: 96px;
+      padding: 56px 22px 0;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      border-bottom: 1px solid var(--border);
+      background: var(--card);
+    }
+
+    .brand {
+      display: inline-flex;
+      align-items: center;
+      gap: 10px;
+      font-size: 20px;
+      color: var(--text);
+      font-weight: 500;
+    }
+
+    .mark {
+      width: 22px;
+      height: 22px;
+      position: relative;
+      display: inline-block;
+    }
+
+    .mark::before,
+    .mark::after {
+      content: "";
+      position: absolute;
+      inset: 8px 0;
+      border-radius: 999px;
+      background: var(--accent-deep);
+    }
+
+    .mark::after {
+      transform: rotate(90deg);
+    }
+
+    .mark span,
+    .mark i {
+      position: absolute;
+      inset: 8px 0;
+      border-radius: 999px;
+      background: var(--accent-deep);
+      display: block;
+    }
+
+    .mark span {
+      transform: rotate(45deg);
+    }
+
+    .mark i {
+      transform: rotate(-45deg);
+    }
+
+    .top-link {
+      color: var(--accent-deep);
+      background: transparent;
+      font-size: 15px;
+      font-weight: 700;
+      padding: 8px 0;
+    }
+
+    .avatar {
+      width: 34px;
+      height: 34px;
+      border-radius: 999px;
+      background: var(--accent-deep);
+      color: #fff;
+      display: grid;
+      place-items: center;
+      font-size: 13px;
+      font-weight: 700;
+    }
+
+    .bell {
+      width: 34px;
+      height: 34px;
+      border-radius: 999px;
+      display: grid;
+      place-items: center;
+      color: var(--muted);
+      background: var(--card);
+      border: 1px solid var(--border);
+      font-size: 18px;
+      line-height: 1;
+    }
+
+    .content {
+      height: calc(100% - 96px - 76px);
+      overflow: hidden;
+      padding: 20px 22px 18px;
+      position: relative;
+    }
+
+    .content.no-tab {
+      height: calc(100% - 96px);
+    }
+
+    .title {
+      font-size: 31px;
+      line-height: 1.08;
+      margin: 0;
+      font-weight: 500;
+    }
+
+    .subtitle {
+      color: var(--muted);
+      font-size: 16px;
+      line-height: 1.45;
+      margin: 8px 0 24px;
+    }
+
+    .section-head {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin: 0 0 10px;
+      color: var(--faint);
+      font-size: 12px;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0;
+    }
+
+    .section-head a {
+      color: var(--accent-deep);
+      text-transform: none;
+      text-decoration: none;
+      font-size: 13px;
+    }
+
+    .event-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 12px;
+      margin-bottom: 18px;
+    }
+
+    .event-tile {
+      height: 154px;
+      border: 1px solid var(--border);
+      border-radius: 16px;
+      background: var(--card);
+      overflow: hidden;
+      display: flex;
+      flex-direction: column;
+      justify-content: flex-end;
+    }
+
+    .tile-art {
+      flex: 1;
+      background:
+        repeating-linear-gradient(135deg, rgba(232, 134, 42, 0.16), rgba(232, 134, 42, 0.16) 10px, rgba(232, 134, 42, 0.08) 10px, rgba(232, 134, 42, 0.08) 20px);
+      display: grid;
+      place-items: center;
+      color: rgba(120, 113, 108, 0.72);
+      font-size: 11px;
+      text-transform: uppercase;
+    }
+
+    .tile-body {
+      padding: 12px;
+      background: linear-gradient(180deg, rgba(255, 255, 255, 0.82), var(--card));
+    }
+
+    .event-title {
+      margin: 0;
+      font-size: 15px;
+      line-height: 1.2;
+      font-weight: 700;
+      color: var(--ink);
+    }
+
+    .event-meta {
+      margin: 4px 0 0;
+      color: var(--muted);
+      font-size: 13px;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+
+    .sheet {
+      position: absolute;
+      left: 16px;
+      right: 16px;
+      bottom: 20px;
+      border-radius: 24px;
+      background: var(--card);
+      border: 1px solid var(--border);
+      box-shadow: 0 -12px 42px rgba(28, 25, 23, 0.14);
+      padding: 20px;
+      z-index: 4;
+    }
+
+    .sheet-handle {
+      width: 42px;
+      height: 4px;
+      border-radius: 999px;
+      background: var(--border-strong);
+      margin: -8px auto 16px;
+    }
+
+    .eyebrow {
+      color: var(--accent-deep);
+      font-size: 12px;
+      font-weight: 800;
+      text-transform: uppercase;
+      letter-spacing: 0;
+      margin: 0 0 10px;
+    }
+
+    .sheet h3,
+    .panel h3 {
+      margin: 0;
+      font-size: 29px;
+      line-height: 1.06;
+      font-weight: 500;
+    }
+
+    .sheet p,
+    .panel p {
+      margin: 10px 0 16px;
+      color: var(--muted);
+      line-height: 1.4;
+      font-size: 15px;
+    }
+
+    .input {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      height: 52px;
+      border-radius: 14px;
+      border: 1px solid var(--border);
+      background: var(--surface);
+      color: var(--faint);
+      padding: 0 14px;
+      margin-bottom: 12px;
+    }
+
+    .input input {
+      min-width: 0;
+      width: 100%;
+      border: 0;
+      background: transparent;
+      color: var(--text);
+      outline: 0;
+      font-size: 16px;
+    }
+
+    .primary {
+      width: 100%;
+      min-height: 52px;
+      border-radius: 999px;
+      background: var(--accent-deep);
+      color: #fff;
+      font-weight: 700;
+      font-size: 16px;
+      box-shadow: 0 12px 26px rgba(194, 65, 12, 0.22);
+    }
+
+    .secondary-link {
+      display: block;
+      margin: 12px auto 0;
+      color: var(--muted);
+      background: transparent;
+      font-weight: 700;
+      font-size: 14px;
+    }
+
+    .tabbar {
+      height: 76px;
+      border-top: 1px solid var(--border);
+      background: var(--card);
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      align-items: center;
+      padding: 4px 22px 14px;
+    }
+
+    .tab {
+      text-align: center;
+      color: var(--faint);
+      font-size: 12px;
+      font-weight: 600;
+    }
+
+    .tab .icon {
+      display: block;
+      width: 24px;
+      height: 24px;
+      margin: 0 auto 2px;
+      color: currentColor;
+    }
+
+    .tab.active {
+      color: var(--accent-deep);
+    }
+
+    .search {
+      height: 48px;
+      border-radius: 14px;
+      background: var(--surface);
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      color: var(--faint);
+      padding: 0 14px;
+      margin-bottom: 18px;
+    }
+
+    .post-card {
+      border: 1px solid var(--border);
+      background: var(--card);
+      border-radius: 18px;
+      padding: 14px;
+      margin-bottom: 12px;
+    }
+
+    .source {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      color: var(--muted);
+      font-size: 12px;
+      font-weight: 700;
+      margin-bottom: 12px;
+    }
+
+    .post-line {
+      display: grid;
+      grid-template-columns: 40px 1fr auto;
+      gap: 12px;
+      align-items: start;
+    }
+
+    .initial {
+      width: 40px;
+      height: 40px;
+      border-radius: 999px;
+      display: grid;
+      place-items: center;
+      color: #fff;
+      font-weight: 700;
+      font-size: 13px;
+    }
+
+    .initial.orange {
+      background: #b45309;
+    }
+
+    .initial.teal {
+      background: var(--teal);
+    }
+
+    .post-author {
+      margin: 0 0 3px;
+      font-weight: 800;
+      font-size: 15px;
+    }
+
+    .post-body {
+      margin: 0;
+      color: var(--muted);
+      font-size: 15px;
+      line-height: 1.35;
+    }
+
+    .post-time {
+      color: var(--faint);
+      font-size: 12px;
+    }
+
+    .reactions {
+      display: flex;
+      gap: 8px;
+      margin: 12px 0 0 52px;
+    }
+
+    .reaction {
+      border-radius: 999px;
+      background: var(--accent-soft);
+      color: var(--accent-deep);
+      padding: 5px 9px;
+      font-size: 12px;
+      font-weight: 700;
+    }
+
+    .lock-note {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+      color: var(--faint);
+      font-size: 13px;
+      margin-top: 12px;
+    }
+
+    .center-card,
+    .empty-card,
+    .event-row {
+      border: 1px solid var(--border);
+      background: var(--card);
+      border-radius: 16px;
+      padding: 14px;
+    }
+
+    .map-band {
+      height: 132px;
+      border-radius: 16px 16px 0 0;
+      margin: -14px -14px 14px;
+      display: grid;
+      place-items: center;
+      background:
+        repeating-linear-gradient(135deg, rgba(232, 134, 42, 0.16), rgba(232, 134, 42, 0.16) 10px, rgba(232, 134, 42, 0.08) 10px, rgba(232, 134, 42, 0.08) 20px);
+      color: var(--muted);
+      font-size: 12px;
+      text-transform: uppercase;
+    }
+
+    .pin {
+      width: 44px;
+      height: 44px;
+      border-radius: 999px 999px 999px 0;
+      background: var(--accent-deep);
+      transform: rotate(-45deg);
+      display: grid;
+      place-items: center;
+      margin-top: 6px;
+    }
+
+    .pin::after {
+      content: "";
+      width: 12px;
+      height: 12px;
+      border-radius: 999px;
+      background: #fff;
+    }
+
+    .center-row {
+      display: grid;
+      grid-template-columns: 46px 1fr auto;
+      gap: 12px;
+      align-items: center;
+      padding: 12px 0;
+      border-top: 1px solid var(--border);
+    }
+
+    .center-row:first-of-type {
+      border-top: 0;
+      padding-top: 0;
+    }
+
+    .icon-box {
+      width: 46px;
+      height: 46px;
+      border-radius: 14px;
+      background: var(--surface);
+      display: grid;
+      place-items: center;
+      color: var(--accent-deep);
+      font-size: 12px;
+      font-weight: 800;
+    }
+
+    .row-title {
+      margin: 0 0 3px;
+      color: var(--text);
+      font-size: 15px;
+      font-weight: 800;
+    }
+
+    .row-meta {
+      margin: 0;
+      color: var(--muted);
+      font-size: 13px;
+    }
+
+    .small-button {
+      min-height: 38px;
+      padding: 0 16px;
+      border-radius: 999px;
+      border: 1px solid var(--border);
+      background: var(--card);
+      color: var(--accent-deep);
+      font-weight: 800;
+    }
+
+    .outline-button {
+      width: 100%;
+      min-height: 44px;
+      border-radius: 999px;
+      border: 1px solid var(--border);
+      background: var(--card);
+      color: var(--accent-deep);
+      font-weight: 800;
+      margin-top: 10px;
+    }
+
+    .event-row {
+      display: grid;
+      grid-template-columns: 52px 1fr auto;
+      gap: 12px;
+      align-items: center;
+      margin-bottom: 10px;
+    }
+
+    .date-pill {
+      width: 52px;
+      height: 52px;
+      border-radius: 14px;
+      background: var(--surface);
+      display: grid;
+      place-items: center;
+      text-align: center;
+    }
+
+    .date-pill span {
+      display: block;
+      color: var(--accent-deep);
+      font-size: 10px;
+      font-weight: 800;
+    }
+
+    .date-pill strong {
+      display: block;
+      font-size: 22px;
+      line-height: 1;
+    }
+
+    .empty-card {
+      text-align: center;
+      padding: 28px 18px;
+    }
+
+    .big-icon {
+      width: 70px;
+      height: 70px;
+      border-radius: 22px;
+      background: var(--accent-soft);
+      color: var(--accent-deep);
+      display: grid;
+      place-items: center;
+      margin: 0 auto 18px;
+      font-size: 18px;
+      font-weight: 800;
+    }
+
+    .empty-card h3 {
+      margin: 0 0 8px;
+      font-size: 24px;
+      font-weight: 500;
+    }
+
+    .empty-card p {
+      color: var(--muted);
+      margin: 0 0 20px;
+      line-height: 1.45;
+    }
+
+    .desktop-demo {
+      grid-column: span 3;
+      border: 1px solid var(--border-strong);
+      background: var(--paper);
+      border-radius: 28px;
+      overflow: hidden;
+      box-shadow: var(--shadow);
+      min-height: 620px;
+      position: relative;
+    }
+
+    .web-header {
+      height: 62px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 0 22px;
+      background: var(--card);
+      border-bottom: 1px solid var(--border);
+    }
+
+    .web-nav {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .web-nav a {
+      color: var(--muted);
+      text-decoration: none;
+      padding: 10px 12px;
+      border-radius: 999px;
+      font-size: 14px;
+      font-weight: 600;
+    }
+
+    .web-nav a.active {
+      color: var(--accent-deep);
+      background: var(--accent-soft);
+    }
+
+    .web-body {
+      display: grid;
+      grid-template-columns: minmax(0, 1fr) 330px;
+      gap: 24px;
+      padding: 28px;
+      filter: blur(0);
+    }
+
+    .web-main h2 {
+      margin: 0 0 8px;
+      font-size: 38px;
+      font-weight: 500;
+    }
+
+    .web-main p {
+      margin: 0 0 22px;
+      color: var(--muted);
+      font-size: 17px;
+      line-height: 1.45;
+    }
+
+    .web-grid {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 14px;
+    }
+
+    .web-event {
+      min-height: 190px;
+      border: 1px solid var(--border);
+      border-radius: 18px;
+      background: var(--card);
+      overflow: hidden;
+      display: flex;
+      flex-direction: column;
+      justify-content: flex-end;
+    }
+
+    .web-rail {
+      display: grid;
+      gap: 14px;
+      align-content: start;
+    }
+
+    .modal-backdrop {
+      position: absolute;
+      inset: 0;
+      background: rgba(28, 25, 23, 0.44);
+      display: grid;
+      place-items: center;
+      padding: 28px;
+    }
+
+    .auth-modal {
+      width: min(450px, 100%);
+      border-radius: 22px;
+      background: var(--card);
+      border: 1px solid var(--border);
+      box-shadow: 0 30px 80px rgba(0, 0, 0, 0.32);
+      padding: 24px;
+    }
+
+    .modal-head {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 22px;
+    }
+
+    .close {
+      width: 36px;
+      height: 36px;
+      border-radius: 999px;
+      background: var(--surface);
+      color: var(--muted);
+      font-size: 20px;
+    }
+
+    .auth-modal h3 {
+      margin: 0;
+      font-size: 30px;
+      font-weight: 500;
+    }
+
+    .auth-modal p {
+      color: var(--muted);
+      margin: 8px 0 18px;
+      line-height: 1.42;
+    }
+
+    .step-list {
+      margin-top: 34px;
+      display: grid;
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+      gap: 18px;
+    }
+
+    .plan-card {
+      border: 1px solid var(--border);
+      border-radius: 18px;
+      background: var(--card);
+      padding: 18px;
+    }
+
+    .plan-card h2 {
+      margin: 0 0 10px;
+      font-size: 20px;
+      font-weight: 600;
+    }
+
+    .plan-card ul {
+      margin: 0;
+      padding: 0 0 0 18px;
+      color: var(--muted);
+      line-height: 1.45;
+      font-size: 14px;
+    }
+
+    @media (max-width: 1120px) {
+      .hero {
+        grid-template-columns: 1fr;
+      }
+
+      .screens {
+        grid-template-columns: repeat(2, minmax(300px, 1fr));
+      }
+
+      .desktop-demo {
+        grid-column: span 2;
+      }
+
+      .step-list {
+        grid-template-columns: 1fr;
+      }
+    }
+
+    @media (max-width: 768px) {
+      .page {
+        padding: 22px 14px 42px;
+      }
+
+      .flow-strip,
+      .screens {
+        grid-template-columns: 1fr;
+      }
+
+      .desktop-demo {
+        grid-column: span 1;
+      }
+
+      .web-body {
+        grid-template-columns: 1fr;
+      }
+
+      .web-rail {
+        display: none;
+      }
+    }
+
+    @media (max-width: 430px) {
+      :root {
+        --phone-w: calc(100vw - 24px);
+        --phone-h: 812px;
+      }
+
+      .phone {
+        border-radius: 34px;
+      }
+
+      .content {
+        padding-left: 18px;
+        padding-right: 18px;
+      }
+
+      .sheet {
+        left: 10px;
+        right: 10px;
+      }
+    }
+
+    @media (prefers-reduced-motion: reduce) {
+      *,
+      *::before,
+      *::after {
+        scroll-behavior: auto !important;
+        transition: none !important;
+        animation: none !important;
+      }
+    }
+  </style>
+</head>
+<body>
+  <main class="page">
+    <section class="hero" aria-labelledby="page-title">
+      <div>
+        <p class="kicker">Janata UX redesign</p>
+        <h1 id="page-title" contenteditable="true">Browse first. Unlock in context.</h1>
+        <p contenteditable="true">Auth becomes a sheet over Home, Discover, Feed, event detail, and center detail. Setup becomes name plus home center. Everything else moves later.</p>
+      </div>
+      <aside class="decision-card" aria-label="Primary recommendation">
+        <h2 contenteditable="true">Recommendation</h2>
+        <p contenteditable="true">Use one shared auth flow rendered as a native iOS sheet, mobile web sheet, desktop modal, or full-page fallback route.</p>
+      </aside>
+    </section>
+
+    <section class="flow-strip" aria-label="User states">
+      <div class="state-pill"><strong>1. Guest</strong><span>Can browse public events, centers, and feed preview.</span></div>
+      <div class="state-pill"><strong>2. Needs name</strong><span>Has account. Needs enough identity to participate.</span></div>
+      <div class="state-pill"><strong>3. Needs center</strong><span>Signed in. Home and Feed point to center selection.</span></div>
+      <div class="state-pill"><strong>4. Ready</strong><span>Has center. Calendar and boards become personal.</span></div>
+    </section>
+
+    <section class="screens" aria-label="Screen concepts">
+      <article class="screen-card">
+        <p class="screen-label">iOS Home - guest, auth sheet over content</p>
+        <div class="phone">
+          <div class="dynamic-island"></div>
+          <header class="phone-top">
+            <div class="brand"><span class="mark"><span></span><i></i></span>Janata</div>
+            <button class="top-link">Sign in</button>
+          </header>
+          <section class="content no-tab">
+            <h2 class="title" contenteditable="true">Namaste.</h2>
+            <p class="subtitle" contenteditable="true">Here is what is happening across Chinmaya Mission near you.</p>
+            <div class="section-head"><span>Happening near you</span><a href="#">See all</a></div>
+            <div class="event-grid">
+              <div class="event-tile">
+                <div class="tile-art">Camp flyer</div>
+                <div class="tile-body">
+                  <p class="event-title">Mahasamadhi Aradhana Camp</p>
+                  <p class="event-meta">Aug 1 - Parsippany, NJ</p>
+                </div>
+              </div>
+              <div class="event-tile">
+                <div class="tile-art">Class</div>
+                <div class="tile-body">
+                  <p class="event-title">Bhagavad Gita Study</p>
+                  <p class="event-meta">Aug 15 - Andover, MA</p>
+                </div>
+              </div>
+            </div>
+            <div class="sheet" role="dialog" aria-label="Create account">
+              <div class="sheet-handle"></div>
+              <p class="eyebrow">Join the community</p>
+              <h3 contenteditable="true">Find your center. Grow together.</h3>
+              <p contenteditable="true">Discover satsangs, camps, and classes near you, then RSVP in a tap.</p>
+              <label class="input"><span>@</span><input aria-label="Email" placeholder="you@email.com"></label>
+              <button class="primary">Create account -></button>
+              <button class="secondary-link">Browse as guest</button>
+            </div>
+          </section>
+        </div>
+      </article>
+
+      <article class="screen-card">
+        <p class="screen-label">iOS Feed - guest, read-only preview</p>
+        <div class="phone">
+          <div class="dynamic-island"></div>
+          <header class="phone-top">
+            <h2 class="title" style="font-size: 28px;">Feed</h2>
+            <button class="bell" aria-label="Search">S</button>
+          </header>
+          <section class="content no-tab">
+            <div class="post-card">
+              <div class="source">Center board - Chinmaya Vrindavan</div>
+              <div class="post-line">
+                <div class="initial orange">SN</div>
+                <div>
+                  <p class="post-author">Suresh Nair</p>
+                  <p class="post-body">Need two more volunteers for setup before Sunday satsang.</p>
+                </div>
+                <span class="post-time">2h</span>
+              </div>
+              <div class="reactions"><span class="reaction">Pray 8</span><span class="reaction">Tea 3</span></div>
+            </div>
+            <div class="post-card">
+              <div class="source">33rd Aradhana Camp</div>
+              <div class="post-line">
+                <div class="initial teal">AD</div>
+                <div>
+                  <p class="post-author">Anjali Desai</p>
+                  <p class="post-body">Anyone driving in from the Peninsula? Happy to coordinate a carpool.</p>
+                </div>
+                <span class="post-time">4h</span>
+              </div>
+            </div>
+            <div class="sheet" role="dialog" aria-label="Sign in to continue">
+              <div class="sheet-handle"></div>
+              <p class="eyebrow">Your community feed</p>
+              <h3 contenteditable="true">See what your sangha is sharing.</h3>
+              <p contenteditable="true">Posts from your center and events you RSVP to show up here.</p>
+              <button class="primary">Sign in to continue -></button>
+              <div class="lock-note">Lock - Posts are read-only until you sign in</div>
+            </div>
+          </section>
+        </div>
+      </article>
+
+      <article class="screen-card">
+        <p class="screen-label">iOS Home - signed in, no home center</p>
+        <div class="phone">
+          <div class="dynamic-island"></div>
+          <header class="phone-top">
+            <div class="brand"><span class="mark"><span></span><i></i></span>Janata</div>
+            <div style="display:flex; gap:8px; align-items:center;"><button class="bell">N</button><div class="avatar">SD</div></div>
+          </header>
+          <section class="content">
+            <h2 class="title" contenteditable="true">Welcome, Sevak</h2>
+            <div class="center-card" style="margin-top: 22px;">
+              <div class="map-band"><div class="pin"></div></div>
+              <h3 style="font-size: 24px; margin: 0 0 8px;">Pick your home center</h3>
+              <p style="color: var(--muted); line-height: 1.4; margin: 0 0 12px;">Your center's events, board, and people show up once you join.</p>
+              <div class="center-row">
+                <div class="icon-box">Pin</div>
+                <div><p class="row-title">Chinmaya Vrindavan</p><p class="row-meta">Cranbury, NJ - 2.4 mi</p></div>
+                <button class="small-button">Join</button>
+              </div>
+              <div class="center-row">
+                <div class="icon-box">Pin</div>
+                <div><p class="row-title">Chinmaya Badri</p><p class="row-meta">Princeton, NJ - 9 mi</p></div>
+                <button class="small-button">Join</button>
+              </div>
+              <button class="outline-button">Find on map</button>
+            </div>
+            <div class="section-head" style="margin-top: 18px;"><span>While you decide</span></div>
+            <div class="event-row">
+              <div class="date-pill"><div><span>Aug</span><strong>1</strong></div></div>
+              <div><p class="row-title">Mahasamadhi Aradhana Camp</p><p class="row-meta">5:00 PM - Parsippany, NJ</p></div>
+            </div>
+          </section>
+          <nav class="tabbar" aria-label="Tabs">
+            <div class="tab active"><span class="icon">H</span>Home</div>
+            <div class="tab"><span class="icon">D</span>Discover</div>
+            <div class="tab"><span class="icon">F</span>Feed</div>
+          </nav>
+        </div>
+      </article>
+
+      <article class="screen-card">
+        <p class="screen-label">iOS Home - center selected, no RSVPs</p>
+        <div class="phone">
+          <div class="dynamic-island"></div>
+          <header class="phone-top">
+            <div class="brand"><span class="mark"><span></span><i></i></span>Janata</div>
+            <div style="display:flex; gap:8px; align-items:center;"><button class="bell">N</button><div class="avatar">SD</div></div>
+          </header>
+          <section class="content">
+            <h2 class="title" contenteditable="true">Namaste, Sevak</h2>
+            <p class="subtitle" style="margin-bottom: 18px;">Sevak - Chinmaya Vrindavan</p>
+            <div class="empty-card">
+              <div class="big-icon">Cal</div>
+              <h3>Your calendar is open</h3>
+              <p>You are all set at Chinmaya Vrindavan. Find an event to RSVP to and it will land right here.</p>
+              <button class="primary" style="width: 68%; min-width: 210px;">Explore events -></button>
+            </div>
+            <div class="section-head" style="margin-top: 22px;"><span>From your center this week</span><a href="#">See all</a></div>
+            <div class="event-row">
+              <div class="date-pill"><div><span>Aug</span><strong>15</strong></div></div>
+              <div><p class="row-title">Bhagavad Gita Study</p><p class="row-meta">5:00 PM - Union St, Andover</p></div>
+              <button class="small-button">RSVP</button>
+            </div>
+            <div class="event-row">
+              <div class="date-pill"><div><span>Aug</span><strong>17</strong></div></div>
+              <div><p class="row-title">Bala Vihar Children's Class</p><p class="row-meta">5:00 PM - Cranbury, NJ</p></div>
+              <button class="small-button">RSVP</button>
+            </div>
+          </section>
+          <nav class="tabbar" aria-label="Tabs">
+            <div class="tab active"><span class="icon">H</span>Home</div>
+            <div class="tab"><span class="icon">D</span>Discover</div>
+            <div class="tab"><span class="icon">F</span>Feed</div>
+          </nav>
+        </div>
+      </article>
+
+      <article class="screen-card">
+        <p class="screen-label">iOS Feed - signed in, warming up</p>
+        <div class="phone">
+          <div class="dynamic-island"></div>
+          <header class="phone-top">
+            <h2 class="title" style="font-size: 28px;">Feed</h2>
+            <button class="bell" aria-label="Search">S</button>
+          </header>
+          <section class="content">
+            <div class="search">S Search posts and people</div>
+            <div class="empty-card">
+              <div class="big-icon">New</div>
+              <h3>Your feed is warming up</h3>
+              <p>Pick a center or RSVP to an event. Boards you can join will appear here automatically.</p>
+              <button class="primary" style="width: 68%; min-width: 210px;">Pick home center -></button>
+            </div>
+            <div class="section-head" style="margin-top: 22px;"><span>What shows up here</span></div>
+            <div class="center-row" style="background: var(--card); border: 1px solid var(--border); border-radius: 14px; padding: 12px;">
+              <div class="icon-box">Ctr</div>
+              <div><p class="row-title">Your center</p><p class="row-meta">Posts from your home center.</p></div>
+            </div>
+            <div class="center-row" style="background: var(--card); border: 1px solid var(--border); border-radius: 14px; padding: 12px; margin-top: 10px;">
+              <div class="icon-box">Evt</div>
+              <div><p class="row-title">Events you RSVP to</p><p class="row-meta">Their boards appear when you join.</p></div>
+            </div>
+          </section>
+          <nav class="tabbar" aria-label="Tabs">
+            <div class="tab"><span class="icon">H</span>Home</div>
+            <div class="tab"><span class="icon">D</span>Discover</div>
+            <div class="tab active"><span class="icon">F</span>Feed</div>
+          </nav>
+        </div>
+      </article>
+
+      <article class="desktop-demo">
+        <header class="web-header">
+          <div style="display:flex; align-items:center; gap:28px;">
+            <div class="brand"><span class="mark"><span></span><i></i></span>Janata</div>
+            <nav class="web-nav" aria-label="Desktop tabs">
+              <a href="#">Home</a>
+              <a href="#" class="active">Discover</a>
+              <a href="#">Feed</a>
+            </nav>
+          </div>
+          <button class="top-link">Sign in</button>
+        </header>
+        <div class="web-body">
+          <section class="web-main">
+            <h2 contenteditable="true">Discover events and centers</h2>
+            <p contenteditable="true">Guests can browse the real app. When they RSVP, join a center, or post, auth opens over this page.</p>
+            <div class="web-grid">
+              <div class="web-event"><div class="tile-art">Camp flyer</div><div class="tile-body"><p class="event-title">Mahasamadhi Aradhana Camp</p><p class="event-meta">Aug 1 - Parsippany, NJ</p></div></div>
+              <div class="web-event"><div class="tile-art">Class</div><div class="tile-body"><p class="event-title">Bhagavad Gita Study</p><p class="event-meta">Aug 15 - Andover, MA</p></div></div>
+              <div class="web-event"><div class="tile-art">Satsang</div><div class="tile-body"><p class="event-title">Sunday Satsang</p><p class="event-meta">Sep 6 - San Jose, CA</p></div></div>
+              <div class="web-event"><div class="tile-art">Youth</div><div class="tile-body"><p class="event-title">CHYK Study Circle</p><p class="event-meta">Sep 10 - Austin, TX</p></div></div>
+            </div>
+          </section>
+          <aside class="web-rail">
+            <div class="center-card"><h3 style="margin:0 0 8px;">Nearby centers</h3><p class="row-meta">Pick one to personalize Home and Feed.</p></div>
+            <div class="post-card"><div class="source">Feed preview</div><p class="post-body">Read-only posts show what a signed-in user unlocks.</p></div>
+          </aside>
+        </div>
+        <div class="modal-backdrop">
+          <div class="auth-modal" role="dialog" aria-label="Desktop auth modal">
+            <div class="modal-head">
+              <div class="brand"><span class="mark"><span></span><i></i></span>Janata</div>
+              <button class="close" aria-label="Close">x</button>
+            </div>
+            <p class="eyebrow">RSVP to continue</p>
+            <h3 contenteditable="true">Sign in to RSVP</h3>
+            <p contenteditable="true">Create an account or sign in. We will bring you back to Bhagavad Gita Study after this step.</p>
+            <label class="input"><span>@</span><input aria-label="Email" placeholder="you@email.com"></label>
+            <button class="primary">Continue</button>
+            <button class="secondary-link">Maybe later</button>
+          </div>
+        </div>
+      </article>
+    </section>
+
+    <section class="step-list" aria-label="Implementation steps">
+      <div class="plan-card">
+        <h2>Build order</h2>
+        <ul>
+          <li>Extract shared auth flow from native and web route files.</li>
+          <li>Render the flow as page, iOS sheet, mobile web sheet, and desktop modal.</li>
+          <li>Use intent copy for RSVP, Feed, center, compose, and generic auth.</li>
+        </ul>
+      </div>
+      <div class="plan-card">
+        <h2>Setup order</h2>
+        <ul>
+          <li>Make name the minimum profile requirement.</li>
+          <li>Make center the main setup unlock, with skip allowed.</li>
+          <li>Move birthday and interests into later profile prompts.</li>
+        </ul>
+      </div>
+      <div class="plan-card">
+        <h2>Screen order</h2>
+        <ul>
+          <li>Home gets one primary card per user state.</li>
+          <li>Feed gets guest preview, center setup, empty boards, and active states.</li>
+          <li>Discover remains public and becomes the most common auth entry point.</li>
+        </ul>
+      </div>
+    </section>
+  </main>
+
+  <!-- FALLBACK: vendor/pretext.js missing, using CDN -->
+  <script type="module">
+    async function loadPretext() {
+      try {
+        return await import("https://esm.sh/@chenglou/pretext")
+      } catch (error) {
+        return null
+      }
+    }
+
+    const editableNodes = Array.from(document.querySelectorAll('[contenteditable="true"]'))
+    const pretext = await loadPretext()
+
+    function relayoutText() {
+      if (!pretext || typeof pretext.prepare !== 'function' || typeof pretext.layout !== 'function') {
+        return
+      }
+
+      for (const node of editableNodes) {
+        const rect = node.getBoundingClientRect()
+        const text = node.textContent || ''
+        if (!text.trim() || rect.width <= 0) continue
+        try {
+          const prepared = pretext.prepare(text, {
+            fontFamily: '"Inclusive Sans", system-ui, sans-serif',
+            fontSize: Number.parseFloat(getComputedStyle(node).fontSize),
+            lineHeight: Number.parseFloat(getComputedStyle(node).lineHeight),
+          })
+          pretext.layout(prepared, rect.width)
+        } catch (error) {
+          // The board keeps CSS layout as the visual source if CDN Pretext is unavailable.
+        }
+      }
+    }
+
+    const resizeObserver = new ResizeObserver(() => relayoutText())
+    for (const node of editableNodes) {
+      resizeObserver.observe(node)
+      new MutationObserver(() => relayoutText()).observe(node, {
+        characterData: true,
+        childList: true,
+        subtree: true,
+      })
+    }
+
+    if (document.fonts && document.fonts.ready) {
+      await document.fonts.ready
+    }
+    relayoutText()
+  </script>
+</body>
+</html>

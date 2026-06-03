@@ -5,8 +5,7 @@ import { useColors } from '../../hooks/useColors'
 /**
  * DetailSection — the editorial "on-surface" section used across the center
  * and event detail screens. A small-caps muted label, an optional count and
- * trailing action, and a thin hairline divider above (skipped for the first
- * section). Content sits directly on the page background — no cards.
+ * trailing action. Content sits directly on the page background — no cards.
  *
  * Replaces the old tabbed layout (Details / Thread / People|Events) with one
  * ordered scroll so the detail screens read like the Connect feed.
@@ -31,10 +30,7 @@ export function DetailSection({
   const c = useColors()
   return (
     <View>
-      {!first ? (
-        <View style={{ height: 1, backgroundColor: c.border, marginHorizontal: 20, marginTop: 24 }} />
-      ) : null}
-      <View style={{ paddingHorizontal: 20, paddingTop: first ? 4 : 18, paddingBottom: 8 }}>
+      <View style={{ paddingHorizontal: 20, paddingTop: first ? 12 : 28, paddingBottom: 10 }}>
         <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
           <Text style={{ flex: 1, fontSize: 11, letterSpacing: 0.9, color: c.textFaint }}>
             {title.toUpperCase()}
