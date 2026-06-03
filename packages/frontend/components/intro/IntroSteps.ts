@@ -2,12 +2,15 @@
  * IntroSteps.ts
  *
  * Card definitions for the pre-auth "What is Janata" first-timer explainer.
- * Copy is the verbatim elevator pitch — kept short, warm, and on-brand.
+ * Copy is the short, warm elevator pitch. Visuals are Microsoft Fluent Emoji
+ * 3D renders (MIT licensed) under assets/images/onboarding, shown over a warm
+ * radial glow.
  */
+import type { ImageSourcePropType } from 'react-native'
 
 export type IntroStep = {
-  /** Decorative emoji shown above the title. */
-  emoji: string
+  /** 3D object render shown above the title (over a warm glow). */
+  image: ImageSourcePropType
   /** Short, punchy headline. */
   title: string
   /** Supporting paragraph. */
@@ -16,18 +19,18 @@ export type IntroStep = {
 
 export const INTRO_STEPS: IntroStep[] = [
   {
-    emoji: '🧭',
+    image: require('../../assets/images/onboarding/compass.png'),
     title: 'Find your center. Grow together.',
-    body: 'One place where any CHYK can find events and centers nearby, RSVP in a tap, and connect with the community — beyond your group chat.',
+    body: 'Discover centers and events near you, RSVP in a tap, and connect with the community beyond your group chat.',
   },
   {
-    emoji: '🗺️',
-    title: '50+ centers, finally in one place.',
-    body: 'Events used to be scattered across WhatsApp, email, and flyers. Janata puts every center and event on one map every CHYK is checking.',
+    image: require('../../assets/images/onboarding/worldmap.png'),
+    title: '50+ centers, in one place.',
+    body: 'Events used to be scattered across WhatsApp, email, and flyers. Janata puts every center and event on one map.',
   },
   {
-    emoji: '🪔',
+    image: require('../../assets/images/onboarding/diya.png'),
     title: 'Made by sevaks. Run by CHYKs.',
-    body: 'Janata is volunteer-led — built and maintained entirely by CHYKs across centers. Join, discover events, and help your community grow.',
+    body: 'Janata is volunteer-led, built and run by CHYKs across centers. Join, discover events, and help your community grow.',
   },
 ]

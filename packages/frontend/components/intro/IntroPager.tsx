@@ -57,7 +57,9 @@ export default function IntroPager() {
   )
 
   const renderItem = useCallback(
-    ({ item }: ListRenderItemInfo<IntroStep>) => <IntroCard step={item} width={pageWidth} />,
+    ({ item, index }: ListRenderItemInfo<IntroStep>) => (
+      <IntroCard step={item} width={pageWidth} index={index} />
+    ),
     [pageWidth],
   )
 
