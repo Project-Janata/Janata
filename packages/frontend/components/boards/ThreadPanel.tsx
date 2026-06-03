@@ -2,6 +2,7 @@ import React, { useState } from 'react'
 import { Image, Pressable, ScrollView, Text, TextInput, View } from 'react-native'
 import { Building2, CalendarDays, Lock, MessageCircle, MoreHorizontal, Send } from 'lucide-react-native'
 import { Avatar, ImageLightbox } from '../ui'
+import { useUser } from '../contexts'
 import type { BoardMessage } from './__mocks__/mockData'
 
 export type ComposerState = 'open' | 'locked'
@@ -137,6 +138,10 @@ function BoardComposer({
   visibleLabel?: string
   onSubmit?: (body: string) => Promise<void> | void
 }) {
+  const { user } = useUser()
+  const composerName =
+    user?.firstName && user?.lastName ? `${user.firstName} ${user.lastName}`
+      : user?.firstName || user?.username || 'You'
   const [body, setBody] = useState('')
   const [submitting, setSubmitting] = useState(false)
   const [error, setError] = useState<string | null>(null)
@@ -175,7 +180,7 @@ function BoardComposer({
         }}
       >
         <View style={{ alignSelf: 'flex-start' }}>
-          <Avatar name="You" initials="YO" size={36} backgroundColor="#0478A5" />
+          <Avatar image={user?.profileImage || undefined} name={composerName} size={36} backgroundColor={accent} />
         </View>
         <TextInput
           editable={!!onSubmit && !submitting}
