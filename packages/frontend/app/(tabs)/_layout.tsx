@@ -228,7 +228,9 @@ export default function TabLayout() {
               title: 'Feed',
               header: isDesktopWeb
                 ? () => <WebHeader />
-                : () => <TabHeader title="Feed" action="create" />,
+                // Compose (+) is only for signed-in members — guests have no
+                // boards to post to (they see the Feed sign-in wall instead).
+                : () => <TabHeader title="Feed" action={user ? 'create' : undefined} />,
               tabBarIcon: ({ color, size }) => <Newspaper size={size} color={color} />,
             }}
           />
