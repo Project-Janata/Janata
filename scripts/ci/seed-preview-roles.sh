@@ -45,6 +45,11 @@ if [ -n "$MT" ]; then
   curl -fsS -X POST "$API/boards/center/$CENTER/posts" -H "Authorization: Bearer $MT" \
     -H 'Content-Type: application/json' \
     -d '{"body":"Anyone driving up from the South Bay on Aug 1? 🚗"}' >/dev/null 2>&1 || true
+  # One post with a photo so the board/feed image rendering is visible out of the
+  # box (and guards the image-URL fix). Unsplash CDN, same source as the event seed.
+  curl -fsS -X POST "$API/boards/center/$CENTER/posts" -H "Authorization: Bearer $MT" \
+    -H 'Content-Type: application/json' \
+    -d '{"body":"Beautiful turnout at last week'"'"'s satsang 🪔 grateful for this sangha.","imageUrl":"https://images.unsplash.com/photo-1511795409834-ef04bbd61622?w=800&q=80"}' >/dev/null 2>&1 || true
 fi
 # Populate the moderation queue so admin/sevak have something to action.
 if [ -n "$PID" ] && [ -n "$UT" ]; then
