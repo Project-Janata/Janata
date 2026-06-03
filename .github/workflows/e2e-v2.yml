@@ -1,0 +1,84 @@
+name: E2E v2 (web desktop + mobile)
+
+# Browser integration/regression suite for the v2 app. Runs Playwright against
+# the live, seeded v2 preview (https://v2preview.project-janatha.pages.dev) on
+# desktop + mobile breakpoints, and uploads the HTML report + screenshots +
+# videos + traces as artifacts.
+#
+# Why remote-by-default: the preview is already deployed + seeded with role
+# logins and demo content, so the suite needs no DB/secret access — just a
+# browser. (Local Macs with many open Chrome processes can starve Playwright's
+# automation channel; CI's clean Linux runner + bundled Chromium avoids that.)
+#
+# Trigger it after a v2 preview (re)deploy, on PRs that touch the suite, or
+# manually. Point at another deploy with the E2E_BASE_URL / E2E_API_BASE inputs.
+
+on:
+  push:
+    branches:
+      - 'test/v2-e2e-playwright'
+    paths:
+      - 'tests/v2/**'
+      - 'playwright.config.ts'
+      - '.github/workflows/e2e-v2.yml'
+  pull_request:
+    paths:
+      - 'tests/v2/**'
+      - 'playwright.config.ts'
+  workflow_dispatch:
+    inputs:
+      base_url:
+        description: 'Frontend base URL to test'
+        required: false
+        default: 'https://v2preview.project-janatha.pages.dev'
+      api_base:
+        description: 'API base URL (auth/seed lookups)'
+        required: false
+        default: 'https://chinmaya-janata-api-v2preview.chinmayajanata.workers.dev/api'
+
+concurrency:
+  group: e2e-v2-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  e2e:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    env:
+      E2E_BASE_URL: ${{ github.event.inputs.base_url || 'https://v2preview.project-janatha.pages.dev' }}
+      E2E_API_BASE: ${{ github.event.inputs.api_base || 'https://chinmaya-janata-api-v2preview.chinmayajanata.workers.dev/api' }}
+      # Bump workers a little on CI — it's a clean runner, but the target is a
+      # shared remote preview, so keep concurrency modest.
+      E2E_WORKERS: '4'
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm ci || npm install
+
+      - name: Install Playwright Chromium (+ system deps)
+        run: npx playwright install --with-deps chromium
+
+      - name: Run e2e suite (desktop + mobile)
+        run: npx playwright test tests/v2
+
+      - name: Upload HTML report
+        if: ${{ !cancelled() }}
+        uses: actions/upload-artifact@v4
+        with:
+          name: playwright-html-report
+          path: playwright-report/
+          retention-days: 14
+
+      - name: Upload screenshots + videos + traces
+        if: ${{ !cancelled() }}
+        uses: actions/upload-artifact@v4
+        with:
+          name: e2e-artifacts
+          path: test-results/
+          retention-days: 14

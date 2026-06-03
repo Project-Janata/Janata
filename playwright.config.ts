@@ -29,10 +29,15 @@ export default defineConfig({
     navigationTimeout: 30_000,
   },
 
-  // Web on desktop + mobile breakpoints. We use the system Google Chrome
-  // (`channel: 'chrome'`) so the suite runs without downloading Playwright's
-  // bundled Chromium. iOS Safari/webkit and a real device come later — see
-  // tests/v2/README.md.
+  // Web on desktop + mobile breakpoints. We use `channel: 'chrome'` (the locally
+  // installed Chrome) so no large browser download is needed. In CI the bundled
+  // Chromium is installed instead (npx playwright install --with-deps chromium)
+  // and runs clean. NOTE: on a dev Mac with many open Chrome windows, Chrome's
+  // automation channel can get starved and hang tests mid-run — run a single
+  // spec with --workers=1, or just let CI run the full suite (see
+  // tests/v2/README.md → "Local browser caveat").
+  // Each project runs the whole v2 suite; member specs log in per-test, guest
+  // specs run logged-out. iOS comes later — see tests/v2/README.md.
   projects: [
     {
       name: 'desktop-web',
