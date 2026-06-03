@@ -40,9 +40,10 @@ export function FeedEmptyState({
   onCompose?: () => void
   onOpenGroup: (group: GroupBoard) => void
 }) {
+  const boardGroups = groups.filter((group) => group.kind !== 'public')
   const state: 'guest' | 'joinCenter' | 'firstPost' = !isSignedIn
     ? 'guest'
-    : groups.length > 0
+    : boardGroups.length > 0
       ? 'firstPost'
       : 'joinCenter'
 

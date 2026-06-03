@@ -1,6 +1,6 @@
 import React from 'react'
 import { Pressable, Text, TextInput, View } from 'react-native'
-import { Building2, CalendarDays, Search } from 'lucide-react-native'
+import { Building2, CalendarDays, Globe2, Search } from 'lucide-react-native'
 import type { AppColors } from '../../tokens'
 import type { GroupBoard } from './types'
 
@@ -89,7 +89,8 @@ function RailBoardRow({
   onPress: () => void
 }) {
   const isCenter = group.kind === 'center'
-  const Icon = isCenter ? Building2 : CalendarDays
+  const isPublic = group.kind === 'public'
+  const Icon = isPublic ? Globe2 : isCenter ? Building2 : CalendarDays
   return (
     <Pressable
       onPress={onPress}
@@ -127,6 +128,10 @@ function RailBoardRow({
                 YOUR CENTER
               </Text>
             </View>
+          ) : isPublic ? (
+            <Text style={{ fontSize: 11.5, color: colors.textFaint }} numberOfLines={1}>
+              Signed-in members
+            </Text>
           ) : null}
           <Text style={{ fontSize: 12, color: colors.textFaint }} numberOfLines={1}>
             {group.eyebrow}

@@ -1,6 +1,6 @@
 import React, { useState } from 'react'
 import { Image, Pressable, ScrollView, Text, TextInput, View } from 'react-native'
-import { Building2, CalendarDays, Lock, MessageCircle, MoreHorizontal, Send } from 'lucide-react-native'
+import { Building2, CalendarDays, Globe2, Lock, MessageCircle, MoreHorizontal, Send } from 'lucide-react-native'
 import { Avatar, ImageLightbox } from '../ui'
 import { useUser } from '../contexts'
 import type { BoardMessage } from './__mocks__/mockData'
@@ -318,7 +318,9 @@ export function BoardPostCard({
   const [lightboxOpen, setLightboxOpen] = useState(false)
   const isFeedCard = showSource || asCard
   const sourceIcon =
-    message.sourceKind === 'event' ? (
+    message.sourceKind === 'public' ? (
+      <Globe2 size={11} color={accent} strokeWidth={2.4} />
+    ) : message.sourceKind === 'event' ? (
       <CalendarDays size={11} color={accent} strokeWidth={2.4} />
     ) : (
       <Building2 size={11} color={colors.textSecondary} strokeWidth={2.3} />
@@ -328,6 +330,8 @@ export function BoardPostCard({
     <Pressable
       disabled={!onPress}
       onPress={onPress}
+      accessibilityRole={onPress ? 'button' : undefined}
+      accessibilityLabel={onPress ? `Open post by ${message.author.name}` : undefined}
       style={{
         marginHorizontal: isFeedCard ? 0 : 0,
         marginBottom: isFeedCard ? 12 : 0,
@@ -356,7 +360,7 @@ export function BoardPostCard({
               width: 20,
               height: 20,
               borderRadius: 6,
-              backgroundColor: message.sourceKind === 'event' ? accentSoft : colors.iconBoxBg,
+              backgroundColor: message.sourceKind === 'event' || message.sourceKind === 'public' ? accentSoft : colors.iconBoxBg,
               alignItems: 'center',
               justifyContent: 'center',
             }}
@@ -480,7 +484,11 @@ export function BoardPostCard({
                 active={index === 0}
               />
             ))}
-            <View
+            <Pressable
+              disabled={!onPress}
+              onPress={onPress}
+              accessibilityRole={onPress ? 'button' : undefined}
+              accessibilityLabel={onPress ? 'Open post to react' : undefined}
               style={{
                 borderRadius: 999,
                 borderWidth: 1,
@@ -493,8 +501,12 @@ export function BoardPostCard({
               <Text style={{ fontFamily: 'Inclusive Sans', fontSize: 13, color: colors.textMuted }}>
                 + React
               </Text>
-            </View>
-            <View
+            </Pressable>
+            <Pressable
+              disabled={!onPress}
+              onPress={onPress}
+              accessibilityRole={onPress ? 'button' : undefined}
+              accessibilityLabel={onPress ? 'Open post replies' : undefined}
               style={{
                 marginLeft: isFeedCard ? 'auto' : 0,
                 flexDirection: 'row',
@@ -506,7 +518,7 @@ export function BoardPostCard({
               <Text style={{ fontFamily: 'Inclusive Sans', fontSize: 13, color: accent }}>
                 {replies} {replies === 1 ? 'reply' : 'replies'}
               </Text>
-            </View>
+            </Pressable>
           </View>
         </View>
       </View>

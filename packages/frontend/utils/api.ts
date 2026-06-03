@@ -83,6 +83,7 @@ export interface MapPoint {
 }
 
 export type BoardType = 'center' | 'event'
+export type PostVisibility = 'board' | 'public_signed_in' | 'public_open'
 
 export interface BoardData {
   id: string
@@ -93,7 +94,8 @@ export interface BoardData {
 
 export interface BoardPostData {
   id: string
-  boardId: string
+  boardId: string | null
+  visibility: PostVisibility
   body: string
   imageUrl: string | null
   createdAt: string
@@ -537,6 +539,22 @@ export async function createBoardPost(
   if (!response.ok) {
     const err = await response.json().catch(() => ({ message: 'Failed to create board post' }))
     throw new Error(err.message || 'Failed to create board post')
+  }
+  const data = await response.json()
+  return data.post
+}
+
+export async function createPublicPost(
+  body: string,
+  imageUrl?: string | null
+): Promise<BoardPostData> {
+  const response = await authFetch('/feed/public', {
+    method: 'POST',
+    body: JSON.stringify({ body, imageUrl: imageUrl ?? null }),
+  })
+  if (!response.ok) {
+    const err = await response.json().catch(() => ({ message: 'Failed to create public post' }))
+    throw new Error(err.message || 'Failed to create public post')
   }
   const data = await response.json()
   return data.post
@@ -1051,7 +1069,8 @@ export async function reportBoardPost(postId: string, reason?: string): Promise<
 
 export interface ModerationQueuePost {
   id: string
-  boardId: string
+  boardId: string | null
+  visibility?: PostVisibility
   body: string
   imageUrl: string | null
   createdAt: string

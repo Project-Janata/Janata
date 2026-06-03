@@ -1,4 +1,4 @@
-import React, { useMemo } from 'react'
+import React, { useMemo, useState } from 'react'
 import { View, Text, Image, ScrollView, Pressable, Linking } from 'react-native'
 import { MapPin, Globe, Phone, User, ChevronLeft, Navigation, BadgeCheck, Users } from 'lucide-react-native'
 import CopyLinkButton from '../ui/CopyLinkButton'
@@ -7,7 +7,11 @@ import { CenterAbout } from './CenterAbout'
 import { useBoard, type CenterDisplay } from '../../hooks/useApiData'
 import { createBoardPost, type EventDisplay } from '../../utils/api'
 import { useDetailColors } from '../../hooks/useDetailColors'
+import { useColors } from '../../hooks/useColors'
 import { ThreadPanel, boardPostToMessage } from '../boards'
+import type { BoardMessage } from '../boards'
+import { PostThread, type FeedPost } from '../feed'
+import { buildFeedPostFromMessage } from '../feed/feedData'
 import { useUser } from '../contexts'
 
 // ── Props ────────────────────────────────────────────────────────────────
@@ -39,7 +43,9 @@ export default function CenterDetailPanel({
   onEventPress,
 }: CenterDetailPanelProps) {
   const colors = useDetailColors()
+  const appColors = useColors()
   const { user } = useUser()
+  const [threadDetailPost, setThreadDetailPost] = useState<FeedPost | null>(null)
 
   const handleAddressPress = () => {
     const query = encodeURIComponent(center.address)
@@ -75,6 +81,56 @@ export default function CenterDetailPanel({
   const handleCreateThreadPost = async (body: string) => {
     await createBoardPost('center', center.id, body)
     await refetchBoard()
+  }
+
+  const openThreadPost = (message: BoardMessage) => {
+    setThreadDetailPost(
+      buildFeedPostFromMessage(message, {
+        groupId: `center-${center.id}`,
+        kind: 'center',
+        parentId: center.id,
+        title: center.name,
+        subtitle: center.address || 'Center board',
+      })
+    )
+  }
+
+  if (threadDetailPost) {
+    return (
+      <View
+        style={{
+          maxWidth: 440,
+          width: '100%',
+          height: '100%',
+          backgroundColor: appColors.bg,
+          borderLeftWidth: 1,
+          borderLeftColor: appColors.border,
+        }}
+      >
+        <View style={{ paddingTop: 12 }}>
+          <Pressable
+            onPress={() => setThreadDetailPost(null)}
+            accessibilityRole="button"
+            accessibilityLabel="Back to board"
+            style={{ flexDirection: 'row', alignItems: 'center', gap: 6, paddingHorizontal: 16, paddingVertical: 10 }}
+          >
+            <ChevronLeft size={20} color={appColors.accent} />
+            <Text style={{ fontSize: 14, color: appColors.accent }}>Back to board</Text>
+          </Pressable>
+        </View>
+        <View style={{ flex: 1 }}>
+          <PostThread
+            post={threadDetailPost}
+            colors={appColors}
+            onPostChanged={refetchBoard}
+            onPostDeleted={() => {
+              setThreadDetailPost(null)
+              refetchBoard()
+            }}
+          />
+        </View>
+      </View>
+    )
   }
 
   return (
@@ -458,6 +514,7 @@ export default function CenterDetailPanel({
             composerPlaceholder="Write to the board..."
             composerState={canPostToThread ? 'open' : 'locked'}
             onSubmitPost={handleCreateThreadPost}
+            onMessagePress={openThreadPost}
           />
         </DetailSection>
       </ScrollView>
