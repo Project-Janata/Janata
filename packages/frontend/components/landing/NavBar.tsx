@@ -1,7 +1,8 @@
-import React, { useState } from 'react'
+import React from 'react'
 import { View, Text, Pressable, useWindowDimensions, Platform } from 'react-native'
 import { useRouter } from 'expo-router'
-import { User } from 'lucide-react-native'
+import { useUser } from '../contexts'
+import Avatar from '../ui/Avatar'
 import Logo from '../ui/Logo'
 
 // Inject hamburger animation CSS (web only)
@@ -27,7 +28,7 @@ export function NavBar() {
   const { width } = useWindowDimensions()
   const isMobile = width < 768
   const isTablet = width >= 768 && width < 1024
-  const [menuOpen, setMenuOpen] = useState(false)
+  const { user, loading } = useUser()
 
   const paddingHorizontal = isMobile ? 20 : isTablet ? 40 : 80
 
@@ -74,21 +75,22 @@ export function NavBar() {
               </Pressable>
             ))}
 
-          <Pressable
-            accessibilityLabel="Sign in or sign up"
-            onPress={() => router.push('/auth')}
-            style={{
-              width: 36,
-              height: 36,
-              borderRadius: 18,
-              borderWidth: 1,
-              borderColor: '#D6D3D1',
-              alignItems: 'center',
-              justifyContent: 'center',
-            }}
-          >
-            <User size={18} color="#1C1917" />
-          </Pressable>
+          {!loading && user ? (
+            <Pressable
+              accessibilityLabel="Go to app"
+              onPress={() => router.push('/')}
+            >
+              <Avatar
+                image={user.profileImage ?? undefined}
+                name={
+                  user.firstName && user.lastName
+                    ? `${user.firstName} ${user.lastName}`
+                    : user.username
+                }
+                size={36}
+              />
+            </Pressable>
+          ) : null}
 
         </View>
       </View>
