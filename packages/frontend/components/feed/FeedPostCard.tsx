@@ -1,5 +1,5 @@
 import React from 'react'
-import { Pressable, Text, View } from 'react-native'
+import { Image, Pressable, Text, View } from 'react-native'
 import { Building2, CalendarDays, MessageCircle } from 'lucide-react-native'
 import { Avatar } from '../ui'
 import type { AppColors } from '../../tokens'
@@ -75,21 +75,12 @@ export function FeedPostCard({
 
           <Text style={{ fontSize: 14, lineHeight: 20, color: colors.text }}>{post.body}</Text>
 
-          {post.attachmentLabel ? (
-            <View
-              style={{
-                marginTop: 4,
-                height: 64,
-                borderRadius: 12,
-                backgroundColor: colors.panel,
-                alignItems: 'center',
-                justifyContent: 'center',
-              }}
-            >
-              <Text style={{ fontSize: 11, color: colors.textMuted }}>
-                {post.attachmentLabel}
-              </Text>
-            </View>
+          {post.imageUrl ? (
+            <Image
+              source={{ uri: post.imageUrl }}
+              style={{ marginTop: 8, width: '100%', height: 200, borderRadius: 14, backgroundColor: colors.panel }}
+              resizeMode="cover"
+            />
           ) : null}
 
           <View style={{ flexDirection: 'row', alignItems: 'center', gap: 16, marginTop: 6 }}>

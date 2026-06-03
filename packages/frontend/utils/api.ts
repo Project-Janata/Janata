@@ -541,6 +541,26 @@ export async function createBoardPost(
   return data.post
 }
 
+// Upload an image for a board post (#283) and return its hosted URL. Pass the
+// URL to createBoardPost as `imageUrl`. Multipart, so it does not go through the
+// JSON apiFetch wrapper.
+export async function uploadBoardImage(file: File | Blob): Promise<string> {
+  const token = await getStoredToken()
+  const form = new FormData()
+  form.append('file', file)
+  const response = await fetch(`${API_BASE_URL}/board/uploadImage`, {
+    method: 'POST',
+    headers: token ? { Authorization: `Bearer ${token}` } : undefined,
+    body: form,
+  })
+  if (!response.ok) {
+    const err = await response.json().catch(() => ({ message: 'Upload failed' }))
+    throw new Error(err.message || 'Upload failed')
+  }
+  const data = await response.json()
+  return data.imageUrl as string
+}
+
 export async function toggleBoardPostReaction(
   postId: string,
   emoji: string
