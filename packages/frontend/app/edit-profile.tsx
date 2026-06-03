@@ -260,7 +260,7 @@ export default function EditProfileScreen() {
       >
         <ScrollView
           style={{ flex: 1 }}
-          contentContainerStyle={{ paddingHorizontal: 16, paddingTop: 20, paddingBottom: 40 }}
+          contentContainerStyle={{ paddingHorizontal: 16, paddingTop: 20, paddingBottom: 40, width: '100%', maxWidth: 680, alignSelf: 'center' }}
           keyboardShouldPersistTaps="handled"
         >
           {/* Photo */}
