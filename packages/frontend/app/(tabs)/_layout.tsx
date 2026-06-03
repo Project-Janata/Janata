@@ -3,7 +3,7 @@ import { Platform, View, Text, Pressable, Image, StatusBar, useWindowDimensions 
 import { useState, useEffect } from 'react'
 import { useUser, useTheme } from '../../components/contexts'
 import { HeaderActionProvider } from '../../components/contexts/HeaderActionContext'
-import { House, Newspaper, Compass, Bell } from 'lucide-react-native'
+import { House, Newspaper, Compass, Bell, User } from 'lucide-react-native'
 import SettingsPanel from '../../components/settings/SettingsPanel'
 import Logo from '../../components/ui/Logo'
 import TabHeader from '../../components/ui/TabHeader'
@@ -50,7 +50,7 @@ export default function TabLayout() {
         return `${user.firstName[0]}${user.lastName[0]}`.toUpperCase()
       if (user?.firstName) return user.firstName[0].toUpperCase()
       if (user?.username) return user.username[0].toUpperCase()
-      return '?'
+      return ''
     }
 
     return (
@@ -151,9 +151,13 @@ export default function TabLayout() {
                   justifyContent: 'center',
                 }}
               >
-                <Text style={{ color: '#fff', fontSize: 14, fontWeight: '600' }}>
-                  {getInitials()}
-                </Text>
+                {getInitials() ? (
+                  <Text style={{ color: '#fff', fontSize: 14, fontWeight: '600' }}>
+                    {getInitials()}
+                  </Text>
+                ) : (
+                  <User size={18} color="#fff" strokeWidth={2} />
+                )}
               </View>
             )}
           </Pressable>
