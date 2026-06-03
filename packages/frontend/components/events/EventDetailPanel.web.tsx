@@ -581,9 +581,6 @@ function PeopleTab({ attendees, colors }: { attendees: Attendee[]; colors: Detai
                   {a.subtitle}
                 </Text>
               </View>
-              {i === 0 && (
-                <Badge label="HOST" variant="host" />
-              )}
             </View>
           ))}
         </View>
