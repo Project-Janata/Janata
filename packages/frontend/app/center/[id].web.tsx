@@ -271,17 +271,19 @@ function MobileCenterDetail({ centerId }: { centerId: string }) {
         ) : null}
 
         {/* ABOUT (editable by admins — #285) */}
-        <DetailSection title="About" first>
-          <CenterAbout
-            centerId={center.id}
-            description={center.description}
-            pointOfContact={center.pointOfContact}
-            canEdit={canEditCenter}
-          />
-        </DetailSection>
+        {(canEditCenter || !!center.description?.trim() || !!center.pointOfContact?.trim()) ? (
+          <DetailSection title="About" first>
+            <CenterAbout
+              centerId={center.id}
+              description={center.description}
+              pointOfContact={center.pointOfContact}
+              canEdit={canEditCenter}
+            />
+          </DetailSection>
+        ) : null}
 
         {/* DETAILS */}
-        <DetailSection title="Details">
+        <DetailSection title="Details" first={!(canEditCenter || !!center.description?.trim() || !!center.pointOfContact?.trim())}>
           <View style={{ gap: 16 }}>
             {center.address ? (
               <View style={{ flexDirection: 'row', alignItems: 'flex-start', gap: 10 }}>

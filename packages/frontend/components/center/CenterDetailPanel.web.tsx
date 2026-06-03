@@ -64,6 +64,11 @@ export default function CenterDetailPanel({
   const canPostToThread =
     !!user && (user.centerID === center.id || (user.verificationLevel ?? 0) >= 107)
   const canEditCenter = !!user && (user.verificationLevel ?? 0) >= 107
+  // Only render the About section when there's something to show (description or
+  // point of contact) or the viewer can add it — otherwise CenterAbout returns
+  // null and the section header is left orphaned above Details.
+  const showAbout =
+    canEditCenter || !!center.description?.trim() || !!center.pointOfContact?.trim()
   const { posts: boardPosts, refetch: refetchBoard } = useBoard('center', center.id, canPostToThread)
   const boardMessages = useMemo(() => boardPosts.map(boardPostToMessage), [boardPosts])
 
@@ -176,17 +181,19 @@ export default function CenterDetailPanel({
         />
 
         {/* ── ABOUT (editable by admins — #285) ───────────────────── */}
-        <DetailSection title="About" first>
-          <CenterAbout
-            centerId={center.id}
-            description={center.description}
-            pointOfContact={center.pointOfContact}
-            canEdit={canEditCenter}
-          />
-        </DetailSection>
+        {showAbout ? (
+          <DetailSection title="About" first>
+            <CenterAbout
+              centerId={center.id}
+              description={center.description}
+              pointOfContact={center.pointOfContact}
+              canEdit={canEditCenter}
+            />
+          </DetailSection>
+        ) : null}
 
         {/* ── DETAILS ─────────────────────────────────────────────── */}
-        <DetailSection title="Details">
+        <DetailSection title="Details" first={!showAbout}>
           {/* ── Meta rows ────────────────────────────────────────── */}
           <View style={{ gap: 16 }}>
             {/* Address */}
