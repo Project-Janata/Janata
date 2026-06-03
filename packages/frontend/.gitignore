@@ -7,3 +7,5 @@ expo-env.d.ts
 
 # Build output
 dist/
+# Local-only release helper (references ASC key outside the repo)
+*.local.sh
