@@ -79,8 +79,14 @@ echo
 
 for f in "${FILES[@]}"; do
   echo "  → $(basename "$f")"
-  npx wrangler d1 execute "$DB_NAME" $MODE --file="$f" --config "$CONFIG" >/dev/null 2>&1 \
-    || { echo "✗ FAILED on $(basename "$f")" >&2; exit 1; }
+  # Capture stderr so a failure shows WHY (e.g. a FOREIGN KEY violation) instead
+  # of a silent "FAILED on X" — that opacity is what made the 0010 ordering bug
+  # hard to spot (see #331).
+  if ! err=$(npx wrangler d1 execute "$DB_NAME" $MODE --file="$f" --config "$CONFIG" 2>&1 >/dev/null); then
+    echo "✗ FAILED on $(basename "$f")" >&2
+    echo "$err" | grep -iE 'error|constraint|sqlite|no such' | tail -6 >&2
+    exit 1
+  fi
 done
 
 echo
