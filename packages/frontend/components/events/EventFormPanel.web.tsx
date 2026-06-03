@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useCallback } from 'react'
-import { View, Text, ScrollView, TextInput, Pressable, ActivityIndicator, Switch } from 'react-native'
-import { ChevronLeft, ChevronDown } from 'lucide-react-native'
+import { View, Text, ScrollView, TextInput, Pressable, ActivityIndicator, Switch, Image } from 'react-native'
+import { ChevronLeft, ChevronDown, ImagePlus } from 'lucide-react-native'
 import { useDetailColors, type DetailColors } from '../../hooks/useDetailColors'
 import { useTheme } from '../contexts'
 import PrimaryButton from '../ui/buttons/PrimaryButton'
@@ -10,6 +10,7 @@ import {
   fetchCenters,
   createEvent,
   updateEvent,
+  uploadBoardImage,
   type CenterData,
 } from '../../utils/api'
 
@@ -191,6 +192,30 @@ export default function EventFormPanel({ eventId, onClose, onSaved }: EventFormP
   const [signupUrl, setSignupUrl] = useState('')
   const [allowJanataSignup, setAllowJanataSignup] = useState(true)
   const [showAdvanced, setShowAdvanced] = useState(false)
+  const [uploadingImage, setUploadingImage] = useState(false)
+
+  // Pick + upload an event photo (web). Reuses the board image upload (R2);
+  // sets the image URL field to the returned public URL.
+  const pickEventImage = () => {
+    if (typeof document === 'undefined') return
+    const input = document.createElement('input')
+    input.type = 'file'
+    input.accept = 'image/*'
+    input.onchange = async () => {
+      const file = input.files?.[0]
+      if (!file) return
+      try {
+        setUploadingImage(true)
+        const url = await uploadBoardImage(file)
+        setImage(url)
+      } catch {
+        setErrors((e) => ({ ...e, image: 'Upload failed — try again or paste a URL.' }))
+      } finally {
+        setUploadingImage(false)
+      }
+    }
+    input.click()
+  }
 
   useEffect(() => {
     let mounted = true
@@ -590,109 +615,52 @@ export default function EventFormPanel({ eventId, onClose, onSaved }: EventFormP
           )}
         </View>
 
-        {/* Address */}
+        {/* Image — upload a photo or paste a URL */}
         <View>
-          <FieldLabel label="Address" colors={colors} hint="Auto-filled from center if blank." />
-          <FormInput
-            value={address}
-            onChangeText={setAddress}
-            placeholder="123 Main St, City, ST 12345"
-            colors={colors}
-          />
-        </View>
-
-        {/* Point of Contact */}
-        <View>
-          <FieldLabel label="Point of Contact" colors={colors} hint="Optional. Email or name." />
-          <FormInput
-            value={pointOfContact}
-            onChangeText={setPointOfContact}
-            placeholder="contact@example.org"
-            colors={colors}
-          />
-        </View>
-
-        {/* Image URL */}
-        <View>
-          <FieldLabel label="Image URL" colors={colors} hint="Optional. Direct link to a JPG/PNG." />
+          <FieldLabel label="Image" colors={colors} hint="Optional. Upload a photo or paste a direct link." />
+          {image.trim() ? (
+            <Image
+              source={{ uri: image }}
+              style={{ width: '100%', height: 160, borderRadius: 12, backgroundColor: colors.iconBoxBg, marginBottom: 8 }}
+              resizeMode="cover"
+            />
+          ) : null}
+          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10, marginBottom: 8 }}>
+            <Pressable
+              onPress={pickEventImage}
+              disabled={uploadingImage}
+              accessibilityRole="button"
+              style={{ flexDirection: 'row', alignItems: 'center', gap: 7, paddingVertical: 10, paddingHorizontal: 14, borderRadius: 10, borderWidth: 1, borderColor: colors.border, backgroundColor: colors.cardBg }}
+            >
+              {uploadingImage ? <ActivityIndicator size="small" color="#E8862A" /> : <ImagePlus size={16} color="#E8862A" />}
+              <Text style={{ fontFamily: 'Inclusive Sans', fontSize: 13, color: colors.text }}>
+                {uploadingImage ? 'Uploading…' : image ? 'Replace photo' : 'Upload photo'}
+              </Text>
+            </Pressable>
+            {image ? (
+              <Pressable onPress={() => setImage('')} accessibilityRole="button" style={{ paddingVertical: 10, paddingHorizontal: 6 }}>
+                <Text style={{ fontFamily: 'Inclusive Sans', fontSize: 13, color: colors.textMuted }}>Remove</Text>
+              </Pressable>
+            ) : null}
+          </View>
           <FormInput
             value={image}
             onChangeText={setImage}
-            placeholder="https://..."
+            placeholder="…or paste an image URL (https://...)"
             colors={colors}
             autoCapitalize="none"
           />
+          {errorText('image')}
         </View>
 
-        {/* External info link */}
-        <View>
-          <FieldLabel
-            label="External info link"
-            colors={colors}
-            hint="Optional. Page about the event on another site (e.g., chinmayamission.com)."
-          />
-          <FormInput
-            value={externalUrl}
-            onChangeText={setExternalUrl}
-            placeholder="https://..."
-            colors={colors}
-            autoCapitalize="none"
-          />
-        </View>
-
-        {/* External signup URL + Janata-RSVP toggle */}
-        <View>
-          <FieldLabel
-            label="External signup URL"
-            colors={colors}
-            hint="Optional. If attendees register on another site (Eventbrite, Google Form, etc.)."
-          />
-          <FormInput
-            value={signupUrl}
-            onChangeText={setSignupUrl}
-            placeholder="https://..."
-            colors={colors}
-            autoCapitalize="none"
-          />
-          {signupUrl.trim() ? (
-            <View
-              style={{
-                marginTop: 10,
-                padding: 12,
-                borderRadius: 8,
-                borderWidth: 1,
-                borderColor: colors.border,
-                backgroundColor: colors.cardBg,
-                flexDirection: 'row',
-                alignItems: 'center',
-                gap: 12,
-              }}
-            >
-              <View style={{ flex: 1 }}>
-                <Text style={{ fontFamily: 'Inclusive Sans', fontSize: 13, color: colors.text }}>
-                  Also accept Janata RSVPs
-                </Text>
-                <Text style={{ fontFamily: 'Inclusive Sans', fontSize: 11, color: colors.textMuted, marginTop: 2 }}>
-                  When off, the only signup option is the link above.
-                </Text>
-              </View>
-              <Switch
-                value={allowJanataSignup}
-                onValueChange={setAllowJanataSignup}
-                trackColor={{ true: '#E8862A', false: colors.border }}
-                thumbColor="#FFFFFF"
-                ios_backgroundColor={colors.border}
-              />
-            </View>
-          ) : null}
-        </View>
-
-        {/* Advanced: coordinates (auto-filled from center) */}
-        <View style={{ gap: 10 }}>
+        {/* Advanced options — collapsed by default so the form isn't overwhelming.
+            Address + point of contact auto-derive from the center; external links
+            and coordinates are rarely needed. */}
+        <View style={{ gap: 16 }}>
           <Pressable
             onPress={() => setShowAdvanced((v) => !v)}
             style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}
-            accessibilityLabel="Toggle advanced location options"
+            accessibilityLabel="Toggle advanced options"
           >
             <ChevronDown
               size={12}
@@ -708,7 +676,7 @@ export default function EventFormPanel({ eventId, onClose, onSaved }: EventFormP
                 textTransform: 'uppercase',
               }}
             >
-              Advanced location
+              Advanced options
             </Text>
             {(errors.latitude || errors.longitude) ? (
               <Text style={{ fontFamily: 'Inclusive Sans', fontSize: 11, color: '#DC2626' }}>
@@ -716,33 +684,80 @@ export default function EventFormPanel({ eventId, onClose, onSaved }: EventFormP
               </Text>
             ) : null}
           </Pressable>
-          {showAdvanced && (
-            <View>
-              <FieldLabel label="Coordinates" colors={colors} hint="Override only if the center's pin is wrong." />
-              <View style={{ flexDirection: 'row', gap: 8 }}>
-                <View style={{ flex: 1 }}>
-                  <FormInput
-                    value={latitude}
-                    onChangeText={setLatitude}
-                    placeholder="Latitude"
-                    colors={colors}
-                    hasError={!!errors.latitude}
-                  />
-                </View>
-                <View style={{ flex: 1 }}>
-                  <FormInput
-                    value={longitude}
-                    onChangeText={setLongitude}
-                    placeholder="Longitude"
-                    colors={colors}
-                    hasError={!!errors.longitude}
-                  />
-                </View>
+
+          {showAdvanced ? (
+            <View style={{ gap: 18 }}>
+              {/* Address */}
+              <View>
+                <FieldLabel label="Address" colors={colors} hint="Auto-filled from center if blank." />
+                <FormInput value={address} onChangeText={setAddress} placeholder="123 Main St, City, ST 12345" colors={colors} />
               </View>
-              {errorText('latitude')}
-              {errorText('longitude')}
+
+              {/* Point of Contact */}
+              <View>
+                <FieldLabel label="Point of Contact" colors={colors} hint="Optional. Email or name." />
+                <FormInput value={pointOfContact} onChangeText={setPointOfContact} placeholder="contact@example.org" colors={colors} />
+              </View>
+
+              {/* External info link */}
+              <View>
+                <FieldLabel label="External info link" colors={colors} hint="Optional. Page about the event on another site (e.g., chinmayamission.com)." />
+                <FormInput value={externalUrl} onChangeText={setExternalUrl} placeholder="https://..." colors={colors} autoCapitalize="none" />
+              </View>
+
+              {/* External signup URL + Janata-RSVP toggle */}
+              <View>
+                <FieldLabel label="External signup URL" colors={colors} hint="Optional. If attendees register on another site (Eventbrite, Google Form, etc.)." />
+                <FormInput value={signupUrl} onChangeText={setSignupUrl} placeholder="https://..." colors={colors} autoCapitalize="none" />
+                {signupUrl.trim() ? (
+                  <View
+                    style={{
+                      marginTop: 10,
+                      padding: 12,
+                      borderRadius: 8,
+                      borderWidth: 1,
+                      borderColor: colors.border,
+                      backgroundColor: colors.cardBg,
+                      flexDirection: 'row',
+                      alignItems: 'center',
+                      gap: 12,
+                    }}
+                  >
+                    <View style={{ flex: 1 }}>
+                      <Text style={{ fontFamily: 'Inclusive Sans', fontSize: 13, color: colors.text }}>
+                        Also accept Janata RSVPs
+                      </Text>
+                      <Text style={{ fontFamily: 'Inclusive Sans', fontSize: 11, color: colors.textMuted, marginTop: 2 }}>
+                        When off, the only signup option is the link above.
+                      </Text>
+                    </View>
+                    <Switch
+                      value={allowJanataSignup}
+                      onValueChange={setAllowJanataSignup}
+                      trackColor={{ true: '#E8862A', false: colors.border }}
+                      thumbColor="#FFFFFF"
+                      ios_backgroundColor={colors.border}
+                    />
+                  </View>
+                ) : null}
+              </View>
+
+              {/* Coordinates */}
+              <View>
+                <FieldLabel label="Coordinates" colors={colors} hint="Override only if the center's pin is wrong." />
+                <View style={{ flexDirection: 'row', gap: 8 }}>
+                  <View style={{ flex: 1 }}>
+                    <FormInput value={latitude} onChangeText={setLatitude} placeholder="Latitude" colors={colors} hasError={!!errors.latitude} />
+                  </View>
+                  <View style={{ flex: 1 }}>
+                    <FormInput value={longitude} onChangeText={setLongitude} placeholder="Longitude" colors={colors} hasError={!!errors.longitude} />
+                  </View>
+                </View>
+                {errorText('latitude')}
+                {errorText('longitude')}
+              </View>
             </View>
-          )}
+          ) : null}
         </View>
 
         {/* Category */}
