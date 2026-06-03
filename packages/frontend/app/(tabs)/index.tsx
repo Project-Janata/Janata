@@ -1,9 +1,10 @@
 import React, { useCallback, useMemo } from 'react'
 import { ActivityIndicator, Platform, Pressable, ScrollView, Text, View, useWindowDimensions } from 'react-native'
-import { ChevronRight, Compass, MapPin } from 'lucide-react-native'
+import { ChevronRight, Compass, MapPin, Shield } from 'lucide-react-native'
 import { useFocusEffect, useRouter } from 'expo-router'
 import { useAnalytics } from '../../utils/analytics'
 import { useUser } from '../../components/contexts'
+import { isSuperAdmin } from '../../utils/admin'
 import { useColors } from '../../hooks/useColors'
 import { useDetailColors } from '../../hooks/useDetailColors'
 import { useDiscoverData, useMyEvents, useBoard } from '../../hooks/useApiData'
@@ -11,7 +12,7 @@ import type { DiscoverCenter, EventDisplay } from '../../utils/api'
 import { extractCityState } from '../../utils/addressParsing'
 import { FeaturedEventCard, type FeaturedSource } from '../../components/home/FeaturedEventCard'
 import { MiniEventRow, type WeekItem } from '../../components/home/MiniEventRow'
-import { BoardPostCard, boardPostToMessage, type BoardMessage } from '../../components/boards'
+import { BoardPostCard, SignInCallout, boardPostToMessage, type BoardMessage } from '../../components/boards'
 import { DesktopColumns, desktopScrollContent, useDesktopLayout } from '../../components/layout/DesktopColumns'
 import type { AppColors } from '../../tokens'
 
@@ -156,6 +157,41 @@ export default function HomeScreen() {
       </Text>
     </View>
   )
+
+  // Login-state personalization: guests get a sign-in nudge that explains what
+  // signing in unlocks; signed-in members don't.
+  const guestNudge = !user ? (
+    <SignInCallout
+      title="Make Janata yours"
+      subtitle="Sign in to follow your center, RSVP to events, and join your boards."
+      colors={c}
+      onPress={() => {
+        track('home_signin_pressed', { source: 'home_nudge' })
+        router.push('/auth' as never)
+      }}
+    />
+  ) : null
+
+  // Role-aware: admins get a quick path to the dashboard from Home.
+  const adminShortcut = isSuperAdmin(user) ? (
+    <Pressable
+      onPress={() => {
+        track('home_admin_pressed', { source: 'home' })
+        router.push('/admin' as never)
+      }}
+      accessibilityRole="button"
+      style={{ flexDirection: 'row', alignItems: 'center', gap: 12, borderRadius: 16, borderWidth: 1, borderColor: c.border, backgroundColor: c.card, padding: 14 }}
+    >
+      <View style={{ width: 38, height: 38, borderRadius: 12, backgroundColor: c.accentSoft, alignItems: 'center', justifyContent: 'center' }}>
+        <Shield size={18} color={c.accent} />
+      </View>
+      <View style={{ flex: 1 }}>
+        <Text style={{ fontFamily: 'Inclusive Sans', fontSize: 15, color: c.text }}>Admin dashboard</Text>
+        <Text style={{ fontSize: 13, color: c.textMuted }}>Manage centers, events, and moderation</Text>
+      </View>
+      <ChevronRight size={18} color={c.textFaint} />
+    </Pressable>
+  ) : null
 
   const welcomeBanner = isNewUser ? (
     <WelcomeBanner
@@ -315,6 +351,8 @@ export default function HomeScreen() {
           header={
             <>
               {greeting}
+              {guestNudge}
+              {adminShortcut}
               {welcomeBanner}
             </>
           }
@@ -346,6 +384,8 @@ export default function HomeScreen() {
           (the desktop right rail) below it, so the order matches desktop. */}
       <View style={{ width: '100%', maxWidth: 640, alignSelf: 'center', gap: 22 }}>
         {greeting}
+        {guestNudge}
+        {adminShortcut}
         {welcomeBanner}
         {upNextSection}
         {weekSection}
