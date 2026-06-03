@@ -31,6 +31,8 @@ import {
 import { authService } from '../../src/auth/authService'
 import { API_BASE_URL, API_TIMEOUTS } from '../../src/config/api'
 import type { AuthStatus, User, UpdateProfileRequest } from '../../src/auth/types'
+import { unregisterPushToken } from '../../utils/notificationService'
+import { getActivePushToken, setActivePushToken } from '../../utils/pushTokenRef'
 
 interface UserContextType {
   user: User | null
@@ -142,6 +144,17 @@ export const UserProvider = ({ children }: { children: ReactNode }) => {
   const logout = useCallback(async () => {
     posthog?.capture('logout')
     posthog?.reset()
+    // Unregister this device's push token while we still hold a valid JWT, so
+    // a logged-out (or shared) device stops receiving this account's pushes.
+    const pushToken = getActivePushToken()
+    if (pushToken) {
+      try {
+        await unregisterPushToken(pushToken)
+      } catch {
+        // Best-effort — never block logout on a push cleanup failure.
+      }
+      setActivePushToken(null)
+    }
     await authService.logout()
     await clearOnboardingComplete()
     setUser(null)
