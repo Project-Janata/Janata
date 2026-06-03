@@ -266,7 +266,7 @@ export default function HomeScreen() {
   // Boards peek (#199): the 1-2 latest posts from the user's center board.
   // New users get their center + a feed peek inside the first-run overview,
   // so this section is for returning members only.
-  const boardsSection = !isNewUser ? (
+  const boardsSection = user && !isNewUser ? (
     <SectionHeader
       eyebrow="LATEST ON YOUR BOARDS"
       trailing="Open Feed"
