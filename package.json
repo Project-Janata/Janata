@@ -6,7 +6,10 @@
     "packages/*"
   ],
   "scripts": {
-    "setup": "npm install && npm run d1:migrate:local && npm run d1:seed",
+    "setup": "npm install && npm run d1:migrate:all && npm run d1:seed",
+    "setup:local": "bash scripts/dev/setup-local-demo.sh",
+    "local": "bash scripts/dev/setup-local-demo.sh && npm run dev",
+    "db:fresh": "npm run d1:migrate:all -- --reset",
     "postinstall": "node scripts/patch-css.cjs",
     "dev": "pkill -f wrangler 2>/dev/null; pkill -f expo 2>/dev/null; pkill -f react-native 2>/dev/null; sleep 1; concurrently -n api,web -c blue,green \"npm run dev:backend\" \"npm run dev:frontend\"",
     "dev:backend": "cd packages/backend && npm run dev",
