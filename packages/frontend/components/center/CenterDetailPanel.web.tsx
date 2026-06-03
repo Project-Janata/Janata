@@ -3,6 +3,7 @@ import { View, Text, Image, ScrollView, Pressable, Linking } from 'react-native'
 import { MapPin, Globe, Phone, User, ChevronLeft, Navigation, BadgeCheck, Users } from 'lucide-react-native'
 import CopyLinkButton from '../ui/CopyLinkButton'
 import { DetailSection } from '../ui'
+import { CenterAbout } from './CenterAbout'
 import { useBoard, type CenterDisplay } from '../../hooks/useApiData'
 import { createBoardPost, type EventDisplay } from '../../utils/api'
 import { useDetailColors } from '../../hooks/useDetailColors'
@@ -62,6 +63,7 @@ export default function CenterDetailPanel({
     .replace(/\/$/, '')
   const canPostToThread =
     !!user && (user.centerID === center.id || (user.verificationLevel ?? 0) >= 107)
+  const canEditCenter = !!user && (user.verificationLevel ?? 0) >= 107
   const { posts: boardPosts, refetch: refetchBoard } = useBoard('center', center.id, canPostToThread)
   const boardMessages = useMemo(() => boardPosts.map(boardPostToMessage), [boardPosts])
 
@@ -173,22 +175,18 @@ export default function CenterDetailPanel({
           resizeMode="cover"
         />
 
-        {/* ── DETAILS ─────────────────────────────────────────────── */}
-        <DetailSection title="Details" first>
-          {/* Point of contact subtitle */}
-          {center.pointOfContact ? (
-            <Text
-              style={{
-                fontFamily: 'Inclusive Sans',
-                fontSize: 13,
-                color: colors.textSecondary,
-                marginBottom: 16,
-              }}
-            >
-              Point of Contact: {center.pointOfContact}
-            </Text>
-          ) : null}
+        {/* ── ABOUT (editable by admins — #285) ───────────────────── */}
+        <DetailSection title="About" first>
+          <CenterAbout
+            centerId={center.id}
+            description={center.description}
+            pointOfContact={center.pointOfContact}
+            canEdit={canEditCenter}
+          />
+        </DetailSection>
 
+        {/* ── DETAILS ─────────────────────────────────────────────── */}
+        <DetailSection title="Details">
           {/* ── Meta rows ────────────────────────────────────────── */}
           <View style={{ gap: 16 }}>
             {/* Address */}

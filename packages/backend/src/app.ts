@@ -2193,6 +2193,7 @@ app.put('/admin/centers/:id', adminMiddleware, async (c) => {
     image?: string
     acharya?: string
     pointOfContact?: string
+    description?: string
   }>()
 
   const updates: Partial<CenterRow> = {}
@@ -2203,6 +2204,7 @@ app.put('/admin/centers/:id', adminMiddleware, async (c) => {
   if (body.image !== undefined) updates.image = body.image
   if (body.acharya !== undefined) updates.acharya = body.acharya
   if (body.pointOfContact !== undefined) updates.point_of_contact = body.pointOfContact
+  if (body.description !== undefined) updates.description = body.description
 
   const result = await db.updateCenter(c.env.DB, centerId, updates)
   if (result.success) {
