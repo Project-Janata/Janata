@@ -19,10 +19,12 @@ import {
 } from '../../utils/api'
 import { useDetailColors } from '../../hooks/useDetailColors'
 import { useTheme } from '../contexts'
+import { useAnalytics } from '../../utils/analytics'
 
 export default function CentersTab() {
   const colors = useDetailColors()
   const { isDark } = useTheme()
+  const { track } = useAnalytics()
   const [search, setSearch] = useState('')
   const [centers, setCenters] = useState<CenterData[]>([])
   const [total, setTotal] = useState(0)
@@ -152,6 +154,7 @@ export default function CentersTab() {
         acharya: form.acharya.trim() || null,
         pointOfContact: form.pointOfContact.trim() || null,
       })
+      track('admin_center_updated', { centerId: selected.centerID, source: 'admin' })
       await loadCenters(search)
       setEditing(false)
     } catch (err: any) {
@@ -165,6 +168,7 @@ export default function CentersTab() {
     if (!selected) return
     try {
       await adminVerifyCenter(selected.centerID)
+      track('admin_center_verified', { centerId: selected.centerID, source: 'admin' })
       loadCenters(search)
     } catch (err) {
       console.error('Failed to toggle verification:', err)
@@ -175,6 +179,7 @@ export default function CentersTab() {
     if (!deleteTarget) return
     try {
       await adminDeleteCenter(deleteTarget.centerID)
+      track('admin_center_deleted', { centerId: deleteTarget.centerID, source: 'admin' })
       setDeleteTarget(null)
       setSelectedId(null)
       loadCenters(search)

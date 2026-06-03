@@ -13,6 +13,7 @@ import {
   type ModerationAuditEntry,
 } from '../../utils/api'
 import { useDetailColors } from '../../hooks/useDetailColors'
+import { useAnalytics } from '../../utils/analytics'
 
 function formatDate(iso?: string): string {
   if (!iso) return 'Unknown'
@@ -32,6 +33,7 @@ type PendingAction =
 
 export default function ModerationTab() {
   const colors = useDetailColors()
+  const { track } = useAnalytics()
 
   const [items, setItems] = useState<ModerationQueueItem[]>([])
   const [loading, setLoading] = useState(true)
@@ -162,11 +164,13 @@ export default function ModerationTab() {
       setActing(true)
       if (pending.kind === 'delete') {
         await adminDeleteReportedPost(selected.post.id)
+        track('admin_reported_post_deleted', { postId: selected.post.id, source: 'admin' })
       } else {
         await adminSuspendUser(selected.post.author.id, {
           reason: selected.latestReason ?? 'Moderation action',
           durationDays: pending.durationDays,
         })
+        track('admin_user_suspended', { userId: selected.post.author.id, source: 'admin' })
       }
       setPending(null)
       setSelected(null)

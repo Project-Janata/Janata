@@ -15,6 +15,7 @@ import {
 import { useDetailColors } from '../../hooks/useDetailColors'
 import { useTheme } from '../contexts'
 import { Avatar } from '../ui'
+import { useAnalytics } from '../../utils/analytics'
 
 // ---------------------------------------------------------------------------
 // Helpers
@@ -33,6 +34,7 @@ function formatDate(iso?: string): string {
 export default function InviteCodesTab() {
   const colors = useDetailColors()
   const { isDark } = useTheme()
+  const { track } = useAnalytics()
 
   const [codes, setCodes] = useState<InviteCodeData[]>([])
   const [loading, setLoading] = useState(true)
@@ -168,6 +170,7 @@ export default function InviteCodesTab() {
     if (!selectedCode) return
     try {
       await adminToggleInviteCode(selectedCode.code)
+      track('admin_invite_code_toggled', { code: selectedCode.code, source: 'admin' })
       // Refresh
       const result = await fetchAdminInviteCodes()
       setCodes(result.data)
@@ -201,6 +204,7 @@ export default function InviteCodesTab() {
         label: newLabel.trim(),
         verificationLevel: verLevel,
       })
+      track('admin_invite_code_created', { source: 'admin' })
       setNewCode('')
       setNewLabel('')
       setNewVerLevel('45')
