@@ -155,6 +155,9 @@ export default function HomeScreen() {
   // still renders below, so Home leads with useful content rather than a
   // redundant feature tour. Self-resolves once they RSVP.
   const isNewUser = !!user && signedUpEvents.length === 0
+  // A signed-in, verified member (vl >= 45). Guests and unverified users get the
+  // stripped home: Explore + sign-in nudge, no personalized event/board lists.
+  const isVerifiedMember = !!user && vl >= 45
 
   if (discoverLoading || (user ? myEventsLoading : false)) {
     return (
@@ -213,7 +216,7 @@ export default function HomeScreen() {
     </Pressable>
   ) : null
 
-  const welcomeBanner = isNewUser ? (
+  const welcomeBanner = !isVerifiedMember || isNewUser ? (
     <WelcomeBanner
       c={c}
       onExplore={() => {
@@ -248,7 +251,7 @@ export default function HomeScreen() {
     />
   ) : null
 
-  const upNextSection = !isNewUser || featured ? (
+  const upNextSection = isVerifiedMember && (!isNewUser || featured) ? (
     <SectionHeader eyebrow="UP NEXT FOR YOU" trailing="See all" accentColor={c.accent} faintColor={c.textFaint} onTrailingPress={() => {
       track('home_see_all_pressed', { section: 'up_next' })
       router.push('/explore' as never)
@@ -286,7 +289,7 @@ export default function HomeScreen() {
   // Boards peek (#199): the 1-2 latest posts from the user's center board.
   // New users get their center + a feed peek inside the first-run overview,
   // so this section is for returning members only.
-  const boardsSection = user && !isNewUser ? (
+  const boardsSection = isVerifiedMember && !isNewUser ? (
     <SectionHeader
       eyebrow="LATEST ON YOUR BOARDS"
       trailing="Open Feed"
@@ -325,7 +328,7 @@ export default function HomeScreen() {
     </SectionHeader>
   ) : null
 
-  const weekSection = !isNewUser || weekItems.length > 0 ? (
+  const weekSection = isVerifiedMember && (!isNewUser || weekItems.length > 0) ? (
     <SectionHeader
       eyebrow={signedUpEvents.length > 0 ? 'THIS WEEK' : 'COMING UP'}
       trailing="See all"
