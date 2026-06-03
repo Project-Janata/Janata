@@ -12,7 +12,7 @@ import {
   SmilePlus,
   Trash2,
 } from 'lucide-react-native'
-import { Avatar } from '../ui'
+import { Avatar, ImageLightbox } from '../ui'
 import { useUser } from '../contexts'
 import type { AppColors } from '../../tokens'
 import { boardPostToMessage, type BoardMessage } from '../boards'
@@ -598,6 +598,7 @@ function OriginalPost({
 }) {
   const { track } = useAnalytics()
   const [pickerOpen, setPickerOpen] = useState(false)
+  const [lightboxOpen, setLightboxOpen] = useState(false)
   return (
     <View style={{ flexDirection: 'row', gap: 12 }}>
       <Avatar
@@ -654,11 +655,17 @@ function OriginalPost({
         </Text>
 
         {post.imageUrl ? (
-          <Image
-            source={{ uri: post.imageUrl }}
-            style={{ marginTop: 12, width: '100%', maxWidth: 420, height: 280, borderRadius: 16, backgroundColor: colors.surface }}
-            resizeMode="cover"
-          />
+          <>
+            <Pressable
+              onPress={() => setLightboxOpen(true)}
+              accessibilityRole="button"
+              accessibilityLabel="View image full screen"
+              style={{ marginTop: 12, width: '100%', maxWidth: 420, height: 280, borderRadius: 16, overflow: 'hidden', backgroundColor: colors.surface }}
+            >
+              <Image source={{ uri: post.imageUrl }} style={{ width: '100%', height: '100%' }} resizeMode="cover" />
+            </Pressable>
+            <ImageLightbox uri={post.imageUrl} visible={lightboxOpen} onClose={() => setLightboxOpen(false)} />
+          </>
         ) : null}
 
         <View

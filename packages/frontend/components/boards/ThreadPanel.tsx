@@ -1,7 +1,7 @@
 import React, { useState } from 'react'
 import { Image, Pressable, ScrollView, Text, TextInput, View } from 'react-native'
 import { Building2, CalendarDays, Lock, MessageCircle, MoreHorizontal, Send } from 'lucide-react-native'
-import { Avatar } from '../ui'
+import { Avatar, ImageLightbox } from '../ui'
 import type { BoardMessage } from './__mocks__/mockData'
 
 export type ComposerState = 'open' | 'locked'
@@ -310,6 +310,7 @@ export function BoardPostCard({
   const reactions = message.reactions ?? []
   const accent = colors.accent ?? '#E8862A'
   const accentSoft = colors.accentSoft ?? '#FFF7ED'
+  const [lightboxOpen, setLightboxOpen] = useState(false)
   const isFeedCard = showSource || asCard
   const sourceIcon =
     message.sourceKind === 'event' ? (
@@ -443,11 +444,17 @@ export function BoardPostCard({
           </Text>
 
           {message.imageUrl ? (
-            <Image
-              source={{ uri: message.imageUrl }}
-              style={{ marginTop: 8, width: '100%', maxWidth: 360, height: 220, borderRadius: 16, backgroundColor: colors.iconBoxBg }}
-              resizeMode="cover"
-            />
+            <>
+              <Pressable
+                onPress={() => setLightboxOpen(true)}
+                accessibilityRole="button"
+                accessibilityLabel="View image full screen"
+                style={{ marginTop: 8, width: '100%', maxWidth: 360, height: 220, borderRadius: 16, overflow: 'hidden', backgroundColor: colors.iconBoxBg }}
+              >
+                <Image source={{ uri: message.imageUrl }} style={{ width: '100%', height: '100%' }} resizeMode="cover" />
+              </Pressable>
+              <ImageLightbox uri={message.imageUrl} visible={lightboxOpen} onClose={() => setLightboxOpen(false)} />
+            </>
           ) : null}
 
           <View
