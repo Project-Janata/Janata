@@ -11,7 +11,6 @@ import {
 } from 'react-native'
 import { useFocusEffect, useNavigation, useRouter } from 'expo-router'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
-import { Building2, CalendarDays, Megaphone } from 'lucide-react-native'
 import { useAnalytics } from '../../utils/analytics'
 import { useUser } from '../../components/contexts'
 import { useColors } from '../../hooks/useColors'
@@ -19,12 +18,15 @@ import { toThreadColors } from '../../tokens'
 import { useHeaderAction } from '../../components/contexts/HeaderActionContext'
 import { useCenterList, useMyEvents } from '../../hooks/useApiData'
 import { extractCityState } from '../../utils/addressParsing'
-import { SignInCallout, CreatePostSheet, boardPostToMessage, type BoardMessage } from '../../components/boards'
+import { CreatePostSheet, boardPostToMessage, type BoardMessage } from '../../components/boards'
+import { centerPickerStore } from '../../utils/centerPickerStore'
 import { createBoardPost, fetchBoard } from '../../utils/api'
 import {
   FeedHeader,
   NativeChatHeader,
   FeedWorkspace,
+  FeedEmptyState,
+  GhostPostCard,
   PostThread,
   type GroupBoard,
 } from '../../components/feed'
@@ -155,7 +157,7 @@ function matchesQuery(value: string, query: string) {
 export default function FeedScreen() {
   const router = useRouter()
   const navigation = useNavigation()
-  const { user } = useUser()
+  const { user, updateProfile } = useUser()
   const colors = useColors()
   const { width } = useWindowDimensions()
   const insets = useSafeAreaInsets()
@@ -281,6 +283,9 @@ export default function FeedScreen() {
   const nativeDetailOpen = Platform.OS !== 'web' && mobilePostOpen
   const listTopPadding = Platform.OS === 'web' ? 20 : 8
   const isLoading = user ? myEventsLoading || centersLoading || boardsLoading : false
+  // Guests, and signed-in members with nothing in the feed yet (and no active
+  // search), get the state-aware ghost empty state instead of the post stream.
+  const showEmptyState = !user || (filteredFeedPosts.length === 0 && !query.trim())
   const nativeTabBarStyle = {
     backgroundColor: colors.surface,
     borderTopColor: colors.border,
@@ -345,15 +350,39 @@ export default function FeedScreen() {
     }
   }, [query])
 
-  const handleBoardAccessCta = () => {
-    if (!user) {
-      track('connect_signin_pressed', { source: 'feed_cta' })
-      router.push('/auth')
-      return
-    }
-    track('connect_explore_pressed', { source: 'feed_cta' })
+  const handleSignIn = useCallback(() => {
+    track('connect_signin_pressed', { source: 'feed_setup' })
+    router.push('/auth')
+  }, [router, track])
+
+  const handleBrowseEvents = useCallback(() => {
+    track('connect_explore_pressed', { source: 'feed_setup' })
     router.push('/explore' as never)
-  }
+  }, [router, track])
+
+  // Inline "join your center" from the empty-state rail. A guest can't persist a
+  // center yet, so we stash the pick and route to auth (it survives sign-in via
+  // centerPickerStore). A signed-in member joins immediately via updateProfile,
+  // which optimistically updates user.centerID and reflows the feed.
+  const handleJoinCenter = useCallback(
+    async (centerId: string): Promise<boolean> => {
+      if (!user) {
+        centerPickerStore.result = centerId
+        track('feed_setup_center_pick_guest', { center_id: centerId, source: 'feed_empty' })
+        router.push('/auth')
+        return false
+      }
+      const result = await updateProfile({ centerID: centerId })
+      if (result.success) {
+        track('feed_setup_center_joined', { center_id: centerId, source: 'feed_empty' })
+        refetchCenters()
+        return true
+      }
+      track('feed_setup_center_join_failed', { center_id: centerId, source: 'feed_empty' })
+      return false
+    },
+    [user, updateProfile, router, track, refetchCenters]
+  )
 
   const closeDetail = () => {
     track('feed_post_detail_closed', { postId: selectedPostId, source: 'feed' })
@@ -426,82 +455,30 @@ export default function FeedScreen() {
           />
         ) : null}
 
-        {!user ? (
-          <SignInCallout
-            title="Your community feed"
-            subtitle="One place for your center and the events you attend."
-            features={[
-              { icon: Building2, label: 'Your center board', hint: 'Stay in the loop with members at your home center.' },
-              { icon: CalendarDays, label: 'Event boards', hint: 'Coordinate around every event you RSVP to.' },
-              { icon: Megaphone, label: 'Announcements', hint: "What's new across Chinmaya Mission, as it happens." },
-            ]}
-            colors={colors}
-            onPress={() => {
-              track('connect_signin_pressed', { source: 'feed_banner' })
-              router.push('/auth')
-            }}
-          />
-        ) : isLoading ? (
+        {isLoading ? (
           <View style={{ gap: 12, paddingTop: 8 }}>
             {Array.from({ length: 3 }).map((_, i) => (
-              <View
-                key={i}
-                style={{
-                  backgroundColor: colors.card,
-                  borderRadius: 16,
-                  padding: 16,
-                  borderWidth: 1,
-                  borderColor: colors.border,
-                  gap: 10,
-                }}
-              >
-                <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10 }}>
-                  <View
-                    style={{
-                      width: 44,
-                      height: 44,
-                      borderRadius: 14,
-                      backgroundColor: colors.panel,
-                    }}
-                  />
-                  <View style={{ flex: 1, gap: 6 }}>
-                    <View
-                      style={{
-                        width: '50%',
-                        height: 14,
-                        borderRadius: 7,
-                        backgroundColor: colors.panel,
-                      }}
-                    />
-                    <View
-                      style={{
-                        width: '30%',
-                        height: 12,
-                        borderRadius: 6,
-                        backgroundColor: colors.panel,
-                      }}
-                    />
-                  </View>
-                </View>
-                <View
-                  style={{
-                    width: '80%',
-                    height: 12,
-                    borderRadius: 6,
-                    backgroundColor: colors.panel,
-                  }}
-                />
-                <View
-                  style={{
-                    width: '60%',
-                    height: 12,
-                    borderRadius: 6,
-                    backgroundColor: colors.panel,
-                  }}
-                />
-              </View>
+              <GhostPostCard key={i} colors={colors} />
             ))}
           </View>
+        ) : showEmptyState ? (
+          <FeedEmptyState
+            colors={colors}
+            isDesktop={isDesktop}
+            isSignedIn={!!user}
+            groups={groupsWithMessages}
+            query={query}
+            centerName={userCenter?.name}
+            onChangeQuery={setQuery}
+            onSignIn={handleSignIn}
+            onJoinCenter={handleJoinCenter}
+            onBrowseEvents={handleBrowseEvents}
+            onCompose={() => {
+              track('feed_compose_pressed', { source: 'feed_empty_panel' })
+              setCreatePostOpen(true)
+            }}
+            onOpenGroup={openGroup}
+          />
         ) : (
           <FeedWorkspace
             posts={filteredFeedPosts}
@@ -513,11 +490,8 @@ export default function FeedScreen() {
             query={query}
             onChangeQuery={setQuery}
             onBack={closeDetail}
-            canAccessBoards={canAccessBoards}
-            isSignedIn={!!user}
             nativeDetailOpen={nativeDetailOpen}
             mobilePostOpen={mobilePostOpen}
-            onRequestAccess={handleBoardAccessCta}
             onOpenGroup={openGroup}
             onSelectPost={openPost}
             onCompose={() => {
