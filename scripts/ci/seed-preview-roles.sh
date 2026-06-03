@@ -7,7 +7,11 @@
 set -uo pipefail
 
 API="$1"; DB="$2"; CONFIG="$3"; PW="$4"
-CENTER="c1000001-0000-0000-0000-000000000001"   # Chinmaya Mission Boston (seeded)
+# Real seeded center (matches the official Chinmaya center list, c0000001- prefix).
+# Chinmaya Vrindavan also has seeded events, so the demo users' home center shows
+# both a populated board AND upcoming events. The old c1000001- Boston id was
+# orphaned by the center-list id-prefix change, so all board seeding 404'd.
+CENTER="c0000001-0000-0000-0000-000000000081"   # Chinmaya Vrindavan (real, has events)
 
 reg() {
   curl -fsS -X POST "$API/auth/register" -H 'Content-Type: application/json' \
@@ -40,7 +44,7 @@ PID=""
 if [ -n "$MT" ]; then
   RESP="$(curl -fsS -X POST "$API/boards/center/$CENTER/posts" -H "Authorization: Bearer $MT" \
     -H 'Content-Type: application/json' \
-    -d '{"body":"Welcome to the Boston CHYK board! 🙏 Carpools for MSC are forming here."}' 2>/dev/null || true)"
+    -d '{"body":"Welcome to the Chinmaya Vrindavan board! 🙏 Carpools for MSC are forming here."}' 2>/dev/null || true)"
   PID="$(echo "$RESP" | python3 -c 'import sys,json;print(json.load(sys.stdin).get("post",{}).get("id",""))' 2>/dev/null || true)"
   curl -fsS -X POST "$API/boards/center/$CENTER/posts" -H "Authorization: Bearer $MT" \
     -H 'Content-Type: application/json' \
