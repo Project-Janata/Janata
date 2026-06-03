@@ -6,10 +6,7 @@ import BirthdatePicker from '../profile/BirthdatePicker'
 import { PrimaryButton } from '../ui'
 
 export default function Step2() {
-  const { goToNextStep, birthdate, setBirthdate, skipOnboarding, returnTo, isSubmitting } = useOnboarding()
-
-  // Only true if birthdate is not null
-  const isDateSelected = !!birthdate
+  const { goToNextStep, birthdate, setBirthdate } = useOnboarding()
 
   return (
     <SafeAreaView className="flex-1 bg-background dark:bg-background-dark">
@@ -24,6 +21,9 @@ export default function Step2() {
               <Text className="text-lg font-sans text-stone-500 dark:text-stone-400 text-center">
                 We'll use this to personalize your experience.
               </Text>
+              <Text className="text-sm font-sans text-stone-400 dark:text-stone-500 text-center">
+                Optional. You can add this later.
+              </Text>
             </View>
             <View className="mt-8 w-full flex items-center justify-center" style={Platform.OS === 'web' ? { overflow: 'visible', zIndex: 20 } : undefined}>
               <BirthdatePicker value={birthdate ?? undefined} onChange={setBirthdate} />
@@ -34,14 +34,13 @@ export default function Step2() {
         {/* --- Continue Button --- */}
         <View className="pb-6">
           <PrimaryButton
-            disabled={!isDateSelected}
             onPress={goToNextStep}
             style={{ width: '100%', maxWidth: 448, alignSelf: 'center' }}
           >
             Continue
           </PrimaryButton>
-          {returnTo && (
-            <Pressable onPress={skipOnboarding} disabled={isSubmitting} style={{ alignSelf: 'center', marginTop: 12 }}>
+          {!birthdate && (
+            <Pressable onPress={goToNextStep} style={{ alignSelf: 'center', marginTop: 12 }}>
               <Text className="text-sm font-sans text-stone-400 dark:text-stone-500">
                 Skip for now
               </Text>

@@ -1,4 +1,4 @@
-import React, { useState, useCallback } from 'react'
+import React, { useEffect, useState, useCallback } from 'react'
 import {
   View,
   Text,
@@ -41,9 +41,8 @@ export default function AuthScreen() {
   const urlInviteCode = params.inviteCode
   const urlEmail = typeof params.email === 'string' ? params.email : ''
 
-  // mode=login is meaningful only when we also have an email — otherwise we'd
-  // render a login screen with a disabled empty email field that the user
-  // can't edit, which is a dead-end. Fall back to the initial step instead.
+  // mode=login needs a prefilled email. mode=signup can work with only an
+  // invite code because the email field stays editable in that flow.
   const [authStep, setAuthStep] = useState<AuthStep>(
     params.mode === 'login' && urlEmail ? 'login'
       : params.mode === 'signup' && urlInviteCode ? 'signup'
@@ -54,8 +53,23 @@ export default function AuthScreen() {
   const [confirmPassword, setConfirmPassword] = useState('')
   const [inviteCode, setInviteCode] = useState(urlInviteCode || '')
   const [errors, setErrors] = useState<{ [key: string]: string }>({})
+  const emailEditable = authStep === 'initial' || (authStep === 'signup' && !urlEmail)
 
   const [showDevPanel, setShowDevPanel] = useState(false)
+
+  useEffect(() => {
+    const nextStep =
+      params.mode === 'login' && urlEmail ? 'login'
+        : params.mode === 'signup' && urlInviteCode ? 'signup'
+        : 'initial'
+
+    setAuthStep(nextStep)
+    setUsername(urlEmail)
+    setInviteCode(urlInviteCode || '')
+    setPassword('')
+    setConfirmPassword('')
+    setErrors({})
+  }, [params.mode, urlEmail, urlInviteCode])
 
   const handleContinue = useCallback(async () => {
     setErrors({})
@@ -354,7 +368,7 @@ export default function AuthScreen() {
                   onChangeText={handleUsernameChange}
                   value={username}
                   secureTextEntry={false}
-                  editable={authStep === 'initial'}
+                  editable={emailEditable}
                 />
               </View>
               {authStep === 'login' && (
