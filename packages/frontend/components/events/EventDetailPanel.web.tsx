@@ -1,4 +1,4 @@
-import React, { useMemo } from 'react'
+import React, { useMemo, useState } from 'react'
 import { View, Text, Image, ScrollView, Pressable, ActivityIndicator, Linking } from 'react-native'
 import { MapPin, Users, User, Clock, CheckCircle, ChevronLeft, Pencil, ExternalLink, Trash2, CalendarPlus } from 'lucide-react-native'
 import CopyLinkButton from '../ui/CopyLinkButton'
@@ -7,9 +7,12 @@ import { DetailSection } from '../ui'
 import Avatar from '../ui/Avatar'
 import PrimaryButton from '../ui/buttons/PrimaryButton'
 import { useDetailColors, type DetailColors } from '../../hooks/useDetailColors'
+import { useColors } from '../../hooks/useColors'
 import { useBoard } from '../../hooks/useApiData'
 import { createBoardPost } from '../../utils/api'
 import { ThreadPanel, boardPostToMessage, type BoardMessage } from '../boards'
+import { PostThread, type FeedPost } from '../feed'
+import { buildFeedPostFromMessage } from '../feed/feedData'
 import { useUser } from '../contexts'
 
 // ---------------------------------------------------------------------------
@@ -671,6 +674,7 @@ function RegisteredContent({
   canPostToThread,
   boardMessages,
   onSubmitPost,
+  onMessagePress,
 }: {
   event: EventDetailPanelProps['event']
   attendees: Attendee[]
@@ -678,6 +682,7 @@ function RegisteredContent({
   canPostToThread: boolean
   boardMessages: BoardMessage[]
   onSubmitPost: (body: string) => Promise<void>
+  onMessagePress: (message: BoardMessage) => void
 }) {
   return (
     <View style={{ flex: 1 }}>
@@ -722,6 +727,7 @@ function RegisteredContent({
             composerPlaceholder="Write to the group..."
             composerState={canPostToThread ? 'open' : 'locked'}
             onSubmitPost={onSubmitPost}
+            onMessagePress={onMessagePress}
           />
         </DetailSection>
       </ScrollView>
@@ -1002,7 +1008,9 @@ export default function EventDetailPanel({
   onDelete,
 }: EventDetailPanelProps) {
   const colors = useDetailColors()
+  const appColors = useColors()
   const { user } = useUser()
+  const [threadDetailPost, setThreadDetailPost] = useState<FeedPost | null>(null)
   const isRegistered = event.isRegistered && !isPast
   const canPostToThread = !!user && (!!isRegistered || !!isAdmin)
   const { posts: boardPosts, refetch: refetchBoard } = useBoard('event', event.id, canPostToThread)
@@ -1011,6 +1019,56 @@ export default function EventDetailPanel({
   const handleCreateThreadPost = async (body: string) => {
     await createBoardPost('event', event.id, body)
     await refetchBoard()
+  }
+
+  const openThreadPost = (message: BoardMessage) => {
+    setThreadDetailPost(
+      buildFeedPostFromMessage(message, {
+        groupId: `event-${event.id}`,
+        kind: 'event',
+        parentId: event.id,
+        title: event.title,
+        subtitle: event.location || `${event.attendees ?? 0} going`,
+      })
+    )
+  }
+
+  if (threadDetailPost) {
+    return (
+      <View
+        style={{
+          maxWidth: 440,
+          width: '100%',
+          height: '100%',
+          backgroundColor: appColors.bg,
+          borderLeftWidth: 1,
+          borderLeftColor: appColors.border,
+        }}
+      >
+        <View style={{ paddingTop: 12 }}>
+          <Pressable
+            onPress={() => setThreadDetailPost(null)}
+            accessibilityRole="button"
+            accessibilityLabel="Back to discussion"
+            style={{ flexDirection: 'row', alignItems: 'center', gap: 6, paddingHorizontal: 16, paddingVertical: 10 }}
+          >
+            <ChevronLeft size={20} color={appColors.accent} />
+            <Text style={{ fontSize: 14, color: appColors.accent }}>Back to discussion</Text>
+          </Pressable>
+        </View>
+        <View style={{ flex: 1 }}>
+          <PostThread
+            post={threadDetailPost}
+            colors={appColors}
+            onPostChanged={refetchBoard}
+            onPostDeleted={() => {
+              setThreadDetailPost(null)
+              refetchBoard()
+            }}
+          />
+        </View>
+      </View>
+    )
   }
 
   return (
@@ -1046,6 +1104,7 @@ export default function EventDetailPanel({
           canPostToThread={canPostToThread}
           boardMessages={boardMessages}
           onSubmitPost={handleCreateThreadPost}
+          onMessagePress={openThreadPost}
         />
       ) : (
         <DefaultContent

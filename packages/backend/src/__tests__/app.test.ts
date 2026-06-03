@@ -1609,6 +1609,58 @@ describe('GET /api/feed — aggregated cross-board feed', () => {
     expect(page1Ids.filter((id: string) => page2Ids.includes(id))).toEqual([])
   })
 
+  it('includes public signed-in posts for any authenticated user', async () => {
+    const { res: createRes, body: created } = await jsonPost(
+      '/api/feed/public',
+      { body: 'public hello' },
+      authHeader(memberToken),
+    )
+    expect(createRes.status).toBe(201)
+    expect(created.post.boardId).toBeNull()
+    expect(created.post.visibility).toBe('public_signed_in')
+
+    const { body: memberFeed } = await fetchJSON(
+      '/api/feed',
+      { headers: authHeader(memberToken) },
+    )
+    expect(memberFeed.posts.map((p: { body: string }) => p.body)).toContain('public hello')
+
+    const { body: strangerFeed } = await fetchJSON(
+      '/api/feed',
+      { headers: authHeader(strangerToken) },
+    )
+    expect(strangerFeed.posts.map((p: { body: string }) => p.body)).toEqual(['public hello'])
+  })
+
+  it('allows replies on public posts and excludes those replies from the top-level feed', async () => {
+    const { body: created } = await jsonPost(
+      '/api/feed/public',
+      { body: 'public parent' },
+      authHeader(memberToken),
+    )
+
+    const { res: replyRes, body: replyBody } = await jsonPost(
+      `/api/boards/posts/${created.post.id}/replies`,
+      { body: 'public reply' },
+      authHeader(strangerToken),
+    )
+    expect(replyRes.status).toBe(201)
+    expect(replyBody.reply.boardId).toBeNull()
+    expect(replyBody.reply.visibility).toBe('public_signed_in')
+
+    const { body: replies } = await fetchJSON(
+      `/api/boards/posts/${created.post.id}/replies`,
+      { headers: authHeader(memberToken) },
+    )
+    expect(replies.replies.map((p: { body: string }) => p.body)).toEqual(['public reply'])
+
+    const { body: feed } = await fetchJSON(
+      '/api/feed',
+      { headers: authHeader(strangerToken) },
+    )
+    expect(feed.posts.map((p: { body: string }) => p.body)).toEqual(['public parent'])
+  })
+
   it('returns 401 without authentication', async () => {
     const { res } = await fetchJSON('/api/feed')
     expect(res.status).toBe(401)

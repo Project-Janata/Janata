@@ -64,6 +64,7 @@ function boardPostToApi(post: db.BoardPostWithAuthor): BoardPostApiResponse {
   return {
     id: post.id,
     boardId: post.board_id,
+    visibility: post.visibility,
     body: post.body,
     imageUrl: post.image_url,
     createdAt: post.created_at,
@@ -1353,6 +1354,52 @@ app.post('/boards/:type/:id/posts', authMiddleware, async (c) => {
   return c.json({ post: boardPostToApi(post) }, 201)
 })
 
+app.post('/feed/public', authMiddleware, async (c) => {
+  const user = c.get('user')
+
+  const suspended = suspendedPostingResponse(c, user)
+  if (suspended) return suspended
+
+  const body: { body?: string; imageUrl?: string | null } = await c.req
+    .json<{ body?: string; imageUrl?: string | null }>()
+    .catch(() => ({}))
+  const text = typeof body.body === 'string' ? body.body.trim() : ''
+  if (!text) {
+    return c.json({ message: 'Post body is required' }, 400)
+  }
+  if (text.length > 2000) {
+    return c.json({ message: 'Post body must be 2000 characters or fewer' }, 400)
+  }
+
+  const imageUrl = body.imageUrl ?? null
+  const validImageUrl = validate.url(imageUrl || undefined)
+  if (validImageUrl === false) {
+    return c.json({ message: 'Image URL is invalid' }, 400)
+  }
+
+  const postId = crypto.randomUUID()
+  const created = await db.createBoardPost(c.env.DB, {
+    id: postId,
+    board_id: null,
+    author_id: user.id,
+    body: text,
+    image_url: validImageUrl ?? null,
+    visibility: 'public_signed_in',
+  })
+
+  if (!created.success) {
+    console.error('createPublicPost error:', created.error)
+    return c.json({ message: 'Failed to create public post' }, 500)
+  }
+
+  const post = await db.getBoardPostWithAuthorById(c.env.DB, postId)
+  if (!post) {
+    return c.json({ message: 'Public post created but could not be loaded' }, 500)
+  }
+
+  return c.json({ post: boardPostToApi(post) }, 201)
+})
+
 app.post('/boards/posts/:postId/reactions', authMiddleware, async (c) => {
   const user = c.get('user')
   const postId = c.req.param('postId')
@@ -1361,13 +1408,16 @@ app.post('/boards/posts/:postId/reactions', authMiddleware, async (c) => {
     return c.json({ message: 'Board post not found' }, 404)
   }
 
-  const board = await db.getBoardById(c.env.DB, post.board_id)
-  if (!board) {
-    return c.json({ message: 'Board not found' }, 404)
-  }
+  let board: Awaited<ReturnType<typeof db.getBoardById>> = null
+  if (post.board_id !== null) {
+    board = await db.getBoardById(c.env.DB, post.board_id)
+    if (!board) {
+      return c.json({ message: 'Board not found' }, 404)
+    }
 
-  const accessError = await verifyBoardAccess(c, board.type, board.parent_id, user)
-  if (accessError) return accessError
+    const accessError = await verifyBoardAccess(c, board.type, board.parent_id, user)
+    if (accessError) return accessError
+  }
 
   const body: { emoji?: string } = await c.req.json<{ emoji?: string }>().catch(() => ({}))
   if (!body.emoji || !BOARD_REACTIONS.has(body.emoji)) {
@@ -1391,7 +1441,9 @@ app.post('/boards/posts/:postId/reactions', authMiddleware, async (c) => {
           excludeUserId: user.id,
           actionUrl: `/feed/${post.id}`,
           relatedUserId: user.id,
-          data: { boardType: board.type, parentId: board.parent_id, postId: post.id },
+          data: board
+            ? { boardType: board.type, parentId: board.parent_id, postId: post.id }
+            : { boardType: 'public', parentId: 'public', postId: post.id },
         },
       ),
     )
@@ -1413,12 +1465,14 @@ app.patch('/boards/posts/:postId', authMiddleware, async (c) => {
   if (!post) {
     return c.json({ message: 'Board post not found' }, 404)
   }
-  const board = await db.getBoardById(c.env.DB, post.board_id)
-  if (!board) {
-    return c.json({ message: 'Board not found' }, 404)
+  if (post.board_id !== null) {
+    const board = await db.getBoardById(c.env.DB, post.board_id)
+    if (!board) {
+      return c.json({ message: 'Board not found' }, 404)
+    }
+    const accessError = await verifyBoardAccess(c, board.type, board.parent_id, user)
+    if (accessError) return accessError
   }
-  const accessError = await verifyBoardAccess(c, board.type, board.parent_id, user)
-  if (accessError) return accessError
 
   const body: { body?: string } = await c.req
     .json<{ body?: string }>()
@@ -1449,8 +1503,10 @@ app.patch('/boards/posts/:postId', authMiddleware, async (c) => {
   }
 
   // Return the updated post in the same shape as the create response.
-  const refreshed = await db.listBoardPosts(c.env.DB, post.board_id, { limit: 100 })
-  const updated = refreshed.find((p) => p.id === postId)
+  const updated = post.board_id === null
+    ? await db.getBoardPostWithAuthorById(c.env.DB, postId)
+    : (await db.listBoardPosts(c.env.DB, post.board_id, { limit: 100 }))
+        .find((p) => p.id === postId)
   if (!updated) {
     return c.json({ message: 'Post edited but could not be reloaded' }, 500)
   }
@@ -1469,14 +1525,16 @@ app.delete('/boards/posts/:postId', authMiddleware, async (c) => {
   if (!post) {
     return c.json({ message: 'Board post not found' }, 404)
   }
-  const board = await db.getBoardById(c.env.DB, post.board_id)
-  if (!board) {
-    return c.json({ message: 'Board not found' }, 404)
+  if (post.board_id !== null) {
+    const board = await db.getBoardById(c.env.DB, post.board_id)
+    if (!board) {
+      return c.json({ message: 'Board not found' }, 404)
+    }
+    // Read access (deletion gate is finer-grained inside softDeleteBoardPost,
+    // but we still want to 403 non-members of the board)
+    const accessError = await verifyBoardAccess(c, board.type, board.parent_id, user)
+    if (accessError) return accessError
   }
-  // Read access (deletion gate is finer-grained inside softDeleteBoardPost,
-  // but we still want to 403 non-members of the board)
-  const accessError = await verifyBoardAccess(c, board.type, board.parent_id, user)
-  if (accessError) return accessError
 
   const result = await db.softDeleteBoardPost(c.env.DB, postId, {
     id: user.id,
@@ -1510,6 +1568,9 @@ app.post('/boards/posts/:postId/pin', authMiddleware, async (c) => {
   const post = await db.getBoardPostById(c.env.DB, postId)
   if (!post) {
     return c.json({ message: 'Board post not found' }, 404)
+  }
+  if (post.board_id === null) {
+    return c.json({ message: 'Public posts cannot be pinned' }, 409)
   }
   const board = await db.getBoardById(c.env.DB, post.board_id)
   if (!board) {
@@ -1551,6 +1612,9 @@ app.post('/boards/posts/:postId/unpin', authMiddleware, async (c) => {
   if (!post) {
     return c.json({ message: 'Board post not found' }, 404)
   }
+  if (post.board_id === null) {
+    return c.json({ message: 'Public posts cannot be unpinned' }, 409)
+  }
   const board = await db.getBoardById(c.env.DB, post.board_id)
   if (!board) {
     return c.json({ message: 'Board not found' }, 404)
@@ -1591,12 +1655,15 @@ app.post('/boards/posts/:postId/replies', authMiddleware, async (c) => {
   if (!parent) {
     return c.json({ message: 'Board post not found' }, 404)
   }
-  const board = await db.getBoardById(c.env.DB, parent.board_id)
-  if (!board) {
-    return c.json({ message: 'Board not found' }, 404)
+  let board: Awaited<ReturnType<typeof db.getBoardById>> = null
+  if (parent.board_id !== null) {
+    board = await db.getBoardById(c.env.DB, parent.board_id)
+    if (!board) {
+      return c.json({ message: 'Board not found' }, 404)
+    }
+    const accessError = await verifyBoardAccess(c, board.type, board.parent_id, user)
+    if (accessError) return accessError
   }
-  const accessError = await verifyBoardAccess(c, board.type, board.parent_id, user)
-  if (accessError) return accessError
 
   const suspended = suspendedPostingResponse(c, user)
   if (suspended) return suspended
@@ -1658,7 +1725,9 @@ app.post('/boards/posts/:postId/replies', authMiddleware, async (c) => {
         excludeUserId: user.id,
         actionUrl: `/feed/${parentPostId}`,
         relatedUserId: user.id,
-        data: { boardType: board.type, parentId: board.parent_id, postId: parentPostId },
+        data: board
+          ? { boardType: board.type, parentId: board.parent_id, postId: parentPostId }
+          : { boardType: 'public', parentId: 'public', postId: parentPostId },
       },
     ),
   )
@@ -1674,12 +1743,14 @@ app.get('/boards/posts/:postId/replies', authMiddleware, async (c) => {
   if (!parent) {
     return c.json({ message: 'Board post not found' }, 404)
   }
-  const board = await db.getBoardById(c.env.DB, parent.board_id)
-  if (!board) {
-    return c.json({ message: 'Board not found' }, 404)
+  if (parent.board_id !== null) {
+    const board = await db.getBoardById(c.env.DB, parent.board_id)
+    if (!board) {
+      return c.json({ message: 'Board not found' }, 404)
+    }
+    const accessError = await verifyBoardAccess(c, board.type, board.parent_id, user)
+    if (accessError) return accessError
   }
-  const accessError = await verifyBoardAccess(c, board.type, board.parent_id, user)
-  if (accessError) return accessError
 
   const replies = await db.listBoardPostReplies(c.env.DB, parentPostId)
   return c.json({

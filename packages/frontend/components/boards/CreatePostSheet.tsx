@@ -1,11 +1,12 @@
 import React, { useState, useEffect, useMemo } from 'react'
 import { ActivityIndicator, Image, KeyboardAvoidingView, Modal, Platform, Pressable, ScrollView, Text, TextInput, View } from 'react-native'
-import { Building2, CalendarDays, ChevronDown, ImagePlus, X } from 'lucide-react-native'
+import { Building2, CalendarDays, ChevronDown, Globe2, ImagePlus, X } from 'lucide-react-native'
 import { Avatar } from '../ui'
 import { useUser } from '../contexts'
 import type { AppColors } from '../../tokens'
 import { useAnalytics } from '../../utils/analytics'
 import { uploadBoardImage } from '../../utils/api'
+import type { GroupKind } from './types'
 
 let ImagePicker: typeof import('expo-image-picker') | null = null
 try {
@@ -14,9 +15,16 @@ try {
 
 type GroupOption = {
   id: string
-  kind: 'center' | 'event'
+  kind: GroupKind
   title: string
   parentId: string
+}
+
+const PUBLIC_GROUP: GroupOption = {
+  id: 'public',
+  kind: 'public',
+  title: 'Public',
+  parentId: '',
 }
 
 export function CreatePostSheet({
@@ -90,11 +98,19 @@ export function CreatePostSheet({
     track('board_post_image_added', { source: 'create_post_sheet' })
   }
 
-  const sortedGroups = useMemo(
-    () => [...groups].sort((a, b) => (a.kind !== b.kind ? (a.kind === 'center' ? -1 : 1) : a.title.localeCompare(b.title))),
-    [groups]
-  )
+  const sortedGroups = useMemo(() => {
+    const boardGroups = groups
+      .filter((group) => group.kind !== 'public')
+      .sort((a, b) => (a.kind !== b.kind ? (a.kind === 'center' ? -1 : 1) : a.title.localeCompare(b.title)))
+    return [PUBLIC_GROUP, ...boardGroups]
+  }, [groups])
   const selectedGroup = sortedGroups.find((g) => g.id === groupId) ?? sortedGroups[0]
+  const selectedGroupSubtitle =
+    selectedGroup?.kind === 'public'
+      ? 'Visible to all signed-in members'
+      : selectedGroup?.kind === 'event'
+        ? 'Event board'
+        : 'Center board'
 
   useEffect(() => {
     if (!visible) { setBody(''); setGroupPickerOpen(false); clearImage(); return }
@@ -171,6 +187,8 @@ export function CreatePostSheet({
               <View style={{ width: 28, height: 28, borderRadius: 9, backgroundColor: colors.accentSoft, alignItems: 'center', justifyContent: 'center' }}>
                 {selectedGroup?.kind === 'event'
                   ? <CalendarDays size={14} color={colors.accent} strokeWidth={2.4} />
+                  : selectedGroup?.kind === 'public'
+                    ? <Globe2 size={14} color={colors.accent} strokeWidth={2.4} />
                   : <Building2 size={14} color={colors.accent} strokeWidth={2.4} />}
               </View>
               <View style={{ flex: 1, minWidth: 0 }}>
@@ -179,7 +197,7 @@ export function CreatePostSheet({
                 </Text>
                 {selectedGroup && (
                   <Text style={{ fontSize: 12, color: colors.textFaint }} numberOfLines={1}>
-                    {selectedGroup.kind === 'event' ? 'Event board' : 'Center board'}
+                    {selectedGroupSubtitle}
                   </Text>
                 )}
               </View>
@@ -199,6 +217,8 @@ export function CreatePostSheet({
                       <View style={{ width: 24, height: 24, borderRadius: 7, backgroundColor: colors.panel, alignItems: 'center', justifyContent: 'center' }}>
                         {group.kind === 'event'
                           ? <CalendarDays size={12} color={colors.textMuted} strokeWidth={2.3} />
+                          : group.kind === 'public'
+                            ? <Globe2 size={12} color={colors.textMuted} strokeWidth={2.3} />
                           : <Building2 size={12} color={colors.textMuted} strokeWidth={2.3} />}
                       </View>
                       <Text style={{ flex: 1, fontFamily: 'Inclusive Sans', fontSize: 14, color: colors.text }} numberOfLines={1}>
@@ -219,7 +239,13 @@ export function CreatePostSheet({
               multiline
               value={body}
               onChangeText={setBody}
-              placeholder={selectedGroup?.kind === 'event' ? `Share something with ${selectedGroup.title}...` : 'Share something with your center...'}
+              placeholder={
+                selectedGroup?.kind === 'public'
+                  ? 'Share something with Janata...'
+                  : selectedGroup?.kind === 'event'
+                    ? `Share something with ${selectedGroup.title}...`
+                    : 'Share something with your center...'
+              }
               placeholderTextColor={colors.textFaint}
               style={{ flex: 1, minHeight: 160, fontFamily: 'Inclusive Sans', fontSize: 16, lineHeight: 23, color: colors.text, textAlignVertical: 'top', paddingTop: 6 }}
             />
@@ -253,7 +279,9 @@ export function CreatePostSheet({
           )}
 
           <Text style={{ marginTop: 16, fontSize: 12, lineHeight: 18, color: colors.textFaint }}>
-            Visible to members in {selectedGroup?.title || 'your group'}.
+            {selectedGroup?.kind === 'public'
+              ? 'Visible to signed-in Janata members.'
+              : `Visible to members in ${selectedGroup?.title || 'your group'}.`}
           </Text>
         </ScrollView>
       </KeyboardAvoidingView>

@@ -4,6 +4,7 @@ import {
   Building2,
   CalendarDays,
   ChevronUp,
+  Globe2,
   MoreHorizontal,
   Pencil,
   Pin,
@@ -84,7 +85,7 @@ export function PostThread({
   const [actionBusy, setActionBusy] = useState(false)
   const [actionError, setActionError] = useState<string | null>(null)
 
-  const canPin = canPinPosts(user)
+  const canPin = post.groupKind !== 'public' && canPinPosts(user)
   const isAuthor = canModifyPost(user, post.author.id)
   const hasMenu = canPin || isAuthor
 
@@ -429,6 +430,7 @@ export function PostThread({
 
 function SourceBoardChip({ post, colors }: { post: FeedPost; colors: AppColors }) {
   const isEvent = post.groupKind === 'event'
+  const isPublic = post.groupKind === 'public'
   return (
     <View
       style={{
@@ -443,13 +445,15 @@ function SourceBoardChip({ post, colors }: { post: FeedPost; colors: AppColors }
         gap: 6,
       }}
     >
-      {isEvent ? (
+      {isPublic ? (
+        <Globe2 size={13} color={colors.accent} strokeWidth={2.3} />
+      ) : isEvent ? (
         <CalendarDays size={13} color={colors.accent} strokeWidth={2.3} />
       ) : (
         <Building2 size={13} color={colors.accent} strokeWidth={2.3} />
       )}
       <Text style={{ fontFamily: 'Inclusive Sans', fontSize: 12, color: colors.accent }}>
-        {post.sourceTitle} - Board
+        {isPublic ? post.sourceTitle : `${post.sourceTitle} - Board`}
       </Text>
     </View>
   )

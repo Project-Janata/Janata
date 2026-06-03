@@ -21,7 +21,7 @@ import { extractCityState } from '../../utils/addressParsing'
 import { CreatePostSheet, boardPostToMessage, type BoardMessage } from '../../components/boards'
 import AuthPromptModal from '../../components/ui/AuthPromptModal'
 import { centerPickerStore } from '../../utils/centerPickerStore'
-import { createBoardPost, fetchBoard } from '../../utils/api'
+import { createBoardPost, createPublicPost, fetchAggregatedFeed, fetchBoard } from '../../utils/api'
 import {
   FeedHeader,
   NativeChatHeader,
@@ -141,6 +141,21 @@ function eventToGroup(event: EventDisplay, fallbackCenterName?: string, distance
   }
 }
 
+function publicToGroup(messages: BoardMessage[]): GroupBoard {
+  return {
+    id: 'public',
+    kind: 'public',
+    title: 'Public',
+    eyebrow: 'Public',
+    subtitle: 'Visible to all signed-in members',
+    meta: messages.length ? `${messages.length} posts` : 'No posts yet',
+    preview: 'Share updates, requests, and reflections with Janata.',
+    unreadCount: 0,
+    messages,
+    parentId: 'public',
+  }
+}
+
 function sortGroupsByDistance(groups: GroupBoard[]) {
   return [...groups].sort((a, b) => {
     const aDistance = a.distanceMi ?? Number.POSITIVE_INFINITY
@@ -250,7 +265,7 @@ export default function FeedScreen() {
   )
 
   const loadBoards = useCallback(async () => {
-    if (!canAccessBoards || groups.length === 0) {
+    if (!canAccessBoards) {
       setBoardMessagesByGroup({})
       setBoardsLoading(false)
       return
@@ -258,13 +273,25 @@ export default function FeedScreen() {
 
     setBoardsLoading(true)
     try {
-      const entries = await Promise.all(
-        groups.map(async (group) => {
-          const data = await fetchBoard(group.kind, group.parentId)
-          return [group.id, data.posts.map(boardPostToMessage)] as const
-        })
+      const boardGroups = groups.filter(
+        (group): group is GroupBoard & { kind: 'center' | 'event' } => group.kind !== 'public'
       )
-      setBoardMessagesByGroup(Object.fromEntries(entries))
+      const [entries, aggregatePosts] = await Promise.all([
+        Promise.all(
+          boardGroups.map(async (group) => {
+            const data = await fetchBoard(group.kind, group.parentId)
+            return [group.id, data.posts.map(boardPostToMessage)] as const
+          })
+        ),
+        fetchAggregatedFeed({ limit: 100 }),
+      ])
+      const publicMessages = aggregatePosts
+        .filter((post) => post.boardId === null || post.visibility === 'public_signed_in')
+        .map(boardPostToMessage)
+      setBoardMessagesByGroup({
+        ...Object.fromEntries(entries),
+        public: publicMessages,
+      })
     } finally {
       setBoardsLoading(false)
     }
@@ -275,12 +302,16 @@ export default function FeedScreen() {
   }, [loadBoards])
 
   const groupsWithMessages = useMemo<GroupBoard[]>(
-    () =>
-      groups.map((group) => ({
+    () => {
+      const boardGroups = groups.map((group) => ({
         ...group,
         messages: boardMessagesByGroup[group.id] ?? [],
-      })),
-    [boardMessagesByGroup, groups]
+      }))
+      return user
+        ? [publicToGroup(boardMessagesByGroup.public ?? []), ...boardGroups]
+        : boardGroups
+    },
+    [boardMessagesByGroup, groups, user]
   )
 
   const feedPosts = useMemo(() => buildFeedPosts(groupsWithMessages), [groupsWithMessages])
@@ -438,12 +469,16 @@ export default function FeedScreen() {
   }
 
   const handleCreatePost = async (
-    group: { kind: 'center' | 'event'; parentId: string },
+    group: { kind: 'center' | 'event' | 'public'; parentId: string },
     body: string,
     imageUrl?: string | null
   ) => {
     try {
-      await createBoardPost(group.kind, group.parentId, body, imageUrl)
+      if (group.kind === 'public') {
+        await createPublicPost(body, imageUrl)
+      } else {
+        await createBoardPost(group.kind, group.parentId, body, imageUrl)
+      }
       track('feed_post_created', { kind: group.kind, parentId: group.parentId, source: 'feed' })
       await loadBoards()
     } catch (err) {

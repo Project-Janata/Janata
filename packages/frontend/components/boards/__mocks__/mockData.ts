@@ -20,7 +20,7 @@ export interface BoardMessage {
   replyCount?: number
   pinned?: boolean
   sourceLabel?: string
-  sourceKind?: 'center' | 'event'
+  sourceKind?: 'center' | 'event' | 'public'
 }
 
 export interface EventBoard {

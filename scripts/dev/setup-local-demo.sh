@@ -12,7 +12,7 @@ cd "$(git rev-parse --show-toplevel)"
 CFG="packages/backend/wrangler.toml"
 DB="chinmaya-janata-db"            # --local sandboxes this; nothing remote is touched
 PW="PreviewTest2026!"
-CENTER="c1000001-0000-0000-0000-000000000001"   # Chinmaya Mission Boston (seeded)
+CENTER="c0000001-0000-0000-0000-000000000008"   # Chinmaya Sandeepany, San Jose (seeded)
 # Data-only migrations assume mid-history column orders; skip them (same as the
 # preview setup) and let seed_preview_data.sql provide the demo data.
 SKIP="0002 0007 0008 0010 0012 0013"

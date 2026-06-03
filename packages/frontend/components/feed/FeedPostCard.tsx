@@ -1,6 +1,6 @@
 import React, { useState } from 'react'
 import { Image, Pressable, Text, View } from 'react-native'
-import { Building2, CalendarDays, MessageCircle } from 'lucide-react-native'
+import { Building2, CalendarDays, Globe2, MessageCircle } from 'lucide-react-native'
 import { Avatar, ImageLightbox } from '../ui'
 import type { AppColors } from '../../tokens'
 import type { FeedPost } from './types'
@@ -17,6 +17,8 @@ export function FeedPostCard({
   const reactions = post.reactions ?? [{ emoji: '🙏', count: 2 }]
   const replies = post.replyCount ?? 2
   const [lightboxOpen, setLightboxOpen] = useState(false)
+  const isEvent = post.sourceKind === 'event'
+  const isPublic = post.sourceKind === 'public'
 
   return (
     <Pressable
@@ -33,12 +35,14 @@ export function FeedPostCard({
             width: 18,
             height: 18,
             borderRadius: 5,
-            backgroundColor: post.sourceKind === 'event' ? colors.accentSoft : colors.panel,
+            backgroundColor: isEvent || isPublic ? colors.accentSoft : colors.panel,
             alignItems: 'center',
             justifyContent: 'center',
           }}
         >
-          {post.sourceKind === 'event' ? (
+          {isPublic ? (
+            <Globe2 size={10} color={colors.accent} strokeWidth={2.4} />
+          ) : isEvent ? (
             <CalendarDays size={10} color={colors.accent} strokeWidth={2.4} />
           ) : (
             <Building2 size={10} color={colors.textMuted} strokeWidth={2.3} />
