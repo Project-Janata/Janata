@@ -7,11 +7,12 @@ import React, { useState, useCallback } from 'react'
 import { ScrollView, View, Pressable, Image, Share } from 'react-native'
 import { useRouter, useFocusEffect } from 'expo-router'
 import {
-  Pencil, Share2, ChevronRight, BadgeCheck, MapPin,
+  Pencil, Share2, ChevronRight, BadgeCheck, MapPin, UserPlus,
   Megaphone, CalendarDays, Building2,
 } from 'lucide-react-native'
 import { useUser, useTheme } from '../../components/contexts'
 import { Text } from '../../components/ui'
+import { SignInCallout } from '../../components/boards/SignInCallout'
 import { useAnalytics } from '../../utils/analytics'
 import { LIGHT, DARK } from '../../tokens/colors'
 import { extractCityState } from '../../utils/addressParsing'
@@ -29,7 +30,7 @@ function datePill(dateStr?: string | null): { m: string; d: string } {
 
 export default function Profile() {
   const router = useRouter()
-  const { user } = useUser()
+  const { user, loading } = useUser()
   const { isDark } = useTheme()
   const c = isDark ? DARK : LIGHT
   const { track } = useAnalytics()
@@ -83,7 +84,7 @@ export default function Profile() {
       track('profile_shared', { source: 'profile', username: user?.username })
     } catch { /* dismissed */ }
   }
-  const onSettings = () => { track('nav_settings_opened', { source: 'profile', destination: 'preferences' }); router.push('/settings') }
+  const onInvite = () => { track('settings_invite_pressed', { source: 'profile' }); router.push('/settings/invite') }
   const onExplore = () => { track('profile_explore_cta', { source: 'profile' }); router.push('/explore') }
 
   const card = { backgroundColor: c.card, borderWidth: 1, borderColor: c.border, borderRadius: 20 } as const
@@ -99,6 +100,29 @@ export default function Profile() {
   const SectionLabel = ({ children }: { children: string }) => (
     <Text style={{ fontSize: 12.5, fontWeight: '600', color: c.textMuted, letterSpacing: 0.5, textTransform: 'uppercase', marginBottom: 12, marginTop: 24, marginLeft: 2 }}>{children}</Text>
   )
+
+  // Guest state: a logged-out visitor can browse the read-only tabs, but the
+  // "You" tab has no profile to show — invite them to sign in instead. Returns
+  // early so none of the user.* access below runs for a guest.
+  if (!user && !loading) {
+    return (
+      <ScrollView
+        style={{ flex: 1, backgroundColor: c.bg }}
+        contentContainerStyle={{ paddingHorizontal: 16, paddingTop: 18, paddingBottom: 48 }}
+      >
+        <SignInCallout
+          title="Sign in to Janata"
+          subtitle="Sign in to set up your profile, RSVP to events, and join your boards."
+          colors={c}
+          ctaLabel="Sign in"
+          onPress={() => {
+            track('profile_signin_pressed', { source: 'profile_guest' })
+            router.push('/auth')
+          }}
+        />
+      </ScrollView>
+    )
+  }
 
   return (
     <ScrollView
@@ -116,7 +140,6 @@ export default function Profile() {
             </View>
           )}
           <Text style={{ fontSize: 21, fontWeight: '700', color: c.text, marginTop: 14, textAlign: 'center' }}>{displayName}</Text>
-          {user?.username ? <Text style={{ fontSize: 14, color: c.textMuted, marginTop: 1 }}>@{user.username}</Text> : null}
           {roleLabel ? (
             <View style={{ flexDirection: 'row', alignItems: 'center', gap: 5, marginTop: 10, backgroundColor: c.accentSoft, paddingHorizontal: 12, paddingVertical: 5, borderRadius: 999 }}>
               <BadgeCheck size={14} color="#C2410C" />
@@ -161,10 +184,13 @@ export default function Profile() {
         ) : null}
 
         <Pressable
-          onPress={onSettings}
+          onPress={onInvite}
           style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginTop: 18, paddingTop: 16, borderTopWidth: 1, borderTopColor: c.border }}
         >
-          <Text style={{ fontSize: 14, color: c.textSecondary }}>Account &amp; Settings</Text>
+          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+            <UserPlus size={16} color={c.textSecondary} />
+            <Text style={{ fontSize: 14, color: c.textSecondary }}>Invite Friends</Text>
+          </View>
           <ChevronRight size={18} color={c.iconMuted} />
         </Pressable>
       </View>

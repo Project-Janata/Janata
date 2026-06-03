@@ -1,5 +1,5 @@
 import React, { useEffect, useRef, useState } from 'react'
-import { ActivityIndicator, Modal, Platform, Pressable, ScrollView, Text, TextInput, View } from 'react-native'
+import { ActivityIndicator, Image, Modal, Platform, Pressable, ScrollView, Text, TextInput, View } from 'react-native'
 import {
   Building2,
   CalendarDays,
@@ -12,7 +12,7 @@ import {
   SmilePlus,
   Trash2,
 } from 'lucide-react-native'
-import { Avatar } from '../ui'
+import { Avatar, ImageLightbox } from '../ui'
 import { useUser } from '../contexts'
 import type { AppColors } from '../../tokens'
 import { boardPostToMessage, type BoardMessage } from '../boards'
@@ -149,6 +149,7 @@ export function PostThread({
   }
 
   const handleReact = async (emoji: string) => {
+    if (!user) return
     const prev = reactions
     setReactions(applyOptimisticReaction(prev, emoji))
     track('feed_post_reacted', { post_id: post.postId, emoji, source: 'post_thread' })
@@ -200,6 +201,7 @@ export function PostThread({
   }, [post.postId])
 
   const handleSend = async () => {
+    if (!user) return
     const body = draft.trim()
     if (!body || sending) return
     const tempId = `temp-${Date.now()}`
@@ -598,6 +600,7 @@ function OriginalPost({
 }) {
   const { track } = useAnalytics()
   const [pickerOpen, setPickerOpen] = useState(false)
+  const [lightboxOpen, setLightboxOpen] = useState(false)
   return (
     <View style={{ flexDirection: 'row', gap: 12 }}>
       <Avatar
@@ -652,6 +655,20 @@ function OriginalPost({
         >
           {body}
         </Text>
+
+        {post.imageUrl ? (
+          <>
+            <Pressable
+              onPress={() => setLightboxOpen(true)}
+              accessibilityRole="button"
+              accessibilityLabel="View image full screen"
+              style={{ marginTop: 12, width: '100%', maxWidth: 420, height: 280, borderRadius: 16, overflow: 'hidden', backgroundColor: colors.surface }}
+            >
+              <Image source={{ uri: post.imageUrl }} style={{ width: '100%', height: '100%' }} resizeMode="cover" />
+            </Pressable>
+            <ImageLightbox uri={post.imageUrl} visible={lightboxOpen} onClose={() => setLightboxOpen(false)} />
+          </>
+        ) : null}
 
         <View
           style={{

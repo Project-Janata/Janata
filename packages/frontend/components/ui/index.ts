@@ -10,6 +10,7 @@
 import PrimaryButton from './buttons/PrimaryButton'
 import AuthInput from './AuthInput'
 import SecondaryButton from './buttons/SecondaryButton'
+export { ImageLightbox } from './ImageLightbox'
 import GhostButton from './buttons/GhostButton'
 import IconButton from './buttons/IconButton'
 import DestructiveButton from './buttons/DestructiveButton'

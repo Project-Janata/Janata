@@ -149,6 +149,21 @@ function SettingsPanel({ visible, onClose, onLogout }) {
           transform: [{ translateY: translateYAnim }],
         }}
       >
+        {/* Logged out: just a Log in CTA — none of the account items apply (#381). */}
+        {!user ? (
+          <Pressable
+            className="flex-row items-center justify-center mb-3 py-2.5 rounded-lg"
+            style={{ backgroundColor: '#E8862A' }}
+            onPress={() => {
+              track('nav_login_pressed', { source: 'settings_panel' })
+              onClose()
+              router.push('/auth')
+            }}
+          >
+            <Text className="font-sans text-white" style={{ fontWeight: '600' }}>Log in</Text>
+          </Pressable>
+        ) : (
+          <>
         {/* Profile Info */}
         <View className="flex-row items-center mb-3">
           <Avatar
@@ -162,7 +177,7 @@ function SettingsPanel({ visible, onClose, onLogout }) {
               {displayName}
             </Text>
             <Text
-              className="text-sm font-sans text-contentStrong dark:text-contentStrong-dark"
+              className="text-sm font-sans text-stone-500 dark:text-stone-400"
               numberOfLines={1}
               ellipsizeMode="tail"
             >
@@ -245,6 +260,8 @@ function SettingsPanel({ visible, onClose, onLogout }) {
 
         {/* Separator Line */}
         <View className="h-[1px] bg-gray-200 dark:bg-neutral-800 mb-2" />
+          </>
+        )}
 
         {/* Appearance Slider */}
         <View className="mb-3">
@@ -257,20 +274,24 @@ function SettingsPanel({ visible, onClose, onLogout }) {
           />
         </View>
 
-        {/* Separator Line */}
-        <View className="h-[1px] bg-gray-200 dark:bg-neutral-800 mb-2" />
+        {user && (
+          <>
+            {/* Separator Line */}
+            <View className="h-[1px] bg-gray-200 dark:bg-neutral-800 mb-2 mt-2" />
 
-        {/* Log Out Button */}
-        <Pressable
-          onPress={() => {
-            track('logout', { source: 'settings_panel' })
-            onLogout()
-          }}
-          className="flex-row items-center p-2 rounded-lg hover:bg-red-50 dark:hover:bg-red-900/20"
-        >
-          <LogOut size={16} color={isDark ? '#ef4444' : '#dc2626'} className="mr-3" />
-          <Text className="text-red-600 dark:text-red-400 font-sans">Log Out</Text>
-        </Pressable>
+            {/* Log Out Button */}
+            <Pressable
+              onPress={() => {
+                track('logout', { source: 'settings_panel' })
+                onLogout()
+              }}
+              className="flex-row items-center p-2 rounded-lg hover:bg-red-50 dark:hover:bg-red-900/20"
+            >
+              <LogOut size={16} color={isDark ? '#ef4444' : '#dc2626'} className="mr-3" />
+              <Text className="text-red-600 dark:text-red-400 font-sans">Log Out</Text>
+            </Pressable>
+          </>
+        )}
       </Animated.View>
     </>
   )
