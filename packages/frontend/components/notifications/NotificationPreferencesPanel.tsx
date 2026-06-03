@@ -72,7 +72,7 @@ export const NotificationPreferencesPanel: React.FC = () => {
   }
 
   return (
-    <ScrollView style={{ flex: 1, backgroundColor: c.card }} contentContainerStyle={{ padding: 16 }}>
+    <ScrollView style={{ flex: 1, backgroundColor: c.card }} contentContainerStyle={{ padding: 16, width: '100%', maxWidth: 680, alignSelf: 'center' }}>
       {/* Main Channels */}
       <View style={{ marginBottom: 24 }}>
         <Text style={{ fontSize: 16, fontWeight: '600', color: c.text, marginBottom: 12, paddingBottom: 8, borderBottomWidth: 1, borderBottomColor: c.border }}>
