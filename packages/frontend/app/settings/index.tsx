@@ -9,6 +9,7 @@ import {
   LogOut,
   AlertTriangle,
   UserPlus,
+  Bell,
 } from 'lucide-react-native'
 import { useUser, useTheme } from '../../components/contexts'
 import { Avatar, Text, Section, StackHeader } from '../../components/ui'
@@ -169,6 +170,27 @@ export default function PreferencesNative() {
           </View>
         </Section>
         {/* Connect */}
+        <Section title="NOTIFICATIONS" titleColor={faintColor}>
+          <View
+            style={{
+              borderTopWidth: 1,
+              borderBottomWidth: 1,
+              borderColor,
+              marginHorizontal: -16,
+            }}
+          >
+            <MenuRow onPress={() => {
+              track('settings_notifications_pressed', { source: 'settings' })
+              router.push('/settings/notifications')
+            }}>
+              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12 }}>
+                <Bell size={20} color={textColor} />
+                <Text style={{ fontSize: 15, color: textColor }}>Notification preferences</Text>
+              </View>
+            </MenuRow>
+          </View>
+        </Section>
+
         <Section title="CONNECT" titleColor={faintColor}>
           <View
             style={{

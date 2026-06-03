@@ -10,7 +10,7 @@ import {
   useWindowDimensions,
 } from 'react-native'
 import { SafeAreaView } from 'react-native-safe-area-context'
-import { Eye, Shield, Info, ExternalLink, AlertTriangle, UserPlus, LogOut, ChevronRight, User } from 'lucide-react-native'
+import { Eye, Shield, Info, ExternalLink, AlertTriangle, UserPlus, LogOut, ChevronRight, User, Bell } from 'lucide-react-native'
 import { useUser, useTheme } from '../../components/contexts'
 import { useRouter } from 'expo-router'
 import { DestructiveButton, SecondaryButton, Text, Avatar } from '../../components/ui'
@@ -178,6 +178,36 @@ export default function Preferences() {
               <LogOut size={18} color="#DC2626" />
             </Pressable>
           </View>
+        </View>
+
+        {/* Notifications Section */}
+        <View>
+          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: 12 }}>
+            <Bell size={20} color={iconColor} />
+            <Text style={{ fontSize: 17, fontWeight: '600', color: textColor }}>Notifications</Text>
+          </View>
+          <Pressable
+            style={{
+              flexDirection: 'row',
+              alignItems: 'center',
+              justifyContent: 'space-between',
+              padding: isNarrowWeb ? 20 : 28,
+              backgroundColor: cardBg,
+              borderRadius: 20,
+              borderWidth: 1,
+              borderColor,
+            }}
+            onPress={() => {
+              track('settings_notifications_pressed', { source: 'settings_web' })
+              router.push('/settings/notifications')
+            }}
+          >
+            <View style={{ flex: 1, marginRight: 12 }}>
+              <Text style={{ fontSize: 15, color: textColor }}>Notification preferences</Text>
+              <Text style={{ fontSize: 13, color: mutedTextColor, marginTop: 2 }}>Choose what you're notified about</Text>
+            </View>
+            <ChevronRight size={18} color={iconColor} />
+          </Pressable>
         </View>
 
         {/* Appearance Section */}
