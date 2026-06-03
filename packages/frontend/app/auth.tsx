@@ -289,6 +289,23 @@ export default function AuthScreen() {
                   : 'Welcome.'}
               </Text>
 
+              {/* What Janata is — first step only, so a new member knows what
+                  they're signing into before entering an email. */}
+              {authStep === 'initial' && (
+                <View style={{ marginTop: 12, gap: 9 }}>
+                  {[
+                    'Discover satsangs, camps, and classes near you',
+                    'RSVP in a tap and see who else is going',
+                    'Stay connected with your center and sangha',
+                  ].map((line) => (
+                    <View key={line} style={{ flexDirection: 'row', gap: 10, alignItems: 'flex-start' }}>
+                      <Text style={{ color: '#C2410C', fontSize: 14, lineHeight: 22 }}>✓</Text>
+                      <Text className="font-sans" style={{ flex: 1, fontSize: 14.5, lineHeight: 22, color: '#57534E' }}>{line}</Text>
+                    </View>
+                  ))}
+                </View>
+              )}
+
               <Text
                 className="text-base font-sans mt-2"
                 style={{ color: '#78716C' }}

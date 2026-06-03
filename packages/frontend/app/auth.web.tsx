@@ -462,6 +462,24 @@ export default function AuthScreen() {
             {heading}
           </h1>
 
+          {/* What Janata is — only on the first step, so a new beta tester knows
+              what they're signing into before entering an email. On mobile the
+              brand carousel is hidden, making this the only context shown. */}
+          {authStep === 'initial' && (
+            <div style={{ marginTop: 4, marginBottom: 24 }}>
+              {[
+                'Discover satsangs, camps, and classes near you',
+                'RSVP in a tap and see who else is going',
+                'Stay connected with your center and sangha',
+              ].map((line) => (
+                <div key={line} style={{ display: 'flex', gap: 10, alignItems: 'flex-start', marginBottom: 9 }}>
+                  <span style={{ color: '#C2410C', fontSize: 14, lineHeight: '22px' }}>✓</span>
+                  <span style={{ fontFamily: 'Inclusive Sans, sans-serif', fontSize: 14.5, lineHeight: '22px', color: '#57534E' }}>{line}</span>
+                </div>
+              ))}
+            </div>
+          )}
+
           {/* Subtitle */}
           <p
             style={{
