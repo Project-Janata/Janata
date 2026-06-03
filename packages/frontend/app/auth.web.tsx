@@ -548,6 +548,28 @@ export default function AuthScreen() {
                 style={getInputStyle(inviteCodeFocused)}
               />
             )}
+            {authStep === 'invite-code' && (
+              <button
+                type="button"
+                onClick={() => {
+                  track('verification_explainer_opened', { source: 'auth' })
+                  router.push('/verification' as never)
+                }}
+                style={{
+                  background: 'none',
+                  border: 'none',
+                  padding: 0,
+                  marginTop: -4,
+                  color: '#C2410C',
+                  fontSize: 13,
+                  cursor: 'pointer',
+                  textDecoration: 'underline',
+                  alignSelf: 'flex-start',
+                }}
+              >
+                How does verification work?
+              </button>
+            )}
 
             {/* Password + PasswordStrength + Confirm (signup) */}
             {authStep === 'signup' && (
