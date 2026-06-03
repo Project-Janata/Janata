@@ -1,5 +1,5 @@
 import React, { useEffect, useRef, useState } from 'react'
-import { ActivityIndicator, Modal, Platform, Pressable, ScrollView, Text, TextInput, View } from 'react-native'
+import { ActivityIndicator, Image, Modal, Platform, Pressable, ScrollView, Text, TextInput, View } from 'react-native'
 import {
   Building2,
   CalendarDays,
@@ -652,6 +652,14 @@ function OriginalPost({
         >
           {body}
         </Text>
+
+        {post.imageUrl ? (
+          <Image
+            source={{ uri: post.imageUrl }}
+            style={{ marginTop: 12, width: '100%', maxWidth: 420, height: 280, borderRadius: 16, backgroundColor: colors.surface }}
+            resizeMode="cover"
+          />
+        ) : null}
 
         <View
           style={{
