@@ -183,10 +183,13 @@ export default function FeedScreen() {
     }, [refetchMyEvents, refetchCenters])
   )
 
+  // Only offer the compose (+) action to signed-in members — a guest has no
+  // boards to post to, so the affordance sat above the sign-in wall doing nothing.
   useEffect(() => {
+    if (!user) { setCreateHandler(null); return }
     setCreateHandler(() => setCreatePostOpen(true))
     return () => setCreateHandler(null)
-  }, [setCreateHandler])
+  }, [setCreateHandler, user])
 
   const threadColors = toThreadColors(colors)
 
