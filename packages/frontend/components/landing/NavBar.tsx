@@ -2,8 +2,9 @@ import React, { useState } from 'react'
 import { View, Text, Pressable, useWindowDimensions, Platform } from 'react-native'
 import { useRouter } from 'expo-router'
 import { usePostHog } from 'posthog-react-native'
-import { User } from 'lucide-react-native'
 import Logo from '../ui/Logo'
+import { Avatar } from '../ui'
+import { useUser } from '../contexts'
 
 // Inject hamburger animation CSS (web only)
 if (Platform.OS === 'web' && typeof document !== 'undefined') {
@@ -26,6 +27,9 @@ const NAV_LINKS: string[] = []
 export function NavBar() {
   const router = useRouter()
   const posthog = usePostHog()
+  const { user } = useUser()
+  const displayName =
+    user?.firstName && user?.lastName ? `${user.firstName} ${user.lastName}` : user?.firstName || user?.username || ''
   const { width } = useWindowDimensions()
   const isMobile = width < 768
   const isTablet = width >= 768 && width < 1024
@@ -76,24 +80,21 @@ export function NavBar() {
               </Pressable>
             ))}
 
-          <Pressable
-            accessibilityLabel="Sign in or sign up"
-            onPress={() => {
-              posthog?.capture('landing_signin_pressed', { source: 'navbar' })
-              router.push('/auth')
-            }}
-            style={{
-              width: 36,
-              height: 36,
-              borderRadius: 18,
-              borderWidth: 1,
-              borderColor: '#D6D3D1',
-              alignItems: 'center',
-              justifyContent: 'center',
-            }}
-          >
-            <User size={18} color="#1C1917" />
-          </Pressable>
+          {/* Landing is the logged-out experience (the "Start Exploring" CTA covers
+              sign-in), so show no avatar for guests. A signed-in visitor gets their
+              avatar, routing into the app. (#379) */}
+          {user ? (
+            <Pressable
+              accessibilityLabel="Open the app"
+              onPress={() => {
+                posthog?.capture('landing_avatar_pressed', { source: 'navbar' })
+                router.push('/')
+              }}
+              style={{ width: 36, height: 36, borderRadius: 18, overflow: 'hidden' }}
+            >
+              <Avatar image={user.profileImage || undefined} name={displayName} size={36} />
+            </Pressable>
+          ) : null}
 
         </View>
       </View>
