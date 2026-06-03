@@ -1,9 +1,10 @@
 import React, { useState, useEffect, useMemo } from 'react'
-import { KeyboardAvoidingView, Modal, Platform, Pressable, ScrollView, Text, TextInput, View } from 'react-native'
-import { Building2, CalendarDays, ChevronDown, X } from 'lucide-react-native'
+import { ActivityIndicator, Image, KeyboardAvoidingView, Modal, Platform, Pressable, ScrollView, Text, TextInput, View } from 'react-native'
+import { Building2, CalendarDays, ChevronDown, ImagePlus, X } from 'lucide-react-native'
 import { Avatar } from '../ui'
 import type { AppColors } from '../../tokens'
 import { useAnalytics } from '../../utils/analytics'
+import { uploadBoardImage } from '../../utils/api'
 
 type GroupOption = {
   id: string
@@ -23,13 +24,40 @@ export function CreatePostSheet({
   colors: AppColors
   groups: GroupOption[]
   onClose: () => void
-  onSubmit?: (group: GroupOption, body: string) => Promise<void> | void
+  onSubmit?: (group: GroupOption, body: string, imageUrl?: string | null) => Promise<void> | void
 }) {
   const { track } = useAnalytics()
   const [body, setBody] = useState('')
   const [groupId, setGroupId] = useState<string | undefined>()
   const [groupPickerOpen, setGroupPickerOpen] = useState(false)
   const [submitting, setSubmitting] = useState(false)
+  const [imageFile, setImageFile] = useState<File | null>(null)
+  const [imagePreview, setImagePreview] = useState<string | null>(null)
+
+  const clearImage = () => {
+    if (imagePreview) URL.revokeObjectURL(imagePreview)
+    setImageFile(null)
+    setImagePreview(null)
+  }
+
+  // Web image picker via a transient file input. Native photo attach (expo-
+  // image-picker) is a follow-up, so the button is web-only for now.
+  const pickImageWeb = () => {
+    if (typeof document === 'undefined') return
+    const input = document.createElement('input')
+    input.type = 'file'
+    input.accept = 'image/*'
+    input.onchange = () => {
+      const file = input.files?.[0]
+      if (file) {
+        clearImage()
+        setImageFile(file)
+        setImagePreview(URL.createObjectURL(file))
+        track('board_post_image_added', { source: 'create_post_sheet' })
+      }
+    }
+    input.click()
+  }
 
   const sortedGroups = useMemo(
     () => [...groups].sort((a, b) => (a.kind !== b.kind ? (a.kind === 'center' ? -1 : 1) : a.title.localeCompare(b.title))),
@@ -38,25 +66,29 @@ export function CreatePostSheet({
   const selectedGroup = sortedGroups.find((g) => g.id === groupId) ?? sortedGroups[0]
 
   useEffect(() => {
-    if (!visible) { setBody(''); setGroupPickerOpen(false); return }
+    if (!visible) { setBody(''); setGroupPickerOpen(false); clearImage(); return }
     if (!groupId && sortedGroups[0]) setGroupId(sortedGroups[0].id)
   }, [visible, groupId, sortedGroups])
 
-  const canPost = body.trim().length > 0 && !!selectedGroup && !submitting
+  const canPost = (body.trim().length > 0 || !!imageFile) && !!selectedGroup && !submitting
 
   const handleSubmit = async () => {
     if (!canPost || !selectedGroup) return
     try {
       setSubmitting(true)
-      await onSubmit?.(selectedGroup, body.trim())
+      let imageUrl: string | null = null
+      if (imageFile) imageUrl = await uploadBoardImage(imageFile)
+      await onSubmit?.(selectedGroup, body.trim(), imageUrl)
       track('board_post_created', {
         source: 'create_post_sheet',
         group_id: selectedGroup.id,
         group_kind: selectedGroup.kind,
         group_title: selectedGroup.title,
         body_length: body.trim().length,
+        has_image: !!imageFile,
       })
       setBody('')
+      clearImage()
       onClose()
     } catch (err) {
       track('board_post_create_failed', {
@@ -161,6 +193,33 @@ export function CreatePostSheet({
               style={{ flex: 1, minHeight: 160, fontFamily: 'Inclusive Sans', fontSize: 16, lineHeight: 23, color: colors.text, textAlignVertical: 'top', paddingTop: 6 }}
             />
           </View>
+
+          {imagePreview ? (
+            <View style={{ marginTop: 14, alignSelf: 'flex-start' }}>
+              <Image
+                source={{ uri: imagePreview }}
+                style={{ width: 168, height: 168, borderRadius: 14, backgroundColor: colors.panel }}
+                resizeMode="cover"
+              />
+              <Pressable
+                onPress={clearImage}
+                accessibilityRole="button"
+                accessibilityLabel="Remove photo"
+                style={{ position: 'absolute', top: 8, right: 8, width: 26, height: 26, borderRadius: 13, backgroundColor: 'rgba(0,0,0,0.6)', alignItems: 'center', justifyContent: 'center' }}
+              >
+                <X size={15} color="#fff" />
+              </Pressable>
+            </View>
+          ) : Platform.OS === 'web' ? (
+            <Pressable
+              onPress={pickImageWeb}
+              accessibilityRole="button"
+              style={{ marginTop: 14, flexDirection: 'row', alignItems: 'center', gap: 8, alignSelf: 'flex-start', paddingVertical: 9, paddingHorizontal: 14, borderRadius: 999, borderWidth: 1, borderColor: colors.border }}
+            >
+              <ImagePlus size={17} color={colors.accent} />
+              <Text style={{ fontSize: 14, color: colors.text }}>Add photo</Text>
+            </Pressable>
+          ) : null}
 
           <Text style={{ marginTop: 16, fontSize: 12, lineHeight: 18, color: colors.textFaint }}>
             Visible to members in {selectedGroup?.title || 'your group'}.

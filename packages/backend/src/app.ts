@@ -2104,6 +2104,40 @@ app.post('/profile/uploadImage', authMiddleware, async (c) => {
   return c.json({ message: 'Profile image uploaded successfully', imageUrl: url })
 })
 
+// Board image upload (#283). Mirrors /profile/uploadImage but stores under a
+// `boards/` prefix and does NOT touch the user's profile — it just returns a
+// URL the client passes to createBoardPost as `imageUrl`.
+app.post('/board/uploadImage', authMiddleware, async (c) => {
+  const user = c.get('user')
+
+  const body = await c.req.parseBody()
+  const file = body['file']
+
+  if (!(file instanceof File)) {
+    return c.json({ message: 'No file uploaded' }, 400)
+  }
+  if (!ALLOWED_TYPES.includes(file.type)) {
+    return c.json(
+      { message: 'Unsupported file type. Allowed types are JPEG, PNG, GIF, WebP, HEIC' },
+      400
+    )
+  }
+  if (file.size > MAX_FILE_SIZE) {
+    return c.json({ message: 'File size exceeds 5MB limit' }, 400)
+  }
+
+  const ext = file.name.split('.').pop() || 'jpg'
+  const key = `boards/${user.id}/${crypto.randomUUID()}.${ext}`
+
+  await c.env.AVATARS.put(key, file.stream(), {
+    httpMetadata: { contentType: file.type },
+    customMetadata: { userId: user.id, originalFileName: file.name },
+  })
+
+  const url = `https://avatars.chinmayajanata.org/avatars/${key}`
+  return c.json({ message: 'Image uploaded', imageUrl: url })
+})
+
 // ── Fun route ─────────────────────────────────────────────────────────
 
 app.post('/brewCoffee', (c) => {

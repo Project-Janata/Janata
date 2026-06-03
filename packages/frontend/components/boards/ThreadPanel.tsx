@@ -1,5 +1,5 @@
 import React, { useState } from 'react'
-import { Pressable, ScrollView, Text, TextInput, View } from 'react-native'
+import { Image, Pressable, ScrollView, Text, TextInput, View } from 'react-native'
 import { Building2, CalendarDays, Lock, MessageCircle, MoreHorizontal, Send } from 'lucide-react-native'
 import { Avatar } from '../ui'
 import type { BoardMessage } from './__mocks__/mockData'
@@ -442,23 +442,12 @@ export function BoardPostCard({
             {message.body}
           </Text>
 
-          {message.attachmentLabel ? (
-            <View
-              style={{
-                marginTop: 2,
-                height: 76,
-                borderRadius: 18,
-                backgroundColor: colors.iconBoxBg,
-                alignItems: 'center',
-                justifyContent: 'center',
-              }}
-            >
-              <Text
-                style={{ fontFamily: 'Inclusive Sans', fontSize: 12, color: colors.textSecondary }}
-              >
-                {message.attachmentLabel}
-              </Text>
-            </View>
+          {message.imageUrl ? (
+            <Image
+              source={{ uri: message.imageUrl }}
+              style={{ marginTop: 8, width: '100%', maxWidth: 360, height: 220, borderRadius: 16, backgroundColor: colors.iconBoxBg }}
+              resizeMode="cover"
+            />
           ) : null}
 
           <View

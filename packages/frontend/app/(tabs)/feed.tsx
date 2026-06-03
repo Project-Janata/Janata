@@ -385,10 +385,11 @@ export default function FeedScreen() {
 
   const handleCreatePost = async (
     group: { kind: 'center' | 'event'; parentId: string },
-    body: string
+    body: string,
+    imageUrl?: string | null
   ) => {
     try {
-      await createBoardPost(group.kind, group.parentId, body)
+      await createBoardPost(group.kind, group.parentId, body, imageUrl)
       track('feed_post_created', { kind: group.kind, parentId: group.parentId, source: 'feed' })
       await loadBoards()
     } catch (err) {
