@@ -668,6 +668,35 @@ export async function getEventAttendees(
   return result.results ?? []
 }
 
+/**
+ * IDs of every user "part of" a board, for notification fan-out (#102).
+ *   - center board: users whose home center matches
+ *   - event board: the event's attendees plus its creator
+ * ID-only (no row hydration) so a large center can fan out cheaply.
+ */
+export async function getBoardRecipientIds(
+  db: D1Database,
+  type: 'center' | 'event',
+  parentId: string,
+): Promise<string[]> {
+  if (type === 'center') {
+    const result = await db
+      .prepare('SELECT id FROM users WHERE center_id = ?1')
+      .bind(parentId)
+      .all<{ id: string }>()
+    return (result.results ?? []).map((r) => r.id)
+  }
+  const result = await db
+    .prepare(
+      `SELECT user_id AS id FROM event_attendees WHERE event_id = ?1
+       UNION
+       SELECT created_by AS id FROM events WHERE id = ?1 AND created_by IS NOT NULL`,
+    )
+    .bind(parentId)
+    .all<{ id: string }>()
+  return (result.results ?? []).map((r) => r.id).filter(Boolean)
+}
+
 export async function getUserEvents(
   db: D1Database,
   userId: string,

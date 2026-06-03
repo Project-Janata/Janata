@@ -39,6 +39,10 @@ export interface NotificationPreferenceRow {
   event_updated: number
   attendee_joined: number
   center_announcements: number
+  board_posts: number
+  board_replies: number
+  board_reactions: number
+  board_mentions: number
   quiet_hours_start: string | null
   quiet_hours_end: string | null
   quiet_hours_enabled: number
@@ -63,6 +67,10 @@ export const NOTIFICATION_TYPES = {
   ATTENDEE_JOINED: 5,
   CENTER_ANNOUNCEMENT: 6,
   SYSTEM_NOTIFICATION: 7,
+  BOARD_POST: 8,
+  BOARD_REPLY: 9,
+  BOARD_REACTION: 10,
+  BOARD_MENTION: 11,
 } as const
 
 /**
@@ -301,10 +309,14 @@ export async function createDefaultNotificationPreferences(
       event_updated,
       attendee_joined,
       center_announcements,
+      board_posts,
+      board_replies,
+      board_reactions,
+      board_mentions,
       quiet_hours_enabled,
       created_at,
       updated_at
-    ) VALUES (?, ?, 1, 1, 1, 1, 1, 1, 1, 1, 1, 0, ?, ?)
+    ) VALUES (?, ?, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 0, ?, ?)
   `)
 
   await stmt.bind(id, userId, now, now).run()
@@ -321,6 +333,10 @@ export async function createDefaultNotificationPreferences(
     event_updated: 1,
     attendee_joined: 1,
     center_announcements: 1,
+    board_posts: 1,
+    board_replies: 1,
+    board_reactions: 1,
+    board_mentions: 1,
     quiet_hours_start: null,
     quiet_hours_end: null,
     quiet_hours_enabled: 0,
@@ -379,6 +395,22 @@ export async function updateNotificationPreferences(
     fields.push('center_announcements = ?')
     values.push(updates.center_announcements)
   }
+  if (updates.board_posts !== undefined) {
+    fields.push('board_posts = ?')
+    values.push(updates.board_posts)
+  }
+  if (updates.board_replies !== undefined) {
+    fields.push('board_replies = ?')
+    values.push(updates.board_replies)
+  }
+  if (updates.board_reactions !== undefined) {
+    fields.push('board_reactions = ?')
+    values.push(updates.board_reactions)
+  }
+  if (updates.board_mentions !== undefined) {
+    fields.push('board_mentions = ?')
+    values.push(updates.board_mentions)
+  }
   if (updates.quiet_hours_start !== undefined) {
     fields.push('quiet_hours_start = ?')
     values.push(updates.quiet_hours_start)
@@ -409,14 +441,13 @@ export async function updateNotificationPreferences(
 }
 
 /**
- * Check if notification type is enabled in preferences
+ * Per-type toggle check, independent of the channel (in-app / push) gate.
+ * Returns whether the user wants notifications OF THIS TYPE at all.
  */
-export function isNotificationTypeEnabled(
+export function isNotificationTypeAllowed(
   preferences: NotificationPreferenceRow,
   typeId: number
 ): boolean {
-  if (!preferences.in_app_enabled) return false
-
   switch (typeId) {
     case NOTIFICATION_TYPES.EVENT_REMINDER:
       return preferences.event_reminders === 1
@@ -430,11 +461,31 @@ export function isNotificationTypeEnabled(
       return preferences.attendee_joined === 1
     case NOTIFICATION_TYPES.CENTER_ANNOUNCEMENT:
       return preferences.center_announcements === 1
+    case NOTIFICATION_TYPES.BOARD_POST:
+      return preferences.board_posts === 1
+    case NOTIFICATION_TYPES.BOARD_REPLY:
+      return preferences.board_replies === 1
+    case NOTIFICATION_TYPES.BOARD_REACTION:
+      return preferences.board_reactions === 1
+    case NOTIFICATION_TYPES.BOARD_MENTION:
+      return preferences.board_mentions === 1
     case NOTIFICATION_TYPES.SYSTEM_NOTIFICATION:
       return true
     default:
       return false
   }
+}
+
+/**
+ * Check if notification type is enabled for the IN-APP channel. Gated by both
+ * the global in_app_enabled switch and the per-type toggle.
+ */
+export function isNotificationTypeEnabled(
+  preferences: NotificationPreferenceRow,
+  typeId: number
+): boolean {
+  if (!preferences.in_app_enabled) return false
+  return isNotificationTypeAllowed(preferences, typeId)
 }
 
 /**
@@ -475,6 +526,10 @@ export function preferencesRowToApi(row: NotificationPreferenceRow) {
     eventUpdated: row.event_updated === 1,
     attendeeJoined: row.attendee_joined === 1,
     centerAnnouncements: row.center_announcements === 1,
+    boardPosts: row.board_posts === 1,
+    boardReplies: row.board_replies === 1,
+    boardReactions: row.board_reactions === 1,
+    boardMentions: row.board_mentions === 1,
     quietHoursStart: row.quiet_hours_start,
     quietHoursEnd: row.quiet_hours_end,
     quietHoursEnabled: row.quiet_hours_enabled === 1,

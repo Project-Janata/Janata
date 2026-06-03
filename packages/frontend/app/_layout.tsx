@@ -29,6 +29,7 @@ import {
 import { ErrorBoundaryWithAnalytics } from '../components/ui/ErrorBoundary'
 import WebBottomNav from '../components/ui/WebBottomNav'
 import { AnalyticsScreenTracker } from '../utils/analytics'
+import { usePushNotifications } from '../hooks/usePushNotifications'
 import { getIntroShown } from '../utils/introStorage'
 import '../globals.css'
 
@@ -124,6 +125,8 @@ function RootLayoutNav({ onAuthReady }: { onAuthReady: () => void }) {
   const pathname = usePathname()
   const router = useRouter()
   const isAuthenticated = !!user
+  // Register for push + route notification taps once authenticated (#102).
+  usePushNotifications()
   const { width } = useWindowDimensions()
   // First-timer explainer gate. null = not yet resolved (don't redirect yet).
   const [introShown, setIntroShown] = useState<boolean | null>(null)

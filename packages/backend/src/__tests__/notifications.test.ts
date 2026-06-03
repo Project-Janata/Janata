@@ -66,6 +66,10 @@ describe('Notification System', () => {
         event_updated: 1,
         attendee_joined: 0,
         center_announcements: 1,
+        board_posts: 1,
+        board_replies: 1,
+        board_reactions: 1,
+        board_mentions: 1,
         quiet_hours_start: null,
         quiet_hours_end: null,
         quiet_hours_enabled: 0,
@@ -91,6 +95,10 @@ describe('Notification System', () => {
         event_updated: 1,
         attendee_joined: 1,
         center_announcements: 1,
+        board_posts: 1,
+        board_replies: 1,
+        board_reactions: 1,
+        board_mentions: 1,
         quiet_hours_start: null,
         quiet_hours_end: null,
         quiet_hours_enabled: 0,
@@ -112,6 +120,10 @@ describe('Notification System', () => {
       expect(notifications.NOTIFICATION_TYPES.ATTENDEE_JOINED).toBe(5)
       expect(notifications.NOTIFICATION_TYPES.CENTER_ANNOUNCEMENT).toBe(6)
       expect(notifications.NOTIFICATION_TYPES.SYSTEM_NOTIFICATION).toBe(7)
+      expect(notifications.NOTIFICATION_TYPES.BOARD_POST).toBe(8)
+      expect(notifications.NOTIFICATION_TYPES.BOARD_REPLY).toBe(9)
+      expect(notifications.NOTIFICATION_TYPES.BOARD_REACTION).toBe(10)
+      expect(notifications.NOTIFICATION_TYPES.BOARD_MENTION).toBe(11)
     })
   })
 
@@ -129,6 +141,10 @@ describe('Notification System', () => {
         event_updated: 1,
         attendee_joined: 1,
         center_announcements: 0,
+        board_posts: 1,
+        board_replies: 1,
+        board_reactions: 1,
+        board_mentions: 1,
         quiet_hours_start: '22:00',
         quiet_hours_end: '08:00',
         quiet_hours_enabled: 1,

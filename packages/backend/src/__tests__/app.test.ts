@@ -3168,3 +3168,109 @@ describe('moderation', () => {
     })
   })
 })
+
+// ═══════════════════════════════════════════════════════════════════════
+// PUSH NOTIFICATIONS (#102)
+// ═══════════════════════════════════════════════════════════════════════
+
+describe('push token routes', () => {
+  it('rejects a missing/invalid token with 400', async () => {
+    const { token } = await registerAndLogin('pushuser', 'password123')
+    const { res } = await jsonPost('/api/push/register', { token: 'nope' }, authHeader(token))
+    expect(res.status).toBe(400)
+  })
+
+  it('registers a valid Expo token and stores it', async () => {
+    const { token, user } = await registerAndLogin('pushuser2', 'password123')
+    const { res, body } = await jsonPost(
+      '/api/push/register',
+      { token: 'ExponentPushToken[abc123]', platform: 'ios' },
+      authHeader(token),
+    )
+    expect(res.status).toBe(200)
+    expect(body.ok).toBe(true)
+
+    const row = await env.DB.prepare('SELECT * FROM push_tokens WHERE token = ?1')
+      .bind('ExponentPushToken[abc123]')
+      .first<{ user_id: string; platform: string }>()
+    expect(row?.platform).toBe('ios')
+    expect(row?.user_id).toBe(user.id)
+  })
+
+  it('requires auth', async () => {
+    const { res } = await jsonPost('/api/push/register', { token: 'ExponentPushToken[x]' })
+    expect(res.status).toBe(401)
+  })
+
+  it('unregisters a token', async () => {
+    const { token } = await registerAndLogin('pushuser3', 'password123')
+    await jsonPost(
+      '/api/push/register',
+      { token: 'ExponentPushToken[rm]' },
+      authHeader(token),
+    )
+    const { res } = await jsonPost(
+      '/api/push/unregister',
+      { token: 'ExponentPushToken[rm]' },
+      authHeader(token),
+    )
+    expect(res.status).toBe(200)
+    const row = await env.DB.prepare('SELECT * FROM push_tokens WHERE token = ?1')
+      .bind('ExponentPushToken[rm]')
+      .first()
+    expect(row).toBeNull()
+  })
+})
+
+describe('board post notification fan-out', () => {
+  let adminToken: string
+  let authorToken: string
+  let centerId: string
+
+  beforeEach(async () => {
+    adminToken = await createAdmin()
+    const author = await registerAndLogin('fanoutauthor', 'password123')
+    authorToken = author.token
+    await registerAndLogin('fanoutmember', 'password123')
+
+    const { body } = await jsonPost(
+      '/api/addCenter',
+      { centerName: 'Fanout Center', latitude: 37.0, longitude: -121.0 },
+      authHeader(adminToken),
+    )
+    centerId = body.id
+
+    // Both the author and the other member belong to this center.
+    await env.DB.prepare("UPDATE users SET center_id = ? WHERE username IN ('fanoutauthor','fanoutmember')")
+      .bind(centerId)
+      .run()
+  })
+
+  it('notifies co-members of a new center board post but not the author', async () => {
+    const { res } = await jsonPost(
+      `/api/boards/center/${centerId}/posts`,
+      { body: 'Satsang carpool this Saturday?' },
+      authHeader(authorToken),
+    )
+    expect(res.status).toBe(201)
+
+    const member = await env.DB.prepare("SELECT id FROM users WHERE username = 'fanoutmember'")
+      .first<{ id: string }>()
+    const author = await env.DB.prepare("SELECT id FROM users WHERE username = 'fanoutauthor'")
+      .first<{ id: string }>()
+
+    const memberNotifs = await env.DB.prepare(
+      'SELECT COUNT(*) AS n FROM notifications WHERE user_id = ?1 AND type_id = 8',
+    )
+      .bind(member!.id)
+      .first<{ n: number }>()
+    const authorNotifs = await env.DB.prepare(
+      'SELECT COUNT(*) AS n FROM notifications WHERE user_id = ?1',
+    )
+      .bind(author!.id)
+      .first<{ n: number }>()
+
+    expect(memberNotifs?.n).toBe(1)
+    expect(authorNotifs?.n).toBe(0)
+  })
+})

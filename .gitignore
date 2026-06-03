@@ -134,3 +134,6 @@ docs/plans/2026-02-27-auth-page-redesign.md
 # R2 CORS config (local only)
 packages/backend/cors.json
 .gstack/
+
+# Apple keys (never commit)
+*.p8
