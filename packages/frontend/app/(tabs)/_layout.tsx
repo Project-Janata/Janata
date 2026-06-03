@@ -1,6 +1,6 @@
 import { Tabs, usePathname, useRouter } from 'expo-router'
 import { Platform, View, Text, Pressable, Image, StatusBar, useWindowDimensions } from 'react-native'
-import { useState, useEffect } from 'react'
+import { useState } from 'react'
 import { useUser, useTheme } from '../../components/contexts'
 import { HeaderActionProvider } from '../../components/contexts/HeaderActionContext'
 import { House, Newspaper, Compass, Bell, User } from 'lucide-react-native'
@@ -12,19 +12,13 @@ import { useAnalytics } from '../../utils/analytics'
 export default function TabLayout() {
   const router = useRouter()
   const pathname = usePathname()
-  const { user, loading, logout } = useUser()
+  const { user, logout } = useUser()
   const { isDark } = useTheme()
   const [settingsVisible, setSettingsVisible] = useState(false)
   const { track } = useAnalytics()
   const tabBarShowLabel = Platform.OS === 'web'
   const { width } = useWindowDimensions()
   const isDesktopWeb = Platform.OS === 'web' && width >= 768
-
-  useEffect(() => {
-    if (Platform.OS !== 'web' && !loading && !user) {
-      router.replace('/auth')
-    }
-  }, [user, loading])
 
   const handleLogout = async () => {
     track('nav_logout')

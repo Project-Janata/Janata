@@ -149,6 +149,7 @@ export function PostThread({
   }
 
   const handleReact = async (emoji: string) => {
+    if (!user) return
     const prev = reactions
     setReactions(applyOptimisticReaction(prev, emoji))
     track('feed_post_reacted', { post_id: post.postId, emoji, source: 'post_thread' })
@@ -200,6 +201,7 @@ export function PostThread({
   }, [post.postId])
 
   const handleSend = async () => {
+    if (!user) return
     const body = draft.trim()
     if (!body || sending) return
     const tempId = `temp-${Date.now()}`

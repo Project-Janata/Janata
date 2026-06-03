@@ -12,6 +12,7 @@ import {
 } from 'lucide-react-native'
 import { useUser, useTheme } from '../../components/contexts'
 import { Text } from '../../components/ui'
+import { SignInCallout } from '../../components/boards/SignInCallout'
 import { useAnalytics } from '../../utils/analytics'
 import { LIGHT, DARK } from '../../tokens/colors'
 import { extractCityState } from '../../utils/addressParsing'
@@ -29,7 +30,7 @@ function datePill(dateStr?: string | null): { m: string; d: string } {
 
 export default function Profile() {
   const router = useRouter()
-  const { user } = useUser()
+  const { user, loading } = useUser()
   const { isDark } = useTheme()
   const c = isDark ? DARK : LIGHT
   const { track } = useAnalytics()
@@ -99,6 +100,29 @@ export default function Profile() {
   const SectionLabel = ({ children }: { children: string }) => (
     <Text style={{ fontSize: 12.5, fontWeight: '600', color: c.textMuted, letterSpacing: 0.5, textTransform: 'uppercase', marginBottom: 12, marginTop: 24, marginLeft: 2 }}>{children}</Text>
   )
+
+  // Guest state: a logged-out visitor can browse the read-only tabs, but the
+  // "You" tab has no profile to show — invite them to sign in instead. Returns
+  // early so none of the user.* access below runs for a guest.
+  if (!user && !loading) {
+    return (
+      <ScrollView
+        style={{ flex: 1, backgroundColor: c.bg }}
+        contentContainerStyle={{ paddingHorizontal: 16, paddingTop: 18, paddingBottom: 48 }}
+      >
+        <SignInCallout
+          title="Sign in to Janata"
+          subtitle="Sign in to set up your profile, RSVP to events, and join your boards."
+          colors={c}
+          ctaLabel="Sign in"
+          onPress={() => {
+            track('profile_signin_pressed', { source: 'profile_guest' })
+            router.push('/auth')
+          }}
+        />
+      </ScrollView>
+    )
+  }
 
   return (
     <ScrollView
