@@ -98,7 +98,7 @@ export default function AuthScreen() {
       const result = await login(username, password)
       if (result.success) {
         track('login_success', { source: 'auth' })
-        router.replace('/(tabs)')
+        router.replace(params.returnTo ? (params.returnTo as never) : '/(tabs)')
       } else {
         track('login_failed', { source: 'auth', reason: result.message })
         setErrors({ form: result.message || 'Username or password is incorrect.' })

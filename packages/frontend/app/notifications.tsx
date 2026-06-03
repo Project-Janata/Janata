@@ -24,6 +24,12 @@ export default function NotificationsScreen() {
     }
   }
 
+  // Guests get redirected by the effect above; render nothing in the meantime so
+  // NotificationCenter doesn't mount and fire an unauthenticated request.
+  if (Platform.OS !== 'web' && !user) {
+    return <View style={{ flex: 1, backgroundColor: c.bg }} />
+  }
+
   return (
     <View style={{ flex: 1, backgroundColor: c.bg }}>
       <StackHeader title="Notifications" />
