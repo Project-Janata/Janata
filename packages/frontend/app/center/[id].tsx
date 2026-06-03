@@ -24,6 +24,7 @@ import { ThreadPanel, boardPostToMessage, type BoardMessage } from '../../compon
 import { PostThread, type FeedPost } from '../../components/feed'
 import { buildFeedPostFromMessage } from '../../components/feed/feedData'
 import { useUser } from '../../components/contexts'
+import { CenterAbout } from '../../components/center/CenterAbout'
 
 // ── Helpers ─────────────────────────────────────────────────────────────
 
@@ -172,6 +173,7 @@ export default function CenterDetailPage() {
   const [threadDetailPost, setThreadDetailPost] = useState<FeedPost | null>(null)
   const canPostToThread =
     !!user && (user.centerID === center?.id || (user.verificationLevel ?? 0) >= 107)
+  const canEditCenter = !!user && (user.verificationLevel ?? 0) >= 107
   const { posts: boardPosts, refetch: refetchBoard } = useBoard('center', center?.id, canPostToThread)
   const boardMessages = useMemo(() => boardPosts.map(boardPostToMessage), [boardPosts])
 
@@ -326,18 +328,19 @@ export default function CenterDetailPage() {
           <Image source={{ uri: center.image }} style={{ width: '100%', height: 200, marginBottom: 4 }} resizeMode="cover" />
         ) : null}
 
-        {/* DETAILS */}
-        <DetailSection title="Details" first>
-          <View style={{ gap: 16 }}>
-            {center.pointOfContact ? (
-              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12 }}>
-                <MetaIcon icon={User} color="#E8862A" colors={colors} />
-                <Text style={{ fontFamily: 'Inclusive Sans', fontSize: 14, color: colors.text }}>
-                  Contact: {center.pointOfContact}
-                </Text>
-              </View>
-            ) : null}
+        {/* ABOUT (editable by admins — #285) */}
+        <DetailSection title="About" first>
+          <CenterAbout
+            centerId={center.id}
+            description={center.description}
+            pointOfContact={center.pointOfContact}
+            canEdit={canEditCenter}
+          />
+        </DetailSection>
 
+        {/* DETAILS */}
+        <DetailSection title="Details">
+          <View style={{ gap: 16 }}>
             {/* Address */}
             {center.address ? (
               <View style={{ flexDirection: 'row', alignItems: 'flex-start', gap: 12 }}>

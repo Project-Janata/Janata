@@ -441,6 +441,7 @@ export interface CenterDisplay {
   phone: string
   upcomingEvents: number
   pointOfContact: string
+  description?: string | null
   acharya: string
   latitude?: number
   longitude?: number
@@ -488,6 +489,7 @@ export function useCenterDetail(centerId: string) {
             phone: apiCenter.phone || '',
             upcomingEvents: apiEvents.length,
             pointOfContact: apiCenter.pointOfContact || '',
+            description: apiCenter.description ?? null,
             acharya: apiCenter.acharya || '',
             latitude: apiCenter.latitude,
             longitude: apiCenter.longitude,

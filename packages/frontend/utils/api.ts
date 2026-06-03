@@ -16,6 +16,7 @@ export interface CenterData {
   image: string | null
   acharya: string | null
   pointOfContact: string | null
+  description?: string | null
   memberCount: number
   isVerified: boolean
   createdAt?: string
