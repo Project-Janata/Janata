@@ -13,6 +13,7 @@ import {
 } from '../../utils/api'
 import { useDetailColors } from '../../hooks/useDetailColors'
 import { useTheme } from '../contexts'
+import { useAnalytics } from '../../utils/analytics'
 
 const formatDate = (dateStr: string) => {
   const d = new Date(dateStr)
@@ -27,6 +28,7 @@ const formatTime = (dateStr: string) => {
 export default function EventsTab() {
   const colors = useDetailColors()
   const { isDark } = useTheme()
+  const { track } = useAnalytics()
   const [search, setSearch] = useState('')
   const [events, setEvents] = useState<EventData[]>([])
   const [total, setTotal] = useState(0)
@@ -71,6 +73,7 @@ export default function EventsTab() {
     if (!deleteTarget) return
     try {
       await adminDeleteEvent(deleteTarget.eventID)
+      track('admin_event_deleted', { eventId: deleteTarget.eventID, source: 'admin' })
       setDeleteTarget(null)
       setSelectedId(null)
       loadEvents(search)
