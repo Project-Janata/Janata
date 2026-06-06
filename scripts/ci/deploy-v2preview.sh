@@ -77,6 +77,20 @@ WR d1 execute "$DB_NAME" --remote --config "$CONFIG" --file=migrations/seed_prev
 echo "▶ (3/7) Deploy preview worker"
 WR deploy --config "$CONFIG"
 
+echo "▶ (3b/7) Set JWT signing secrets (never committed, see #407)"
+# JWT_SECRET / JWT_REFRESH_SECRET used to be plaintext [vars] in
+# wrangler.preview.toml. They were removed (anyone with repo read could forge
+# preview tokens), so the worker now needs them as real secrets. Preview is
+# ephemeral, the D1 is reset and role users reseeded every run, so a fresh
+# random secret per deploy is fine and keeps this pipeline self-contained (no
+# extra CI secret to manage). Set PREVIEW_JWT_SECRET / PREVIEW_JWT_REFRESH_SECRET
+# in the env to pin stable values instead. Runs AFTER deploy so the old plaintext
+# var is gone first (a name can't be both a var and a secret).
+JWT_SECRET_VAL="${PREVIEW_JWT_SECRET:-$(openssl rand -hex 32)}"
+JWT_REFRESH_VAL="${PREVIEW_JWT_REFRESH_SECRET:-$(openssl rand -hex 32)}"
+printf '%s' "$JWT_SECRET_VAL"  | WR secret put JWT_SECRET         --config "$CONFIG"
+printf '%s' "$JWT_REFRESH_VAL" | WR secret put JWT_REFRESH_SECRET --config "$CONFIG"
+
 echo "▶ (4/7) Wait for worker health"
 ok=""
 for i in $(seq 1 20); do
