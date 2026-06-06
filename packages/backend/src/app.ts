@@ -216,6 +216,7 @@ app.use(
         'https://www.chinmayajanata.org',
         'https://project-janatha.pages.dev',
         'https://main.project-janatha.pages.dev',
+        'https://v2preview.project-janatha.pages.dev',
         'https://chinmaya-janata.pages.dev', // legacy frozen project
         'http://localhost:8081',
         'http://localhost:8787',
