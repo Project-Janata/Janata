@@ -24,8 +24,13 @@ Behavioral wins (clicks from app home): edit bio 3→2, notification prefs 4→3
 
 ## 2. Before / after
 
-- **Before:** `../capture/reconstruction.png` — note the two oranges, the identity shown on both screens, and the 7-section low-density settings scroll.
-- **After:** `../hifi/mock-v1.png` — one accent, two-pane hub, inline editor, calm public profile.
+![Before](./01-before.png)
+
+![After — hifi](./04-hifi.png)
+
+
+- **Before:** `./01-before.png` — note the two oranges, the identity shown on both screens, and the 7-section low-density settings scroll.
+- **After:** `./04-hifi.png` — one accent, two-pane hub, inline editor, calm public profile.
 
 ---
 
