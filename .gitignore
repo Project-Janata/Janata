@@ -92,7 +92,9 @@ yarn.lock
 .tamagui/
 
 # Database
-db/# Build artifacts
+db/
+
+# Build artifacts
 *.tar.gz
 .expo/
 test-dist/
