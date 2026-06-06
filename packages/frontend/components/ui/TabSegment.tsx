@@ -1,6 +1,7 @@
 import React, { useEffect, useRef } from 'react'
 import { Animated, Pressable, Text, View } from 'react-native'
 import { useColors } from '../../hooks/useColors'
+import { supportsNativeDriver } from '../../utils/animation'
 
 export interface TabOption {
   value: string
@@ -22,7 +23,11 @@ export function TabSegment({ options, value, onValueChange }: TabSegmentProps) {
   const slideAnim = useRef(new Animated.Value(selectedIndex * OPTION_WIDTH)).current
 
   useEffect(() => {
-    Animated.timing(slideAnim, { toValue: selectedIndex * OPTION_WIDTH, duration: 200, useNativeDriver: true }).start()
+    Animated.timing(slideAnim, {
+      toValue: selectedIndex * OPTION_WIDTH,
+      duration: 200,
+      useNativeDriver: supportsNativeDriver,
+    }).start()
   }, [selectedIndex, slideAnim])
 
   return (

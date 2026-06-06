@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from 'react'
 import { Animated, Image, StyleSheet, useColorScheme } from 'react-native'
+import { supportsNativeDriver } from '../utils/animation'
 
 export function SplashOverlay({ isReady }: { isReady: boolean }) {
   const isDark = useColorScheme() === 'dark'
@@ -30,7 +31,7 @@ export function SplashOverlay({ isReady }: { isReady: boolean }) {
     Animated.timing(opacity, {
       toValue: 0,
       duration: 400,
-      useNativeDriver: true,
+      useNativeDriver: supportsNativeDriver,
     }).start(() => setHidden(true))
   }
 

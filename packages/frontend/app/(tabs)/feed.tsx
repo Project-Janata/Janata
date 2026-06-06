@@ -12,6 +12,7 @@ import {
 import { useFocusEffect, useNavigation, useRouter } from 'expo-router'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
 import { useAnalytics } from '../../utils/analytics'
+import { supportsNativeDriver } from '../../utils/animation'
 import { useUser } from '../../components/contexts'
 import { useColors } from '../../hooks/useColors'
 import { toThreadColors } from '../../tokens'
@@ -374,7 +375,7 @@ export default function FeedScreen() {
       toValue: 0,
       duration: 280,
       easing: Easing.out(Easing.cubic),
-      useNativeDriver: true,
+      useNativeDriver: supportsNativeDriver,
     }).start()
   }, [detailTranslateX, nativeDetailOpen, width])
 
@@ -445,7 +446,7 @@ export default function FeedScreen() {
         toValue: width,
         duration: 230,
         easing: Easing.in(Easing.cubic),
-        useNativeDriver: true,
+        useNativeDriver: supportsNativeDriver,
       }).start(({ finished }) => {
         if (finished) {
           clearDetailSelection()
