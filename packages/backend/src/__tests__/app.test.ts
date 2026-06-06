@@ -123,6 +123,21 @@ describe('GET /api/health', () => {
     expect(res.headers.get('X-Frame-Options')).toBe('DENY')
     expect(res.headers.get('Referrer-Policy')).toBe('strict-origin-when-cross-origin')
   })
+
+  it('only allows explicit credentialed CORS origins', async () => {
+    const allowed = await fetchApp('/api/health', {
+      headers: { Origin: 'https://main.project-janatha.pages.dev' },
+    })
+    expect(allowed.headers.get('Access-Control-Allow-Origin')).toBe('https://main.project-janatha.pages.dev')
+    expect(allowed.headers.get('Access-Control-Allow-Credentials')).toBe('true')
+
+    const preview = await fetchApp('/api/health', {
+      headers: { Origin: 'https://random-preview.project-janatha.pages.dev' },
+    })
+    expect(preview.headers.get('Access-Control-Allow-Origin')).not.toBe(
+      'https://random-preview.project-janatha.pages.dev'
+    )
+  })
 })
 
 // ═══════════════════════════════════════════════════════════════════════
