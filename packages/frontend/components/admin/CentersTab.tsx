@@ -63,7 +63,7 @@ export default function CentersTab() {
       setCenters(result.data)
       setTotal(result.total)
     } catch (err: any) {
-      console.error('Failed to load centers:', err)
+      if (__DEV__) console.error('Failed to load centers:', err)
       setError(err?.message || 'Failed to load centers. Are you logged in?')
     } finally {
       setLoading(false)
@@ -171,7 +171,7 @@ export default function CentersTab() {
       track('admin_center_verified', { centerId: selected.centerID, source: 'admin' })
       loadCenters(search)
     } catch (err) {
-      console.error('Failed to toggle verification:', err)
+      if (__DEV__) console.error('Failed to toggle verification:', err)
     }
   }
 
@@ -184,7 +184,7 @@ export default function CentersTab() {
       setSelectedId(null)
       loadCenters(search)
     } catch (err) {
-      console.error('Failed to delete center:', err)
+      if (__DEV__) console.error('Failed to delete center:', err)
     }
   }
 

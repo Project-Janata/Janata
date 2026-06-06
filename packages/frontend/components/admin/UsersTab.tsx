@@ -67,7 +67,7 @@ export default function UsersTab() {
       setUsers(result.data)
       setTotal(result.total)
     } catch (err: any) {
-      console.error('Failed to load users:', err)
+      if (__DEV__) console.error('Failed to load users:', err)
       setError(err?.message || 'Failed to load users. Are you logged in?')
     } finally {
       setLoading(false)
@@ -175,7 +175,7 @@ export default function UsersTab() {
         prev ? { ...prev, isVerified: result.isVerified } : null
       )
     } catch (err) {
-      console.error('Failed to toggle verification:', err)
+      if (__DEV__) console.error('Failed to toggle verification:', err)
     }
   }
 
@@ -188,7 +188,7 @@ export default function UsersTab() {
       setSelectedUser(null)
       loadUsers(search)
     } catch (err) {
-      console.error('Failed to delete user:', err)
+      if (__DEV__) console.error('Failed to delete user:', err)
     }
   }
 

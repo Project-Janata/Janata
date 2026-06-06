@@ -177,7 +177,7 @@ export default function InviteCodesTab() {
       const updated = result.data.find((c) => c.code === selectedCode.code)
       if (updated) setSelectedCode(updated)
     } catch (err) {
-      console.error('Failed to toggle invite code:', err)
+      if (__DEV__) console.error('Failed to toggle invite code:', err)
     }
   }
 
