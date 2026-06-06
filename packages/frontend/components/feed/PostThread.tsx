@@ -216,6 +216,13 @@ export function PostThread({
       setReplies((prev) => prev.map((r) => (r.id === tempId ? boardPostToMessage(created) : r)))
       setRepliesLoaded(true)
       track('feed_reply_sent', { post_id: post.postId, source: 'post_thread' })
+      // Replies are content too — count them in the cross-surface north-star.
+      track('content_created', {
+        content_type: 'reply',
+        surface: 'post_thread',
+        parent_id: post.postId,
+        character_count: body?.length ?? 0,
+      })
     } catch (err: any) {
       // Roll back the optimistic reply and give the user their text back.
       setReplies((prev) => prev.filter((r) => r.id !== tempId))

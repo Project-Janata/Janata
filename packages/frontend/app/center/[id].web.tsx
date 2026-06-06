@@ -108,6 +108,13 @@ function MobileCenterDetail({ centerId }: { centerId: string }) {
     if (!center?.id) return
     await createBoardPost('center', center.id, body)
     track('center_board_post_created', { centerId: center.id, source: 'web_detail' })
+    track('content_created', {
+      content_type: 'post',
+      surface: 'center_board_web',
+      board_kind: 'center',
+      parent_id: center.id,
+      character_count: body?.length ?? 0,
+    })
     await refetchBoard()
   }
 

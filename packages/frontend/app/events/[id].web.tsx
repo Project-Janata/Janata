@@ -109,6 +109,13 @@ function MobileEventDetail({ eventId }: { eventId: string }) {
     if (!event?.id) return
     await createBoardPost('event', event.id, body)
     track('event_board_post_created', { eventId, source: 'event_detail' })
+    track('content_created', {
+      content_type: 'post',
+      surface: 'event_board_web',
+      board_kind: 'event',
+      parent_id: event.id,
+      character_count: body?.length ?? 0,
+    })
     await refetchBoard()
   }
 

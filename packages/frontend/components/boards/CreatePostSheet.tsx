@@ -134,14 +134,26 @@ export function CreatePostSheet({
         body_length: body.trim().length,
         has_image: !!imageFile,
       })
+      // Canonical, cross-surface content-creation event (north-star metric).
+      // Fires once per real post alongside the surface-specific event above.
+      track('content_created', {
+        content_type: 'post',
+        surface: 'feed_composer',
+        board_kind: selectedGroup.kind,
+        parent_id: selectedGroup.id,
+        character_count: body.trim().length,
+        has_image: !!imageFile,
+      })
       setBody('')
       clearImage()
       onClose()
-    } catch (err) {
+    } catch (err: any) {
       track('board_post_create_failed', {
         source: 'create_post_sheet',
         group_id: selectedGroup.id,
         group_kind: selectedGroup.kind,
+        has_image: !!imageFile,
+        error: err?.message ?? 'unknown',
       })
       throw err
     } finally {
