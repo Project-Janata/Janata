@@ -662,6 +662,13 @@ export default function EventDetailPage() {
     if (!event?.id) return
     await createBoardPost('event', event.id, body)
     track('event_board_post_created', { eventId: id, source: 'event_detail' })
+    track('content_created', {
+      content_type: 'post',
+      surface: 'event_board',
+      board_kind: 'event',
+      parent_id: id,
+      character_count: body?.length ?? 0,
+    })
     await refetchBoard()
   }
 

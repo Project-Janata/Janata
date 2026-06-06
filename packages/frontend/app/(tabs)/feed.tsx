@@ -473,18 +473,15 @@ export default function FeedScreen() {
     body: string,
     imageUrl?: string | null
   ) => {
-    try {
-      if (group.kind === 'public') {
-        await createPublicPost(body, imageUrl)
-      } else {
-        await createBoardPost(group.kind, group.parentId, body, imageUrl)
-      }
-      track('feed_post_created', { kind: group.kind, parentId: group.parentId, source: 'feed' })
-      await loadBoards()
-    } catch (err) {
-      track('feed_post_create_failed', { kind: group.kind, parentId: group.parentId, source: 'feed' })
-      throw err
+    // Post create/fail analytics live in CreatePostSheet (the only caller of
+    // this handler) so a single post fires ONE content_created / board_post_*
+    // event, not a duplicate pair. Just do the work and let errors propagate.
+    if (group.kind === 'public') {
+      await createPublicPost(body, imageUrl)
+    } else {
+      await createBoardPost(group.kind, group.parentId, body, imageUrl)
     }
+    await loadBoards()
   }
 
   return (
