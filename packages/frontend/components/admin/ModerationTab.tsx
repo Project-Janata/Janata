@@ -176,7 +176,7 @@ export default function ModerationTab() {
       setSelected(null)
       await loadQueue()
     } catch (err) {
-      console.error('Moderation action failed:', err)
+      if (__DEV__) console.error('Moderation action failed:', err)
     } finally {
       setActing(false)
     }

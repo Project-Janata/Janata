@@ -87,7 +87,7 @@ export default function NotificationsTab() {
       loadNotifications()
       loadStats()
     } catch (err) {
-      console.error('Failed to delete notification:', err)
+      if (__DEV__) console.error('Failed to delete notification:', err)
     }
   }
 

@@ -46,7 +46,7 @@ export default function EventsTab() {
       setEvents(result.data)
       setTotal(result.total)
     } catch (err: any) {
-      console.error('Failed to load events:', err)
+      if (__DEV__) console.error('Failed to load events:', err)
       setError(err?.message || 'Failed to load events. Are you logged in?')
     } finally {
       setLoading(false)
@@ -78,7 +78,7 @@ export default function EventsTab() {
       setSelectedId(null)
       loadEvents(search)
     } catch (err) {
-      console.error('Failed to delete event:', err)
+      if (__DEV__) console.error('Failed to delete event:', err)
     }
   }
 
