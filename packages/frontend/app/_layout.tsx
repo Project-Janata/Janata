@@ -29,6 +29,7 @@ import {
 import { ErrorBoundaryWithAnalytics } from '../components/ui/ErrorBoundary'
 import WebBottomNav from '../components/ui/WebBottomNav'
 import { AnalyticsScreenTracker, AnalyticsBootstrap } from '../utils/analytics'
+import { supportsNativeDriver } from '../utils/animation'
 import { usePushNotifications } from '../hooks/usePushNotifications'
 import { getIntroShown } from '../utils/introStorage'
 import '../globals.css'
@@ -97,6 +98,9 @@ export default function RootLayout() {
       options={{
         host: posthogHost,
         disabled: !posthogEnabled,
+        disableRemoteConfig: !posthogEnabled,
+        disableSurveys: !posthogEnabled,
+        preloadFeatureFlags: posthogEnabled,
         // Capture app opened / backgrounded / became active lifecycle events.
         captureAppLifecycleEvents: posthogEnabled,
         // Mobile session replay (iOS/Android only; no-op on web). Also requires
@@ -263,8 +267,8 @@ function RootLayoutNav({ onAuthReady }: { onAuthReady: () => void }) {
     if (prevIsDark.current !== isDark) {
       prevIsDark.current = isDark
       Animated.sequence([
-        Animated.timing(fadeAnim, { toValue: 0.85, duration: 80, useNativeDriver: true }),
-        Animated.timing(fadeAnim, { toValue: 1, duration: 150, useNativeDriver: true }),
+        Animated.timing(fadeAnim, { toValue: 0.85, duration: 80, useNativeDriver: supportsNativeDriver }),
+        Animated.timing(fadeAnim, { toValue: 1, duration: 150, useNativeDriver: supportsNativeDriver }),
       ]).start()
     }
   }, [isDark, fadeAnim])

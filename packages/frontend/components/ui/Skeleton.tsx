@@ -1,6 +1,7 @@
 import React, { useEffect, useRef } from 'react'
 import { Animated, View, type ViewStyle } from 'react-native'
 import { useColors } from '../../hooks/useColors'
+import { supportsNativeDriver } from '../../utils/animation'
 
 interface SkeletonProps {
   width?: number | string
@@ -16,8 +17,8 @@ function SkeletonBox({ width = '100%', height = 16, borderRadius = 8, style }: S
   useEffect(() => {
     const anim = Animated.loop(
       Animated.sequence([
-        Animated.timing(opacity, { toValue: 0.7, duration: 800, useNativeDriver: true }),
-        Animated.timing(opacity, { toValue: 0.3, duration: 800, useNativeDriver: true }),
+        Animated.timing(opacity, { toValue: 0.7, duration: 800, useNativeDriver: supportsNativeDriver }),
+        Animated.timing(opacity, { toValue: 0.3, duration: 800, useNativeDriver: supportsNativeDriver }),
       ])
     )
     anim.start()

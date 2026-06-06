@@ -7,6 +7,7 @@ import ThemeSelector from './ThemeSelector'
 import { Avatar } from '../ui'
 import { isSuperAdmin } from '../../utils/admin'
 import { useAnalytics } from '../../utils/analytics'
+import { supportsNativeDriver } from '../../utils/animation'
 
 function SettingsPanel({ visible, onClose, onLogout }) {
   const opacityAnim = useRef(new Animated.Value(0)).current
@@ -41,13 +42,13 @@ function SettingsPanel({ visible, onClose, onLogout }) {
         Animated.timing(opacityAnim, {
           toValue: 1,
           duration: 200,
-          useNativeDriver: true,
+          useNativeDriver: supportsNativeDriver,
         }),
         Animated.spring(translateYAnim, {
           toValue: 0,
           friction: 8,
           tension: 80,
-          useNativeDriver: true,
+          useNativeDriver: supportsNativeDriver,
         }),
       ]).start()
     } else {
@@ -55,12 +56,12 @@ function SettingsPanel({ visible, onClose, onLogout }) {
         Animated.timing(opacityAnim, {
           toValue: 0,
           duration: 150,
-          useNativeDriver: true,
+          useNativeDriver: supportsNativeDriver,
         }),
         Animated.timing(translateYAnim, {
           toValue: -20,
           duration: 150,
-          useNativeDriver: true,
+          useNativeDriver: supportsNativeDriver,
         }),
       ]).start()
     }
@@ -72,7 +73,7 @@ function SettingsPanel({ visible, onClose, onLogout }) {
     Animated.timing(slideAnim, {
       toValue: idx * optionWidth,
       duration: 100,
-      useNativeDriver: true,
+      useNativeDriver: supportsNativeDriver,
       easing: Easing.inOut(Easing.ease),
     }).start()
   }, [themePreference])
