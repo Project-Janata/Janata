@@ -1,0 +1,213 @@
+<!DOCTYPE html><html lang="en"><head><meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>Janata — user journey: vet & spread</title>
+<link href="https://fonts.googleapis.com/css2?family=Inclusive+Sans:wght@400;700&family=Inter:wght@300;400;500;600;700&family=Caveat:wght@500;600&display=swap" rel="stylesheet"/>
+<style>
+:root{--bg:#FAFAF7;--surface:#F5F0EB;--card:#fff;--ink:#1C1917;--body:#44403C;--sub:#57534E;--muted:#78716C;--faint:#A8A29E;
+--border:#E7E0D5;--divider:#F1ECE3;--acc:#C2410C;--acc-dk:#9A3412;--acc-tint:#FDEAE0;--going:#15803D;--going-bg:#DCFCE7;
+--head:'Inclusive Sans',system-ui,sans-serif;--ui:'Inter',system-ui,sans-serif;--hand:'Caveat',cursive;}
+*{box-sizing:border-box;}
+body{margin:0;background:#ECE7DE;font-family:var(--ui);color:var(--ink);}
+.page{max-width:1500px;margin:0 auto;padding:34px 28px 70px;}
+h1{font-family:var(--head);font-size:30px;margin:0 0 4px;letter-spacing:-0.01em;}
+.sub{font-size:14px;color:var(--sub);max-width:900px;line-height:1.5;margin:0 0 8px;}
+.tension{font-size:12.5px;font-weight:600;color:var(--acc-dk);background:var(--acc-tint);display:inline-block;padding:6px 12px;border-radius:8px;margin:8px 0 22px;}
+
+/* entries */
+.entries{display:grid;grid-template-columns:repeat(3,1fr);gap:16px;margin-bottom:8px;}
+.entry{background:#fff;border:1px solid var(--border);border-radius:14px;padding:14px 16px;position:relative;}
+.entry.loop{border:1.5px solid var(--acc);background:#FFF7F2;}
+.entry .tag{font-size:9.5px;font-weight:700;letter-spacing:.7px;text-transform:uppercase;color:var(--muted);}
+.entry.loop .tag{color:var(--acc-dk);}
+.entry .t{font-family:var(--head);font-size:17px;margin:3px 0 4px;}
+.entry .d{font-size:12px;color:var(--sub);line-height:1.45;}
+.converge{text-align:center;font-size:12px;color:var(--muted);margin:10px 0 4px;font-weight:600;}
+.converge b{color:var(--acc-dk);}
+
+/* swimlane grid */
+.chart{background:#fff;border:1px solid var(--border);border-radius:16px;overflow:hidden;}
+.grid{display:grid;grid-template-columns:118px repeat(6,1fr);}
+.gh{background:var(--surface);border-bottom:1px solid var(--border);padding:12px 12px;}
+.gh.lbl{background:#F2ECE2;}
+.gh .sn{font-family:var(--head);font-size:15px;line-height:1.15;color:var(--ink);}
+.gh .sx{font-size:10.5px;color:var(--muted);margin-top:3px;}
+.gh.lbl .ttl{font-family:var(--head);font-size:13px;color:var(--acc-dk);}
+.gh.lbl .ts{font-size:10px;color:var(--muted);margin-top:2px;}
+.cell{padding:11px 12px;border-bottom:1px solid var(--divider);border-left:1px solid var(--divider);font-size:11.5px;line-height:1.45;color:var(--body);}
+.rowlbl{padding:11px 12px;border-bottom:1px solid var(--divider);background:#F8F4EC;font-size:9.5px;font-weight:700;letter-spacing:.6px;text-transform:uppercase;color:var(--muted);display:flex;align-items:center;}
+.cell .k{font-weight:700;color:var(--ink);}
+.cell.risk{color:#7C2D12;}.cell.risk .m{color:var(--going);font-weight:600;}
+.cell.delight{color:var(--acc-dk);}
+.scene{height:120px;padding:0;border-bottom:1px solid var(--divider);border-left:1px solid var(--divider);background-repeat:no-repeat;background-size:300% 100%;}
+.s1{background-image:url(strip1.png);background-position:0% 0;}
+.s2{background-image:url(strip1.png);background-position:50% 0;}
+.s3{background-image:url(strip1.png);background-position:100% 0;}
+.s4{background-image:url(strip2.png);background-position:0% 0;}
+.s5{background-image:url(strip2.png);background-position:50% 0;}
+.s6{background-image:url(strip2.png);background-position:100% 0;}
+.voice{padding:9px 12px;border-bottom:1px solid var(--divider);border-left:1px solid var(--divider);font-family:var(--hand);font-size:16px;line-height:1.15;color:var(--acc-dk);}
+.wf{margin-top:7px;border:1px dashed var(--border);border-radius:7px;padding:6px;background:#FCFAF6;}
+.wf .bar{height:6px;background:#E7E0D5;border-radius:3px;margin:3px 0;}
+.wf .bar.acc{background:var(--acc);width:55%;}.wf .bar.s{width:70%;}.wf .bar.xs{width:40%;}
+.cnt{display:inline-block;background:var(--surface);border-radius:6px;padding:0 5px;font-weight:700;color:var(--acc-dk);font-size:10.5px;}
+
+/* persona band */
+.persona{display:flex;align-items:center;gap:12px;background:#FFF7F2;border:1px solid var(--acc);border-radius:12px;padding:10px 14px;margin:0 0 14px;}
+.persona .av{width:38px;height:38px;border-radius:50%;background:linear-gradient(135deg,#E0A23C,#C2410C);display:flex;align-items:center;justify-content:center;color:#fff;font-weight:700;font-family:var(--head);}
+.persona .who{font-size:12.5px;}.persona .who b{font-family:var(--head);font-size:14px;}
+.persona .carry{margin-left:auto;font-family:var(--hand);font-size:17px;color:var(--acc-dk);max-width:46%;line-height:1.1;}
+
+/* emotion */
+.emotion{border-bottom:1px solid var(--divider);border-left:1px solid var(--divider);grid-column:2 / span 6;position:relative;background:linear-gradient(180deg,#FFFDFB,#FBF6EF);}
+.emotion svg{display:block;width:100%;height:96px;}
+.peaklbl{position:absolute;font-size:10px;font-weight:700;color:var(--acc-dk);transform:transl(-50%,0);}
+
+/* loop */
+.loop{display:flex;align-items:center;gap:14px;background:#fff;border:1.5px solid var(--acc);border-radius:14px;padding:14px 18px;margin-top:16px;}
+.loop .ic{width:40px;height:40px;border-radius:50%;background:var(--acc-tint);display:flex;align-items:center;justify-content:center;flex-shrink:0;}
+.loop .t{font-family:var(--head);font-size:16px;color:var(--ink);}
+.loop .d{font-size:12.5px;color:var(--sub);line-height:1.45;margin-top:2px;}
+.loop .arrow{margin-left:auto;font-family:var(--hand);font-size:18px;color:var(--acc-dk);white-space:nowrap;}
+
+.cols2{display:grid;grid-template-columns:1.3fr 1fr;gap:20px;margin-top:24px;}
+.box{background:#fff;border:1px solid var(--border);border-radius:14px;padding:18px;}
+.box.ideas{border-style:dashed;background:#FCFAF6;}
+.box h3{font-family:var(--head);font-size:17px;margin:0 0 12px;}
+.box.ideas h3{color:var(--muted);}
+.box li{font-size:12.5px;color:var(--body);line-height:1.5;margin-bottom:8px;}
+.box li b{color:var(--ink);}
+table.mx{width:100%;border-collapse:collapse;margin-top:6px;}
+table.mx th,table.mx td{border:1px solid var(--divider);padding:6px 8px;font-size:11px;text-align:left;vertical-align:top;}
+table.mx th{background:var(--surface);font-weight:700;color:var(--ink);font-size:10px;text-transform:uppercase;letter-spacing:.4px;}
+table.mx td .g{color:var(--sub);}table.mx td .m{color:var(--acc-dk);font-weight:600;}
+.mh{font-family:var(--head);font-size:15px;margin:18px 0 6px;}
+</style></head><body>
+<div class="page">
+  <h1>Janata — the journey from vouch to advocate</h1>
+  <p class="sub">How a CHYK who just moved cities goes from a friend's text to a member who brings others in. The aha is <b>belonging</b> (joining a home center), sparked by an invite, made concrete by RSVPing to real events.</p>
+  <div class="tension">The core tension: <b>vet the community</b> (accounts are invite-only) while it <b>spreads organically</b> (anyone 18+ can RSVP; members mint invites). The invite is both the gate and the growth engine.</div>
+
+  <!-- ENTRIES -->
+  <div class="entries">
+    <div class="entry loop"><div class="tag">Entry · growth loop ★</div><div class="t">Invited by a friend</div><div class="d">A member shares an invite link (or a code). "Anand invited you to Chinmaya Vrindavan." Highest trust, lowest friction. This is how membership grows and stays vetted.</div></div>
+    <div class="entry loop"><div class="tag">Entry · growth loop ★</div><div class="t">Shared event link</div><div class="d">Someone forwards a specific event in WhatsApp. The recipient opens it and can RSVP with no account (18+, name + email). Top-of-funnel spread; captured by email, invited later.</div></div>
+    <div class="entry"><div class="tag">Entry · organic</div><div class="t">Cold web visitor</div><div class="d">Finds the site (search/social). Lands on the marketing <b>Landing</b> page: what Janata is + a few real events + "Explore events".</div></div>
+  </div>
+  <div class="converge">All three converge at <b>browsing real events</b> (Explore on web / Home on native) — then the impulse to act.</div>
+
+  <!-- PERSONA -->
+  <div class="persona"><div class="av">P</div><div class="who"><b>Priya, 24</b> — just moved to NJ for her first job, misses her Chinmaya community back home.</div><div class="carry">"is there anyone like me out here?"</div></div>
+
+  <!-- CHART -->
+  <div class="chart"><div class="grid">
+    <!-- stage headers -->
+    <div class="gh lbl"><div class="ttl">STAGE</div><div class="ts">the moment</div></div>
+    <div class="gh"><div class="sn">A friend vouches</div><div class="sx">arrival · trust borrowed</div></div>
+    <div class="gh"><div class="sn">What's happening</div><div class="sx">browse real events</div></div>
+    <div class="gh"><div class="sn">"I'm going"</div><div class="sx">the impulse · RSVP</div></div>
+    <div class="gh"><div class="sn">Make it mine</div><div class="sx">join · belong</div></div>
+    <div class="gh"><div class="sn">My sangha</div><div class="sx">engage · return</div></div>
+    <div class="gh"><div class="sn">Bring someone in</div><div class="sx">the loop</div></div>
+
+    <!-- scene -->
+    <div class="rowlbl">Scene</div>
+    <div class="scene s1"></div><div class="scene s2"></div><div class="scene s3"></div><div class="scene s4"></div><div class="scene s5"></div><div class="scene s6"></div>
+
+    <!-- voice -->
+    <div class="rowlbl">Priya</div>
+    <div class="voice">"wait, Anand's here too?"</div>
+    <div class="voice">"oh, there's a Gita class Friday…"</div>
+    <div class="voice">"done. I'm actually going."</div>
+    <div class="voice">"ok, this is my center now."</div>
+    <div class="voice">"I know these faces now."</div>
+    <div class="voice">"Meera has to come to this."</div>
+
+    <!-- goal -->
+    <div class="rowlbl">Goal</div>
+    <div class="cell">Understand what this is and trust it, fast.</div>
+    <div class="cell">Find something near me worth showing up to.</div>
+    <div class="cell">Commit to one event without a wall.</div>
+    <div class="cell">Become part of my center.</div>
+    <div class="cell">Stay connected, keep coming back.</div>
+    <div class="cell">Pull a friend in.</div>
+
+    <!-- action -->
+    <div class="rowlbl">Action</div>
+    <div class="cell">Open invite link / Landing. <span class="cnt">0 taps</span> to see value.</div>
+    <div class="cell">Scroll events on Explore/Home. <span class="cnt">~2 taps</span></div>
+    <div class="cell">Tap RSVP → name+email (+DOB once if no profile). <span class="cnt">1 tap + short sheet</span></div>
+    <div class="cell">Enter invite (link pre-fills) → email → password → profile: name, birthdate, center, interests. <span class="cnt">invite-gated</span></div>
+    <div class="cell">Home = my center's events; Feed warms up; RSVP again; post to a board.</div>
+    <div class="cell">Mint/share an invite; share an event. <span class="cnt">1-2 taps</span></div>
+
+    <!-- risk -->
+    <div class="rowlbl">Risk</div>
+    <div class="cell risk">Cold visitor bounces, doesn't get it. <span class="m">→ Landing leads with real events + a clear line.</span></div>
+    <div class="cell risk">Empty/irrelevant list. <span class="m">→ real "near you" events; location early.</span></div>
+    <div class="cell risk">Sign-up wall here kills the RSVP. <span class="m">→ account-less RSVP; peak stays friction-free.</span></div>
+    <div class="cell risk">Invite + profile friction loses them. <span class="m">→ link pre-fills code+center; RSVP already done, so payoff precedes effort.</span></div>
+    <div class="cell risk">Feed empty, nothing to return for. <span class="m">→ warming-up state + cross-mission posts; never blank.</span></div>
+    <div class="cell risk">Inviting feels like work. <span class="m">→ post-RSVP "invite who's coming with you"; one tap.</span></div>
+
+    <!-- delight -->
+    <div class="rowlbl">Delight</div>
+    <div class="cell delight">"Anand invited you" + his face. Borrowed trust.</div>
+    <div class="cell delight">"3 from your center are going" on a card.</div>
+    <div class="cell delight">Instant "You're going!" + it's on your Home.</div>
+    <div class="cell delight">Center pre-filled; the "you belong here" beat.</div>
+    <div class="cell delight">Familiar faces; your first board reply.</div>
+    <div class="cell delight">Watching a friend accept your invite.</div>
+
+    <!-- emotion -->
+    <div class="rowlbl">Emotion</div>
+    <div class="emotion">
+      <svg viewBox="0 0 600 96" preserveAspectRatio="none">
+        <polyline points="50,52 150,44 250,20 350,62 450,40 550,16" fill="none" stroke="#C2410C" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/>
+        <circle cx="50" cy="52" r="4" fill="#C2410C"/><circle cx="150" cy="44" r="4" fill="#C2410C"/><circle cx="250" cy="20" r="5" fill="#15803D"/><circle cx="350" cy="62" r="4" fill="#9A3412"/><circle cx="450" cy="40" r="4" fill="#C2410C"/><circle cx="550" cy="16" r="5" fill="#15803D"/>
+        <text x="250" y="14" font-size="11" fill="#15803D" font-weight="700" text-anchor="middle">peak: easy win</text>
+        <text x="350" y="80" font-size="10" fill="#9A3412" text-anchor="middle">friction valley (mitigated)</text>
+        <text x="550" y="34" font-size="11" fill="#15803D" font-weight="700" text-anchor="end">peak: pride</text>
+      </svg>
+    </div>
+  </div></div>
+
+  <!-- LOOP -->
+  <div class="loop"><div class="ic"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#C2410C" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 1l4 4-4 4"/><path d="M3 11V9a4 4 0 0 1 4-4h14"/><path d="M7 23l-4-4 4-4"/><path d="M21 13v2a4 4 0 0 1-4 4H3"/></svg></div>
+    <div><div class="t">The loop: every new member becomes a sponsor</div><div class="d">Priya RSVPs → joins → engages → mints invites + shares events. Her friend Meera arrives at <b>Stage 1</b> as "invited by Priya." Membership only grows through people already vetted, so the community curates itself while spreading.</div></div>
+    <div class="arrow">Stage 6 → Stage 1 ↺</div>
+  </div>
+
+  <!-- TAKEAWAYS + IDEAS -->
+  <div class="cols2">
+    <div class="box">
+      <h3>Takeaways (committed)</h3>
+      <ul>
+        <li><b>RSVP before account.</b> The emotion peak (RSVP) must stay wall-free — account-less RSVP keeps the top of funnel wide while membership stays invite-gated. Payoff precedes effort.</li>
+        <li><b>The invite is the product's growth engine, not just a gate.</b> Design "invite a friend" as a first-class, rewarding member action (post-RSVP nudge, share an event).</li>
+        <li><b>Vet + spread reconciled:</b> events spread to anyone (account-less, email-captured, auto-linked on join); accounts stay curated (invite-only). Two funnels, one loop.</li>
+        <li><b>Ask 18+ once</b> (profile, or at RSVP if no profile). No public feed shown to logged-out users anywhere.</li>
+      </ul>
+      <div class="mh">Logged-out vs logged-in, per feature</div>
+      <table class="mx">
+        <tr><th>Feature</th><th>Logged-out (guest)</th><th>Member</th></tr>
+        <tr><td><b>Home</b></td><td class="g">Web: few real events → ghost + CTA. Native: browse-first carousel.</td><td class="m">Your center's events + feed peek.</td></tr>
+        <tr><td><b>Explore</b></td><td class="g">Full browse + account-less RSVP. Default web surface.</td><td>Same, personalized.</td></tr>
+        <tr><td><b>Feed</b></td><td class="g">Ghost + CTA. No public feed.</td><td class="m">Every center + boards for RSVP'd events; post/reply.</td></tr>
+        <tr><td><b>Events</b></td><td class="g">View + RSVP (account-less, 18+).</td><td class="m">RSVP + event board access.</td></tr>
+        <tr><td><b>Centers</b></td><td class="g">View center pages (public).</td><td class="m">Join / follow home center + its board.</td></tr>
+        <tr><td><b>Boards</b></td><td class="g">None — invite-gated.</td><td class="m">Center + event boards (post, reply, react).</td></tr>
+      </table>
+    </div>
+    <div class="box ideas">
+      <h3>Ideas (uncommitted sparks)</h3>
+      <ul>
+        <li><b>Post-RSVP invite:</b> "Bring someone — invite a friend to this event." Turns the RSVP peak straight into a share.</li>
+        <li><b>Social proof on cards:</b> "3 from your center are going" + faces, to pull the browse stage upward.</li>
+        <li><b>Invite as gift:</b> a member gets a small batch of invites to "give"; scarcity makes them feel valuable and intentional (keeps vetting real).</li>
+        <li><b>Manage RSVP by email</b> (magic link) for account-less attendees — edit/cancel without an account.</li>
+        <li><b>Center welcome:</b> when Priya joins, a board post auto-introduces her so the belonging beat is mutual.</li>
+        <li><b>Seva/points</b> for showing up + bringing people — engagement + spread, if it doesn't cheapen the tone.</li>
+      </ul>
+    </div>
+  </div>
+</div></body></html>

@@ -1,0 +1,486 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>Janata — Home, Feed & Auth states (detail pass)</title>
+<link href="https://fonts.googleapis.com/css2?family=Inclusive+Sans:wght@400;700&family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet"/>
+<style>
+  :root{
+    --bg:#FAFAF7; --surface:#F5F0EB; --card:#fff;
+    --ink:#1C1917; --body:#44403C; --sub:#57534E; --muted:#78716C; --faint:#A8A29E;
+    --border:#ECE7DE; --divider:#F1ECE3;
+    --acc:#C2410C; --acc-dk:#9A3412; --acc-tint:#FDEAE0; --acc-wash:#FBD9C9; --acc-shadow:rgba(194,65,12,0.28);
+    --going:#15803D; --going-bg:#DCFCE7;
+    --head:'Inclusive Sans', system-ui, sans-serif; --ui:'Inter', system-ui, sans-serif;
+    --stripe:repeating-linear-gradient(135deg,#F1E6D6 0 11px,#E9DAC6 11px 22px);
+    --photo:linear-gradient(135deg,#E8C9A8,#D9A87C 60%,#C98F63);
+  }
+  *{box-sizing:border-box;}
+  html,body{margin:0;padding:0;background:#ECE7DE;font-family:var(--ui);color:var(--ink);}
+  .page{max-width:1280px;margin:0 auto;padding:40px 32px 90px;}
+  .page-head h1{font-family:var(--head);font-size:34px;margin:0 0 8px;letter-spacing:-0.01em;}
+  .page-head p{font-size:15px;color:var(--sub);line-height:1.6;max-width:820px;margin:0;}
+  .rule{font-size:12.5px;color:var(--acc-dk);font-weight:600;background:var(--acc-tint);display:inline-block;padding:5px 11px;border-radius:8px;margin-top:14px;}
+  .section{margin-top:46px;}
+  .section>h2{font-family:var(--head);font-size:23px;margin:0 0 4px;}
+  .section>.sub{font-size:13.5px;color:var(--sub);margin:0 0 22px;max-width:820px;line-height:1.5;}
+  .row{display:flex;gap:30px;flex-wrap:wrap;}
+  .frame-wrap{width:286px;}
+  .frame-cap{font-size:13px;font-weight:700;margin:0 0 3px;}
+  .frame-note{font-size:11.5px;color:var(--muted);line-height:1.45;margin:0 0 12px;min-height:44px;}
+  .frame-note .tag{display:inline-block;background:var(--acc-tint);color:var(--acc-dk);font-weight:700;border-radius:6px;padding:1px 6px;font-size:10px;margin-right:5px;}
+
+  .phone{width:286px;height:618px;border-radius:40px;background:#000;padding:8px;box-shadow:0 22px 50px rgba(28,25,23,0.20);position:relative;}
+  .screen{width:100%;height:100%;border-radius:33px;overflow:hidden;background:var(--bg);position:relative;}
+  .scroll{position:absolute;inset:0;overflow:hidden;}
+  .notch{position:absolute;top:10px;left:50%;transform:translateX(-50%);width:74px;height:17px;background:#000;border-radius:11px;z-index:60;}
+
+  .bar{padding:32px 13px 8px;display:flex;align-items:center;gap:7px;background:#fff;border-bottom:1px solid var(--divider);position:relative;z-index:20;}
+  .bar .lead{flex:1;display:flex;align-items:center;gap:6px;padding-left:4px;}
+  .bar .title{font-family:var(--head);font-size:17px;}
+  .bar .title.lg{font-size:16px;padding-left:4px;}
+  .mark{width:18px;height:18px;color:var(--acc);flex-shrink:0;}
+  .roundbtn{width:30px;height:30px;border-radius:15px;border:1px solid var(--border);background:#fff;display:flex;align-items:center;justify-content:center;}
+  .bell{position:relative;background:none;border:none;padding:6px;}
+  .bell .dot{position:absolute;top:5px;right:6px;width:6px;height:6px;border-radius:4px;background:var(--acc);border:1.5px solid #fff;}
+  .av{border-radius:50%;display:flex;align-items:center;justify-content:center;font-weight:700;color:#fff;font-size:10px;flex-shrink:0;}
+  .signin-pill{background:var(--acc);color:#fff;border:none;font-family:var(--ui);font-size:12px;font-weight:700;border-radius:999px;padding:7px 14px;box-shadow:0 6px 14px var(--acc-shadow);}
+
+  .greet{padding:16px 16px 4px;}
+  .greet .hi{font-family:var(--head);font-size:25px;line-height:1.05;letter-spacing:-0.01em;}
+  .greet .hi.big{font-size:30px;line-height:1.04;}
+  .greet .gs{font-size:12.5px;color:var(--sub);line-height:1.5;margin-top:6px;}
+  .eyebrow{display:flex;align-items:center;justify-content:space-between;margin:0 18px 9px;}
+  .eyebrow .lbl{font-size:10px;font-weight:700;color:var(--faint);letter-spacing:0.9px;text-transform:uppercase;}
+  .eyebrow .more{font-size:11.5px;color:var(--acc);font-weight:600;}
+  .sect{padding-top:18px;}
+
+  /* ONE event format = flyer card, in a horizontal carousel */
+  .estrip{display:flex;gap:12px;overflow-x:auto;padding:0 16px 4px;scrollbar-width:none;}
+  .estrip::-webkit-scrollbar{display:none;}
+  .ecard{width:196px;flex-shrink:0;background:#fff;border:1px solid var(--border);border-radius:16px;overflow:hidden;}
+  .ecard .flyer{height:104px;position:relative;background:var(--photo);}
+  .ecard .flyer .lab{position:absolute;left:10px;bottom:9px;font-size:10px;font-weight:700;color:#fff;letter-spacing:.4px;text-shadow:0 1px 3px rgba(28,25,23,.35);text-transform:uppercase;}
+  .ecard .datechip{position:absolute;top:9px;left:9px;background:#fff;border-radius:10px;width:38px;padding:5px 0;text-align:center;box-shadow:0 3px 8px rgba(28,25,23,.18);}
+  .ecard .datechip .m{font-size:8.5px;font-weight:700;color:var(--acc);letter-spacing:.4px;}
+  .ecard .datechip .d{font-size:16px;font-weight:700;line-height:1;}
+  .ecard .badge{position:absolute;top:9px;right:9px;background:#fff;color:var(--going);font-size:10px;font-weight:700;padding:3px 8px;border-radius:999px;box-shadow:0 2px 6px rgba(28,25,23,.16);}
+  .ecard .body{padding:11px 12px 13px;}
+  .ecard .t{font-size:13.5px;font-weight:700;line-height:1.25;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;min-height:34px;}
+  .ecard .s{font-size:11.5px;color:var(--sub);margin-top:5px;display:flex;align-items:center;gap:5px;}
+  .ecard .faces{display:flex;align-items:center;gap:6px;margin-top:9px;}
+  .facestack{display:flex;}.facestack .av{border:1.5px solid #fff;margin-left:-5px;}.facestack .av:first-child{margin-left:0;}
+  .ecard .ct{font-size:10.5px;color:var(--faint);}
+
+  .btn{display:inline-flex;align-items:center;justify-content:center;gap:6px;font-family:var(--ui);font-weight:700;border:none;border-radius:999px;cursor:pointer;font-size:13px;padding:9px 16px;white-space:nowrap;}
+  .btn.lg{font-size:14px;padding:13px 20px;}.btn.full{width:100%;}
+  .btn.primary{background:var(--acc);color:#fff;box-shadow:0 8px 20px var(--acc-shadow);}
+  .btn.outline{background:#fff;color:var(--acc-dk);border:1.5px solid var(--border);}
+  .arrow{font-size:15px;margin-top:-1px;}
+
+  /* signed-in setup cards (NOT sign-up cards) */
+  .lead-card{margin:14px 16px 0;background:#fff;border:1px solid var(--border);border-radius:20px;padding:18px;}
+  .lead-card.hero{text-align:center;padding:22px 18px;}
+  .lead-card.hero .ic{width:54px;height:54px;border-radius:16px;margin:0 auto 12px;background:radial-gradient(circle at 32% 28%,var(--acc-tint),#FBEAD7);display:flex;align-items:center;justify-content:center;}
+  .lead-card .h{font-family:var(--head);font-size:19px;line-height:1.1;}
+  .lead-card .c{font-size:12.5px;color:var(--sub);line-height:1.5;margin:7px 0 14px;}
+  .lead-card.hero .c{max-width:220px;margin-left:auto;margin-right:auto;}
+  .maprow{height:86px;border-radius:14px;margin-bottom:14px;position:relative;overflow:hidden;background:linear-gradient(135deg,#DCE6DA,#C7D6C5);}
+  .maprow .lab{position:absolute;left:12px;bottom:9px;font-size:9px;font-weight:700;color:#5C6B58;letter-spacing:.6px;text-transform:uppercase;}
+  .crow{display:flex;align-items:center;gap:11px;padding:10px;background:var(--surface);border-radius:12px;}
+  .crow+.crow{margin-top:7px;}
+  .cthumb{width:42px;height:42px;border-radius:11px;flex-shrink:0;background:var(--photo);position:relative;overflow:hidden;}
+  .cthumb .ini{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;font-family:var(--head);font-size:15px;color:#fff;text-shadow:0 1px 2px rgba(28,25,23,.3);}
+  .crow .cm{flex:1;min-width:0;}.crow .cm .t{font-size:13px;font-weight:700;}.crow .cm .s{font-size:11px;color:var(--sub);margin-top:1px;}
+  .joinbtn{background:#fff;color:var(--acc-dk);border:1.5px solid var(--border);padding:6px 13px;border-radius:999px;font-weight:700;font-size:11.5px;flex-shrink:0;}
+
+  /* feed hint on Home */
+  .peek{margin:0 16px;background:#fff;border:1px solid var(--border);border-radius:16px;padding:13px;}
+  .peek .ph-row{display:flex;align-items:center;justify-content:space-between;margin-bottom:10px;}
+  .peek .ph-row .e{font-size:10px;font-weight:700;color:var(--faint);letter-spacing:.9px;text-transform:uppercase;}
+  .peek .ph-row .o{font-size:11.5px;color:var(--acc);font-weight:600;}
+  .peekpost{display:flex;gap:9px;align-items:flex-start;}
+  .peekpost+.peekpost{margin-top:11px;padding-top:11px;border-top:1px solid var(--divider);}
+  .peekpost .pp{flex:1;min-width:0;}.peekpost .pn{font-size:12px;font-weight:700;}
+  .peekpost .pb{font-size:12px;color:var(--body);line-height:1.4;margin-top:2px;}
+  .peekpost .pm{font-size:10.5px;color:var(--faint);margin-top:4px;}
+
+  /* feed */
+  .post{background:#fff;border:1px solid var(--border);border-radius:18px;padding:13px;margin:0 16px;}
+  .post+.post{margin-top:10px;}
+  .post .grp{display:inline-flex;align-items:center;gap:6px;margin-bottom:10px;background:var(--surface);border-radius:999px;padding:3px 9px 3px 4px;}
+  .post .grp .gi{width:18px;height:18px;border-radius:6px;display:flex;align-items:center;justify-content:center;background:#fff;}
+  .post .grp.ev-grp .gi{background:var(--acc-tint);}
+  .post .grp .gn{font-size:11px;font-weight:700;color:var(--body);}
+  .post .main{display:flex;gap:10px;}.post .nm{font-size:12.5px;font-weight:700;}.post .wh{font-size:11px;color:var(--faint);margin-left:auto;}
+  .post .bd{font-size:13px;color:var(--body);line-height:1.46;margin-top:3px;}
+  .post .img{height:118px;border-radius:13px;margin-top:10px;position:relative;overflow:hidden;background:var(--photo);}
+  .post .img .lab{position:absolute;left:10px;bottom:9px;font-size:10px;font-weight:700;color:#fff;letter-spacing:.4px;text-shadow:0 1px 3px rgba(28,25,23,.35);text-transform:uppercase;}
+  .post .rx{display:flex;align-items:center;gap:6px;margin-top:11px;}
+  .post .rx span{background:var(--surface);border:1px solid var(--border);padding:3px 9px;border-radius:999px;font-size:11.5px;font-weight:600;color:var(--body);}
+  .post .rx span.hot{background:var(--acc-tint);border-color:transparent;color:var(--acc-dk);}
+  .compose{display:flex;align-items:center;gap:11px;background:#fff;border:1px solid var(--border);border-radius:16px;padding:11px 12px;margin:0 16px;}
+  .compose .ph{flex:1;font-size:12.5px;color:var(--muted);}
+  .signbar{display:flex;align-items:center;gap:10px;background:var(--acc-tint);border-radius:14px;padding:11px 13px;margin:0 16px;}
+  .signbar .t{flex:1;font-size:12.5px;color:var(--acc-dk);font-weight:600;}
+  .hero{background:#fff;border-radius:20px;border:1px solid var(--border);padding:22px 20px;text-align:center;margin:0 16px;}
+  .hero .ic{width:54px;height:54px;border-radius:16px;margin:0 auto 12px;background:radial-gradient(circle at 32% 28%,var(--acc-tint),#FBEAD7);display:flex;align-items:center;justify-content:center;}
+  .hero .ht{font-family:var(--head);font-size:18px;margin-bottom:6px;}
+  .hero .hc{font-size:12.5px;color:var(--sub);line-height:1.5;margin:0 auto;max-width:224px;}
+
+  /* auth sheet */
+  .dim{position:absolute;inset:0;background:rgba(28,25,23,0.42);z-index:45;}
+  .sheet{position:absolute;left:0;right:0;bottom:0;background:#fff;border-radius:24px 24px 0 0;padding:10px 20px 24px;z-index:50;box-shadow:0 -10px 40px rgba(28,25,23,.22);}
+  .sheet .grab{width:38px;height:4px;border-radius:2px;background:#E7E2D8;margin:0 auto 14px;}
+  .sheet .kicker{font-size:10px;font-weight:700;color:var(--acc-dk);letter-spacing:1.2px;margin-bottom:6px;}
+  .sheet .head{font-family:var(--head);font-size:21px;line-height:1.12;}
+  .sheet .copy{font-size:12.5px;color:var(--sub);line-height:1.5;margin:6px 0 13px;}
+  .sheet .field{height:46px;border-radius:12px;background:#fff;border:1.5px solid var(--acc);display:flex;align-items:center;padding:0 14px;gap:9px;margin-bottom:9px;}
+  .sheet .field.idle{border-color:var(--border);}
+  .sheet .field .val{font-size:14px;}.sheet .field .ph{font-size:14px;color:var(--faint);}
+  .sheet .alt{text-align:center;font-size:12.5px;color:var(--sub);margin-top:11px;}
+  .invitechip{display:flex;align-items:center;gap:10px;background:var(--surface);border-radius:14px;padding:10px;margin-bottom:14px;}
+  .invitechip .cthumb{width:38px;height:38px;}
+  .invitechip .t{font-size:13px;font-weight:700;}.invitechip .s{font-size:11px;color:var(--sub);margin-top:1px;}
+  .stepline{display:flex;align-items:center;gap:6px;margin-top:12px;font-size:11px;color:var(--muted);justify-content:center;}
+  .stepline b{color:var(--acc-dk);}
+
+  .tabs{position:absolute;left:0;right:0;bottom:0;padding:7px 0 16px;background:rgba(255,255,255,0.96);border-top:1px solid var(--divider);display:flex;justify-content:space-around;z-index:40;}
+  .tab{display:flex;flex-direction:column;align-items:center;gap:3px;padding:3px 10px;}
+  .tab .tl{font-size:9.5px;font-weight:500;color:var(--faint);}.tab.on .tl{color:var(--acc);font-weight:700;}
+  svg.i{width:18px;height:18px;stroke:currentColor;stroke-width:2;fill:none;stroke-linecap:round;stroke-linejoin:round;}
+  .mi{color:var(--faint);}
+
+  /* desktop */
+  .web{width:1040px;border-radius:14px;overflow:hidden;background:#fff;box-shadow:0 22px 60px rgba(28,25,23,0.18);border:1px solid #d9d2c6;}
+  .web .chrome{height:36px;background:#EDE7DD;display:flex;align-items:center;gap:7px;padding:0 14px;border-bottom:1px solid #ddd5c8;}
+  .web .chrome .dotc{width:11px;height:11px;border-radius:50%;}
+  .web .chrome .addr{margin-left:14px;font-size:11px;color:var(--muted);background:#fff;border-radius:7px;padding:4px 12px;}
+  .web > .body{height:610px;overflow:hidden;background:var(--bg);position:relative;}
+  .topnav{position:sticky;top:0;display:flex;align-items:center;gap:24px;padding:14px 30px;background:rgba(255,255,255,0.92);border-bottom:1px solid var(--divider);z-index:10;}
+  .topnav .brand{display:flex;align-items:center;gap:8px;font-family:var(--head);font-size:18px;}
+  .topnav .navlinks{display:flex;gap:22px;margin-left:14px;}
+  .topnav .navlinks a{font-size:13.5px;color:var(--sub);font-weight:600;text-decoration:none;}
+  .topnav .navlinks a.on{color:var(--ink);}
+  .topnav .right{margin-left:auto;display:flex;align-items:center;gap:14px;}
+  .topnav .ghost{font-size:13.5px;color:var(--acc-dk);font-weight:600;}
+  .webwrap{display:flex;align-items:flex-start;gap:32px;max-width:960px;margin:0 auto;padding:30px 30px 40px;}
+  .webmain{flex:1;min-width:0;}.webrail{width:288px;flex-shrink:0;}.webrail .sticky{position:sticky;top:92px;}
+  .web .hi{font-family:var(--head);font-size:29px;letter-spacing:-0.01em;}
+  .web .hisub{font-size:14px;color:var(--sub);margin:6px 0 24px;}
+  .evgrid{display:grid;grid-template-columns:1fr 1fr;gap:14px;align-items:start;}
+  .evgrid .ecard{width:auto;}
+  .signupcard{background:#fff;border:1px solid var(--border);border-radius:20px;padding:22px;}
+  .signupcard .k{font-size:10px;font-weight:700;color:var(--acc-dk);letter-spacing:1.2px;margin-bottom:8px;}
+  .signupcard .h{font-family:var(--head);font-size:23px;line-height:1.1;letter-spacing:-0.01em;}
+  .signupcard .c{font-size:13px;color:var(--sub);line-height:1.5;margin:9px 0 15px;}
+  .emailfield{height:46px;border-radius:13px;background:var(--surface);border:1.5px solid var(--border);display:flex;align-items:center;padding:0 14px;gap:9px;margin-bottom:10px;}
+  .emailfield .ph{font-size:14px;color:var(--faint);}
+  .browse{text-align:center;margin-top:9px;font-size:12.5px;color:var(--sub);font-weight:600;}
+  .lockline{font-size:11.5px;color:var(--faint);margin-top:11px;display:flex;align-items:center;gap:5px;}
+</style>
+</head>
+<body>
+<svg width="0" height="0" style="position:absolute"><defs>
+  <symbol id="mark" viewBox="0 0 32 32"><g fill="currentColor"><circle cx="16" cy="16" r="2.4"/><ellipse cx="16" cy="8" rx="2" ry="5"/><ellipse cx="16" cy="8" rx="2" ry="5" transform="rotate(45 16 16)"/><ellipse cx="16" cy="8" rx="2" ry="5" transform="rotate(90 16 16)"/><ellipse cx="16" cy="8" rx="2" ry="5" transform="rotate(135 16 16)"/><ellipse cx="16" cy="8" rx="2" ry="5" transform="rotate(180 16 16)"/><ellipse cx="16" cy="8" rx="2" ry="5" transform="rotate(225 16 16)"/><ellipse cx="16" cy="8" rx="2" ry="5" transform="rotate(270 16 16)"/><ellipse cx="16" cy="8" rx="2" ry="5" transform="rotate(315 16 16)"/></g></symbol>
+  <symbol id="cal" viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="18" rx="2"/><path d="M16 2v4M8 2v4M3 10h18"/></symbol>
+  <symbol id="pin" viewBox="0 0 24 24"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/><circle cx="12" cy="10" r="3"/></symbol>
+  <symbol id="search" viewBox="0 0 24 24"><circle cx="11" cy="11" r="7"/><path d="M21 21l-4-4"/></symbol>
+  <symbol id="bell" viewBox="0 0 24 24"><path d="M18 8a6 6 0 0 0-12 0c0 7-3 9-3 9h18s-3-2-3-9M13.7 21a2 2 0 0 1-3.4 0"/></symbol>
+  <symbol id="board" viewBox="0 0 24 24"><path d="M3 21h18M5 21V8l7-5 7 5v13M9 14h6M9 18h6"/></symbol>
+  <symbol id="mega" viewBox="0 0 24 24"><path d="M3 11l16-6v14L3 13v-2zM3 11v4a3 3 0 0 0 4 2.8M19 7a4 4 0 0 1 0 8"/></symbol>
+  <symbol id="spark" viewBox="0 0 24 24"><path d="M12 3l1.9 5.7L19 11l-5.1 2.3L12 19l-1.9-5.7L5 11l5.1-2.3z"/></symbol>
+  <symbol id="lock" viewBox="0 0 24 24"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></symbol>
+  <symbol id="mail" viewBox="0 0 24 24"><rect x="3" y="5" width="18" height="14" rx="2"/><path d="M3 7l9 6 9-6"/></symbol>
+  <symbol id="chev" viewBox="0 0 24 24"><path d="M9 18l6-6-6-6"/></symbol>
+  <symbol id="compass" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M16 8l-2 6-6 2 2-6 6-2z"/></symbol>
+  <symbol id="feed" viewBox="0 0 24 24"><path d="M4 6h16M4 12h16M4 18h10"/></symbol>
+  <symbol id="gift" viewBox="0 0 24 24"><path d="M20 12v10H4V12M2 7h20v5H2zM12 22V7M12 7H7.5a2.5 2.5 0 0 1 0-5C11 2 12 7 12 7zM12 7h4.5a2.5 2.5 0 0 0 0-5C13 2 12 7 12 7z"/></symbol>
+</defs></svg>
+
+<div class="page">
+  <div class="page-head">
+    <h1>Home, Feed & Auth — detail pass</h1>
+    <p>Polished for consistency. Center rows now use the center photo (not a pin). Guest Feed shows real public posts like the warming-up screen, minus the empty hero. The auth sheet reuses today's <code>/auth</code> flow and runs into onboarding; invite links get their own path. Desktop Home fixed to a clean card grid. Event cards, eyebrows, and meta lines are now uniform.</p>
+    <div class="rule">One event card · uniform meta (date chip + city) · feed hint everywhere · sheet-only auth → onboarding · invite links handled</div>
+  </div>
+
+  <!-- ============ HOME ============ -->
+  <div class="section">
+    <h2>Home — one spine, four states</h2>
+    <p class="sub">Greeting → setup card (only when there's a step) → Up next carousel → From the feed. Cards are identical everywhere: photo + date chip, title, city. The setup card adapts and vanishes once they're settled.</p>
+    <div class="row">
+
+      <!-- 1 Guest -->
+      <div class="frame-wrap">
+        <p class="frame-cap">1 · Signed out (guest)</p>
+        <p class="frame-note"><span class="tag">#404</span>Headline orients, carousel sells real events, feed peek teases. No sign-up card. Tapping RSVP fires the sheet.</p>
+        <div class="phone"><div class="notch"></div><div class="screen">
+          <div class="bar"><div class="lead"><svg class="mark"><use href="#mark"/></svg><span class="title">Janata</span></div><button class="signin-pill">Sign in</button></div>
+          <div class="scroll" style="overflow-y:auto"><div style="padding-bottom:82px">
+            <div class="greet" style="padding-top:20px"><div class="hi big">Find your center.<br/>Grow together.</div><div class="gs">Here's what's happening across Chinmaya Mission near you.</div></div>
+            <div class="sect"><div class="eyebrow"><span class="lbl">Near you</span><span class="more">See all</span></div>
+              <div class="estrip">
+                <div class="ecard"><div class="flyer"><span class="lab">Camp</span><div class="datechip"><div class="m">AUG</div><div class="d">1</div></div></div><div class="body"><div class="t">Mahasamadhi Aradhana Camp</div><div class="s"><svg class="i mi" style="width:11px;height:11px"><use href="#pin"/></svg> Parsippany, NJ</div></div></div>
+                <div class="ecard"><div class="flyer"><span class="lab">Class</span><div class="datechip"><div class="m">AUG</div><div class="d">15</div></div></div><div class="body"><div class="t">Bhagavad Gita Study</div><div class="s"><svg class="i mi" style="width:11px;height:11px"><use href="#pin"/></svg> Andover, MA</div></div></div>
+                <div class="ecard"><div class="flyer"><span class="lab">Bala Vihar</span><div class="datechip"><div class="m">AUG</div><div class="d">17</div></div></div><div class="body"><div class="t">Bala Vihar Class</div><div class="s"><svg class="i mi" style="width:11px;height:11px"><use href="#pin"/></svg> Cranbury, NJ</div></div></div>
+              </div>
+            </div>
+            <div class="sect"><div class="peek">
+              <div class="ph-row"><span class="e">From the feed</span><span class="o">Sign in to join →</span></div>
+              <div class="peekpost"><span class="av" style="width:30px;height:30px;background:#0F766E">SN</span><div class="pp"><div class="pn">Suresh Nair</div><div class="pb">Need two more volunteers for setup before Sunday satsang.</div><div class="pm">Chinmaya Vrindavan · 2h · 🙏 8</div></div></div>
+            </div></div>
+          </div></div>
+          <div class="tabs"><div class="tab on"><svg class="i" style="stroke:var(--acc);width:21px;height:21px"><use href="#compass"/></svg><span class="tl">Home</span></div><div class="tab"><svg class="i mi" style="width:21px;height:21px"><use href="#pin"/></svg><span class="tl">Discover</span></div><div class="tab"><svg class="i mi" style="width:21px;height:21px"><use href="#feed"/></svg><span class="tl">Feed</span></div></div>
+        </div></div>
+      </div>
+
+      <!-- 2 No center -->
+      <div class="frame-wrap">
+        <p class="frame-cap">2 · Signed in, no center (rare)</p>
+        <p class="frame-note"><span class="tag">#404</span>Center rows now show the center photo, not a pin. Same carousel + feed peek below.</p>
+        <div class="phone"><div class="notch"></div><div class="screen">
+          <div class="bar"><div class="lead"><svg class="mark"><use href="#mark"/></svg><span class="title">Janata</span></div><button class="bell"><svg class="i" style="stroke:var(--body)"><use href="#bell"/></svg><span class="dot"></span></button><span class="av" style="width:28px;height:28px;background:#7C3AED">SD</span></div>
+          <div class="scroll" style="overflow-y:auto"><div style="padding-bottom:82px">
+            <div class="greet"><div class="hi">Welcome, Sevak</div><div class="gs">Pick your home center to unlock its board and people.</div></div>
+            <div class="lead-card">
+              <div class="maprow"><span class="lab">Centers near you</span><div style="position:absolute;inset:0;display:flex;align-items:center;justify-content:center"><svg width="22" height="28" viewBox="0 0 28 36"><path d="M14 0C6 0 0 6 0 14c0 8 14 22 14 22s14-14 14-22C28 6 22 0 14 0z" fill="var(--acc)"/><circle cx="14" cy="14" r="5" fill="#fff"/></svg></div></div>
+              <div class="h">Pick your home center</div>
+              <div class="c">Its events, board, and people show up across Janata. Change it anytime.</div>
+              <div class="crow"><div class="cthumb"><span class="ini">CV</span></div><div class="cm"><div class="t">Chinmaya Vrindavan</div><div class="s">Cranbury, NJ · 2.4 mi</div></div><button class="joinbtn">Join</button></div>
+              <div class="crow"><div class="cthumb"><span class="ini">CB</span></div><div class="cm"><div class="t">Chinmaya Badri</div><div class="s">Princeton, NJ · 9 mi</div></div><button class="joinbtn">Join</button></div>
+              <div style="height:12px"></div><button class="btn outline full">Find on map</button>
+            </div>
+            <div class="sect"><div class="eyebrow"><span class="lbl">Near you</span><span class="more">See all</span></div>
+              <div class="estrip">
+                <div class="ecard"><div class="flyer"><span class="lab">Camp</span><div class="datechip"><div class="m">AUG</div><div class="d">1</div></div></div><div class="body"><div class="t">Mahasamadhi Aradhana Camp</div><div class="s"><svg class="i mi" style="width:11px;height:11px"><use href="#pin"/></svg> Parsippany, NJ</div></div></div>
+                <div class="ecard"><div class="flyer"><span class="lab">Class</span><div class="datechip"><div class="m">AUG</div><div class="d">15</div></div></div><div class="body"><div class="t">Bhagavad Gita Study</div><div class="s"><svg class="i mi" style="width:11px;height:11px"><use href="#pin"/></svg> Andover, MA</div></div></div>
+              </div>
+            </div>
+            <div class="sect"><div class="peek"><div class="ph-row"><span class="e">From the feed</span><span class="o">Open feed →</span></div><div class="peekpost"><span class="av" style="width:30px;height:30px;background:#B45309">CM</span><div class="pp"><div class="pn">CM Newsroom</div><div class="pb">Geeta Jayanti 2026 dates announced.</div><div class="pm">Central Chinmaya Mission · 1d</div></div></div></div></div>
+          </div></div>
+          <div class="tabs"><div class="tab on"><svg class="i" style="stroke:var(--acc);width:21px;height:21px"><use href="#compass"/></svg><span class="tl">Home</span></div><div class="tab"><svg class="i mi" style="width:21px;height:21px"><use href="#pin"/></svg><span class="tl">Discover</span></div><div class="tab"><svg class="i mi" style="width:21px;height:21px"><use href="#feed"/></svg><span class="tl">Feed</span></div></div>
+        </div></div>
+      </div>
+
+      <!-- 3 Has center, empty -->
+      <div class="frame-wrap">
+        <p class="frame-cap">3 · Has center, calendar empty</p>
+        <p class="frame-note"><span class="tag">#404</span>Setup card nudges the first RSVP. Carousel pulls from the center; faces show who's going.</p>
+        <div class="phone"><div class="notch"></div><div class="screen">
+          <div class="bar"><div class="lead"><svg class="mark"><use href="#mark"/></svg><span class="title">Janata</span></div><button class="bell"><svg class="i" style="stroke:var(--body)"><use href="#bell"/></svg><span class="dot"></span></button><span class="av" style="width:28px;height:28px;background:#7C3AED">SD</span></div>
+          <div class="scroll" style="overflow-y:auto"><div style="padding-bottom:82px">
+            <div class="greet"><div class="hi">Namaste, Sevak</div><div class="gs">Sevak · Chinmaya Vrindavan</div></div>
+            <div class="lead-card hero"><div class="ic"><svg class="i" style="stroke:var(--acc-dk);width:24px;height:24px"><use href="#cal"/></svg></div><div class="h">Your calendar is open</div><div class="c">You're all set at Chinmaya Vrindavan. RSVP to an event and it lands right here.</div><button class="btn primary lg">Explore events <span class="arrow">→</span></button></div>
+            <div class="sect"><div class="eyebrow"><span class="lbl">From your center</span><span class="more">See all</span></div>
+              <div class="estrip">
+                <div class="ecard"><div class="flyer"><span class="lab">Class</span><div class="datechip"><div class="m">AUG</div><div class="d">15</div></div></div><div class="body"><div class="t">Bhagavad Gita Study</div><div class="s"><svg class="i mi" style="width:11px;height:11px"><use href="#pin"/></svg> Andover, MA</div><div class="faces"><div class="facestack"><span class="av" style="width:17px;height:17px;background:#0F766E">PK</span><span class="av" style="width:17px;height:17px;background:#B45309">AR</span></div><span class="ct">12 going</span></div></div></div>
+                <div class="ecard"><div class="flyer"><span class="lab">Bala Vihar</span><div class="datechip"><div class="m">AUG</div><div class="d">17</div></div></div><div class="body"><div class="t">Bala Vihar Class</div><div class="s"><svg class="i mi" style="width:11px;height:11px"><use href="#pin"/></svg> Cranbury, NJ</div></div></div>
+              </div>
+            </div>
+            <div class="sect"><div class="peek"><div class="ph-row"><span class="e">From the feed</span><span class="o">Open feed →</span></div><div class="peekpost"><span class="av" style="width:30px;height:30px;background:#0F766E">SN</span><div class="pp"><div class="pn">Suresh Nair</div><div class="pb">Need two more volunteers for setup before Sunday satsang.</div><div class="pm">Chinmaya Vrindavan · 2h · 🙏 8</div></div></div></div></div>
+          </div></div>
+          <div class="tabs"><div class="tab on"><svg class="i" style="stroke:var(--acc);width:21px;height:21px"><use href="#compass"/></svg><span class="tl">Home</span></div><div class="tab"><svg class="i mi" style="width:21px;height:21px"><use href="#pin"/></svg><span class="tl">Discover</span></div><div class="tab"><svg class="i mi" style="width:21px;height:21px"><use href="#feed"/></svg><span class="tl">Feed</span></div></div>
+        </div></div>
+      </div>
+
+      <!-- 4 Settled -->
+      <div class="frame-wrap">
+        <p class="frame-cap">4 · Has center, settled in</p>
+        <p class="frame-note"><span class="tag">#404</span>Setup card gone. Same carousel (now a "Going" badge) + feed peek. Page simplifies as they progress.</p>
+        <div class="phone"><div class="notch"></div><div class="screen">
+          <div class="bar"><div class="lead"><svg class="mark"><use href="#mark"/></svg><span class="title">Janata</span></div><button class="bell"><svg class="i" style="stroke:var(--body)"><use href="#bell"/></svg><span class="dot"></span></button><span class="av" style="width:28px;height:28px;background:#7C3AED">SD</span></div>
+          <div class="scroll" style="overflow-y:auto"><div style="padding-bottom:82px">
+            <div class="greet"><div class="hi">Namaste, Sevak</div><div class="gs">Sevak · Chinmaya Vrindavan</div></div>
+            <div class="sect" style="padding-top:16px"><div class="eyebrow"><span class="lbl">From your center</span><span class="more">See all</span></div>
+              <div class="estrip">
+                <div class="ecard"><div class="flyer"><span class="lab">Class</span><div class="datechip"><div class="m">AUG</div><div class="d">15</div></div><span class="badge">✓ Going</span></div><div class="body"><div class="t">Bhagavad Gita Study</div><div class="s"><svg class="i mi" style="width:11px;height:11px"><use href="#pin"/></svg> Andover, MA</div><div class="faces"><div class="facestack"><span class="av" style="width:17px;height:17px;background:#0F766E">PK</span><span class="av" style="width:17px;height:17px;background:#B45309">AR</span></div><span class="ct">12 going</span></div></div></div>
+                <div class="ecard"><div class="flyer"><span class="lab">Retreat</span><div class="datechip"><div class="m">SEP</div><div class="d">10</div></div></div><div class="body"><div class="t">Leadership Retreat</div><div class="s"><svg class="i mi" style="width:11px;height:11px"><use href="#pin"/></svg> San Jose, CA</div></div></div>
+              </div>
+            </div>
+            <div class="sect"><div class="peek">
+              <div class="ph-row"><span class="e">From the feed</span><span class="o">Open feed →</span></div>
+              <div class="peekpost"><span class="av" style="width:30px;height:30px;background:#0F766E">SN</span><div class="pp"><div class="pn">Suresh Nair</div><div class="pb">Need two more volunteers for setup before Sunday satsang.</div><div class="pm">Chinmaya Vrindavan · 2h · 🙏 8</div></div></div>
+              <div class="peekpost"><span class="av" style="width:30px;height:30px;background:#B45309">AD</span><div class="pp"><div class="pn">Anjali Desai</div><div class="pb">Carpool from the Peninsula, room for 3.</div><div class="pm">33rd Aradhana Camp · 4h</div></div></div>
+            </div></div>
+          </div></div>
+          <div class="tabs"><div class="tab on"><svg class="i" style="stroke:var(--acc);width:21px;height:21px"><use href="#compass"/></svg><span class="tl">Home</span></div><div class="tab"><svg class="i mi" style="width:21px;height:21px"><use href="#pin"/></svg><span class="tl">Discover</span></div><div class="tab"><svg class="i mi" style="width:21px;height:21px"><use href="#feed"/></svg><span class="tl">Feed</span></div></div>
+        </div></div>
+      </div>
+
+    </div>
+  </div>
+
+  <!-- ============ FEED ============ -->
+  <div class="section">
+    <h2>Feed — public stream for guests, full feed when signed in</h2>
+    <p class="sub">Signed-out shows only public posts in the same layout as warming-up, no empty hero, no read-only banner. A slim sign-in row replaces the compose bar. Signed-in adds compose + your boards.</p>
+    <div class="row">
+
+      <!-- Feed guest -->
+      <div class="frame-wrap">
+        <p class="frame-cap">Feed · signed out</p>
+        <p class="frame-note"><span class="tag">#404</span>Public posts only, like warming-up without the empty state. Compose slot becomes a sign-in row. React/reply fires the sheet.</p>
+        <div class="phone"><div class="notch"></div><div class="screen">
+          <div class="bar"><div class="lead"><span class="title lg">Feed</span></div><button class="roundbtn"><svg class="i mi" style="width:15px;height:15px"><use href="#search"/></svg></button><button class="signin-pill">Sign in</button></div>
+          <div class="scroll" style="overflow-y:auto"><div style="padding:12px 0 82px">
+            <div class="signbar"><svg class="i" style="width:15px;height:15px;stroke:var(--acc-dk)"><use href="#lock"/></svg><span class="t">Sign in to post, react, and reply</span><button class="btn primary" style="font-size:11.5px;padding:6px 12px">Sign in</button></div>
+            <div style="height:16px"></div>
+            <div class="eyebrow"><span class="lbl">Across the mission</span></div>
+            <div class="post"><span class="grp"><span class="gi"><svg class="i" style="width:11px;height:11px;stroke:var(--body)"><use href="#mega"/></svg></span><span class="gn">Central Chinmaya Mission</span></span><div class="main"><span class="av" style="width:32px;height:32px;background:#B45309">CM</span><div style="flex:1"><div style="display:flex;align-items:center"><span class="nm">CM Newsroom</span><span class="wh">1d</span></div><div class="bd">Geeta Jayanti 2026 dates announced. Registration links inside.</div><div class="img"><span class="lab">Event flyer</span></div><div class="rx"><span class="hot">🪔 142</span><span>🙏 88</span></div></div></div></div>
+            <div class="post"><span class="grp"><span class="gi"><svg class="i" style="width:11px;height:11px;stroke:var(--body)"><use href="#board"/></svg></span><span class="gn">Chinmaya Vrindavan</span></span><div class="main"><span class="av" style="width:32px;height:32px;background:#0F766E">SN</span><div style="flex:1"><div style="display:flex;align-items:center"><span class="nm">Suresh Nair</span><span class="wh">2h</span></div><div class="bd">Need two more volunteers for setup before Sunday satsang.</div><div class="rx"><span class="hot">🙏 8</span><span>🪔 3</span></div></div></div></div>
+          </div></div>
+          <div class="tabs"><div class="tab"><svg class="i mi" style="width:21px;height:21px"><use href="#compass"/></svg><span class="tl">Home</span></div><div class="tab"><svg class="i mi" style="width:21px;height:21px"><use href="#pin"/></svg><span class="tl">Discover</span></div><div class="tab on"><svg class="i" style="stroke:var(--acc);width:21px;height:21px"><use href="#feed"/></svg><span class="tl">Feed</span></div></div>
+        </div></div>
+      </div>
+
+      <!-- Feed warming up -->
+      <div class="frame-wrap">
+        <p class="frame-cap">Feed · signed in, warming up</p>
+        <p class="frame-note"><span class="tag">#404</span>Compose bar, hero explains the model, real cross-mission posts right below. Same post cards as guest.</p>
+        <div class="phone"><div class="notch"></div><div class="screen">
+          <div class="bar"><div class="lead"><span class="title lg">Feed</span></div><button class="roundbtn"><svg class="i mi" style="width:15px;height:15px"><use href="#search"/></svg></button><span class="av" style="width:28px;height:28px;background:#7C3AED">SD</span></div>
+          <div class="scroll" style="overflow-y:auto"><div style="padding:12px 0 82px">
+            <div class="compose"><span class="av" style="width:30px;height:30px;background:#7C3AED">SD</span><span class="ph">Share something with Chinmaya Vrindavan…</span><button class="btn primary" style="font-size:12px;padding:7px 13px">Post</button></div>
+            <div style="height:16px"></div>
+            <div class="hero"><div class="ic"><svg class="i" style="stroke:var(--acc-dk);width:24px;height:24px"><use href="#spark"/></svg></div><div class="ht">Your feed is warming up</div><div class="hc">Posts from every center already land here. RSVP to an event to add its board.</div></div>
+            <div style="height:18px"></div>
+            <div class="eyebrow"><span class="lbl">Across the mission</span></div>
+            <div class="post"><span class="grp"><span class="gi"><svg class="i" style="width:11px;height:11px;stroke:var(--body)"><use href="#mega"/></svg></span><span class="gn">Central Chinmaya Mission</span></span><div class="main"><span class="av" style="width:32px;height:32px;background:#B45309">CM</span><div style="flex:1"><div style="display:flex;align-items:center"><span class="nm">CM Newsroom</span><span class="wh">1d</span></div><div class="bd">Geeta Jayanti 2026 dates announced. Registration links inside.</div><div class="img"><span class="lab">Event flyer</span></div><div class="rx"><span class="hot">🪔 142</span><span>🙏 88</span></div></div></div></div>
+          </div></div>
+          <div class="tabs"><div class="tab"><svg class="i mi" style="width:21px;height:21px"><use href="#compass"/></svg><span class="tl">Home</span></div><div class="tab"><svg class="i mi" style="width:21px;height:21px"><use href="#pin"/></svg><span class="tl">Discover</span></div><div class="tab on"><svg class="i" style="stroke:var(--acc);width:21px;height:21px"><use href="#feed"/></svg><span class="tl">Feed</span></div></div>
+        </div></div>
+      </div>
+
+      <!-- Auth sheet -->
+      <div class="frame-wrap">
+        <p class="frame-cap">Auth sheet · RSVP intent (#403)</p>
+        <p class="frame-note"><span class="tag">#403</span>Reuses today's /auth logic. Continue → checks the email → password → onboarding. The pending RSVP completes after.</p>
+        <div class="phone"><div class="notch"></div><div class="screen">
+          <div class="bar" style="opacity:.5"><div class="lead"><svg class="i mi" style="width:15px;height:15px"><use href="#chev"/></svg><span class="title lg">Event</span></div></div>
+          <div class="scroll" style="opacity:.5"><div style="margin:14px 16px"><div class="post" style="margin:0;border:none;padding:0"><div class="img" style="height:128px;margin-top:0"><span class="lab">Event flyer</span></div></div><div style="padding:12px 2px"><div style="font-size:16px;font-weight:700">Bhagavad Gita Study</div><div style="font-size:12px;color:var(--sub);margin-top:5px">Fri Aug 15 · 5:00 PM · Andover, MA</div></div></div></div>
+          <div class="dim"></div>
+          <div class="sheet"><div class="grab"></div><div class="kicker">RSVP TO THIS EVENT</div><div class="head">Save your spot.</div><div class="copy">Sign in or create an account to RSVP. We'll add this event's board to your feed.</div><div class="field"><svg class="i mi" style="width:15px;height:15px"><use href="#mail"/></svg><span class="val">priya@email.com</span></div><button class="btn primary full lg">Continue <span class="arrow">→</span></button><div class="alt">New here or returning? We'll figure it out.</div></div>
+        </div></div>
+      </div>
+
+    </div>
+  </div>
+
+  <!-- ============ AUTH + INVITE ============ -->
+  <div class="section">
+    <h2>Auth flow & invite links (#403)</h2>
+    <p class="sub">One AuthFlowCore, lifted from today's <code>/auth</code> screen (email check → login or signup → onboarding). It hosts in the sheet (mobile), modal (desktop), and the <code>/auth</code> page (deep links). An invite link is just the same flow with an invite intent: the code is validated, the inviting center is pre-selected, and onboarding skips the center step.</p>
+    <div class="row">
+
+      <!-- Invite: guest -->
+      <div class="frame-wrap">
+        <p class="frame-cap">Invite link · signed out</p>
+        <p class="frame-note"><span class="tag">#403</span>Opening an invite link shows who invited you + the center, then the same email-first flow. Code travels through signup.</p>
+        <div class="phone"><div class="notch"></div><div class="screen">
+          <div class="bar" style="opacity:.5"><div class="lead" style="padding-left:8px"><svg class="mark"><use href="#mark"/></svg><span class="title">Janata</span></div></div>
+          <div class="scroll" style="opacity:.45"><div style="padding:20px 16px"><div class="hero" style="margin:0"><div class="ic"><svg class="i" style="stroke:var(--acc-dk);width:24px;height:24px"><use href="#gift"/></svg></div><div class="ht">You've been invited</div></div></div></div>
+          <div class="dim"></div>
+          <div class="sheet"><div class="grab"></div>
+            <div class="invitechip"><div class="cthumb"><span class="ini">CV</span></div><div><div class="t">Chinmaya Vrindavan</div><div class="s">Anand R invited you to join</div></div></div>
+            <div class="head">Join your sangha.</div>
+            <div class="copy">Create your account to join Chinmaya Vrindavan and RSVP to its events.</div>
+            <div class="field"><svg class="i mi" style="width:15px;height:15px"><use href="#mail"/></svg><span class="ph">you@email.com</span></div>
+            <button class="btn primary full lg">Continue <span class="arrow">→</span></button>
+            <div class="stepline"><svg class="i" style="width:12px;height:12px;stroke:var(--acc-dk)"><use href="#lock"/></svg> Invite verified · <b>Chinmaya Vrindavan</b> set as your center</div>
+          </div>
+        </div></div>
+      </div>
+
+      <!-- Invite: signed in -->
+      <div class="frame-wrap">
+        <p class="frame-cap">Invite link · already signed in</p>
+        <p class="frame-note"><span class="tag">#403</span>If they already have an account, the link is a one-tap join confirm, no auth, no onboarding.</p>
+        <div class="phone"><div class="notch"></div><div class="screen">
+          <div class="bar" style="opacity:.5"><div class="lead"><svg class="mark"><use href="#mark"/></svg><span class="title">Janata</span></div><span class="av" style="width:28px;height:28px;background:#7C3AED">SD</span></div>
+          <div class="scroll" style="opacity:.45"></div>
+          <div class="dim"></div>
+          <div class="sheet"><div class="grab"></div>
+            <div class="invitechip"><div class="cthumb"><span class="ini">CV</span></div><div><div class="t">Chinmaya Vrindavan</div><div class="s">Anand R invited you to join</div></div></div>
+            <div class="head">Join this center?</div>
+            <div class="copy">We'll make Chinmaya Vrindavan your home center and add its board to your feed.</div>
+            <button class="btn primary full lg">Join Chinmaya Vrindavan</button>
+            <div class="alt">Not now</div>
+          </div>
+        </div></div>
+      </div>
+
+      <!-- Flow note -->
+      <div class="frame-wrap" style="width:300px">
+        <p class="frame-cap">The flow, reused everywhere</p>
+        <div style="background:#fff;border:1px solid var(--border);border-radius:16px;padding:18px;font-size:12.5px;color:var(--body);line-height:1.6">
+          <div style="font-family:var(--head);font-size:15px;margin-bottom:10px">AuthFlowCore steps</div>
+          <div style="display:flex;flex-direction:column;gap:9px">
+            <div><b style="color:var(--acc-dk)">1 · Email</b> — one field. Checks if the account exists (reuses <code>checkUserExists</code>).</div>
+            <div><b style="color:var(--acc-dk)">2 · Password</b> — existing email → log in. New email → set password.</div>
+            <div><b style="color:var(--acc-dk)">3 · Onboarding</b> — new accounts only. Invite link pre-fills the center, so onboarding skips that step.</div>
+            <div><b style="color:var(--acc-dk)">4 · Resume</b> — the pending action (RSVP, post, reply, join) completes automatically.</div>
+          </div>
+          <div style="margin-top:14px;padding-top:12px;border-top:1px solid var(--divider);color:var(--sub);font-size:12px">Hosts: <b>sheet</b> (mobile) · <b>modal</b> (desktop) · <b>page</b> (<code>/auth</code> deep links). Invite = same core, invite intent + validated code.</div>
+        </div>
+      </div>
+
+    </div>
+  </div>
+
+  <!-- ============ DESKTOP ============ -->
+  <div class="section">
+    <h2>Desktop — guest Home & Feed</h2>
+    <p class="sub">Home fixed: event cards now sit in a clean two-up grid that fills the column, equal height, no clipping. Sign-up stays in the sticky right rail (desktop keeps the card, mobile drops it).</p>
+    <div class="row" style="flex-direction:column;gap:34px">
+
+      <div>
+        <p class="frame-cap">Desktop · Home · signed out (fixed)</p>
+        <div class="web">
+          <div class="chrome"><span class="dotc" style="background:#F87171"></span><span class="dotc" style="background:#FBBF24"></span><span class="dotc" style="background:#34D399"></span><span class="addr">chinmayajanata.org</span></div>
+          <div class="body">
+            <div class="topnav"><div class="brand"><svg class="mark" style="width:22px;height:22px"><use href="#mark"/></svg> Janata</div><div class="navlinks"><a class="on">Home</a><a>Discover</a><a>Feed</a></div><div class="right"><span class="ghost">Sign in</span><button class="btn primary">Create account <span class="arrow">→</span></button></div></div>
+            <div class="webwrap">
+              <div class="webmain">
+                <div class="hi">Namaste.</div><div class="hisub">Here's what's happening across Chinmaya Mission near you.</div>
+                <div class="eyebrow" style="margin:0 0 12px"><span class="lbl">Near you</span><span class="more">See all</span></div>
+                <div class="evgrid">
+                  <div class="ecard"><div class="flyer" style="height:118px"><span class="lab">Camp</span><div class="datechip"><div class="m">AUG</div><div class="d">1</div></div></div><div class="body"><div class="t">Mahasamadhi Aradhana Camp</div><div class="s"><svg class="i mi" style="width:11px;height:11px"><use href="#pin"/></svg> Parsippany, NJ</div></div></div>
+                  <div class="ecard"><div class="flyer" style="height:118px"><span class="lab">Class</span><div class="datechip"><div class="m">AUG</div><div class="d">15</div></div></div><div class="body"><div class="t">Bhagavad Gita Study</div><div class="s"><svg class="i mi" style="width:11px;height:11px"><use href="#pin"/></svg> Andover, MA</div></div></div>
+                  <div class="ecard"><div class="flyer" style="height:118px"><span class="lab">Bala Vihar</span><div class="datechip"><div class="m">AUG</div><div class="d">17</div></div></div><div class="body"><div class="t">Bala Vihar Class</div><div class="s"><svg class="i mi" style="width:11px;height:11px"><use href="#pin"/></svg> Cranbury, NJ</div></div></div>
+                  <div class="ecard"><div class="flyer" style="height:118px"><span class="lab">Retreat</span><div class="datechip"><div class="m">SEP</div><div class="d">10</div></div></div><div class="body"><div class="t">Leadership Retreat</div><div class="s"><svg class="i mi" style="width:11px;height:11px"><use href="#pin"/></svg> San Jose, CA</div></div></div>
+                </div>
+                <div style="height:22px"></div>
+                <div class="peek" style="margin:0"><div class="ph-row"><span class="e">From the feed</span><span class="o">Sign in to join →</span></div><div class="peekpost"><span class="av" style="width:30px;height:30px;background:#0F766E">SN</span><div class="pp"><div class="pn">Suresh Nair</div><div class="pb">Need two more volunteers for setup before Sunday satsang.</div><div class="pm">Chinmaya Vrindavan · 2h · 🙏 8</div></div></div></div>
+              </div>
+              <div class="webrail"><div class="sticky"><div class="signupcard"><div class="k">JOIN THE COMMUNITY</div><div class="h">Find your center. Grow together.</div><div class="c">Create a free account to RSVP and unlock your center's board.</div><div class="emailfield"><svg class="i mi" style="width:15px;height:15px"><use href="#mail"/></svg><span class="ph">you@email.com</span></div><button class="btn primary full lg">Create account <span class="arrow">→</span></button><div class="browse">Browse as guest</div></div></div></div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div>
+        <p class="frame-cap">Desktop · Feed · signed out</p>
+        <div class="web">
+          <div class="chrome"><span class="dotc" style="background:#F87171"></span><span class="dotc" style="background:#FBBF24"></span><span class="dotc" style="background:#34D399"></span><span class="addr">chinmayajanata.org/feed</span></div>
+          <div class="body">
+            <div class="topnav"><div class="brand"><svg class="mark" style="width:22px;height:22px"><use href="#mark"/></svg> Janata</div><div class="navlinks"><a>Home</a><a>Discover</a><a class="on">Feed</a></div><div class="right"><span class="ghost">Sign in</span><button class="btn primary">Create account <span class="arrow">→</span></button></div></div>
+            <div class="webwrap">
+              <div class="webmain">
+                <div class="hi" style="font-size:23px;margin-bottom:6px">Community feed</div><div class="hisub" style="margin-bottom:18px">Public posts from every center. Sign in to react and reply.</div>
+                <div class="post" style="margin:0 0 10px"><span class="grp"><span class="gi"><svg class="i" style="width:11px;height:11px;stroke:var(--body)"><use href="#mega"/></svg></span><span class="gn">Central Chinmaya Mission</span></span><div class="main"><span class="av" style="width:34px;height:34px;background:#B45309">CM</span><div style="flex:1"><div style="display:flex;align-items:center"><span class="nm">CM Newsroom</span><span class="wh">1d</span></div><div class="bd">Geeta Jayanti 2026 dates announced. Registration links inside.</div><div class="img"><span class="lab">Event flyer</span></div><div class="rx"><span class="hot">🪔 142</span><span>🙏 88</span></div></div></div></div>
+                <div class="post" style="margin:0"><span class="grp"><span class="gi"><svg class="i" style="width:11px;height:11px;stroke:var(--body)"><use href="#board"/></svg></span><span class="gn">Chinmaya Vrindavan</span></span><div class="main"><span class="av" style="width:34px;height:34px;background:#0F766E">SN</span><div style="flex:1"><div style="display:flex;align-items:center"><span class="nm">Suresh Nair</span><span class="wh">2h</span></div><div class="bd">Need two more volunteers for setup before Sunday satsang. DM me if you can help.</div><div class="rx"><span class="hot">🙏 8</span><span>🪔 3</span></div></div></div></div>
+              </div>
+              <div class="webrail"><div class="sticky"><div class="signupcard"><div class="k">YOUR COMMUNITY FEED</div><div class="h">See what your sangha is sharing.</div><div class="c">Posts from every center, plus boards for the events you RSVP to.</div><button class="btn primary full lg">Sign in to continue <span class="arrow">→</span></button><div class="lockline"><svg class="i mi" style="width:12px;height:12px"><use href="#lock"/></svg> Read-only until you sign in</div></div></div></div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+    </div>
+  </div>
+
+</div>
+</body>
+</html>
