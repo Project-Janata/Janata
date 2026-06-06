@@ -131,6 +131,13 @@ describe('GET /api/health', () => {
     expect(allowed.headers.get('Access-Control-Allow-Origin')).toBe('https://main.project-janatha.pages.dev')
     expect(allowed.headers.get('Access-Control-Allow-Credentials')).toBe('true')
 
+    const v2Preview = await fetchApp('/api/health', {
+      headers: { Origin: 'https://v2preview.project-janatha.pages.dev' },
+    })
+    expect(v2Preview.headers.get('Access-Control-Allow-Origin')).toBe(
+      'https://v2preview.project-janatha.pages.dev'
+    )
+
     const preview = await fetchApp('/api/health', {
       headers: { Origin: 'https://random-preview.project-janatha.pages.dev' },
     })
