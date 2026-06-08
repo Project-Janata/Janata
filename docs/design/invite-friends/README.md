@@ -18,7 +18,7 @@ This folder is the full context for the invite-links feature: the design we land
 2. **Invited = verified at inception** (Bluesky/Clubhouse). A valid invite promotes the new user to `NORMAL_USER` at register, not at email-verify.
 3. **Drop the word "verified" in UI.** In a hard gate every account is verified, so the word has no contrast. Copy is "they get in instantly."
 4. **Center-agnostic.** An invite grants **Janata** membership, not membership of a specific center. Redemption sets the level, not `center_id`; the member picks centers normally.
-5. **Domain = `chinmayajanata.org`** (path `/i/CODE`), NOT janata.app. It's already registered for universal links and is the backend's domain. *This reverses the earlier janata.app direction in #104 — reconcile #104.*
+5. **Canonical domain = `chinmayajanata.org`** (path `/i/CODE`) — the link we mint, display, and store. It's already registered for universal links and is the backend's domain. **`janata.app` is a short-link layer on top, not a competing domain:** `janata.app/CODE` links are shareable and behave like a `t.co` wrapper — on mobile they act as a deep link straight into the app; on web they expand/redirect to the matching `chinmayajanata.org/i/CODE` link. So a member can hand out either form and both land in the right place. *Reconcile #104 to this split (canonical = chinmayajanata.org, janata.app = short redirect).*
 6. **Surface 1 is minimal:** hero + center-agnostic subtitle + one real link + one Share (Copy on web). No share-via tiles (the native share sheet covers channels). No "generate" step (the member always has one ready link). No invite limit/expiry in the UI (backend keeps the fields).
 7. **Leaked-link backstop:** keep an invisible cap (~100 uses) + silent rate-limit — the gate is only as strong as the link's secrecy.
 8. **Entry point:** Invite Friends stays in Settings/Account for v1 (expand entry points, e.g. a post-RSVP nudge, later).
@@ -39,6 +39,7 @@ This folder is the full context for the invite-links feature: the design we land
 - **Canonical share URL alignment:** backend currently mints `chinmayajanata.org/join?code=`; align it to `/i/CODE` so screen, share, and backend agree.
 - **Server-side attribution:** persist inviter→invitee for the post-MSC vouching system + abuse tracing.
 - **Native share message copy:** define what the share sheet pre-fills.
-- **Reconcile #104** to chinmayajanata.org (it still references janata.app).
+- **Short-link layer (`janata.app`):** wire `janata.app/CODE` as a redirect/deep-link wrapper over the canonical `chinmayajanata.org/i/CODE` link (t.co-style) — deep link on mobile, 301/expand to the full link on web. Shareable in its own right.
+- **Reconcile #104** to the canonical/short-link split: canonical = chinmayajanata.org, janata.app = short redirect (the issue still treats janata.app as the primary domain).
 
 Full session artifacts (sketches, IA options, all mock versions): `~/.gstack/projects/Project-Janatha-Project-Janatha/refine/20260607-191425-invite-links-flow/`.
