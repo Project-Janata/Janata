@@ -355,11 +355,13 @@ app.post('/auth/register', rateLimit(5, 60_000), async (c) => {
     return c.json({ message: 'Username already exists' }, 409)
   }
 
-  // v2 signup model: new users land at UNVERIFIED_USER (30) and promote on
-  // email-verify (with optional invite-code-driven level bump). Developer
-  // emails still bypass to BRAHMACHARI. Invite code is now optional; if
-  // provided we validate and store it, but don't apply the level bump until
-  // email-verify. See docs/plans/2026-05-05-v2-roles-invites-messaging.md §5.
+  // v2 invite-links model (#342): the invite link is the door. An account
+  // created through a valid invite link is VERIFIED at inception (Bluesky/
+  // Clubhouse), so we promote to NORMAL_USER immediately at register rather
+  // than deferring the bump to email-verify. Developer emails bypass to
+  // BRAHMACHARI. (Hard-gate enforcement — rejecting signups with no invite —
+  // is a follow-up; it must grandfather existing open-signup accounts and the
+  // local seed script. See #342.)
   const isDeveloper = DEVELOPER_EMAILS.includes(normalizedUsername.toLowerCase())
 
   let verificationLevel = UNVERIFIED_USER
@@ -374,13 +376,15 @@ app.post('/auth/register', rateLimit(5, 60_000), async (c) => {
     }
     // Atomically consume the code so single-use invites can't be raced by
     // two simultaneous signups. Admin cohort codes (max_uses=NULL) succeed
-    // trivially. Note: verification_level stays UNVERIFIED_USER; the bump
-    // happens at email-verify time (see GET /auth/verify-email).
+    // trivially.
     const consumed = await inviteCodes.consumeInviteCode(c.env, inviteCodeData.code)
     if (!consumed) {
       return c.json({ message: 'Invite code already redeemed or expired' }, 409)
     }
     inviteCodeUsed = inviteCodeData.code
+    // Invited = verified at inception. Email confirmation stays quiet and
+    // non-blocking (used only for password recovery).
+    verificationLevel = NORMAL_USER
   }
 
   const hashedPassword = await hashPassword(validPassword)
