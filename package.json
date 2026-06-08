@@ -21,6 +21,8 @@
     "deploy:frontend": "npm run build:frontend && npx wrangler pages deploy dist",
     "deploy:frontend:preview": "npm run build:frontend && npx wrangler pages deploy dist --branch preview",
     "deploy:backend": "npm run deploy --workspace=@janata/backend",
+    "deploy:shortlink": "npm run deploy --workspace=@janata/shortlink",
+    "dev:shortlink": "cd packages/shortlink && npm run dev",
     "d1:migrate": "npx wrangler d1 execute chinmaya-janata-db --file=migrations/0001_initial_schema.sql --config packages/backend/wrangler.toml",
     "d1:migrate:local": "npx wrangler d1 execute chinmaya-janata-db --local --file=migrations/0001_initial_schema.sql --config packages/backend/wrangler.toml",
     "d1:migrate:preview": "npx wrangler d1 execute chinmaya-janata-db-preview --file=migrations/0001_initial_schema.sql --config packages/backend/wrangler.toml",
