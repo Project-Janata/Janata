@@ -131,6 +131,7 @@ Deferred to other issues: invite landing/welcome + gate (#403), logged-out/guest
 - **Invite-open landing + welcome + gate** → #403 (`AuthFlowCore`, invite intent). See the alignment mock `hifi/mock-invite-open-v3.html`: vouch banner + reused onboarding intro (3 slides) → email/password → onboarding → "you're in." Center-agnostic, "verified" dropped. This spec does **not** build it; it documents the intended shape so #403 stays consistent.
 - **Logged-out / guest states** → #404.
 - **`chinmayajanata.org` universal-link plumbing** (iOS associatedDomains + Android intentFilters + `/i/CODE` route → `openAuth('invite', { inviteCode })`, web fallback when app not installed) → #104.
+- **`janata.app` short-link layer** → #104. Canonical link stays `chinmayajanata.org/i/CODE`; `janata.app/CODE` is a t.co-style wrapper that is shareable on its own — deep-links into the app on mobile, redirects/expands to the canonical link on web.
 - **Regenerate / "reset my link"** (link revocation) — deferred; no UI in v1.
 
 ### Engineering flags (for #342, not design)
