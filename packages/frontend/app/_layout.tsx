@@ -232,6 +232,7 @@ function RootLayoutNav({ onAuthReady }: { onAuthReady: () => void }) {
         pathname.startsWith('/feed/') ||
         pathname.startsWith('/events/') ||
         pathname.startsWith('/center/') ||
+        pathname.startsWith('/invite/') ||
         pathname.startsWith('/i/') ||
         pathname.startsWith('/privacy') ||
         pathname.startsWith('/terms') ||
@@ -268,8 +269,16 @@ function RootLayoutNav({ onAuthReady }: { onAuthReady: () => void }) {
     if (prevIsDark.current !== isDark) {
       prevIsDark.current = isDark
       Animated.sequence([
-        Animated.timing(fadeAnim, { toValue: 0.85, duration: 80, useNativeDriver: supportsNativeDriver }),
-        Animated.timing(fadeAnim, { toValue: 1, duration: 150, useNativeDriver: supportsNativeDriver }),
+        Animated.timing(fadeAnim, {
+          toValue: 0.85,
+          duration: 80,
+          useNativeDriver: supportsNativeDriver,
+        }),
+        Animated.timing(fadeAnim, {
+          toValue: 1,
+          duration: 150,
+          useNativeDriver: supportsNativeDriver,
+        }),
       ]).start()
     }
   }, [isDark, fadeAnim])
@@ -280,49 +289,52 @@ function RootLayoutNav({ onAuthReady }: { onAuthReady: () => void }) {
     <Animated.View style={{ flex: 1, opacity: fadeAnim }}>
       <NavigationThemeProvider value={navTheme}>
         <View style={{ flex: 1 }}>
-        <Stack screenOptions={{ headerShown: false, animation: 'slide_from_right' }}>
-          <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
-          <Stack.Screen name="auth" options={{ headerShown: false }} />
-          <Stack.Screen name="intro" options={{ headerShown: false, gestureEnabled: false }} />
-          <Stack.Screen name="landing" options={{ headerShown: false }} />
-          <Stack.Screen name="onboarding" options={{ headerShown: false, gestureEnabled: false }} />
-          <Stack.Screen name="settings" options={{ headerShown: false }} />
-          <Stack.Screen name="notifications" options={{ headerShown: false }} />
-          <Stack.Screen
-            name="events/index"
-            options={{ headerShown: true, title: 'My Events', headerBackTitle: '' }}
-          />
-          <Stack.Screen name="events/[id]" options={{ headerShown: false }} />
-          <Stack.Screen name="events/form" options={{ headerShown: false }} />
-          <Stack.Screen name="center/[id]" options={{ headerShown: false }} />
-          <Stack.Screen
-            name="privacy"
-            options={{
-              headerShown: Platform.OS !== 'web',
-              title: 'Privacy Policy',
-              headerBackTitle: '',
-            }}
-          />
-          <Stack.Screen
-            name="terms"
-            options={{
-              headerShown: Platform.OS !== 'web',
-              title: 'Terms of Service',
-              headerBackTitle: '',
-            }}
-          />
-          <Stack.Screen
-            name="cookies"
-            options={{
-              headerShown: Platform.OS !== 'web',
-              title: 'Cookie Policy',
-              headerBackTitle: '',
-            }}
-          />
-          <Stack.Screen name="edit-profile" options={{ headerShown: false }} />
-          <Stack.Screen name="center-picker" options={{ headerShown: false }} />
-          <Stack.Screen name="admin" options={{ headerShown: false }} />
-        </Stack>
+          <Stack screenOptions={{ headerShown: false, animation: 'slide_from_right' }}>
+            <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
+            <Stack.Screen name="auth" options={{ headerShown: false }} />
+            <Stack.Screen name="intro" options={{ headerShown: false, gestureEnabled: false }} />
+            <Stack.Screen name="landing" options={{ headerShown: false }} />
+            <Stack.Screen
+              name="onboarding"
+              options={{ headerShown: false, gestureEnabled: false }}
+            />
+            <Stack.Screen name="settings" options={{ headerShown: false }} />
+            <Stack.Screen name="notifications" options={{ headerShown: false }} />
+            <Stack.Screen
+              name="events/index"
+              options={{ headerShown: true, title: 'My Events', headerBackTitle: '' }}
+            />
+            <Stack.Screen name="events/[id]" options={{ headerShown: false }} />
+            <Stack.Screen name="events/form" options={{ headerShown: false }} />
+            <Stack.Screen name="center/[id]" options={{ headerShown: false }} />
+            <Stack.Screen
+              name="privacy"
+              options={{
+                headerShown: Platform.OS !== 'web',
+                title: 'Privacy Policy',
+                headerBackTitle: '',
+              }}
+            />
+            <Stack.Screen
+              name="terms"
+              options={{
+                headerShown: Platform.OS !== 'web',
+                title: 'Terms of Service',
+                headerBackTitle: '',
+              }}
+            />
+            <Stack.Screen
+              name="cookies"
+              options={{
+                headerShown: Platform.OS !== 'web',
+                title: 'Cookie Policy',
+                headerBackTitle: '',
+              }}
+            />
+            <Stack.Screen name="edit-profile" options={{ headerShown: false }} />
+            <Stack.Screen name="center-picker" options={{ headerShown: false }} />
+            <Stack.Screen name="admin" options={{ headerShown: false }} />
+          </Stack>
         </View>
         {showBottomNav && <WebBottomNav />}
       </NavigationThemeProvider>
