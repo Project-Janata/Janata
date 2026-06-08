@@ -684,7 +684,7 @@ app.post('/auth/password-reset/verify', rateLimit(10, 60_000), async (c) => {
 // post-signup via /auth/redeem-invite. See
 // docs/plans/2026-05-05-v2-roles-invites-messaging.md §5.A.
 
-const INVITE_SHARE_URL_BASE = 'https://chinmayajanata.org/join'
+const INVITE_SHARE_URL_BASE = 'https://janata.app/i'
 
 app.post('/auth/invite-codes', authMiddleware, async (c) => {
   const user = c.get('user')
@@ -718,7 +718,7 @@ app.post('/auth/invite-codes', authMiddleware, async (c) => {
     code: result.code,
     expiresAt: result.expiresAt,
     maxUses: result.maxUses,
-    shareUrl: `${INVITE_SHARE_URL_BASE}?code=${result.code}`,
+    shareUrl: `${INVITE_SHARE_URL_BASE}/${result.code}`,
   })
 })
 
@@ -728,7 +728,7 @@ app.get('/auth/invite-codes/mine', authMiddleware, async (c) => {
   return c.json({
     codes: rows.map((row) => ({
       ...inviteCodes.inviteCodeRowToApi(row),
-      shareUrl: `${INVITE_SHARE_URL_BASE}?code=${row.code}`,
+      shareUrl: `${INVITE_SHARE_URL_BASE}/${row.code}`,
     })),
   })
 })
