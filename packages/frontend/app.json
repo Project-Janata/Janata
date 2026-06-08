@@ -1,15 +1,15 @@
 {
   "expo": {
     "name": "Janata",
-    "slug": "janata",
-    "version": "0.2.0",
+    "slug": "chinmaya-janata",
+    "version": "0.3.0",
     "orientation": "portrait",
     "icon": "./assets/images/logo.png",
     "scheme": "janata",
     "userInterfaceStyle": "automatic",
     "splash": {
       "image": "./assets/images/logo_with_text.png",
-      "resizeMode": "contain", 
+      "resizeMode": "contain",
       "backgroundColor": "#ffffff"
     },
     "android": {
@@ -21,6 +21,10 @@
         "INTERNET",
         "ACCESS_NETWORK_STATE",
         "ACCESS_FINE_LOCATION",
+        "ACCESS_COARSE_LOCATION",
+        "INTERNET",
+        "ACCESS_NETWORK_STATE",
+        "ACCESS_FINE_LOCATION",
         "ACCESS_COARSE_LOCATION"
       ],
       "package": "org.chinmayamission.janata",
@@ -29,16 +33,101 @@
           "action": "VIEW",
           "autoVerify": true,
           "data": [
-            { "scheme": "https", "host": "chinmayajanata.org", "pathPrefix": "/center" },
-            { "scheme": "https", "host": "chinmayajanata.org", "pathPrefix": "/events" },
-            { "scheme": "https", "host": "chinmayajanata.org", "pathPrefix": "/feed" },
-            { "scheme": "https", "host": "chinmayajanata.org", "pathPrefix": "/auth" },
-            { "scheme": "https", "host": "www.chinmayajanata.org", "pathPrefix": "/center" },
-            { "scheme": "https", "host": "www.chinmayajanata.org", "pathPrefix": "/events" },
-            { "scheme": "https", "host": "www.chinmayajanata.org", "pathPrefix": "/feed" },
-            { "scheme": "https", "host": "www.chinmayajanata.org", "pathPrefix": "/auth" }
+            {
+              "scheme": "https",
+              "host": "chinmayajanata.org",
+              "pathPrefix": "/center"
+            },
+            {
+              "scheme": "https",
+              "host": "chinmayajanata.org",
+              "pathPrefix": "/events"
+            },
+            {
+              "scheme": "https",
+              "host": "chinmayajanata.org",
+              "pathPrefix": "/feed"
+            },
+            {
+              "scheme": "https",
+              "host": "chinmayajanata.org",
+              "pathPrefix": "/auth"
+            },
+            {
+              "scheme": "https",
+              "host": "www.chinmayajanata.org",
+              "pathPrefix": "/center"
+            },
+            {
+              "scheme": "https",
+              "host": "www.chinmayajanata.org",
+              "pathPrefix": "/events"
+            },
+            {
+              "scheme": "https",
+              "host": "www.chinmayajanata.org",
+              "pathPrefix": "/feed"
+            },
+            {
+              "scheme": "https",
+              "host": "www.chinmayajanata.org",
+              "pathPrefix": "/auth"
+            }
           ],
-          "category": ["BROWSABLE", "DEFAULT"]
+          "category": [
+            "BROWSABLE",
+            "DEFAULT"
+          ]
+        },
+        {
+          "action": "VIEW",
+          "autoVerify": true,
+          "data": [
+            {
+              "scheme": "https",
+              "host": "chinmayajanata.org",
+              "pathPrefix": "/center"
+            },
+            {
+              "scheme": "https",
+              "host": "chinmayajanata.org",
+              "pathPrefix": "/events"
+            },
+            {
+              "scheme": "https",
+              "host": "chinmayajanata.org",
+              "pathPrefix": "/feed"
+            },
+            {
+              "scheme": "https",
+              "host": "chinmayajanata.org",
+              "pathPrefix": "/auth"
+            },
+            {
+              "scheme": "https",
+              "host": "www.chinmayajanata.org",
+              "pathPrefix": "/center"
+            },
+            {
+              "scheme": "https",
+              "host": "www.chinmayajanata.org",
+              "pathPrefix": "/events"
+            },
+            {
+              "scheme": "https",
+              "host": "www.chinmayajanata.org",
+              "pathPrefix": "/feed"
+            },
+            {
+              "scheme": "https",
+              "host": "www.chinmayajanata.org",
+              "pathPrefix": "/auth"
+            }
+          ],
+          "category": [
+            "BROWSABLE",
+            "DEFAULT"
+          ]
         }
       ]
     },
@@ -57,6 +146,8 @@
       },
       "bundleIdentifier": "org.chinmayamission.janata",
       "associatedDomains": [
+        "applinks:chinmayajanata.org",
+        "applinks:www.chinmayajanata.org",
         "applinks:chinmayajanata.org",
         "applinks:www.chinmayajanata.org"
       ]
@@ -81,6 +172,13 @@
             "backgroundColor": "#121212"
           }
         }
+      ],
+      [
+        "expo-notifications",
+        {
+          "icon": "./assets/images/logo.png",
+          "color": "#FF8A3D"
+        }
       ]
     ],
     "experiments": {
@@ -92,6 +190,12 @@
         "projectId": "558764c0-25bc-4394-8d2e-604d11f36b22"
       }
     },
-    "owner": "chinmaya-janata"
+    "owner": "chinmaya-janata",
+    "runtimeVersion": {
+      "policy": "appVersion"
+    },
+    "updates": {
+      "url": "https://u.expo.dev/558764c0-25bc-4394-8d2e-604d11f36b22"
+    }
   }
 }

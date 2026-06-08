@@ -1,5 +1,6 @@
 import React, { useState } from 'react'
 import { Image, Text, View } from 'react-native'
+import { User } from 'lucide-react-native'
 
 interface AvatarProps {
   image?: string
@@ -15,6 +16,8 @@ export default function Avatar({ image, initials, name, size = 40, style, backgr
   const fontSize = size * 0.38
   const bgColor = backgroundColor || '#C2410C'
 
+  // Empty string (not "?") when there's nothing to show — the render falls back
+  // to a person icon instead (#380).
   const getInitials = () => {
     if (initials) return initials
     if (name) {
@@ -23,7 +26,7 @@ export default function Avatar({ image, initials, name, size = 40, style, backgr
         ? `${parts[0][0]}${parts[1][0]}`.toUpperCase()
         : name.slice(0, 2).toUpperCase()
     }
-    return '?'
+    return ''
   }
 
   if (image && !imageError) {
@@ -34,11 +37,16 @@ export default function Avatar({ image, initials, name, size = 40, style, backgr
     )
   }
 
+  const label = getInitials()
   return (
     <View style={[{ width: size, height: size, borderRadius: size / 2, backgroundColor: bgColor, alignItems: 'center', justifyContent: 'center' }, style]}>
-      <Text style={{ fontWeight: '600', fontSize, color: '#FFFFFF' }}>
-        {getInitials()}
-      </Text>
+      {label ? (
+        <Text style={{ fontWeight: '600', fontSize, color: '#FFFFFF' }}>
+          {label}
+        </Text>
+      ) : (
+        <User size={size * 0.5} color="#FFFFFF" strokeWidth={2} />
+      )}
     </View>
   )
 }

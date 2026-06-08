@@ -25,6 +25,7 @@ import { createBoardPost, removeEvent } from '../../utils/api'
 import { ThreadPanel, boardPostToMessage, type BoardMessage } from '../../components/boards'
 import { PostThread, type FeedPost } from '../../components/feed'
 import { buildFeedPostFromMessage } from '../../components/feed/feedData'
+import AuthPromptModal from '../../components/ui/AuthPromptModal'
 
 const ADMIN_EMAIL = 'chinmayajanata@gmail.com'
 
@@ -588,6 +589,7 @@ export default function EventDetailPage() {
   const appColors = useColors()
   const hasTrackedView = useRef(false)
   const [threadDetailPost, setThreadDetailPost] = useState<FeedPost | null>(null)
+  const [showAuthPrompt, setShowAuthPrompt] = useState(false)
 
   const isAdmin = user?.email === ADMIN_EMAIL || (user?.verificationLevel !== undefined && user.verificationLevel >= 107)
   const canEdit = isAdmin || isCreator
@@ -633,7 +635,13 @@ export default function EventDetailPage() {
   }
 
   const handleToggleRegistration = async () => {
-    if (!user?.username) return
+    // Guest taps RSVP → prompt to sign in (mirrors the web event detail).
+    if (!user) {
+      track('event_auth_prompt_shown', { eventId: id, source: 'event_detail' })
+      setShowAuthPrompt(true)
+      return
+    }
+    if (!user.username) return
     try {
       track(event?.isRegistered ? 'event_unregistered' : 'event_registered', { eventId: id, source: 'event_detail' })
       await toggleRegistration(user.username)
@@ -654,6 +662,13 @@ export default function EventDetailPage() {
     if (!event?.id) return
     await createBoardPost('event', event.id, body)
     track('event_board_post_created', { eventId: id, source: 'event_detail' })
+    track('content_created', {
+      content_type: 'post',
+      surface: 'event_board',
+      board_kind: 'event',
+      parent_id: id,
+      character_count: body?.length ?? 0,
+    })
     await refetchBoard()
   }
 
@@ -840,6 +855,13 @@ export default function EventDetailPage() {
         allowJanataSignup={event.allowJanataSignup}
         onExternalSignup={() => track('event_external_signup_pressed', { eventId: id, signupUrl: event.signupUrl, source: 'event_detail' })}
         colors={colors}
+      />
+
+      <AuthPromptModal
+        visible={showAuthPrompt}
+        onClose={() => setShowAuthPrompt(false)}
+        returnTo={`/events/${id}`}
+        eventTitle={event?.title}
       />
     </SafeAreaView>
   )

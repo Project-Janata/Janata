@@ -22,6 +22,7 @@ import React, {
   useCallback,
 } from 'react'
 import { usePostHog } from 'posthog-react-native'
+import { buildUserTraits } from '../../utils/analyticsIdentity'
 import { getStoredToken, removeStoredToken } from '../../src/storage/tokenStorage'
 import {
   clearOnboardingComplete,
@@ -31,6 +32,8 @@ import {
 import { authService } from '../../src/auth/authService'
 import { API_BASE_URL, API_TIMEOUTS } from '../../src/config/api'
 import type { AuthStatus, User, UpdateProfileRequest } from '../../src/auth/types'
+import { unregisterPushToken } from '../../utils/notificationService'
+import { getActivePushToken, setActivePushToken } from '../../utils/pushTokenRef'
 
 interface UserContextType {
   user: User | null
@@ -91,16 +94,13 @@ const resolveEndpointUrl = (endpoint: string): string => {
   return `${normalizedBase}/${normalizedEndpoint}`
 }
 
-/** Helper to build the PostHog person properties from a User object */
-const userTraits = (u: User) => ({
-  // PostHog's PostHogEventProperties doesn't accept `undefined`, only null /
-  // string / number / boolean. The User type marks several fields optional,
-  // so coerce undefined→null at the boundary.
-  email: u.email ?? null,
-  firstName: u.firstName ?? null,
-  lastName: u.lastName ?? null,
-  profileComplete: u.profileComplete ?? false,
-})
+/**
+ * PostHog person properties for a User. Delegates to the shared builder in
+ * utils/analyticsIdentity so login, signup, and session-restore all set an
+ * identical, complete trait set (incl. $internal_or_test_user and first-touch
+ * $set_once facts).
+ */
+const userTraits = (u: User) => buildUserTraits(u)
 
 export const UserProvider = ({ children }: { children: ReactNode }) => {
   const posthog = usePostHog()
@@ -142,6 +142,17 @@ export const UserProvider = ({ children }: { children: ReactNode }) => {
   const logout = useCallback(async () => {
     posthog?.capture('logout')
     posthog?.reset()
+    // Unregister this device's push token while we still hold a valid JWT, so
+    // a logged-out (or shared) device stops receiving this account's pushes.
+    const pushToken = getActivePushToken()
+    if (pushToken) {
+      try {
+        await unregisterPushToken(pushToken)
+      } catch {
+        // Best-effort — never block logout on a push cleanup failure.
+      }
+      setActivePushToken(null)
+    }
     await authService.logout()
     await clearOnboardingComplete()
     setUser(null)
@@ -217,8 +228,10 @@ export const UserProvider = ({ children }: { children: ReactNode }) => {
   const updateProfile = useCallback(async (updates: UpdateProfileRequest) => {
     // Save previous user state for rollback on failure
     let previousUser: User | null = null
+    let wasComplete = false
     setUser((prev) => {
       previousUser = prev
+      wasComplete = !!prev?.profileComplete
       return prev ? { ...prev, ...updates } : null
     })
 
@@ -232,6 +245,16 @@ export const UserProvider = ({ children }: { children: ReactNode }) => {
 
     setUser(result.user)
     posthog?.capture('profile_updated', { fields: Object.keys(updates) })
+    // Fire profile_completed exactly once, on the first false→true transition.
+    // (The onboarding flow has its own completion path and fires it there.)
+    if (!wasComplete && result.user.profileComplete) {
+      posthog?.capture('profile_completed', {
+        source: 'profile_update',
+        has_photo: !!result.user.profileImage,
+        interests_count: result.user.interests?.length ?? 0,
+        looking_for_count: result.user.lookingFor?.length ?? 0,
+      })
+    }
     if (updates.profileComplete || result.user.profileComplete) {
       await setOnboardingComplete(true)
       setOnboardingCompleteState(true)

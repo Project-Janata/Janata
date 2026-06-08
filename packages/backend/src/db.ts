@@ -17,6 +17,7 @@ import type {
   BoardPostRow,
   BoardReactionCount,
   BoardType,
+  PostVisibility,
   PostReportRow,
   ModerationActionRow,
 } from './types'
@@ -668,6 +669,35 @@ export async function getEventAttendees(
   return result.results ?? []
 }
 
+/**
+ * IDs of every user "part of" a board, for notification fan-out (#102).
+ *   - center board: users whose home center matches
+ *   - event board: the event's attendees plus its creator
+ * ID-only (no row hydration) so a large center can fan out cheaply.
+ */
+export async function getBoardRecipientIds(
+  db: D1Database,
+  type: 'center' | 'event',
+  parentId: string,
+): Promise<string[]> {
+  if (type === 'center') {
+    const result = await db
+      .prepare('SELECT id FROM users WHERE center_id = ?1')
+      .bind(parentId)
+      .all<{ id: string }>()
+    return (result.results ?? []).map((r) => r.id)
+  }
+  const result = await db
+    .prepare(
+      `SELECT user_id AS id FROM event_attendees WHERE event_id = ?1
+       UNION
+       SELECT created_by AS id FROM events WHERE id = ?1 AND created_by IS NOT NULL`,
+    )
+    .bind(parentId)
+    .all<{ id: string }>()
+  return (result.results ?? []).map((r) => r.id).filter(Boolean)
+}
+
 export async function getUserEvents(
   db: D1Database,
   userId: string,
@@ -785,15 +815,15 @@ export async function ensureBoard(
 export async function createBoardPost(
   db: D1Database,
   post: Pick<BoardPostRow, 'id' | 'board_id' | 'author_id' | 'body'> &
-    Partial<Pick<BoardPostRow, 'image_url'>>,
+    Partial<Pick<BoardPostRow, 'image_url' | 'visibility'>>,
 ): Promise<{ success: boolean; id?: string; error?: string }> {
   try {
     const now = new Date().toISOString()
     await db
       .prepare(
         `INSERT INTO board_posts
-          (id, board_id, author_id, body, image_url, created_at, updated_at)
-         VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7)`,
+          (id, board_id, author_id, body, image_url, visibility, created_at, updated_at)
+         VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8)`,
       )
       .bind(
         post.id,
@@ -801,6 +831,7 @@ export async function createBoardPost(
         post.author_id,
         post.body,
         post.image_url ?? null,
+        post.visibility ?? 'board',
         now,
         now,
       )
@@ -910,6 +941,30 @@ export async function listBoardPosts(
   )
 
   return hydrated.filter((post): post is BoardPostWithAuthor => post !== null)
+}
+
+export async function getBoardPostWithAuthorById(
+  db: D1Database,
+  postId: string,
+): Promise<BoardPostWithAuthor | null> {
+  const post = await getBoardPostById(db, postId)
+  if (!post) return null
+
+  const author = await getUserById(db, post.author_id)
+  if (!author) return null
+
+  const reactions = await getBoardPostReactionCounts(db, post.id)
+  const replyCount = await db
+    .prepare('SELECT COUNT(*) as count FROM board_post_replies WHERE parent_post_id = ?1')
+    .bind(post.id)
+    .first<{ count: number }>()
+
+  return {
+    ...post,
+    author,
+    reactions,
+    reply_count: replyCount?.count ?? 0,
+  }
 }
 
 export async function toggleBoardPostReaction(
@@ -1133,15 +1188,15 @@ export async function createBoardPostReply(
   args: {
     id: string
     parent_post_id: string
-    board_id: string
+    board_id: string | null
     author_id: string
     body: string
   },
 ): Promise<CreateBoardPostReplyResult> {
   const parent = await db
-    .prepare(`SELECT board_id, deleted_at FROM board_posts WHERE id = ?1`)
+    .prepare(`SELECT board_id, visibility, deleted_at FROM board_posts WHERE id = ?1`)
     .bind(args.parent_post_id)
-    .first<{ board_id: string; deleted_at: string | null }>()
+    .first<{ board_id: string | null; visibility: PostVisibility; deleted_at: string | null }>()
   if (!parent) return { ok: false, reason: 'parent_not_found' }
   if (parent.deleted_at) return { ok: false, reason: 'parent_deleted' }
 
@@ -1161,10 +1216,10 @@ export async function createBoardPostReply(
   const results = await db.batch([
     db
       .prepare(
-        `INSERT INTO board_posts (id, board_id, author_id, body, image_url)
-         VALUES (?1, ?2, ?3, ?4, NULL)`,
+        `INSERT INTO board_posts (id, board_id, author_id, body, image_url, visibility)
+         VALUES (?1, ?2, ?3, ?4, NULL, ?5)`,
       )
-      .bind(args.id, args.board_id, args.author_id, args.body),
+      .bind(args.id, args.board_id, args.author_id, args.body, parent.visibility),
     db
       .prepare(
         `INSERT INTO board_post_replies (post_id, parent_post_id) VALUES (?1, ?2)`,
@@ -1214,9 +1269,8 @@ export async function listBoardPostReplies(
 }
 
 /**
- * Aggregated cross-board feed: every top-level post on a board the user
- * has access to, reverse-chronological. Closes the last open acceptance
- * criterion on #205.
+ * Aggregated cross-board feed: every public signed-in post plus every
+ * top-level post on a board the user has access to, reverse-chronological.
  *
  * Access rules (mirrors the existing verifyBoardAccess in app.ts):
  *   - Center boards: user.center_id must match board.parent_id.
@@ -1238,22 +1292,30 @@ export async function listAggregatedFeed(
 
   const includeCenterBoards = user.center_id !== null
 
-  // The query unions (logically, via OR) the two access cases:
+  // The query unions (logically, via OR) the three access cases:
+  //   public post visible to every signed-in member
   //   center board the user is a member of (center_id match)
   //   event board the user has an event_attendees row for
   const result = await db
     .prepare(
       `SELECT bp.*
        FROM board_posts bp
-       JOIN boards b ON b.id = bp.board_id
+       LEFT JOIN boards b ON b.id = bp.board_id
        WHERE bp.deleted_at IS NULL
          AND bp.id NOT IN (SELECT post_id FROM board_post_replies)
          AND (
-           (?3 = 1 AND b.type = 'center' AND b.parent_id = ?2)
+           bp.visibility = 'public_signed_in'
            OR
-           (b.type = 'event' AND b.parent_id IN (
-             SELECT event_id FROM event_attendees WHERE user_id = ?1
-           ))
+           (
+             bp.visibility = 'board'
+             AND (
+               (?3 = 1 AND b.type = 'center' AND b.parent_id = ?2)
+               OR
+               (b.type = 'event' AND b.parent_id IN (
+                 SELECT event_id FROM event_attendees WHERE user_id = ?1
+               ))
+             )
+           )
          )
        ORDER BY bp.created_at DESC
        LIMIT ?4 OFFSET ?5`,

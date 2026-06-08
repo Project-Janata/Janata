@@ -15,6 +15,7 @@ import {
 import { useDetailColors } from '../../hooks/useDetailColors'
 import { useTheme } from '../contexts'
 import { Avatar } from '../ui'
+import { useAnalytics } from '../../utils/analytics'
 
 // ---------------------------------------------------------------------------
 // Helpers
@@ -33,6 +34,7 @@ function formatDate(iso?: string): string {
 export default function InviteCodesTab() {
   const colors = useDetailColors()
   const { isDark } = useTheme()
+  const { track } = useAnalytics()
 
   const [codes, setCodes] = useState<InviteCodeData[]>([])
   const [loading, setLoading] = useState(true)
@@ -168,13 +170,14 @@ export default function InviteCodesTab() {
     if (!selectedCode) return
     try {
       await adminToggleInviteCode(selectedCode.code)
+      track('admin_invite_code_toggled', { code: selectedCode.code, source: 'admin' })
       // Refresh
       const result = await fetchAdminInviteCodes()
       setCodes(result.data)
       const updated = result.data.find((c) => c.code === selectedCode.code)
       if (updated) setSelectedCode(updated)
     } catch (err) {
-      console.error('Failed to toggle invite code:', err)
+      if (__DEV__) console.error('Failed to toggle invite code:', err)
     }
   }
 
@@ -201,6 +204,7 @@ export default function InviteCodesTab() {
         label: newLabel.trim(),
         verificationLevel: verLevel,
       })
+      track('admin_invite_code_created', { source: 'admin' })
       setNewCode('')
       setNewLabel('')
       setNewVerLevel('45')
@@ -336,7 +340,7 @@ export default function InviteCodesTab() {
       <View style={[createStyles.overlay, { backgroundColor: 'rgba(0,0,0,0.5)' }]}>
         <View style={[createStyles.modal, { backgroundColor: colors.panelBg, borderColor: colors.border }]}>
           <View style={createStyles.modalHeader}>
-            <Text style={[createStyles.modalTitle, { color: colors.text }]}>Create Invite Code</Text>
+            <Text style={[createStyles.modalTitle, { color: colors.text }]}>Create Invite Link</Text>
             <Pressable onPress={() => { setShowCreate(false); setCreateError('') }}>
               <X size={18} color={colors.textMuted} />
             </Pressable>
@@ -378,7 +382,7 @@ export default function InviteCodesTab() {
             style={[createStyles.createBtn, creating && { opacity: 0.6 }]}
           >
             <Text style={createStyles.createBtnText}>
-              {creating ? 'Creating...' : 'Create Code'}
+              {creating ? 'Creating...' : 'Create Link'}
             </Text>
           </Pressable>
         </View>
@@ -411,13 +415,13 @@ export default function InviteCodesTab() {
     <View style={styles.container}>
       <View style={styles.tablePanel}>
         <View style={styles.header}>
-          <Text style={[styles.title, { color: colors.text }]}>Invite Codes ({codes.length})</Text>
+          <Text style={[styles.title, { color: colors.text }]}>Invite Links ({codes.length})</Text>
           <Pressable
             onPress={() => setShowCreate(true)}
             style={styles.addBtn}
           >
             <Plus size={14} color="#fff" />
-            <Text style={styles.addBtnText}>New Code</Text>
+            <Text style={styles.addBtnText}>New Link</Text>
           </Pressable>
         </View>
 
@@ -433,14 +437,14 @@ export default function InviteCodesTab() {
       </View>
 
       {selectedCode && (
-        <AdminDetailPanel title="Invite Code" onClose={() => setSelectedCode(null)}>
+        <AdminDetailPanel title="Invite Link" onClose={() => setSelectedCode(null)}>
           {renderDetailContent()}
         </AdminDetailPanel>
       )}
 
       <ConfirmDialog
         visible={confirmToggleVisible}
-        title={selectedCode?.isActive ? 'Deactivate Code' : 'Activate Code'}
+        title={selectedCode?.isActive ? 'Deactivate Link' : 'Activate Link'}
         message={
           selectedCode?.isActive
             ? `Deactivating "${selectedCode?.code}" will prevent new signups with this code. Existing users are unaffected.`

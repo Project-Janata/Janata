@@ -15,11 +15,12 @@ export interface BoardMessage {
   timestamp: string
   body: string
   attachmentLabel?: string
+  imageUrl?: string
   reactions?: Array<{ emoji: string; count: number }>
   replyCount?: number
   pinned?: boolean
   sourceLabel?: string
-  sourceKind?: 'center' | 'event'
+  sourceKind?: 'center' | 'event' | 'public'
 }
 
 export interface EventBoard {

@@ -1,8 +1,8 @@
 # Chinmaya Janata API — v2 PREVIEW worker
 #
-# Fully isolated test environment for the v2 sprint. Unlike wrangler.staging.toml
-# (which shares the prod D1!), this binds to its OWN database so test writes
-# never touch production data.
+# Fully isolated test environment for the v2 sprint. Binds its OWN database so
+# test writes never touch production data. (wrangler.staging.toml is likewise
+# isolated now, its own chinmaya-janata-db-staging, see issue #406.)
 #
 # Deploy: npx wrangler deploy --config packages/backend/wrangler.preview.toml
 # URL:    https://chinmaya-janata-api-v2preview.<account>.workers.dev
@@ -28,10 +28,13 @@ binding = "AVATARS"
 # want total isolation here too.
 bucket_name = "chinmaya-janata-avatars"
 
+# Non-secret vars only. JWT_SECRET / JWT_REFRESH_SECRET come from
+# `wrangler secret put` (see below). Never commit signing secrets: anyone who
+# can read the repo could otherwise mint valid preview tokens.
 [vars]
-JWT_SECRET = "dev-secret-key-change-in-production"
-JWT_REFRESH_SECRET = "dev-refresh-secret-key-change-in-production"
 RESEND_FROM_EMAIL = "noreply@chinmayajanata.org"
 
-# Secrets (optional — email verification only):
-#   npx wrangler secret put RESEND_API_KEY --config packages/backend/wrangler.preview.toml
+# Secrets (set once per worker, NOT in this file):
+#   npx wrangler secret put JWT_SECRET         --config packages/backend/wrangler.preview.toml
+#   npx wrangler secret put JWT_REFRESH_SECRET --config packages/backend/wrangler.preview.toml
+#   npx wrangler secret put RESEND_API_KEY     --config packages/backend/wrangler.preview.toml  (email verification only)

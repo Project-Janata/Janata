@@ -1,500 +1,283 @@
-import React, { useState, useEffect } from 'react'
+// Profile tab — native (iOS/Android). Direction B, stacked single column.
+// Mirrors the web Profile (app/(tabs)/profile.web.tsx): a display-only social
+// profile (identity + interests, then engagement: stats, upcoming events,
+// centers). Editing lives on /edit-profile; account management on /settings.
+// The "You" header + settings gear are provided by the navigator (TabHeader).
+import React, { useState, useCallback } from 'react'
 import { ScrollView, View, Pressable, Image, Share } from 'react-native'
-import { BadgeCheck, Building2 } from 'lucide-react-native'
-import { Badge, useRouter } from 'expo-router'
-import { useUser, useTheme } from '../../components/contexts'
-import { Section, Text } from '../../components/ui'
-import TabHeader from '../../components/ui/TabHeader'
+import { useRouter, useFocusEffect } from 'expo-router'
 import {
-  fetchCenters,
-  fetchUserEvents,
-  fetchUserGroups,
-  fetchUserPosts,
-  CenterData,
-} from '../../utils/api'
+  Pencil, Share2, ChevronRight, BadgeCheck, MapPin, UserPlus,
+  Megaphone, CalendarDays, Building2,
+} from 'lucide-react-native'
+import { useUser, useTheme } from '../../components/contexts'
+import { Text } from '../../components/ui'
+import { SignInCallout } from '../../components/boards/SignInCallout'
 import { useAnalytics } from '../../utils/analytics'
+import { LIGHT, DARK } from '../../tokens/colors'
+import { extractCityState } from '../../utils/addressParsing'
+import {
+  fetchCenters, fetchUserEvents, fetchUserPosts, fetchUserGroups,
+  type CenterData, type EventData,
+} from '../../utils/api'
 
-export default function ProfileNative() {
+function datePill(dateStr?: string | null): { m: string; d: string } {
+  if (!dateStr) return { m: '', d: '' }
+  const dt = new Date(dateStr + 'T00:00:00')
+  if (isNaN(dt.getTime())) return { m: '', d: '' }
+  return { m: dt.toLocaleDateString('en-US', { month: 'short' }).toUpperCase(), d: String(dt.getDate()) }
+}
+
+export default function Profile() {
   const router = useRouter()
-  const { user, refreshUser } = useUser()
+  const { user, loading } = useUser()
   const { isDark } = useTheme()
+  const c = isDark ? DARK : LIGHT
   const { track } = useAnalytics()
+
   const [allCenters, setAllCenters] = useState<CenterData[]>([])
-  const [postCount, setPostCount] = useState(0)
-  const [eventCount, setEventCount] = useState(0)
-  const [groupCount, setGroupCount] = useState(0)
-  const [userGroups, setUserGroups] = useState<CenterData[]>([])
+  const [createdCount, setCreatedCount] = useState(0)
+  const [events, setEvents] = useState<EventData[]>([])
+  const [groups, setGroups] = useState<CenterData[]>([])
 
-  useEffect(() => {
-    refreshUser()
-    fetchCenters()
-      .then(setAllCenters)
-      .catch(() => {})
-    if (user?.username) {
-      fetchUserPosts(user.username)
-        .then((p) => setPostCount(p.length))
-        .catch(() => {})
-      fetchUserEvents(user.username)
-        .then((e) => setEventCount(e.length))
-        .catch(() => {})
-      fetchUserGroups(user.username)
-        .then((g) => {
-          setUserGroups(g)
-          setGroupCount(g.length)
-        })
-        .catch(() => {})
-    }
-  }, [])
+  useFocusEffect(
+    useCallback(() => {
+      fetchCenters().then(setAllCenters).catch(() => {})
+      if (user?.username) {
+        fetchUserPosts(user.username).then((p) => setCreatedCount(p.length)).catch(() => {})
+        fetchUserEvents(user.username).then(setEvents).catch(() => {})
+        fetchUserGroups(user.username).then(setGroups).catch(() => {})
+      }
+    }, [user?.username])
+  )
 
-  const getDisplayName = () => {
-    if (user?.firstName && user?.lastName) return `${user.firstName} ${user.lastName}`
-    if (user?.firstName) return user.firstName
-    return user?.username || ''
-  }
-
-  const getInitials = () => {
-    if (user?.firstName && user?.lastName) {
-      return `${user.firstName[0]}${user.lastName[0]}`.toUpperCase()
-    }
+  const displayName =
+    user?.firstName && user?.lastName ? `${user.firstName} ${user.lastName}`
+      : user?.firstName || user?.username || 'You'
+  const initials = (() => {
+    if (user?.firstName && user?.lastName) return `${user.firstName[0]}${user.lastName[0]}`.toUpperCase()
     if (user?.firstName) return user.firstName[0].toUpperCase()
     if (user?.username) return user.username[0].toUpperCase()
     return '?'
-  }
-
-  const getUserRole = () => {
-    const age = user?.dateOfBirth
-      ? Math.floor((Date.now() - new Date(user.dateOfBirth).getTime()) / 31557600000)
+  })()
+  const vl = user?.verificationLevel ?? 0
+  const roleLabel =
+    vl >= 1000008 ? 'Global Head'
+      : vl >= 1008 ? 'Swami'
+      : vl >= 108 ? 'Brahmachari'
+      : vl >= 54 ? 'Sevak'
+      : vl >= 45 ? 'Verified member'
       : null
-    if (age !== null && (user?.verificationLevel ?? 0) < 108) {
-      if (age >= 18 && age <= 35) return 'CHYK'
-      if (age > 35) return 'Sevak'
-    } else {
-      if (user?.verificationLevel ?? 0 >= 108) return 'Brahmachari'
-      if (user?.verificationLevel ?? 0 >= 1008) return 'Swami'
-      if (user?.verificationLevel ?? 0 >= 1000008) return 'Global Head'
-    }
-  }
-
-  const getUserCity = () => {
-    const center = allCenters.find((c) => c.centerID === user?.centerID)
-    const addressParts = center?.address?.split(',')
-    return `${addressParts?.[1]?.trim()}, ${addressParts?.[2]?.split(' ')[1] ?? null}`
-  }
-
-  const getDateJoined = () => {
-    if (!user?.createdAt) return null
-    const date = new Date(user.createdAt)
-    return date.toLocaleDateString(undefined, { year: 'numeric' })
-  }
-
-  const handleShare = async () => {
-    try {
-      await Share.share({
-        message: `Check out ${getDisplayName()} on Janata!`,
-        title: getDisplayName(),
-      })
-      track('profile_shared', { source: 'profile', username: user?.username })
-    } catch {
-      // Silently fail
-    }
-  }
-
-  const textColor = isDark ? '#FAFAFA' : '#1C1917'
-  const mutedTextColor = isDark ? '#A8A29E' : '#78716C'
-  const borderColor = isDark ? '#262626' : '#ECE7DE'
-  const cardBg = isDark ? '#262626' : '#FFFFFF'
-  const chipBg = isDark ? '#333333' : '#F0EFED'
-
-  const centerName = allCenters.find((c) => c.centerID === user?.centerID)?.name
+  const homeCenter = allCenters.find((cc) => cc.centerID === user?.centerID)
   const interests = user?.interests || []
-  const lookingFor = user?.lookingFor || []
+
+  const today = new Date().toISOString().split('T')[0]
+  const upcoming = [...events]
+    .filter((e) => !e.date || e.date >= today)
+    .sort((a, b) => (a.date || '').localeCompare(b.date || ''))
+    .slice(0, 4)
+
+  const onEdit = () => { track('nav_edit_profile', { source: 'profile' }); router.push('/edit-profile') }
+  const onShare = async () => {
+    try {
+      await Share.share({ message: `Check out ${displayName} on Janata!`, title: displayName })
+      track('profile_shared', { source: 'profile', username: user?.username })
+    } catch { /* dismissed */ }
+  }
+  const onInvite = () => { track('settings_invite_pressed', { source: 'profile' }); router.push('/settings/invite') }
+  const onExplore = () => { track('profile_explore_cta', { source: 'profile' }); router.push('/explore') }
+
+  const card = { backgroundColor: c.card, borderWidth: 1, borderColor: c.border, borderRadius: 20 } as const
+
+  const StatCard = ({ icon, value, label }: { icon: React.ReactNode; value: number; label: string }) => (
+    <View style={[card, { flex: 1, padding: 14 }]}>
+      <View style={{ width: 32, height: 32, borderRadius: 10, backgroundColor: c.accentSoft, alignItems: 'center', justifyContent: 'center', marginBottom: 9 }}>{icon}</View>
+      <Text style={{ fontSize: 22, fontWeight: '700', color: c.text }}>{value}</Text>
+      <Text style={{ fontSize: 12.5, color: c.textMuted }}>{label}</Text>
+    </View>
+  )
+
+  const SectionLabel = ({ children }: { children: string }) => (
+    <Text style={{ fontSize: 12.5, fontWeight: '600', color: c.textMuted, letterSpacing: 0.5, textTransform: 'uppercase', marginBottom: 12, marginTop: 24, marginLeft: 2 }}>{children}</Text>
+  )
+
+  // Guest state: a logged-out visitor can browse the read-only tabs, but the
+  // "You" tab has no profile to show — invite them to sign in instead. Returns
+  // early so none of the user.* access below runs for a guest.
+  if (!user && !loading) {
+    return (
+      <ScrollView
+        style={{ flex: 1, backgroundColor: c.bg }}
+        contentContainerStyle={{ paddingHorizontal: 16, paddingTop: 18, paddingBottom: 48 }}
+      >
+        <SignInCallout
+          title="Sign in to Janata"
+          subtitle="Sign in to set up your profile, RSVP to events, and join your boards."
+          colors={c}
+          ctaLabel="Sign in"
+          onPress={() => {
+            track('profile_signin_pressed', { source: 'profile_guest' })
+            router.push('/auth')
+          }}
+        />
+      </ScrollView>
+    )
+  }
 
   return (
-    <View style={{ flex: 1 }}>
-      <ScrollView style={{ flex: 1, backgroundColor: isDark ? '#1A1A1A' : '#F5F5F4' }}>
-        {/* Profile header */}
-        <View style={{ paddingTop: 28, paddingHorizontal: 20, gap: 12 }}>
-          <View style={{ flexDirection: 'row', alignItems: 'flex-start', gap: 16 }}>
-            {/* Avatar */}
-            {user?.profileImage ? (
-              <Image
-                source={{ uri: user.profileImage }}
-                style={{
-                  width: 88,
-                  height: 88,
-                  borderRadius: 44,
-                  borderWidth: 3,
-                  borderColor: cardBg,
-                  backgroundColor: '#D6D3D1',
-                }}
-              />
-            ) : (
-              <View
-                style={{
-                  width: 88,
-                  height: 88,
-                  borderRadius: 44,
-                  borderWidth: 3,
-                  borderColor: cardBg,
-                  backgroundColor: '#C2410C',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                }}
-              >
-                <Text style={{ color: '#fff', fontSize: 28, fontWeight: '600' }}>
-                  {getInitials()}
-                </Text>
-              </View>
-            )}
-
-            {/* Name, role, email */}
-            <View style={{ flex: 1, minWidth: 0, paddingTop: 4, gap: 4 }}>
-              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
-                <Text
-                  style={{
-                    fontFamily: 'Inclusive Sans',
-                    fontSize: 22,
-                    color: textColor,
-                    letterSpacing: -0.5,
-                    flexShrink: 1,
-                  }}
-                  numberOfLines={1}
-                >
-                  {getDisplayName() || '—'}
-                </Text>
-                {getUserRole() && (
-                  <View
-                    style={{
-                      backgroundColor: '#C2410C20',
-                      paddingHorizontal: 5,
-                      paddingVertical: 3,
-                      borderRadius: 6,
-                    }}
-                  >
-                    <Text
-                      style={{
-                        fontFamily: 'Inclusive Sans',
-                        fontSize: 10,
-                        color: '#C2410C',
-                        fontWeight: '700',
-                        letterSpacing: 0.5,
-                      }}
-                    >
-                      {getUserRole()}
-                    </Text>
-                  </View>
-                )}
-              </View>
-              {getUserCity() && getDateJoined() ? (
-                <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4, marginTop: 2 }}>
-                  <Text
-                    style={{ fontFamily: 'Inclusive Sans', fontSize: 13, color: mutedTextColor }}
-                    numberOfLines={1}
-                  >
-                    {getUserCity()} • Member since {getDateJoined() || '—'}
-                  </Text>
-                </View>
-              ) : null}
-              {user?.isVerified ? (
-                <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4, marginTop: 2 }}>
-                  <BadgeCheck size={14} color="#C2410C" />
-                  <Text
-                    style={{
-                      fontFamily: 'Inclusive Sans',
-                      fontSize: 13,
-                      color: '#C2410C',
-                      fontWeight: '600',
-                    }}
-                    numberOfLines={1}
-                  >
-                    Verified by {centerName}
-                  </Text>
-                </View>
-              ) : null}
+    <ScrollView
+      style={{ flex: 1, backgroundColor: c.bg }}
+      contentContainerStyle={{ paddingHorizontal: 16, paddingTop: 18, paddingBottom: 48 }}
+    >
+      {/* Profile card */}
+      <View style={[card, { padding: 22 }]}>
+        <View style={{ alignItems: 'center' }}>
+          {user?.profileImage ? (
+            <Image source={{ uri: user.profileImage }} style={{ width: 92, height: 92, borderRadius: 46, borderWidth: 4, borderColor: c.card, backgroundColor: c.surface }} />
+          ) : (
+            <View style={{ width: 92, height: 92, borderRadius: 46, borderWidth: 4, borderColor: c.card, backgroundColor: '#C2410C', alignItems: 'center', justifyContent: 'center' }}>
+              <Text style={{ color: '#fff', fontSize: 32, fontWeight: '600' }}>{initials}</Text>
             </View>
-          </View>
-
-          {/* Bio — no label, inline with header */}
-          {user?.bio ? (
-            <Text
-              style={{
-                fontSize: 15,
-                color: textColor,
-                lineHeight: 22,
-              }}
-            >
-              {user.bio}
-            </Text>
+          )}
+          <Text style={{ fontSize: 21, fontWeight: '700', color: c.text, marginTop: 14, textAlign: 'center' }}>{displayName}</Text>
+          {roleLabel ? (
+            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 5, marginTop: 10, backgroundColor: c.accentSoft, paddingHorizontal: 12, paddingVertical: 5, borderRadius: 999 }}>
+              <BadgeCheck size={14} color="#C2410C" />
+              <Text style={{ fontSize: 12.5, fontWeight: '600', color: '#C2410C' }}>{roleLabel}</Text>
+            </View>
           ) : null}
-
-          {/* About — minimal profile fields (#210). Empty fields don't render. */}
-          {(user?.work || user?.school || user?.region) ? (
-            <View style={{ marginTop: 12, gap: 4 }}>
-              {user?.work ? (
-                <Text style={{ fontSize: 14, color: textColor }}>{user.work}</Text>
-              ) : null}
-              {user?.school ? (
-                <Text style={{ fontSize: 14, color: mutedTextColor }}>{user.school}</Text>
-              ) : null}
-              {user?.region ? (
-                <Text style={{ fontSize: 14, color: mutedTextColor }}>{user.region}</Text>
-              ) : null}
+          {homeCenter ? (
+            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 5, marginTop: 10 }}>
+              <MapPin size={13} color={c.textFaint} />
+              <Text style={{ fontSize: 12.5, color: c.textMuted, textAlign: 'center' }}>{homeCenter.name}</Text>
             </View>
           ) : null}
         </View>
 
-        {/* Profile Stats */}
-        <View
-          style={{
-            marginTop: 16,
-            marginHorizontal: 20,
-            borderWidth: 1,
-            borderColor,
-            borderRadius: 12,
-            flexDirection: 'row',
-            backgroundColor: cardBg,
-            overflow: 'hidden',
-          }}
-        >
-          {[
-            { label: 'Events', value: eventCount },
-            { label: 'Groups', value: groupCount },
-            { label: 'Posts', value: postCount },
-          ].map((stat, i, arr) => (
-            <View
-              key={stat.label}
-              accessible
-              accessibilityLabel={`${stat.value} ${stat.label}`}
-              style={{
-                flex: 1,
-                alignItems: 'center',
-                paddingVertical: 14,
-                paddingHorizontal: 4,
-                borderRightWidth: i < arr.length - 1 ? 1 : 0,
-                borderColor,
-              }}
-            >
-              <Text
-                style={{
-                  fontFamily: 'Inclusive Sans',
-                  fontSize: 20,
-                  color: textColor,
-                  fontWeight: '500',
-                }}
-              >
-                {stat.value}
-              </Text>
-              <Text
-                numberOfLines={1}
-                adjustsFontSizeToFit
-                style={{
-                  fontFamily: 'Inclusive Sans',
-                  fontSize: 11,
-                  color: mutedTextColor,
-                  marginTop: 2,
-                  letterSpacing: 0.4,
-                  textTransform: 'uppercase',
-                }}
-              >
-                {stat.label}
-              </Text>
-            </View>
-          ))}
-        </View>
+        {user?.bio ? (
+          <Text style={{ fontSize: 14, lineHeight: 21, color: c.textSecondary, marginTop: 16 }}>{user.bio}</Text>
+        ) : (
+          <Text style={{ fontSize: 14, lineHeight: 21, color: c.textFaint, marginTop: 16 }}>
+            No bio yet — tap Edit to introduce yourself.
+          </Text>
+        )}
 
-        {/* Edit / Share buttons */}
-        <View
-          style={{
-            paddingHorizontal: 20,
-            paddingTop: 16,
-            flexDirection: 'row',
-            gap: 8,
-          }}
-        >
-          <Pressable
-            onPress={() => {
-              track('profile_edit_opened', { source: 'profile', username: user?.username })
-              router.push('/edit-profile')
-            }}
-            accessibilityRole="button"
-            accessibilityLabel="Edit profile"
-            style={{
-              flex: 1,
-              paddingVertical: 9,
-              borderRadius: 10,
-              borderWidth: 1,
-              borderColor,
-              alignItems: 'center',
-              justifyContent: 'center',
-              backgroundColor: cardBg,
-            }}
-          >
-            <Text
-              style={{ fontSize: 14, color: textColor, fontWeight: '700' }}
-            >
-              Edit Profile
-            </Text>
+        <View style={{ flexDirection: 'row', gap: 10, marginTop: 18 }}>
+          <Pressable onPress={onEdit} style={{ flex: 1, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 7, paddingVertical: 11, borderRadius: 12, backgroundColor: c.text }}>
+            <Pencil size={15} color={c.textInverse} />
+            <Text style={{ fontSize: 14, fontWeight: '600', color: c.textInverse }}>Edit</Text>
           </Pressable>
-          <Pressable
-            onPress={handleShare}
-            accessibilityRole="button"
-            accessibilityLabel="Share profile"
-            style={{
-              flex: 1,
-              paddingVertical: 9,
-              borderRadius: 10,
-              borderWidth: 1,
-              borderColor,
-              alignItems: 'center',
-              justifyContent: 'center',
-              backgroundColor: cardBg,
-            }}
-          >
-            <Text
-              style={{ fontSize: 14, color: textColor, fontWeight: '700' }}
-            >
-              Share
-            </Text>
+          <Pressable onPress={onShare} style={{ flex: 1, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 7, paddingVertical: 11, borderRadius: 12, borderWidth: 1, borderColor: c.border, backgroundColor: c.card }}>
+            <Share2 size={15} color={c.text} />
+            <Text style={{ fontSize: 14, fontWeight: '600', color: c.text }}>Share</Text>
           </Pressable>
         </View>
 
-        {/* Interests */}
         {interests.length > 0 ? (
-          <View
-            style={{
-              paddingHorizontal: 20,
-              marginTop: 16,
-              flexDirection: 'row',
-              flexWrap: 'wrap',
-              gap: 8,
-            }}
-          >
-            {interests.map((interest) => (
-              <View
-                key={interest}
-                style={{
-                  paddingHorizontal: 14,
-                  paddingVertical: 7,
-                  borderRadius: 100,
-                  backgroundColor: chipBg,
-                }}
-              >
-                <Text style={{ fontFamily: 'Inclusive Sans', fontSize: 13, color: mutedTextColor }}>
-                  {interest}
-                </Text>
+          <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 7, marginTop: 18 }}>
+            {interests.map((it) => (
+              <View key={it} style={{ paddingHorizontal: 12, paddingVertical: 6, borderRadius: 999, backgroundColor: c.bg, borderWidth: 1, borderColor: c.border }}>
+                <Text style={{ fontSize: 12.5, color: c.textMuted }}>{it}</Text>
               </View>
             ))}
           </View>
         ) : null}
 
-        {/* Looking for — multi-select chips (#210). Same UX as Interests. */}
-        {lookingFor.length > 0 ? (
-          <View style={{ paddingHorizontal: 20, marginTop: 16 }}>
-            <Text
-              style={{
-                fontFamily: 'Inclusive Sans',
-                fontSize: 11,
-                color: mutedTextColor,
-                letterSpacing: 0.4,
-                textTransform: 'uppercase',
-                marginBottom: 8,
-              }}
-            >
-              Looking for
-            </Text>
-            <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8 }}>
-              {lookingFor.map((option) => (
-                <View
-                  key={option}
-                  style={{
-                    paddingHorizontal: 14,
-                    paddingVertical: 7,
-                    borderRadius: 100,
-                    backgroundColor: chipBg,
-                  }}
-                >
-                  <Text style={{ fontFamily: 'Inclusive Sans', fontSize: 13, color: mutedTextColor }}>
-                    {option}
-                  </Text>
-                </View>
-              ))}
-            </View>
+        <Pressable
+          onPress={onInvite}
+          style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginTop: 18, paddingTop: 16, borderTopWidth: 1, borderTopColor: c.border }}
+        >
+          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+            <UserPlus size={16} color={c.textSecondary} />
+            <Text style={{ fontSize: 14, color: c.textSecondary }}>Invite Friends</Text>
           </View>
-        ) : null}
+          <ChevronRight size={18} color={c.iconMuted} />
+        </Pressable>
+      </View>
 
-        {/* Communities */}
-        <View style={{ paddingHorizontal: 20, marginTop: 24 }}>
-          <Section title="COMMUNITIES" titleColor={mutedTextColor}>
-            <View
-              style={{
-                marginTop: 16,
-                borderWidth: 1,
-                borderColor,
-                borderRadius: 12,
-                backgroundColor: cardBg,
-                overflow: 'hidden',
-              }}
-            >
-              {userGroups.length > 0 ? (
-                userGroups.map((group) => (
-                  <View
-                    key={group.centerID}
-                    style={{
-                      paddingVertical: 14,
-                      paddingHorizontal: 20,
-                      backgroundColor: cardBg,
-                      flexDirection: 'row',
-                      alignItems: 'center',
-                      gap: 12,
-                    }}
-                  >
-                    <View
-                      style={{
-                        width: 32,
-                        height: 32,
-                        borderRadius: 6,
-                        backgroundColor: '#C2410C20',
-                        alignItems: 'center',
-                        justifyContent: 'center',
-                      }}
-                    >
-                      <Building2 size={16} color="#C2410C" />
-                    </View>
-                    <View style={{ flex: 1 }}>
-                      <Text
-                        style={{ fontFamily: 'Inclusive Sans', fontSize: 15, color: textColor }}
-                      >
-                        {group.name}
-                      </Text>
-                      <Text
-                        style={{
-                          fontFamily: 'Inclusive Sans',
-                          fontSize: 13,
-                          color: mutedTextColor,
-                        }}
-                      >
-                        My center • {group.memberCount ?? 0} members
-                      </Text>
-                    </View>
-                  </View>
-                ))
-              ) : (
-                <View
-                  style={{ paddingVertical: 14, paddingHorizontal: 20, backgroundColor: cardBg }}
-                >
-                  <Text
-                    style={{ fontFamily: 'Inclusive Sans', fontSize: 15, color: mutedTextColor }}
-                  >
-                    No center selected
-                  </Text>
+      {/* Stats */}
+      <View style={{ flexDirection: 'row', gap: 12, marginTop: 18 }}>
+        <StatCard icon={<Megaphone size={16} color="#C2410C" />} value={createdCount} label="Posts" />
+        <StatCard icon={<CalendarDays size={16} color="#C2410C" />} value={events.length} label="Events" />
+        <StatCard icon={<Building2 size={16} color="#C2410C" />} value={groups.length} label="Centers" />
+      </View>
+
+      {/* Upcoming events */}
+      <SectionLabel>Upcoming events</SectionLabel>
+      {upcoming.length > 0 ? (
+        <View style={[card, { overflow: 'hidden' }]}>
+          {upcoming.map((e, i) => {
+            const { m, d } = datePill(e.date)
+            const centerName = allCenters.find((cc) => cc.centerID === e.centerID)?.name
+            return (
+              <Pressable
+                key={e.eventID}
+                onPress={() => { track('event_list_item_pressed', { eventId: e.eventID, source: 'profile' }); router.push(`/events/${e.eventID}`) }}
+                style={{ flexDirection: 'row', gap: 13, alignItems: 'center', padding: 16, borderBottomWidth: i < upcoming.length - 1 ? 1 : 0, borderBottomColor: c.border }}
+              >
+                <View style={{ width: 46, height: 52, borderRadius: 12, backgroundColor: c.accentSoft, alignItems: 'center', justifyContent: 'center' }}>
+                  <Text style={{ fontSize: 10, fontWeight: '700', color: '#C2410C', letterSpacing: 0.5 }}>{m}</Text>
+                  <Text style={{ fontSize: 18, fontWeight: '700', color: c.text }}>{d}</Text>
                 </View>
-              )}
-            </View>
-          </Section>
+                <View style={{ flex: 1, minWidth: 0 }}>
+                  <Text style={{ fontSize: 14.5, fontWeight: '600', color: c.text }} numberOfLines={1}>{e.title}</Text>
+                  <Text style={{ fontSize: 12.5, color: c.textMuted, marginTop: 2 }} numberOfLines={1}>{centerName || extractCityState(e.address ?? undefined) || 'Event'}</Text>
+                </View>
+                <ChevronRight size={16} color={c.iconMuted} />
+              </Pressable>
+            )
+          })}
         </View>
+      ) : (
+        <View style={[card, { padding: 24, alignItems: 'center' }]}>
+          <View style={{ width: 44, height: 44, borderRadius: 22, backgroundColor: c.accentSoft, alignItems: 'center', justifyContent: 'center', marginBottom: 12 }}>
+            <CalendarDays size={20} color="#C2410C" />
+          </View>
+          <Text style={{ fontSize: 15, fontWeight: '600', color: c.text }}>No upcoming events yet</Text>
+          <Text style={{ fontSize: 13.5, lineHeight: 20, color: c.textMuted, textAlign: 'center', marginTop: 4 }}>
+            RSVP to satsangs, study groups, and events near you — they'll show up here.
+          </Text>
+          <Pressable onPress={onExplore} style={{ marginTop: 14, paddingHorizontal: 18, paddingVertical: 9, borderRadius: 999, backgroundColor: '#C2410C' }}>
+            <Text style={{ fontSize: 13.5, fontWeight: '600', color: '#fff' }}>Explore events</Text>
+          </Pressable>
+        </View>
+      )}
 
-        <View style={{ height: 40 }} />
-      </ScrollView>
-    </View>
+      {/* Your centers */}
+      <SectionLabel>Your centers</SectionLabel>
+      {groups.length > 0 ? (
+        <View style={[card, { overflow: 'hidden' }]}>
+          {groups.map((g, i) => (
+            <Pressable
+              key={g.centerID}
+              onPress={() => { track('center_list_item_pressed', { centerId: g.centerID, source: 'profile' }); router.push(`/center/${g.centerID}`) }}
+              style={{ flexDirection: 'row', gap: 13, alignItems: 'center', padding: 16, borderBottomWidth: i < groups.length - 1 ? 1 : 0, borderBottomColor: c.border }}
+            >
+              <View style={{ width: 40, height: 40, borderRadius: 11, backgroundColor: c.accentSoft, alignItems: 'center', justifyContent: 'center', overflow: 'hidden' }}>
+                {g.image ? <Image source={{ uri: g.image }} style={{ width: 40, height: 40 }} /> : <Building2 size={18} color="#C2410C" />}
+              </View>
+              <View style={{ flex: 1, minWidth: 0 }}>
+                <Text style={{ fontSize: 14.5, fontWeight: '600', color: c.text }} numberOfLines={1}>{g.name}</Text>
+                <Text style={{ fontSize: 12.5, color: c.textMuted, marginTop: 2 }} numberOfLines={1}>{extractCityState(g.address ?? undefined) || 'Center'}</Text>
+              </View>
+              <ChevronRight size={16} color={c.iconMuted} />
+            </Pressable>
+          ))}
+        </View>
+      ) : (
+        <View style={[card, { padding: 24, alignItems: 'center' }]}>
+          <View style={{ width: 44, height: 44, borderRadius: 22, backgroundColor: c.accentSoft, alignItems: 'center', justifyContent: 'center', marginBottom: 12 }}>
+            <Building2 size={20} color="#C2410C" />
+          </View>
+          <Text style={{ fontSize: 15, fontWeight: '600', color: c.text }}>No center yet</Text>
+          <Text style={{ fontSize: 13.5, lineHeight: 20, color: c.textMuted, textAlign: 'center', marginTop: 4 }}>
+            Find your Chinmaya center to connect with your local community.
+          </Text>
+          <Pressable onPress={onExplore} style={{ marginTop: 14, paddingHorizontal: 18, paddingVertical: 9, borderRadius: 999, backgroundColor: '#C2410C' }}>
+            <Text style={{ fontSize: 13.5, fontWeight: '600', color: '#fff' }}>Find a center</Text>
+          </Pressable>
+        </View>
+      )}
+    </ScrollView>
   )
 }

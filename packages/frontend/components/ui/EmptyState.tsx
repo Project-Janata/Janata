@@ -1,5 +1,5 @@
 import React from 'react'
-import { View, Text } from 'react-native'
+import { View, Text, Pressable } from 'react-native'
 import { Calendar, MapPin, Search } from 'lucide-react-native'
 import { useColors } from '../../hooks/useColors'
 
@@ -9,6 +9,8 @@ interface EmptyStateProps {
   variant?: EmptyStateVariant
   message?: string
   subtitle?: string
+  actionLabel?: string
+  onAction?: () => void
 }
 
 const config: Record<EmptyStateVariant, { icon: typeof Calendar; title: string; subtitle: string }> = {
@@ -18,19 +20,41 @@ const config: Record<EmptyStateVariant, { icon: typeof Calendar; title: string; 
   date:    { icon: Calendar, title: 'No events on this day', subtitle: 'Try selecting a different date' },
 }
 
-export function EmptyState({ variant = 'search', message, subtitle }: EmptyStateProps) {
+export function EmptyState({ variant = 'search', message, subtitle, actionLabel, onAction }: EmptyStateProps) {
   const c = useColors()
   const { icon: Icon, title, subtitle: defaultSubtitle } = config[variant]
 
   return (
-    <View style={{ paddingVertical: 36, alignItems: 'center', paddingHorizontal: 24 }}>
-      <Icon size={36} color={c.textFaint} />
-      <Text style={{ marginTop: 14, fontFamily: 'Inclusive Sans', fontSize: 15, color: c.textMuted, textAlign: 'center' }}>
+    <View style={{ paddingVertical: 40, alignItems: 'center', paddingHorizontal: 24 }}>
+      {/* Soft accent disc — matches the polished empty/callout treatment used on
+          the verification, feed, and home cards for a consistent language. */}
+      <View
+        style={{
+          width: 56,
+          height: 56,
+          borderRadius: 18,
+          backgroundColor: c.accentSoft,
+          alignItems: 'center',
+          justifyContent: 'center',
+        }}
+      >
+        <Icon size={26} color={c.accent} />
+      </View>
+      <Text style={{ marginTop: 16, fontFamily: 'Inclusive Sans', fontSize: 16, color: c.text, textAlign: 'center' }}>
         {message || title}
       </Text>
-      <Text style={{ marginTop: 6, fontSize: 13, lineHeight: 18, color: c.textFaint, textAlign: 'center' }}>
+      <Text style={{ marginTop: 6, fontSize: 13.5, lineHeight: 19, color: c.textMuted, textAlign: 'center', maxWidth: 280 }}>
         {subtitle || defaultSubtitle}
       </Text>
+      {actionLabel && onAction ? (
+        <Pressable
+          onPress={onAction}
+          accessibilityRole="button"
+          style={{ marginTop: 16, paddingVertical: 9, paddingHorizontal: 16, borderRadius: 999, backgroundColor: c.accent }}
+        >
+          <Text style={{ fontSize: 13.5, fontWeight: '600', color: '#FFFFFF' }}>{actionLabel}</Text>
+        </Pressable>
+      ) : null}
     </View>
   )
 }

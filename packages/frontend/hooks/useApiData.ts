@@ -441,6 +441,7 @@ export interface CenterDisplay {
   phone: string
   upcomingEvents: number
   pointOfContact: string
+  description?: string | null
   acharya: string
   latitude?: number
   longitude?: number
@@ -488,6 +489,7 @@ export function useCenterDetail(centerId: string) {
             phone: apiCenter.phone || '',
             upcomingEvents: apiEvents.length,
             pointOfContact: apiCenter.pointOfContact || '',
+            description: apiCenter.description ?? null,
             acharya: apiCenter.acharya || '',
             latitude: apiCenter.latitude,
             longitude: apiCenter.longitude,
@@ -793,7 +795,11 @@ export function useDiscoverData(
     refresh()
   }, [refresh])
 
-  const items = useMemo<DiscoverItem[]>(() => {
+  // Single source of truth for "what passes the active filters" — both the
+  // list (`items`) and the map (`filteredPoints`) derive from these, so the
+  // two can never drift out of sync (searching/Going/interests/past-events
+  // used to narrow the list while the map kept showing every pin).
+  const { filteredEventList, filteredCenterList } = useMemo(() => {
     const query = searchQuery.toLowerCase().trim()
     const todayStr = new Date().toISOString().split('T')[0]
 
@@ -803,7 +809,7 @@ export function useDiscoverData(
       : allEvents.filter((e) => !e.date || e.date >= todayStr)
 
     // Filter events by user interests if set
-    const filteredEvents = userInterests && userInterests.length > 0
+    const interestEvents = userInterests && userInterests.length > 0
       ? visibleEvents.filter((e) => {
           if (e.category == null) return true
           const interestName = CATEGORY_TO_INTEREST[e.category]
@@ -811,66 +817,57 @@ export function useDiscoverData(
         })
       : visibleEvents
 
-    let result: DiscoverItem[] = []
+    // Going-only toggle
+    const goingEvents = showGoingOnly
+      ? interestEvents.filter((e) => e.isRegistered)
+      : interestEvents
 
-    if (filter === 'Centers') {
-      result = groupCenterItems(allCenters, userCenterID)
-    } else {
-      const eventsToShow = showGoingOnly
-        ? filteredEvents.filter((e) => e.isRegistered)
-        : filteredEvents
-      const sortByDate = (a: EventDisplay, b: EventDisplay) =>
-        a.date.localeCompare(b.date)
-      const registered = eventsToShow.filter((e) => e.isRegistered).sort(sortByDate)
-      const unregistered = eventsToShow.filter((e) => !e.isRegistered).sort(sortByDate)
-
-      result = [
-        ...registered.map((e) => ({ type: 'event' as const, data: e })),
-        ...unregistered.map((e) => ({ type: 'event' as const, data: e })),
-      ]
-    }
-
-    // Apply search query
-    if (query) {
-      if (filter === 'Centers') {
-        const matchingCenters = allCenters.filter(
+    // Search query (events: title/location, centers: name/address)
+    const events = query
+      ? goingEvents.filter(
+          (e) =>
+            e.title.toLowerCase().includes(query) ||
+            e.location.toLowerCase().includes(query)
+        )
+      : goingEvents
+    const centers = query
+      ? allCenters.filter(
           (c) =>
             c.name.toLowerCase().includes(query) ||
             (c.address?.toLowerCase().includes(query) ?? false)
         )
-        result = groupCenterItems(matchingCenters, userCenterID)
-      } else {
-        result = result.filter((item) => {
-          if (item.type === 'event') {
-            return (
-              item.data.title.toLowerCase().includes(query) ||
-              item.data.location.toLowerCase().includes(query)
-            )
-          }
-          if (item.type === 'center') {
-            return (
-              item.data.name.toLowerCase().includes(query) ||
-              (item.data.address?.toLowerCase().includes(query) ?? false)
-            )
-          }
-          return false
-        })
-      }
+      : allCenters
+
+    return { filteredEventList: events, filteredCenterList: centers }
+  }, [allEvents, allCenters, searchQuery, showPastEvents, showGoingOnly, userInterests])
+
+  const items = useMemo<DiscoverItem[]>(() => {
+    if (filter === 'Centers') {
+      return groupCenterItems(filteredCenterList, userCenterID)
     }
+    const sortByDate = (a: EventDisplay, b: EventDisplay) =>
+      a.date.localeCompare(b.date)
+    const registered = filteredEventList.filter((e) => e.isRegistered).sort(sortByDate)
+    const unregistered = filteredEventList.filter((e) => !e.isRegistered).sort(sortByDate)
+    return [
+      ...registered.map((e) => ({ type: 'event' as const, data: e })),
+      ...unregistered.map((e) => ({ type: 'event' as const, data: e })),
+    ]
+  }, [filter, filteredEventList, filteredCenterList, userCenterID])
 
-    return result
-  }, [allEvents, allCenters, filter, searchQuery, showPastEvents, showGoingOnly, userInterests, userCenterID])
-
-  // Map points from current data
+  // Map points — derived from the same filtered sets as the list above.
   const filteredPoints = useMemo<MapPoint[]>(() => {
-    const centerPoints: MapPoint[] = allCenters.map((c) => ({
+    const centerPoints: MapPoint[] = filteredCenterList.map((c) => ({
       id: c.id,
       type: 'center' as const,
       name: c.name,
       latitude: c.latitude,
       longitude: c.longitude,
     }))
-    const eventPoints: MapPoint[] = allEvents
+    if (filter === 'Centers') {
+      return centerPoints
+    }
+    const eventPoints: MapPoint[] = filteredEventList
       .filter((e) => e.latitude != null && e.longitude != null)
       .map((e) => ({
         id: e.id,
@@ -879,14 +876,8 @@ export function useDiscoverData(
         latitude: e.latitude!,
         longitude: e.longitude!,
       }))
-
-    const allPoints = [...centerPoints, ...eventPoints]
-
-    if (filter === 'Centers') {
-      return allPoints.filter((p) => p.type === 'center')
-    }
-    return allPoints
-  }, [allCenters, allEvents, filter])
+    return [...centerPoints, ...eventPoints]
+  }, [filteredCenterList, filteredEventList, filter])
 
   const updateEventStatus = useCallback(
     (

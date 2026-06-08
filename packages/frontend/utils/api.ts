@@ -16,6 +16,7 @@ export interface CenterData {
   image: string | null
   acharya: string | null
   pointOfContact: string | null
+  description?: string | null
   memberCount: number
   isVerified: boolean
   createdAt?: string
@@ -82,6 +83,7 @@ export interface MapPoint {
 }
 
 export type BoardType = 'center' | 'event'
+export type PostVisibility = 'board' | 'public_signed_in' | 'public_open'
 
 export interface BoardData {
   id: string
@@ -92,7 +94,8 @@ export interface BoardData {
 
 export interface BoardPostData {
   id: string
-  boardId: string
+  boardId: string | null
+  visibility: PostVisibility
   body: string
   imageUrl: string | null
   createdAt: string
@@ -539,6 +542,46 @@ export async function createBoardPost(
   }
   const data = await response.json()
   return data.post
+}
+
+export async function createPublicPost(
+  body: string,
+  imageUrl?: string | null
+): Promise<BoardPostData> {
+  const response = await authFetch('/feed/public', {
+    method: 'POST',
+    body: JSON.stringify({ body, imageUrl: imageUrl ?? null }),
+  })
+  if (!response.ok) {
+    const err = await response.json().catch(() => ({ message: 'Failed to create public post' }))
+    throw new Error(err.message || 'Failed to create public post')
+  }
+  const data = await response.json()
+  return data.post
+}
+
+// Upload an image for a board post (#283) and return its hosted URL. Pass the
+// URL to createBoardPost as `imageUrl`. Multipart, so it does not go through the
+// JSON apiFetch wrapper.
+export async function uploadBoardImage(
+  file: File | Blob | { uri: string; name: string; type: string }
+): Promise<string> {
+  const token = await getStoredToken()
+  const form = new FormData()
+  // Web passes a File/Blob; native passes a { uri, name, type } descriptor,
+  // which React Native's FormData accepts directly.
+  form.append('file', file as any)
+  const response = await fetch(`${API_BASE_URL}/board/uploadImage`, {
+    method: 'POST',
+    headers: token ? { Authorization: `Bearer ${token}` } : undefined,
+    body: form,
+  })
+  if (!response.ok) {
+    const err = await response.json().catch(() => ({ message: 'Upload failed' }))
+    throw new Error(err.message || 'Upload failed')
+  }
+  const data = await response.json()
+  return data.imageUrl as string
 }
 
 export async function toggleBoardPostReaction(
@@ -1026,7 +1069,8 @@ export async function reportBoardPost(postId: string, reason?: string): Promise<
 
 export interface ModerationQueuePost {
   id: string
-  boardId: string
+  boardId: string | null
+  visibility?: PostVisibility
   body: string
   imageUrl: string | null
   createdAt: string

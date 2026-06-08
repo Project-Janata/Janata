@@ -14,6 +14,7 @@ import {
 } from '../../utils/api'
 import { useDetailColors } from '../../hooks/useDetailColors'
 import { useTheme } from '../contexts'
+import { useAnalytics } from '../../utils/analytics'
 
 const NOTIFICATION_TYPE_NAMES: Record<number, string> = {
   1: 'Event Reminder',
@@ -28,6 +29,7 @@ const NOTIFICATION_TYPE_NAMES: Record<number, string> = {
 export default function NotificationsTab() {
   const colors = useDetailColors()
   const { isDark } = useTheme()
+  const { track } = useAnalytics()
   const [notifications, setNotifications] = useState<AdminNotification[]>([])
   const [stats, setStats] = useState<AdminNotificationStats | null>(null)
   const [total, setTotal] = useState(0)
@@ -79,12 +81,13 @@ export default function NotificationsTab() {
     if (!deleteTarget) return
     try {
       await adminDeleteNotification(deleteTarget.id)
+      track('admin_notification_deleted', { notificationId: deleteTarget.id, source: 'admin' })
       setDeleteTarget(null)
       setSelectedId(null)
       loadNotifications()
       loadStats()
     } catch (err) {
-      console.error('Failed to delete notification:', err)
+      if (__DEV__) console.error('Failed to delete notification:', err)
     }
   }
 
@@ -100,6 +103,7 @@ export default function NotificationsTab() {
         broadcast: sendBroadcast,
         userId: sendBroadcast ? undefined : sendUserId.trim() || undefined,
       })
+      track('admin_notification_sent', { source: 'admin' })
       setSendResult(result.message)
       setSendTitle('')
       setSendMessage('')

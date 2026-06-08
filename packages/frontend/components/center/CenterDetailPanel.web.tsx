@@ -1,12 +1,17 @@
-import React, { useMemo } from 'react'
+import React, { useMemo, useState } from 'react'
 import { View, Text, Image, ScrollView, Pressable, Linking } from 'react-native'
 import { MapPin, Globe, Phone, User, ChevronLeft, Navigation, BadgeCheck, Users } from 'lucide-react-native'
 import CopyLinkButton from '../ui/CopyLinkButton'
 import { DetailSection } from '../ui'
+import { CenterAbout } from './CenterAbout'
 import { useBoard, type CenterDisplay } from '../../hooks/useApiData'
 import { createBoardPost, type EventDisplay } from '../../utils/api'
 import { useDetailColors } from '../../hooks/useDetailColors'
+import { useColors } from '../../hooks/useColors'
 import { ThreadPanel, boardPostToMessage } from '../boards'
+import type { BoardMessage } from '../boards'
+import { PostThread, type FeedPost } from '../feed'
+import { buildFeedPostFromMessage } from '../feed/feedData'
 import { useUser } from '../contexts'
 
 // ── Props ────────────────────────────────────────────────────────────────
@@ -38,7 +43,9 @@ export default function CenterDetailPanel({
   onEventPress,
 }: CenterDetailPanelProps) {
   const colors = useDetailColors()
+  const appColors = useColors()
   const { user } = useUser()
+  const [threadDetailPost, setThreadDetailPost] = useState<FeedPost | null>(null)
 
   const handleAddressPress = () => {
     const query = encodeURIComponent(center.address)
@@ -62,12 +69,68 @@ export default function CenterDetailPanel({
     .replace(/\/$/, '')
   const canPostToThread =
     !!user && (user.centerID === center.id || (user.verificationLevel ?? 0) >= 107)
+  const canEditCenter = !!user && (user.verificationLevel ?? 0) >= 107
+  // Only render the About section when there's something to show (description or
+  // point of contact) or the viewer can add it — otherwise CenterAbout returns
+  // null and the section header is left orphaned above Details.
+  const showAbout =
+    canEditCenter || !!center.description?.trim() || !!center.pointOfContact?.trim()
   const { posts: boardPosts, refetch: refetchBoard } = useBoard('center', center.id, canPostToThread)
   const boardMessages = useMemo(() => boardPosts.map(boardPostToMessage), [boardPosts])
 
   const handleCreateThreadPost = async (body: string) => {
     await createBoardPost('center', center.id, body)
     await refetchBoard()
+  }
+
+  const openThreadPost = (message: BoardMessage) => {
+    setThreadDetailPost(
+      buildFeedPostFromMessage(message, {
+        groupId: `center-${center.id}`,
+        kind: 'center',
+        parentId: center.id,
+        title: center.name,
+        subtitle: center.address || 'Center board',
+      })
+    )
+  }
+
+  if (threadDetailPost) {
+    return (
+      <View
+        style={{
+          maxWidth: 440,
+          width: '100%',
+          height: '100%',
+          backgroundColor: appColors.bg,
+          borderLeftWidth: 1,
+          borderLeftColor: appColors.border,
+        }}
+      >
+        <View style={{ paddingTop: 12 }}>
+          <Pressable
+            onPress={() => setThreadDetailPost(null)}
+            accessibilityRole="button"
+            accessibilityLabel="Back to board"
+            style={{ flexDirection: 'row', alignItems: 'center', gap: 6, paddingHorizontal: 16, paddingVertical: 10 }}
+          >
+            <ChevronLeft size={20} color={appColors.accent} />
+            <Text style={{ fontSize: 14, color: appColors.accent }}>Back to board</Text>
+          </Pressable>
+        </View>
+        <View style={{ flex: 1 }}>
+          <PostThread
+            post={threadDetailPost}
+            colors={appColors}
+            onPostChanged={refetchBoard}
+            onPostDeleted={() => {
+              setThreadDetailPost(null)
+              refetchBoard()
+            }}
+          />
+        </View>
+      </View>
+    )
   }
 
   return (
@@ -173,22 +236,20 @@ export default function CenterDetailPanel({
           resizeMode="cover"
         />
 
-        {/* ── DETAILS ─────────────────────────────────────────────── */}
-        <DetailSection title="Details" first>
-          {/* Point of contact subtitle */}
-          {center.pointOfContact ? (
-            <Text
-              style={{
-                fontFamily: 'Inclusive Sans',
-                fontSize: 13,
-                color: colors.textSecondary,
-                marginBottom: 16,
-              }}
-            >
-              Point of Contact: {center.pointOfContact}
-            </Text>
-          ) : null}
+        {/* ── ABOUT (editable by admins — #285) ───────────────────── */}
+        {showAbout ? (
+          <DetailSection title="About" first>
+            <CenterAbout
+              centerId={center.id}
+              description={center.description}
+              pointOfContact={center.pointOfContact}
+              canEdit={canEditCenter}
+            />
+          </DetailSection>
+        ) : null}
 
+        {/* ── DETAILS ─────────────────────────────────────────────── */}
+        <DetailSection title="Details" first={!showAbout}>
           {/* ── Meta rows ────────────────────────────────────────── */}
           <View style={{ gap: 16 }}>
             {/* Address */}
@@ -349,92 +410,88 @@ export default function CenterDetailPanel({
         </DetailSection>
 
         {/* ── UPCOMING EVENTS ──────────────────────────────────────── */}
-        <DetailSection title="Upcoming Events" count={events.length} contentStyle={{ gap: 8 }}>
+        <DetailSection title="Upcoming Events" count={events.length} contentStyle={{ gap: 10 }}>
           {events.length > 0 ? (
-                <View style={{ gap: 8 }}>
-                  {events.map((event) => {
-                    const { month, day } = formatDateCallout(event.date)
-                    return (
-                      <Pressable
-                        key={event.id}
-                        onPress={() => onEventPress(event.id)}
+            <View style={{ gap: 10 }}>
+              {events.map((event) => {
+                const { month, day } = formatDateCallout(event.date)
+                return (
+                  <Pressable
+                    key={event.id}
+                    onPress={() => onEventPress(event.id)}
+                    style={{
+                      flexDirection: 'row',
+                      alignItems: 'center',
+                      backgroundColor: colors.cardBg,
+                      borderRadius: 10,
+                      paddingVertical: 10,
+                      paddingHorizontal: 12,
+                      gap: 12,
+                      minHeight: 44,
+                    }}
+                  >
+                    <View
+                      style={{
+                        width: 48,
+                        minHeight: 50,
+                        borderRadius: 10,
+                        backgroundColor: colors.iconBoxBg,
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        flexShrink: 0,
+                      }}
+                    >
+                      <Text
                         style={{
-                          flexDirection: 'row',
-                          alignItems: 'center',
-                          backgroundColor: colors.cardBg,
-                          borderRadius: 8,
-                          paddingVertical: 12,
-                          paddingHorizontal: 14,
-                          minHeight: 44,
+                          fontFamily: 'Inclusive Sans',
+                          fontSize: 11,
+                          color: '#E8862A',
+                          textTransform: 'uppercase',
+                          lineHeight: 14,
                         }}
                       >
-                        <View
-                          style={{
-                            width: 52,
-                            alignItems: 'center',
-                            justifyContent: 'center',
-                            flexShrink: 0,
-                          }}
-                        >
-                          <Text
-                            style={{
-                              fontFamily: 'Inclusive Sans',
-                              fontSize: 11,
-                              color: '#E8862A',
-                              textTransform: 'uppercase',
-                              lineHeight: 14,
-                            }}
-                          >
-                            {month}
-                          </Text>
-                          <Text
-                            style={{
-                              fontFamily: 'Inclusive Sans',
-                              fontSize: 22,
-                              color: colors.text,
-                              lineHeight: 28,
-                            }}
-                          >
-                            {day}
-                          </Text>
-                        </View>
-                        <View
-                          style={{
-                            width: 1,
-                            backgroundColor: colors.border,
-                            alignSelf: 'stretch',
-                            marginHorizontal: 12,
-                          }}
-                        />
-                        <View style={{ flex: 1 }}>
-                          <Text
-                            style={{
-                              fontFamily: 'Inclusive Sans',
-                              fontSize: 14,
-                              color: colors.text,
-                              lineHeight: 20,
-                            }}
-                            numberOfLines={2}
-                          >
-                            {event.title}
-                          </Text>
-                          <Text
-                            style={{
-                              fontFamily: 'Inclusive Sans',
-                              fontSize: 12,
-                              color: colors.textSecondary,
-                              lineHeight: 16,
-                              marginTop: 2,
-                            }}
-                          >
-                            {event.time} {event.attendees > 0 ? `\u00B7 ${event.attendees} attending` : ''}
-                          </Text>
-                        </View>
-                      </Pressable>
-                    )
-                  })}
-                </View>
-              ) : (
+                        {month}
+                      </Text>
+                      <Text
+                        style={{
+                          fontFamily: 'Inclusive Sans',
+                          fontSize: 22,
+                          color: colors.text,
+                          lineHeight: 28,
+                        }}
+                      >
+                        {day}
+                      </Text>
+                    </View>
+                    <View style={{ flex: 1 }}>
+                      <Text
+                        style={{
+                          fontFamily: 'Inclusive Sans',
+                          fontSize: 14,
+                          color: colors.text,
+                          lineHeight: 20,
+                        }}
+                        numberOfLines={2}
+                      >
+                        {event.title}
+                      </Text>
+                      <Text
+                        style={{
+                          fontFamily: 'Inclusive Sans',
+                          fontSize: 12,
+                          color: colors.textSecondary,
+                          lineHeight: 16,
+                          marginTop: 2,
+                        }}
+                      >
+                        {event.time} {event.attendees > 0 ? `\u00B7 ${event.attendees} attending` : ''}
+                      </Text>
+                    </View>
+                  </Pressable>
+                )
+              })}
+            </View>
+          ) : (
                 <View style={{ alignItems: 'center', paddingVertical: 32 }}>
                   <Text style={{ fontFamily: 'Inclusive Sans', fontSize: 14, color: colors.textSecondary }}>
                     No upcoming events yet
@@ -453,6 +510,7 @@ export default function CenterDetailPanel({
             composerPlaceholder="Write to the board..."
             composerState={canPostToThread ? 'open' : 'locked'}
             onSubmitPost={handleCreateThreadPost}
+            onMessagePress={openThreadPost}
           />
         </DetailSection>
       </ScrollView>

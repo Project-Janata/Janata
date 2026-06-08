@@ -47,7 +47,7 @@ export function boardPostToMessage(post: BoardPostData): BoardMessage {
     },
     timestamp: formatTimestamp(post.createdAt),
     body: post.body,
-    attachmentLabel: post.imageUrl ? 'Image attachment' : undefined,
+    imageUrl: post.imageUrl ?? undefined,
     reactions: post.reactions,
     replyCount: post.replyCount,
     // #249 — surface the pinned state so ThreadPanel renders its "Pinned" pill

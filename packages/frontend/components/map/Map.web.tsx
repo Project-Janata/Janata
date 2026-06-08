@@ -43,7 +43,7 @@ export interface MapProps {
    * Programmatic fly-to (e.g. list selection). `key` must change each time you want a new animation,
    * including re-selecting the same place.
    */
-  flyTo?: { latitude: number; longitude: number; key: number } | null
+  flyTo?: { latitude: number; longitude: number; key: number; zoom?: number } | null
   /**
    * After the next fly-to settles, simulate a click on the matching marker so
    * the popover opens for THIS specific point. Necessary when several events
@@ -270,10 +270,10 @@ const MapComponent = memo<MapProps>(
       if (!isValidCoordinate(latitude, longitude)) return
       mapRef.current?.flyTo({
         center: [longitude, latitude],
-        zoom: 15,
+        zoom: flyTo.zoom ?? 15,
         duration: 1200,
       })
-    }, [flyTo?.key, flyTo?.latitude, flyTo?.longitude])
+    }, [flyTo?.key, flyTo?.latitude, flyTo?.longitude, flyTo?.zoom])
 
     // After fly-to settles, programmatically open the popover for the
     // requested point. Solves the "click event A in list, see event B's

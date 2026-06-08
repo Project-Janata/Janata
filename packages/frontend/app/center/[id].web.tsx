@@ -11,6 +11,7 @@ import { ThreadPanel, boardPostToMessage, type BoardMessage } from '../../compon
 import { PostThread, type FeedPost } from '../../components/feed'
 import { buildFeedPostFromMessage } from '../../components/feed/feedData'
 import { useUser } from '../../components/contexts'
+import { CenterAbout } from '../../components/center/CenterAbout'
 import { SeoHead } from '../../components/seo/SeoHead'
 import { buildCenterJsonLd } from '../../components/seo/jsonLd'
 import { useAnalytics } from '../../utils/analytics'
@@ -99,6 +100,7 @@ function MobileCenterDetail({ centerId }: { centerId: string }) {
   }, [loading, center?.id, center?.name])
   const canPostToThread =
     !!user && (user.centerID === center?.id || (user.verificationLevel ?? 0) >= 107)
+  const canEditCenter = !!user && (user.verificationLevel ?? 0) >= 107
   const { posts: boardPosts, refetch: refetchBoard } = useBoard('center', center?.id, canPostToThread)
   const boardMessages = useMemo(() => boardPosts.map(boardPostToMessage), [boardPosts])
 
@@ -106,6 +108,13 @@ function MobileCenterDetail({ centerId }: { centerId: string }) {
     if (!center?.id) return
     await createBoardPost('center', center.id, body)
     track('center_board_post_created', { centerId: center.id, source: 'web_detail' })
+    track('content_created', {
+      content_type: 'post',
+      surface: 'center_board_web',
+      board_kind: 'center',
+      parent_id: center.id,
+      character_count: body?.length ?? 0,
+    })
     await refetchBoard()
   }
 
@@ -268,16 +277,21 @@ function MobileCenterDetail({ centerId }: { centerId: string }) {
           <Image source={{ uri: center.image }} style={{ width: '100%', height: 200, marginBottom: 4 }} resizeMode="cover" />
         ) : null}
 
-        {/* DETAILS */}
-        <DetailSection title="Details" first>
-          <View style={{ gap: 16 }}>
-            {center.pointOfContact ? (
-              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10 }}>
-                <User size={18} color="#E8862A" />
-                <Text style={{ color: colors.text, fontSize: 15 }}>Contact: {center.pointOfContact}</Text>
-              </View>
-            ) : null}
+        {/* ABOUT (editable by admins — #285) */}
+        {(canEditCenter || !!center.description?.trim() || !!center.pointOfContact?.trim()) ? (
+          <DetailSection title="About" first>
+            <CenterAbout
+              centerId={center.id}
+              description={center.description}
+              pointOfContact={center.pointOfContact}
+              canEdit={canEditCenter}
+            />
+          </DetailSection>
+        ) : null}
 
+        {/* DETAILS */}
+        <DetailSection title="Details" first={!(canEditCenter || !!center.description?.trim() || !!center.pointOfContact?.trim())}>
+          <View style={{ gap: 16 }}>
             {center.address ? (
               <View style={{ flexDirection: 'row', alignItems: 'flex-start', gap: 10 }}>
                 <MapPin size={18} color="#E8862A" style={{ marginTop: 2 }} />

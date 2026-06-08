@@ -123,6 +123,28 @@ describe('GET /api/health', () => {
     expect(res.headers.get('X-Frame-Options')).toBe('DENY')
     expect(res.headers.get('Referrer-Policy')).toBe('strict-origin-when-cross-origin')
   })
+
+  it('only allows explicit credentialed CORS origins', async () => {
+    const allowed = await fetchApp('/api/health', {
+      headers: { Origin: 'https://main.project-janatha.pages.dev' },
+    })
+    expect(allowed.headers.get('Access-Control-Allow-Origin')).toBe('https://main.project-janatha.pages.dev')
+    expect(allowed.headers.get('Access-Control-Allow-Credentials')).toBe('true')
+
+    const v2Preview = await fetchApp('/api/health', {
+      headers: { Origin: 'https://v2preview.project-janatha.pages.dev' },
+    })
+    expect(v2Preview.headers.get('Access-Control-Allow-Origin')).toBe(
+      'https://v2preview.project-janatha.pages.dev'
+    )
+
+    const preview = await fetchApp('/api/health', {
+      headers: { Origin: 'https://random-preview.project-janatha.pages.dev' },
+    })
+    expect(preview.headers.get('Access-Control-Allow-Origin')).not.toBe(
+      'https://random-preview.project-janatha.pages.dev'
+    )
+  })
 })
 
 // ═══════════════════════════════════════════════════════════════════════
@@ -1607,6 +1629,58 @@ describe('GET /api/feed — aggregated cross-board feed', () => {
     const page1Ids = page1.posts.map((p: { id: string }) => p.id)
     const page2Ids = page2.posts.map((p: { id: string }) => p.id)
     expect(page1Ids.filter((id: string) => page2Ids.includes(id))).toEqual([])
+  })
+
+  it('includes public signed-in posts for any authenticated user', async () => {
+    const { res: createRes, body: created } = await jsonPost(
+      '/api/feed/public',
+      { body: 'public hello' },
+      authHeader(memberToken),
+    )
+    expect(createRes.status).toBe(201)
+    expect(created.post.boardId).toBeNull()
+    expect(created.post.visibility).toBe('public_signed_in')
+
+    const { body: memberFeed } = await fetchJSON(
+      '/api/feed',
+      { headers: authHeader(memberToken) },
+    )
+    expect(memberFeed.posts.map((p: { body: string }) => p.body)).toContain('public hello')
+
+    const { body: strangerFeed } = await fetchJSON(
+      '/api/feed',
+      { headers: authHeader(strangerToken) },
+    )
+    expect(strangerFeed.posts.map((p: { body: string }) => p.body)).toEqual(['public hello'])
+  })
+
+  it('allows replies on public posts and excludes those replies from the top-level feed', async () => {
+    const { body: created } = await jsonPost(
+      '/api/feed/public',
+      { body: 'public parent' },
+      authHeader(memberToken),
+    )
+
+    const { res: replyRes, body: replyBody } = await jsonPost(
+      `/api/boards/posts/${created.post.id}/replies`,
+      { body: 'public reply' },
+      authHeader(strangerToken),
+    )
+    expect(replyRes.status).toBe(201)
+    expect(replyBody.reply.boardId).toBeNull()
+    expect(replyBody.reply.visibility).toBe('public_signed_in')
+
+    const { body: replies } = await fetchJSON(
+      `/api/boards/posts/${created.post.id}/replies`,
+      { headers: authHeader(memberToken) },
+    )
+    expect(replies.replies.map((p: { body: string }) => p.body)).toEqual(['public reply'])
+
+    const { body: feed } = await fetchJSON(
+      '/api/feed',
+      { headers: authHeader(strangerToken) },
+    )
+    expect(feed.posts.map((p: { body: string }) => p.body)).toEqual(['public parent'])
   })
 
   it('returns 401 without authentication', async () => {
@@ -3166,5 +3240,111 @@ describe('moderation', () => {
       )
       expect(res.status).toBe(403)
     })
+  })
+})
+
+// ═══════════════════════════════════════════════════════════════════════
+// PUSH NOTIFICATIONS (#102)
+// ═══════════════════════════════════════════════════════════════════════
+
+describe('push token routes', () => {
+  it('rejects a missing/invalid token with 400', async () => {
+    const { token } = await registerAndLogin('pushuser', 'password123')
+    const { res } = await jsonPost('/api/push/register', { token: 'nope' }, authHeader(token))
+    expect(res.status).toBe(400)
+  })
+
+  it('registers a valid Expo token and stores it', async () => {
+    const { token, user } = await registerAndLogin('pushuser2', 'password123')
+    const { res, body } = await jsonPost(
+      '/api/push/register',
+      { token: 'ExponentPushToken[abc123]', platform: 'ios' },
+      authHeader(token),
+    )
+    expect(res.status).toBe(200)
+    expect(body.ok).toBe(true)
+
+    const row = await env.DB.prepare('SELECT * FROM push_tokens WHERE token = ?1')
+      .bind('ExponentPushToken[abc123]')
+      .first<{ user_id: string; platform: string }>()
+    expect(row?.platform).toBe('ios')
+    expect(row?.user_id).toBe(user.id)
+  })
+
+  it('requires auth', async () => {
+    const { res } = await jsonPost('/api/push/register', { token: 'ExponentPushToken[x]' })
+    expect(res.status).toBe(401)
+  })
+
+  it('unregisters a token', async () => {
+    const { token } = await registerAndLogin('pushuser3', 'password123')
+    await jsonPost(
+      '/api/push/register',
+      { token: 'ExponentPushToken[rm]' },
+      authHeader(token),
+    )
+    const { res } = await jsonPost(
+      '/api/push/unregister',
+      { token: 'ExponentPushToken[rm]' },
+      authHeader(token),
+    )
+    expect(res.status).toBe(200)
+    const row = await env.DB.prepare('SELECT * FROM push_tokens WHERE token = ?1')
+      .bind('ExponentPushToken[rm]')
+      .first()
+    expect(row).toBeNull()
+  })
+})
+
+describe('board post notification fan-out', () => {
+  let adminToken: string
+  let authorToken: string
+  let centerId: string
+
+  beforeEach(async () => {
+    adminToken = await createAdmin()
+    const author = await registerAndLogin('fanoutauthor', 'password123')
+    authorToken = author.token
+    await registerAndLogin('fanoutmember', 'password123')
+
+    const { body } = await jsonPost(
+      '/api/addCenter',
+      { centerName: 'Fanout Center', latitude: 37.0, longitude: -121.0 },
+      authHeader(adminToken),
+    )
+    centerId = body.id
+
+    // Both the author and the other member belong to this center.
+    await env.DB.prepare("UPDATE users SET center_id = ? WHERE username IN ('fanoutauthor','fanoutmember')")
+      .bind(centerId)
+      .run()
+  })
+
+  it('notifies co-members of a new center board post but not the author', async () => {
+    const { res } = await jsonPost(
+      `/api/boards/center/${centerId}/posts`,
+      { body: 'Satsang carpool this Saturday?' },
+      authHeader(authorToken),
+    )
+    expect(res.status).toBe(201)
+
+    const member = await env.DB.prepare("SELECT id FROM users WHERE username = 'fanoutmember'")
+      .first<{ id: string }>()
+    const author = await env.DB.prepare("SELECT id FROM users WHERE username = 'fanoutauthor'")
+      .first<{ id: string }>()
+
+    const memberNotifs = await env.DB.prepare(
+      'SELECT COUNT(*) AS n FROM notifications WHERE user_id = ?1 AND type_id = 8',
+    )
+      .bind(member!.id)
+      .first<{ n: number }>()
+    const authorNotifs = await env.DB.prepare(
+      'SELECT COUNT(*) AS n FROM notifications WHERE user_id = ?1',
+    )
+      .bind(author!.id)
+      .first<{ n: number }>()
+
+    expect(memberNotifs?.n).toBe(1)
+    expect(authorNotifs?.n).toBe(0)
   })
 })

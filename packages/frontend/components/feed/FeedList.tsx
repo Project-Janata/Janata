@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react'
 import { Pressable, Text, View } from 'react-native'
-import { Building2, CalendarDays, ChevronRight } from 'lucide-react-native'
+import { Building2, CalendarDays, ChevronRight, Globe2 } from 'lucide-react-native'
 import type { ThreadPanelColors } from '../boards'
 import type { AppColors } from '../../tokens'
 import type { FeedPost, GroupBoard } from './types'
@@ -106,7 +106,8 @@ function BoardEmptyRow({
   colors: AppColors
   onPress: () => void
 }) {
-  const Icon = group.kind === 'event' ? CalendarDays : Building2
+  const Icon = group.kind === 'public' ? Globe2 : group.kind === 'event' ? CalendarDays : Building2
+  const isAccent = group.kind !== 'center'
 
   return (
     <Pressable
@@ -127,14 +128,14 @@ function BoardEmptyRow({
           width: 38,
           height: 38,
           borderRadius: 12,
-          backgroundColor: group.kind === 'event' ? colors.accentSoft : colors.panel,
+          backgroundColor: isAccent ? colors.accentSoft : colors.panel,
           alignItems: 'center',
           justifyContent: 'center',
         }}
       >
         <Icon
           size={18}
-          color={group.kind === 'event' ? colors.accent : colors.textMuted}
+          color={isAccent ? colors.accent : colors.textMuted}
           strokeWidth={2.3}
         />
       </View>
@@ -146,7 +147,7 @@ function BoardEmptyRow({
           {group.eyebrow}
         </Text>
         <Text style={{ fontSize: 13, lineHeight: 18, color: colors.textMuted }} numberOfLines={2}>
-          Open to start the conversation
+          {group.kind === 'public' ? 'Share with signed-in members' : 'Open to start the conversation'}
         </Text>
       </View>
       <ChevronRight size={18} color={colors.textFaint} />

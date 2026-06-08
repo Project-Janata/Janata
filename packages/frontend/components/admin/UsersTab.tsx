@@ -14,6 +14,7 @@ import {
 import { useDetailColors } from '../../hooks/useDetailColors'
 import { useTheme } from '../contexts'
 import { Avatar } from '../ui'
+import { useAnalytics } from '../../utils/analytics'
 
 // ---------------------------------------------------------------------------
 // Role badge config
@@ -47,6 +48,7 @@ function formatJoinDate(iso?: string): string {
 export default function UsersTab() {
   const colors = useDetailColors()
   const { isDark } = useTheme()
+  const { track } = useAnalytics()
 
   const [search, setSearch] = useState('')
   const [users, setUsers] = useState<UserData[]>([])
@@ -65,7 +67,7 @@ export default function UsersTab() {
       setUsers(result.data)
       setTotal(result.total)
     } catch (err: any) {
-      console.error('Failed to load users:', err)
+      if (__DEV__) console.error('Failed to load users:', err)
       setError(err?.message || 'Failed to load users. Are you logged in?')
     } finally {
       setLoading(false)
@@ -162,6 +164,7 @@ export default function UsersTab() {
       const result = await adminVerifyUser(selectedUser.id, {
         isVerified: !selectedUser.isVerified,
       })
+      track('admin_user_verification_changed', { userId: selectedUser.id, source: 'admin' })
       // Update local state
       setUsers((prev) =>
         prev.map((u) =>
@@ -172,7 +175,7 @@ export default function UsersTab() {
         prev ? { ...prev, isVerified: result.isVerified } : null
       )
     } catch (err) {
-      console.error('Failed to toggle verification:', err)
+      if (__DEV__) console.error('Failed to toggle verification:', err)
     }
   }
 
@@ -181,10 +184,11 @@ export default function UsersTab() {
     if (!selectedUser) return
     try {
       await adminDeleteUser(selectedUser.id)
+      track('admin_user_deleted', { userId: selectedUser.id, source: 'admin' })
       setSelectedUser(null)
       loadUsers(search)
     } catch (err) {
-      console.error('Failed to delete user:', err)
+      if (__DEV__) console.error('Failed to delete user:', err)
     }
   }
 

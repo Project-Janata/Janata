@@ -19,7 +19,7 @@ import {
 } from '@react-navigation/native'
 import { useFonts } from 'expo-font'
 import { SplashScreen, Stack, usePathname, useRouter } from 'expo-router'
-import { PostHogProvider } from 'posthog-react-native'
+import { PostHogProvider, PostHogSurveyProvider } from 'posthog-react-native'
 import {
   UserProvider,
   useUser,
@@ -28,7 +28,9 @@ import {
 } from '../components/contexts'
 import { ErrorBoundaryWithAnalytics } from '../components/ui/ErrorBoundary'
 import WebBottomNav from '../components/ui/WebBottomNav'
-import { AnalyticsScreenTracker } from '../utils/analytics'
+import { AnalyticsScreenTracker, AnalyticsBootstrap } from '../utils/analytics'
+import { supportsNativeDriver } from '../utils/animation'
+import { usePushNotifications } from '../hooks/usePushNotifications'
 import { getIntroShown } from '../utils/introStorage'
 import '../globals.css'
 
@@ -40,7 +42,7 @@ SplashScreen.preventAutoHideAsync()
 
 const posthogHost = process.env.EXPO_PUBLIC_POSTHOG_HOST || 'https://us.i.posthog.com'
 const posthogKey = process.env.EXPO_PUBLIC_POSTHOG_KEY
-const posthogEnabled = posthogKey && posthogKey.trim().length > 0
+const posthogEnabled = !!(posthogKey && posthogKey.trim().length > 0)
 
 export default function RootLayout() {
   const [fontsLoaded] = useFonts({
@@ -96,8 +98,33 @@ export default function RootLayout() {
       options={{
         host: posthogHost,
         disabled: !posthogEnabled,
+        disableRemoteConfig: !posthogEnabled,
+        disableSurveys: !posthogEnabled,
+        preloadFeatureFlags: posthogEnabled,
         // Capture app opened / backgrounded / became active lifecycle events.
         captureAppLifecycleEvents: posthogEnabled,
+        // Mobile session replay (iOS/Android only; no-op on web). Also requires
+        // "Record user sessions" enabled in PostHog project settings, where the
+        // sample rate is set so we stay inside the free replay quota without a
+        // client release. Text inputs are masked; images are left visible since
+        // feed/profile imagery is the point of a session we'd want to watch.
+        enableSessionReplay: posthogEnabled && Platform.OS !== 'web',
+        sessionReplayConfig: {
+          maskAllTextInputs: true,
+          maskAllImages: false,
+          captureLog: true,
+          captureNetworkTelemetry: true,
+        },
+        // Auto-capture crashes the React ErrorBoundary can't see (uncaught JS
+        // errors, unhandled promise rejections). Console capture stays off to
+        // avoid event-volume noise.
+        errorTracking: {
+          autocapture: {
+            uncaughtExceptions: true,
+            unhandledRejections: true,
+            console: false,
+          },
+        },
       }}
       // Screens are tracked manually via <AnalyticsScreenTracker /> below, and
       // touch autocapture is too noisy — disable both.
@@ -107,10 +134,17 @@ export default function RootLayout() {
       }}
     >
       {posthogEnabled ? <AnalyticsScreenTracker /> : null}
+      {posthogEnabled ? <AnalyticsBootstrap /> : null}
       <ErrorBoundaryWithAnalytics>
         <CustomThemeProvider>
           <UserProvider>
-            <RootLayoutNav onAuthReady={handleAuthReady} />
+            {posthogEnabled ? (
+              <PostHogSurveyProvider>
+                <RootLayoutNav onAuthReady={handleAuthReady} />
+              </PostHogSurveyProvider>
+            ) : (
+              <RootLayoutNav onAuthReady={handleAuthReady} />
+            )}
           </UserProvider>
         </CustomThemeProvider>
       </ErrorBoundaryWithAnalytics>
@@ -124,6 +158,8 @@ function RootLayoutNav({ onAuthReady }: { onAuthReady: () => void }) {
   const pathname = usePathname()
   const router = useRouter()
   const isAuthenticated = !!user
+  // Register for push + route notification taps once authenticated (#102).
+  usePushNotifications()
   const { width } = useWindowDimensions()
   // First-timer explainer gate. null = not yet resolved (don't redirect yet).
   const [introShown, setIntroShown] = useState<boolean | null>(null)
@@ -231,8 +267,8 @@ function RootLayoutNav({ onAuthReady }: { onAuthReady: () => void }) {
     if (prevIsDark.current !== isDark) {
       prevIsDark.current = isDark
       Animated.sequence([
-        Animated.timing(fadeAnim, { toValue: 0.85, duration: 80, useNativeDriver: true }),
-        Animated.timing(fadeAnim, { toValue: 1, duration: 150, useNativeDriver: true }),
+        Animated.timing(fadeAnim, { toValue: 0.85, duration: 80, useNativeDriver: supportsNativeDriver }),
+        Animated.timing(fadeAnim, { toValue: 1, duration: 150, useNativeDriver: supportsNativeDriver }),
       ]).start()
     }
   }, [isDark, fadeAnim])

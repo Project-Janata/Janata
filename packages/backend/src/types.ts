@@ -74,6 +74,7 @@ export interface CenterRow {
   latitude: number
   longitude: number
   address: string | null
+  description: string | null
   website: string | null
   phone: string | null
   image: string | null
@@ -150,6 +151,7 @@ export interface InviteCodeRow {
 }
 
 export type BoardType = 'center' | 'event'
+export type PostVisibility = 'board' | 'public_signed_in' | 'public_open'
 
 export interface BoardRow {
   id: string
@@ -160,10 +162,11 @@ export interface BoardRow {
 
 export interface BoardPostRow {
   id: string
-  board_id: string
+  board_id: string | null
   author_id: string
   body: string
   image_url: string | null
+  visibility: PostVisibility
   created_at: string
   updated_at: string
   deleted_at: string | null
@@ -265,7 +268,8 @@ export interface BoardApiResponse {
 
 export interface BoardPostApiResponse {
   id: string
-  boardId: string
+  boardId: string | null
+  visibility: PostVisibility
   body: string
   imageUrl: string | null
   createdAt: string

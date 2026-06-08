@@ -1,5 +1,5 @@
 import React, { useState, useCallback, useEffect } from 'react'
-import { useRouter } from 'expo-router'
+import { useLocalSearchParams, useRouter } from 'expo-router'
 import { useUser } from '../components/contexts'
 import { useAnalytics } from '../utils/analytics'
 import { validateEmail, validatePassword } from '../utils'
@@ -53,18 +53,17 @@ export default function AuthScreen() {
   const { checkUserExists, login, signup, loading } = useUser()
   const { track } = useAnalytics()
 
-  // Read mode, returnTo, inviteCode, and email from URL params
-  const urlParams = typeof window !== 'undefined' ? new URLSearchParams(window.location.search) : null
-  const initialMode = urlParams?.get('mode')
-  const returnTo = urlParams?.get('returnTo')
-  const urlInviteCode = urlParams?.get('inviteCode')
-  const urlEmail = urlParams?.get('email') ?? ''
+  // Read mode, returnTo, inviteCode, and email from URL params.
+  // useLocalSearchParams stays reactive during Expo Router SPA navigation.
+  const params = useLocalSearchParams<{ mode?: string; returnTo?: string; inviteCode?: string; email?: string }>()
+  const initialMode = typeof params.mode === 'string' ? params.mode : ''
+  const returnTo = typeof params.returnTo === 'string' ? params.returnTo : null
+  const urlInviteCode = typeof params.inviteCode === 'string' ? params.inviteCode : ''
+  const urlEmail = typeof params.email === 'string' ? params.email : ''
 
-  // When inviteCode is provided via URL (e.g. from public explore flow),
-  // skip the invite-code step and go straight to signup.
-  // mode=login is meaningful only when we also have an email — otherwise we'd
-  // render a login screen with a disabled empty email field that the user
-  // can't edit, which is a dead-end. Fall back to the initial step instead.
+  // When inviteCode is provided via URL (e.g. from public explore flow), skip
+  // the invite-code step and go straight to signup. mode=login still needs a
+  // prefilled email, while signup without an email keeps the email field editable.
   const [authStep, setAuthStep] = useState<AuthStep>(
     initialMode === 'login' && urlEmail ? 'login'
       : initialMode === 'signup' && urlInviteCode ? 'signup'
@@ -76,6 +75,7 @@ export default function AuthScreen() {
   const [inviteCode, setInviteCode] = useState(urlInviteCode || '')
   const [errors, setErrors] = useState<{ [key: string]: string }>({})
   const [showDevPanel, setShowDevPanel] = useState(false)
+  const emailEditable = authStep === 'initial' || (authStep === 'signup' && !urlEmail)
   // Focus state for input styling
   const [emailFocused, setEmailFocused] = useState(false)
   const [passwordFocused, setPasswordFocused] = useState(false)
@@ -84,6 +84,20 @@ export default function AuthScreen() {
   const [viewportWidth, setViewportWidth] = useState(() =>
     typeof window !== 'undefined' ? window.innerWidth : 1280
   )
+
+  useEffect(() => {
+    const nextStep =
+      initialMode === 'login' && urlEmail ? 'login'
+        : initialMode === 'signup' && urlInviteCode ? 'signup'
+        : 'initial'
+
+    setAuthStep(nextStep)
+    setUsername(urlEmail)
+    setInviteCode(urlInviteCode || '')
+    setPassword('')
+    setConfirmPassword('')
+    setErrors({})
+  }, [initialMode, urlEmail, urlInviteCode])
 
   useEffect(() => {
     if (typeof window === 'undefined') return
@@ -135,7 +149,7 @@ export default function AuthScreen() {
       const result = await login(username, password)
       if (result.success) {
         track('login_success', { source: 'auth' })
-        router.replace(returnTo || '/(tabs)')
+        router.replace(returnTo ? (returnTo as never) : '/(tabs)')
       } else {
         track('login_failed', { source: 'auth', reason: result.message })
         setErrors({ form: result.message || 'Username or password is incorrect.' })
@@ -144,7 +158,7 @@ export default function AuthScreen() {
       track('login_failed', { source: 'auth', reason: 'network_error' })
       setErrors({ form: 'Failed to connect to server. Please try again.' })
     }
-  }, [username, password, login, router, track])
+  }, [username, password, returnTo, login, router, track])
 
   const handleSignup = useCallback(async () => {
     setErrors({})
@@ -177,7 +191,7 @@ export default function AuthScreen() {
       track('signup_failed', { source: 'auth', reason: 'network_error' })
       setErrors({ form: 'Failed to connect to server. Please try again.' })
     }
-  }, [username, password, confirmPassword, inviteCode, signup, router, track])
+  }, [username, password, confirmPassword, inviteCode, returnTo, signup, router, track])
 
   const handleInviteCodeContinue = useCallback(async () => {
     setErrors({})
@@ -462,6 +476,24 @@ export default function AuthScreen() {
             {heading}
           </h1>
 
+          {/* What Janata is — only on the first step, so a new beta tester knows
+              what they're signing into before entering an email. On mobile the
+              brand carousel is hidden, making this the only context shown. */}
+          {authStep === 'initial' && (
+            <div style={{ marginTop: 4, marginBottom: 24 }}>
+              {[
+                'Discover satsangs, camps, and classes near you',
+                'RSVP in a tap and see who else is going',
+                'Stay connected with your center and sangha',
+              ].map((line) => (
+                <div key={line} style={{ display: 'flex', gap: 10, alignItems: 'flex-start', marginBottom: 9 }}>
+                  <span style={{ color: '#C2410C', fontSize: 14, lineHeight: '22px' }}>✓</span>
+                  <span style={{ fontFamily: 'Inclusive Sans, sans-serif', fontSize: 14.5, lineHeight: '22px', color: '#57534E' }}>{line}</span>
+                </div>
+              ))}
+            </div>
+          )}
+
           {/* Subtitle */}
           <p
             style={{
@@ -513,7 +545,7 @@ export default function AuthScreen() {
               placeholder="Email"
               value={username}
               onChange={handleUsernameChange}
-              disabled={authStep !== 'initial'}
+              disabled={!emailEditable}
               onFocus={() => setEmailFocused(true)}
               onBlur={() => setEmailFocused(false)}
               style={getInputStyle(emailFocused)}
@@ -547,6 +579,28 @@ export default function AuthScreen() {
                 onBlur={() => setInviteCodeFocused(false)}
                 style={getInputStyle(inviteCodeFocused)}
               />
+            )}
+            {authStep === 'invite-code' && (
+              <button
+                type="button"
+                onClick={() => {
+                  track('verification_explainer_opened', { source: 'auth' })
+                  router.push('/verification' as never)
+                }}
+                style={{
+                  background: 'none',
+                  border: 'none',
+                  padding: 0,
+                  marginTop: -4,
+                  color: '#C2410C',
+                  fontSize: 13,
+                  cursor: 'pointer',
+                  textDecoration: 'underline',
+                  alignSelf: 'flex-start',
+                }}
+              >
+                How does verification work?
+              </button>
             )}
 
             {/* Password + PasswordStrength + Confirm (signup) */}

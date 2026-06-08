@@ -1,9 +1,10 @@
-import React, { useCallback, useMemo } from 'react'
+import React, { useCallback, useMemo, useState } from 'react'
 import { ActivityIndicator, Platform, Pressable, ScrollView, Text, View, useWindowDimensions } from 'react-native'
-import { ChevronRight, Compass, MapPin } from 'lucide-react-native'
+import { ChevronRight, Compass, MapPin, Shield } from 'lucide-react-native'
 import { useFocusEffect, useRouter } from 'expo-router'
 import { useAnalytics } from '../../utils/analytics'
 import { useUser } from '../../components/contexts'
+import { isSuperAdmin } from '../../utils/admin'
 import { useColors } from '../../hooks/useColors'
 import { useDetailColors } from '../../hooks/useDetailColors'
 import { useDiscoverData, useMyEvents, useBoard } from '../../hooks/useApiData'
@@ -11,8 +12,9 @@ import type { DiscoverCenter, EventDisplay } from '../../utils/api'
 import { extractCityState } from '../../utils/addressParsing'
 import { FeaturedEventCard, type FeaturedSource } from '../../components/home/FeaturedEventCard'
 import { MiniEventRow, type WeekItem } from '../../components/home/MiniEventRow'
-import { BoardPostCard, boardPostToMessage, type BoardMessage } from '../../components/boards'
+import { BoardPostCard, SignInCallout, boardPostToMessage, type BoardMessage } from '../../components/boards'
 import { DesktopColumns, desktopScrollContent, useDesktopLayout } from '../../components/layout/DesktopColumns'
+import AuthPromptModal from '../../components/ui/AuthPromptModal'
 import type { AppColors } from '../../tokens'
 
 function formatDatePill(dateStr: string): { month: string; day: string } {
@@ -59,6 +61,7 @@ export default function HomeScreen() {
   const { width } = useWindowDimensions()
   const { track } = useAnalytics()
   const { user } = useUser()
+  const [showAuthPrompt, setShowAuthPrompt] = useState(false)
   const c = useColors()
   const detailColors = useDetailColors()
   const { events: myEvents, loading: myEventsLoading, refetch: refetchMyEvents } = useMyEvents(user?.username)
@@ -133,12 +136,30 @@ export default function HomeScreen() {
   const greetingName = user?.firstName || user?.username || 'friend'
   const todayLabel = new Date().toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric' })
 
+  // Role + login personalization (goal): under the name, reflect who the member
+  // is — their verification role and home center — so Home greets a Sevak at
+  // Chinmaya San Jose differently from a brand-new guest. Empty for guests and
+  // for members with neither a role nor a center (the GET CONNECTED card leads
+  // those users instead).
+  const vl = user?.verificationLevel ?? 0
+  const roleLabel =
+    vl >= 1000008 ? 'Global Head'
+      : vl >= 1008 ? 'Swami'
+      : vl >= 108 ? 'Brahmachari'
+      : vl >= 54 ? 'Sevak'
+      : vl >= 45 ? 'Verified member'
+      : null
+  const greetingSubline = user ? [roleLabel, centerName].filter(Boolean).join('  ·  ') : ''
+
   // First run: a member still in discovery mode — hasn't joined an event yet.
   // Give them one tight welcome line, a card for their center, and a peek at
   // their board feed when there's activity. Real Up Next / Coming Up content
   // still renders below, so Home leads with useful content rather than a
   // redundant feature tour. Self-resolves once they RSVP.
   const isNewUser = !!user && signedUpEvents.length === 0
+  // A signed-in, verified member (vl >= 45). Guests and unverified users get the
+  // stripped home: Explore + sign-in nudge, no personalized event/board lists.
+  const isVerifiedMember = !!user && vl >= 45
 
   if (discoverLoading || (user ? myEventsLoading : false)) {
     return (
@@ -154,12 +175,68 @@ export default function HomeScreen() {
       <Text style={{ fontFamily: 'Inclusive Sans', fontSize: 30, lineHeight: 34, letterSpacing: -0.5, color: c.text }} numberOfLines={1}>
         {user ? `Namaste, ${greetingName}` : 'Namaste'}
       </Text>
+      {greetingSubline ? (
+        <Text style={{ fontSize: 13.5, color: c.textMuted, marginTop: 1 }} numberOfLines={1}>
+          {greetingSubline}
+        </Text>
+      ) : null}
     </View>
   )
 
-  const welcomeBanner = isNewUser ? (
+  // Login-state personalization: guests get a sign-in nudge that explains what
+  // signing in unlocks; signed-in members don't.
+  const guestNudge = !user ? (
+    <SignInCallout
+      title="Make Janata yours"
+      subtitle="Sign in to follow your center, RSVP to events, and join your boards."
+      colors={c}
+      onPress={() => {
+        track('home_signin_pressed', { source: 'home_nudge' })
+        setShowAuthPrompt(true)
+      }}
+    />
+  ) : null
+
+  const authPrompt = (
+    <AuthPromptModal
+      visible={showAuthPrompt}
+      onClose={() => setShowAuthPrompt(false)}
+      returnTo="/"
+      title="Make Janata yours."
+      subtitle="Sign in or create an account to follow your center, RSVP to events, and join your boards."
+      bullets={[
+        'Follow your local center and see what is coming up',
+        'RSVP to events and keep details handy',
+        'Join boards for your center and gatherings',
+      ]}
+    />
+  )
+
+  // Role-aware: admins get a quick path to the dashboard from Home.
+  const adminShortcut = isSuperAdmin(user) ? (
+    <Pressable
+      onPress={() => {
+        track('home_admin_pressed', { source: 'home' })
+        router.push('/admin' as never)
+      }}
+      accessibilityRole="button"
+      style={{ flexDirection: 'row', alignItems: 'center', gap: 12, borderRadius: 16, borderWidth: 1, borderColor: c.border, backgroundColor: c.card, padding: 14 }}
+    >
+      <View style={{ width: 38, height: 38, borderRadius: 12, backgroundColor: c.accentSoft, alignItems: 'center', justifyContent: 'center' }}>
+        <Shield size={18} color={c.accent} />
+      </View>
+      <View style={{ flex: 1 }}>
+        <Text style={{ fontFamily: 'Inclusive Sans', fontSize: 15, color: c.text }}>Admin dashboard</Text>
+        <Text style={{ fontSize: 13, color: c.textMuted }}>Manage centers, events, and moderation</Text>
+      </View>
+      <ChevronRight size={18} color={c.textFaint} />
+    </Pressable>
+  ) : null
+
+  const welcomeBanner = !isVerifiedMember || isNewUser ? (
     <WelcomeBanner
       c={c}
+      centerName={centerName || undefined}
       onExplore={() => {
         track('home_first_run_explore_pressed')
         router.push('/explore' as never)
@@ -167,7 +244,9 @@ export default function HomeScreen() {
     />
   ) : null
 
-  const firstRunOverview = isNewUser ? (
+  // Only a verified new member gets the first-run overview; it can surface the
+  // user's center + board peek, which the not-verified home must not show.
+  const firstRunOverview = isNewUser && isVerifiedMember ? (
     <FirstRunOverview
       c={c}
       detailColors={detailColors}
@@ -192,7 +271,7 @@ export default function HomeScreen() {
     />
   ) : null
 
-  const upNextSection = !isNewUser || featured ? (
+  const upNextSection = isVerifiedMember && (!isNewUser || featured) ? (
     <SectionHeader eyebrow="UP NEXT FOR YOU" trailing="See all" accentColor={c.accent} faintColor={c.textFaint} onTrailingPress={() => {
       track('home_see_all_pressed', { section: 'up_next' })
       router.push('/explore' as never)
@@ -230,7 +309,7 @@ export default function HomeScreen() {
   // Boards peek (#199): the 1-2 latest posts from the user's center board.
   // New users get their center + a feed peek inside the first-run overview,
   // so this section is for returning members only.
-  const boardsSection = !isNewUser ? (
+  const boardsSection = isVerifiedMember && !isNewUser ? (
     <SectionHeader
       eyebrow="LATEST ON YOUR BOARDS"
       trailing="Open Feed"
@@ -269,7 +348,7 @@ export default function HomeScreen() {
     </SectionHeader>
   ) : null
 
-  const weekSection = !isNewUser || weekItems.length > 0 ? (
+  const weekSection = isVerifiedMember && (!isNewUser || weekItems.length > 0) ? (
     <SectionHeader
       eyebrow={signedUpEvents.length > 0 ? 'THIS WEEK' : 'COMING UP'}
       trailing="See all"
@@ -306,53 +385,63 @@ export default function HomeScreen() {
       <View style={{ gap: 22 }}>{boardsSection}</View>
     )
     return (
-      <ScrollView
-        style={{ flex: 1, backgroundColor: c.bg }}
-        contentContainerStyle={desktopScrollContent}
-        showsVerticalScrollIndicator={false}
-      >
-        <DesktopColumns
-          header={
-            <>
-              {greeting}
-              {welcomeBanner}
-            </>
-          }
-          main={
-            <>
-              {upNextSection}
-              {weekSection}
-            </>
-          }
-          rail={rail}
-        />
-      </ScrollView>
+      <>
+        <ScrollView
+          style={{ flex: 1, backgroundColor: c.bg }}
+          contentContainerStyle={desktopScrollContent}
+          showsVerticalScrollIndicator={false}
+        >
+          <DesktopColumns
+            header={
+              <>
+                {greeting}
+                {guestNudge}
+                {adminShortcut}
+                {welcomeBanner}
+              </>
+            }
+            main={
+              <>
+                {upNextSection}
+                {weekSection}
+              </>
+            }
+            rail={rail}
+          />
+        </ScrollView>
+        {authPrompt}
+      </>
     )
   }
 
   // ── Mobile web + native + narrow web: original single centered column ────
   return (
-    <ScrollView
-      style={{ flex: 1, backgroundColor: c.bg }}
-      contentContainerStyle={{
-        paddingHorizontal: isDesktop ? 24 : 16,
-        paddingTop: Platform.OS === 'web' ? 20 : 8,
-        paddingBottom: Platform.OS === 'web' ? 40 : 112,
-      }}
-      showsVerticalScrollIndicator={false}
-    >
-      {/* Mobile single column: lead with the schedule (the desktop "main"
-          column — Up Next + Coming Up), then wrap the center/boards content
-          (the desktop right rail) below it, so the order matches desktop. */}
-      <View style={{ width: '100%', maxWidth: 640, alignSelf: 'center', gap: 22 }}>
-        {greeting}
-        {welcomeBanner}
-        {upNextSection}
-        {weekSection}
-        {firstRunOverview}
-        {boardsSection}
-      </View>
-    </ScrollView>
+    <>
+      <ScrollView
+        style={{ flex: 1, backgroundColor: c.bg }}
+        contentContainerStyle={{
+          paddingHorizontal: isDesktop ? 24 : 16,
+          paddingTop: Platform.OS === 'web' ? 20 : 8,
+          paddingBottom: Platform.OS === 'web' ? 40 : 112,
+        }}
+        showsVerticalScrollIndicator={false}
+      >
+        {/* Mobile single column: lead with the schedule (the desktop "main"
+            column — Up Next + Coming Up), then wrap the center/boards content
+            (the desktop right rail) below it, so the order matches desktop. */}
+        <View style={{ width: '100%', maxWidth: 640, alignSelf: 'center', gap: 22 }}>
+          {greeting}
+          {guestNudge}
+          {adminShortcut}
+          {welcomeBanner}
+          {upNextSection}
+          {weekSection}
+          {firstRunOverview}
+          {boardsSection}
+        </View>
+      </ScrollView>
+      {authPrompt}
+    </>
   )
 }
 
@@ -360,8 +449,15 @@ export default function HomeScreen() {
 // the real content (Your Center, Up Next, Coming Up) already shows what the app
 // does, so a single orienting sentence + Explore CTA is enough. Rendered as a
 // full-width top row on desktop and inline at the top of the column on mobile.
-function WelcomeBanner({ c, onExplore }: { c: AppColors; onExplore: () => void }) {
+function WelcomeBanner({ c, onExplore, centerName }: { c: AppColors; onExplore: () => void; centerName?: string }) {
   const cardBase = { borderRadius: 18, borderWidth: 1, borderColor: c.border, backgroundColor: c.card } as const
+  // Login/role-state personalization: a member who's already joined a center
+  // isn't "new" — greet them by their center and nudge toward RSVPing, rather
+  // than the generic "Welcome to Janata" shown to first-touch/no-center users.
+  const title = centerName ? `You're all set at ${centerName}` : 'Welcome to Janata'
+  const subtitle = centerName
+    ? 'Nothing on your calendar yet — find an event to RSVP to.'
+    : 'Find satsangs, camps, and classes near you.'
   return (
     <View style={[cardBase, { flexDirection: 'row', alignItems: 'center', gap: 14, padding: 16 }]}>
       <View style={{ width: 44, height: 44, borderRadius: 13, backgroundColor: c.accentSoft, alignItems: 'center', justifyContent: 'center' }}>
@@ -369,10 +465,10 @@ function WelcomeBanner({ c, onExplore }: { c: AppColors; onExplore: () => void }
       </View>
       <View style={{ flex: 1, gap: 2 }}>
         <Text style={{ fontFamily: 'Inclusive Sans', fontSize: 16, color: c.text }}>
-          Welcome to Janata
+          {title}
         </Text>
         <Text style={{ fontSize: 13.5, lineHeight: 19, color: c.textMuted }}>
-          Find satsangs, camps, and classes near you.
+          {subtitle}
         </Text>
       </View>
       <Pressable

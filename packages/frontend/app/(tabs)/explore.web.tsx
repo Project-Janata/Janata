@@ -1,6 +1,4 @@
 // Discover tab — web desktop layout
-import { EmptyState } from '../../components/ui/EmptyState'
-import { DiscoverListSkeleton } from '../../components/ui/Skeleton'
 import React, {
   useState,
   useCallback,
@@ -9,7 +7,6 @@ import React, {
   useRef,
   lazy,
   Suspense,
-  use,
 } from 'react'
 import {
   View,
@@ -19,13 +16,12 @@ import {
   ScrollView,
   TextInput,
   ActivityIndicator,
-  Image,
 } from 'react-native'
-import { MapPin, Search, Building2, ChevronDown, ChevronRight, Check, Globe, Plus } from 'lucide-react-native'
+import { Search, Building2, ChevronDown, ChevronRight, Check, Globe, Plus } from 'lucide-react-native'
 import { useRouter, useLocalSearchParams, useFocusEffect } from 'expo-router'
 import { useAnalytics } from '../../utils/analytics'
 import { useTheme, useUser } from '../../components/contexts'
-import { FilterChip, Badge, Avatar } from '../../components/ui'
+import { FilterChip } from '../../components/ui'
 import { type FilterPickerOption } from '../../components/ui/FilterPickerModal'
 const Map = lazy(() => import('../../components/map/Map'))
 import MapPopover from '../../components/map/MapPopover'
@@ -40,206 +36,20 @@ import EventFormPanel from '../../components/events/EventFormPanel.web'
 import CenterDetailPanel from '../../components/center/CenterDetailPanel.web'
 import { useDetailColors } from '../../hooks/useDetailColors'
 import AuthPromptModal from '../../components/ui/AuthPromptModal'
-import type { MapPoint, EventDisplay, DiscoverCenter, AttendeeInfo } from '../../utils/api'
+import type { MapPoint, EventDisplay, AttendeeInfo } from '../../utils/api'
 import { removeEvent } from '../../utils/api'
 import { extractCityState } from '../../utils/addressParsing'
 import { WeekCalendar } from '../../components'
 import { ADMIN_EMAIL, isLocal } from '../../utils/admin'
-
-function formatDatePill(dateStr: string): { month: string; day: string } {
-  const d = new Date(dateStr + 'T00:00:00')
-  const month = d.toLocaleDateString('en-US', { month: 'short' }).toUpperCase()
-  const day = String(d.getDate())
-  return { month, day }
-}
-
-function isToday(dateStr: string): boolean {
-  const today = new Date()
-  return dateStr === today.toISOString().split('T')[0]
-}
-
-function isValidMapCoord(lat: number, lng: number): boolean {
-  return !isNaN(lat) && !isNaN(lng) && lat >= -90 && lat <= 90 && lng >= -180 && lng <= 180
-}
-
-// Great-circle miles between two lat/lng points — used to rank events
-// nearest to the selected center (mirrors native explore.tsx).
-function milesBetween(
-  a: { latitude?: number; longitude?: number },
-  b: { latitude?: number; longitude?: number }
-): number {
-  if (
-    !Number.isFinite(a.latitude) || !Number.isFinite(a.longitude) ||
-    !Number.isFinite(b.latitude) || !Number.isFinite(b.longitude)
-  ) {
-    return Number.POSITIVE_INFINITY
-  }
-  const toRad = (v: number) => (v * Math.PI) / 180
-  const dLat = toRad(b.latitude! - a.latitude!)
-  const dLng = toRad(b.longitude! - a.longitude!)
-  const lat1 = toRad(a.latitude!)
-  const lat2 = toRad(b.latitude!)
-  const h =
-    Math.sin(dLat / 2) ** 2 +
-    Math.cos(lat1) * Math.cos(lat2) * Math.sin(dLng / 2) ** 2
-  return 3958.8 * 2 * Math.atan2(Math.sqrt(h), Math.sqrt(1 - h))
-}
-
-/** Resolve lat/lng for the side panel selection so the map can fly there (list, marker, or URL). */
-function findCoordsForSelection(
-  selectedItem: { type: 'event' | 'center'; id: string },
-  filteredPoints: MapPoint[],
-  allEvents: EventDisplay[],
-  allCenters: DiscoverCenter[]
-): { latitude: number; longitude: number } | null {
-  const targetType = selectedItem.type === 'center' ? 'center' : 'event'
-  const pt = filteredPoints.find((p) => p.id === selectedItem.id && p.type === targetType)
-  if (pt && isValidMapCoord(pt.latitude, pt.longitude)) {
-    return { latitude: pt.latitude, longitude: pt.longitude }
-  }
-  if (selectedItem.type === 'event') {
-    const e = allEvents.find((x) => x.id === selectedItem.id)
-    if (
-      e?.latitude != null &&
-      e?.longitude != null &&
-      isValidMapCoord(e.latitude, e.longitude)
-    ) {
-      return { latitude: e.latitude, longitude: e.longitude }
-    }
-  } else {
-    const c = allCenters.find((x) => x.id === selectedItem.id)
-    if (c && isValidMapCoord(c.latitude, c.longitude)) {
-      return { latitude: c.latitude, longitude: c.longitude }
-    }
-  }
-  return null
-}
-
-// ── Placeholder avatar dots for attendee count ──────────
-
-const AVATAR_COLORS = ['#E8862A', '#78716C', '#A8A29E', '#D6D3D1']
-
-function AttendeeAvatars({ count, attendees }: { count: number; attendees?: AttendeeInfo[] }) {
-  if (count <= 0) return null
-  const shown = Math.min(count, 4)
-  return (
-    <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4 }}>
-      <View style={{ flexDirection: 'row' }}>
-        {attendees && attendees.length > 0
-          ? attendees.slice(0, shown).map((attendee, i) => (
-              <Avatar
-                key={i}
-                image={attendee.image}
-                initials={attendee.initials}
-                name={attendee.name}
-                size={18}
-                style={{
-                  marginLeft: i === 0 ? 0 : -6,
-                  borderWidth: 1.5,
-                  borderColor: 'white',
-                }}
-              />
-            ))
-          : Array.from({ length: shown }).map((_, i) => (
-              <View
-                key={i}
-                style={{
-                  width: 18,
-                  height: 18,
-                  borderRadius: 9,
-                  backgroundColor: AVATAR_COLORS[i % AVATAR_COLORS.length],
-                  marginLeft: i === 0 ? 0 : -6,
-                  borderWidth: 1.5,
-                  borderColor: 'white',
-                }}
-              />
-            ))}
-      </View>
-      <Text className="text-stone-400 dark:text-stone-500 font-sans text-xs">{count} going</Text>
-    </View>
-  )
-}
-
-// ─── Event Item (Desktop) ───────────────────────────────
-
-function EventItem({
-  event,
-  onPress,
-  centerName,
-}: {
-  event: EventDisplay
-  onPress: () => void
-  centerName?: string
-}) {
-  const { month, day } = event.date ? formatDatePill(event.date) : { month: '', day: '' }
-
-  return (
-    <Pressable
-      onPress={onPress}
-      className={`flex-row gap-4 p-4 rounded-2xl active:opacity-80 border border-transparent hover:border-stone-200 dark:hover:border-neutral-700 ${
-        event.isRegistered
-          ? 'bg-orange-50/80 dark:bg-orange-950/20'
-          : 'bg-white dark:bg-neutral-900'
-      }`}
-      style={{ minHeight: 72 }}
-    >
-      {/* Date pill */}
-      <View className="w-[52px] h-[60px] rounded-xl items-center justify-center bg-stone-100 dark:bg-neutral-800">
-        <Text className="text-[10px] font-sans" style={{ color: '#E8862A' }}>
-          {month}
-        </Text>
-        <Text className="text-lg font-sans text-content dark:text-content-dark">{day}</Text>
-      </View>
-
-      {/* Content */}
-      <View className="flex-1 gap-1">
-        <View className="flex-row items-center gap-2">
-          <Text
-            className="text-content dark:text-content-dark font-sans text-base leading-tight flex-1"
-            numberOfLines={2}
-          >
-            {event.title}
-          </Text>
-          {event.isRegistered && <Badge label="Going" variant="going" />}
-        </View>
-        <Text className="text-stone-500 dark:text-stone-400 font-sans text-sm">
-          {event.date && isToday(event.date) ? 'Today · ' : ''}{event.time || ''}
-        </Text>
-        {centerName && (
-          <Text
-            className="text-stone-500 dark:text-stone-400 font-sans text-sm"
-            numberOfLines={1}
-          >
-            By {centerName}
-          </Text>
-        )}
-        <View className="flex-row items-center gap-1.5">
-          <MapPin size={12} color="#E8862A" />
-          <Text
-            className="text-stone-500 dark:text-stone-400 font-sans text-sm flex-1"
-            numberOfLines={1}
-          >
-            {event.location}
-          </Text>
-        </View>
-        {event.attendees > 0 && (
-          <View style={{ marginTop: 4 }}>
-            <AttendeeAvatars count={event.attendees} attendees={event.attendeesList} />
-          </View>
-        )}
-      </View>
-
-      {/* Hero thumbnail */}
-      {event.image && (
-        <Image
-          source={{ uri: event.image }}
-          style={{ width: 84, height: 84, borderRadius: 12 }}
-          resizeMode="cover"
-        />
-      )}
-    </Pressable>
-  )
-}
+import { EmptyState } from '../../components/ui/EmptyState'
+import { DiscoverListSkeleton } from '../../components/ui/Skeleton'
+import { ExploreEventItem } from '../../components/explore/ExploreEventItem.web'
+import { MobileDiscoverFallback } from '../../components/explore/MobileDiscoverFallback.web'
+import {
+  findCoordsForSelection,
+  milesBetween,
+  type ExploreSelection,
+} from '../../components/explore/exploreShared'
 
 // ─── Detail Panel Wrapper (for side panel) ──────────────
 
@@ -250,7 +60,7 @@ function DetailPanelWrapper({
   onEditEvent,
   onStatusChange,
 }: {
-  selectedItem: { type: 'event' | 'center'; id: string }
+  selectedItem: ExploreSelection
   onClose: () => void
   onEventPress: (id: string) => void
   onEditEvent?: (id: string) => void
@@ -432,565 +242,6 @@ function CenterPanelInner({
   )
 }
 
-// ─── Mobile Discover (map + CSS bottom sheet) ──────────
-
-type SheetSnap = 'peek' | 'collapsed' | 'mid' | 'expanded'
-
-function MobileDiscoverFallback() {
-  const router = useRouter()
-  const { isDark } = useTheme()
-  const { track } = useAnalytics()
-  // Events-first: the mobile-web sheet always shows the events list. (The old
-  // Events/Centers tab model was dropped to match native explore.tsx.)
-  const activeFilter: DiscoverFilter = 'Events'
-  const [searchQuery, setSearchQuery] = useState('')
-  const [selectedDate, setSelectedDate] = useState<string | null>(null)
-  const [showGoingOnly, setShowGoingOnly] = useState(false)
-  const [showPastEvents] = useState(false)
-  const [selectedCenter, setSelectedCenter] = useState<string | null>(null)
-  // The center dropdown opens an in-sheet list (not a modal) — view, pick one, or close.
-  const [centerPickerOpen, setCenterPickerOpen] = useState(false)
-  const { user } = useUser()
-  const { items, filteredPoints, loading, allEvents, allCenters, refresh } = useDiscoverData(
-    activeFilter,
-    searchQuery,
-    user?.id,
-    showPastEvents,
-    showGoingOnly,
-    user?.interests ?? undefined,
-    user?.centerID,
-    { fetchAttendees: true }
-  )
-
-  // The member's home center — anchors the dropdown's default area.
-  const userCenter = useMemo(
-    () => allCenters.find((c) => c.id === user?.centerID),
-    [allCenters, user?.centerID]
-  )
-
-  // The center whose area we're showing events for. The card is a dropdown:
-  // "__all__" = events from every center (no proximity scoping); null = default
-  // to the member's home center; any id = that center's area. Events are sorted
-  // (never filtered) by nearness, so the list never empties.
-  const isAllCenters = selectedCenter === '__all__'
-  const areaCenterId = isAllCenters ? null : selectedCenter ?? user?.centerID ?? null
-  const areaCenter = useMemo(
-    () => (isAllCenters ? undefined : allCenters.find((c) => c.id === areaCenterId) ?? userCenter),
-    [isAllCenters, allCenters, areaCenterId, userCenter]
-  )
-  const isHomeArea = !!areaCenter && areaCenter.id === user?.centerID
-
-  useFocusEffect(
-    useCallback(() => {
-      refresh()
-    }, [refresh])
-  )
-
-  // Bottom sheet state
-  const [sheetSnap, setSheetSnap] = useState<SheetSnap>('mid')
-  const [sheetTranslateY, setSheetTranslateY] = useState<number | null>(null)
-  const dragStartY = useRef(0)
-  const dragStartTranslate = useRef(0)
-  const containerRef = useRef<HTMLDivElement>(null)
-
-  // Sheet snap positions matching iOS native (4 stops):
-  //   expanded  = 0          → 100% sheet visible (full)
-  //   mid       = h * 0.2    → ~80% sheet visible
-  //   collapsed = h * 0.6    → ~40% sheet visible
-  //   peek      = h - 100    → 100px sheet visible (handle + search)
-  const getSnapPositions = useCallback(() => {
-    const h = containerRef.current?.clientHeight || window.innerHeight
-    return {
-      expanded: 0,
-      mid: h * 0.2,
-      collapsed: h * 0.6,
-      peek: Math.max(0, h - 100),
-    }
-  }, [])
-
-  const getSnapY = useCallback(
-    (snap: SheetSnap) => {
-      const positions = getSnapPositions()
-      return positions[snap]
-    },
-    [getSnapPositions]
-  )
-
-  const currentTranslateY = sheetTranslateY ?? getSnapY(sheetSnap)
-
-  // Pointer handlers for the bottom-sheet drag. Pointer events cover touch,
-  // mouse, and stylus on every modern browser — the sheet was touch-only, so
-  // it didn't drag with a pointer/trackpad or in a device-emulated mobile
-  // viewport (issue #321).
-  const handleDragStart = useCallback(
-    (e: React.PointerEvent) => {
-      e.currentTarget.setPointerCapture(e.pointerId)
-      dragStartY.current = e.clientY
-      dragStartTranslate.current = currentTranslateY
-    },
-    [currentTranslateY]
-  )
-
-  const handleDragMove = useCallback(
-    (e: React.PointerEvent) => {
-      // pointermove also fires on hover — only act during a captured drag.
-      if (!e.currentTarget.hasPointerCapture(e.pointerId)) return
-      const dy = e.clientY - dragStartY.current
-      const positions = getSnapPositions()
-      const next = Math.max(
-        positions.expanded,
-        Math.min(positions.peek, dragStartTranslate.current + dy)
-      )
-      setSheetTranslateY(next)
-    },
-    [getSnapPositions]
-  )
-
-  const handleDragEnd = useCallback(
-    (e: React.PointerEvent) => {
-      if (sheetTranslateY === null) return
-      const positions = getSnapPositions()
-      const dragDy = e.clientY - dragStartY.current
-
-      // Snap to nearest of 4 positions, biased by velocity
-      let snapTo: SheetSnap
-      if (dragDy > 40) {
-        // Fast swipe down — go one stop down from current
-        if (sheetSnap === 'expanded') snapTo = 'mid'
-        else if (sheetSnap === 'mid') snapTo = 'collapsed'
-        else snapTo = 'peek'
-      } else if (dragDy < -40) {
-        // Fast swipe up — go one stop up from current
-        if (sheetSnap === 'peek') snapTo = 'collapsed'
-        else if (sheetSnap === 'collapsed') snapTo = 'mid'
-        else snapTo = 'expanded'
-      } else {
-        // Position-based snap to nearest
-        const dExp = Math.abs(sheetTranslateY - positions.expanded)
-        const dMid = Math.abs(sheetTranslateY - positions.mid)
-        const dCol = Math.abs(sheetTranslateY - positions.collapsed)
-        const dPeek = Math.abs(sheetTranslateY - positions.peek)
-        const minD = Math.min(dExp, dMid, dCol, dPeek)
-        snapTo =
-          minD === dExp ? 'expanded' : minD === dMid ? 'mid' : minD === dCol ? 'collapsed' : 'peek'
-      }
-
-      setSheetSnap(snapTo)
-      setSheetTranslateY(null)
-    },
-    [sheetTranslateY, sheetSnap, getSnapPositions]
-  )
-
-  const handlePointPress = useCallback(
-    (point: MapPoint) => {
-      track('map_point_pressed', { type: point.type, id: point.id, source: 'discover' })
-      if (point.type === 'center') {
-        router.push(`/center/${point.id}`)
-      } else {
-        router.push(`/events/${point.id}`)
-      }
-    },
-    [router, track]
-  )
-
-  const displayItems = useMemo(() => {
-    let result = items
-    if (selectedDate) {
-      result = result.filter(
-        (item) => item.type === 'event' && (item.data as EventDisplay).date === selectedDate
-      )
-    }
-    // Order events by nearness to the selected area center so "what's on around
-    // <center>" surfaces first. Sorting (not filtering) keeps the list from ever
-    // going empty. Only applies to a flat events list.
-    if (areaCenter && result.length > 0 && result.every((i) => i.type === 'event')) {
-      result = [...result].sort(
-        (a, b) =>
-          milesBetween(areaCenter, a.data as EventDisplay) -
-          milesBetween(areaCenter, b.data as EventDisplay)
-      )
-    }
-    return result
-  }, [items, selectedDate, areaCenter])
-
-  // Filter chip helpers — counts over upcoming events.
-  const todayStr = new Date().toISOString().split('T')[0]
-  const eventsForCounts = useMemo(
-    () => (showPastEvents ? allEvents : allEvents.filter((e) => !e.date || e.date >= todayStr)),
-    [allEvents, showPastEvents, todayStr]
-  )
-  const centerOptions = useMemo<FilterPickerOption<string>[]>(() => {
-    const counts: Record<string, number> = {}
-    for (const e of eventsForCounts) {
-      if (e.centerId) counts[e.centerId] = (counts[e.centerId] ?? 0) + 1
-    }
-    return [...allCenters]
-      .map((c) => ({ value: c.id, label: c.name, sublabel: extractCityState(c.address) || c.address, count: counts[c.id] ?? 0 }))
-      .sort((a, b) => {
-        if (user?.centerID && a.value === user.centerID) return -1
-        if (user?.centerID && b.value === user.centerID) return 1
-        return a.label.localeCompare(b.label)
-      })
-  }, [allCenters, eventsForCounts, user?.centerID])
-
-  return (
-    <div
-      ref={containerRef}
-      style={{
-        position: 'relative',
-        width: '100%',
-        height: '100%',
-        overflow: 'hidden',
-        display: 'flex',
-        flexDirection: 'column',
-      }}
-    >
-      {/* Map — full bleed behind the sheet */}
-      <View style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0 }}>
-        <Suspense
-          fallback={
-            <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center' }}>
-              <ActivityIndicator size="large" color="#E8862A" />
-            </View>
-          }
-        >
-          <Map points={filteredPoints} onPointPress={handlePointPress} userCenterID={user?.centerID} />
-        </Suspense>
-      </View>
-
-      {/* Bottom Sheet */}
-      <div
-        style={{
-          position: 'absolute',
-          left: 0,
-          right: 0,
-          bottom: 0,
-          top: currentTranslateY,
-          transition: sheetTranslateY !== null ? 'none' : 'top 0.3s cubic-bezier(0.25, 1, 0.5, 1)',
-          display: 'flex',
-          flexDirection: 'column',
-          zIndex: 10,
-        }}
-      >
-        <div
-          style={{
-            flex: 1,
-            backgroundColor: isDark ? '#171717' : '#FFFFFF',
-            borderTopLeftRadius: 20,
-            borderTopRightRadius: 20,
-            boxShadow: '0 -4px 20px rgba(0,0,0,0.12)',
-            display: 'flex',
-            flexDirection: 'column',
-            overflow: 'hidden',
-          }}
-        >
-          {/* Drag Handle Zone */}
-          <div
-            onPointerDown={handleDragStart}
-            onPointerMove={handleDragMove}
-            onPointerUp={handleDragEnd}
-            style={{
-              touchAction: 'none',
-              cursor: 'grab',
-              userSelect: 'none',
-              WebkitUserSelect: 'none',
-            }}
-          >
-            {/* Handle bar */}
-            <div
-              style={{
-                display: 'flex',
-                justifyContent: 'center',
-                paddingTop: 10,
-                paddingBottom: 8,
-              }}
-            >
-              <div
-                style={{
-                  width: 40,
-                  height: 4,
-                  borderRadius: 2,
-                  backgroundColor: isDark ? '#525252' : '#D1D5DB',
-                }}
-              />
-            </div>
-
-            {/* Search */}
-            <View
-              className="flex-row items-center mx-3 mb-2 px-3 rounded-xl"
-              style={{
-                minHeight: 44,
-                backgroundColor: isDark ? '#262626' : '#F3F4F6',
-              }}
-            >
-              <Search size={16} color="#9CA3AF" />
-              <TextInput
-                className="flex-1 ml-2 text-sm font-sans"
-                style={{
-                  color: isDark ? '#E5E7EB' : '#1F2937',
-                  paddingVertical: 10,
-                  fontSize: 16,
-                }}
-                placeholder="Search events and centers..."
-                placeholderTextColor="#9CA3AF"
-                value={searchQuery}
-                onChangeText={setSearchQuery}
-                onFocus={() => setSheetSnap('expanded')}
-                onEndEditing={() => {
-                  if (searchQuery.trim()) {
-                    track('discover_search', { query: searchQuery.trim(), source: 'discover' })
-                  }
-                }}
-              />
-            </View>
-
-            {/* Center dropdown — picks which center's area to show events for.
-                Defaults to the member's home center; tapping opens the in-sheet
-                center list so they can see what's on around any center. */}
-            {!centerPickerOpen && user && (isAllCenters || areaCenter) && (
-              <Pressable
-                onPress={() => {
-                  track('explore_area_center_opened', { centerId: areaCenter?.id ?? 'all' })
-                  setCenterPickerOpen(true)
-                  setSheetSnap('expanded')
-                }}
-                accessibilityRole="button"
-                accessibilityLabel={
-                  isAllCenters
-                    ? 'Showing events from all centers. Tap to change.'
-                    : `Showing events near ${areaCenter?.name}. Tap to change center.`
-                }
-                className="flex-row items-center mx-3 mb-2 px-3 rounded-2xl active:opacity-70"
-                style={{
-                  minHeight: 58,
-                  gap: 12,
-                  backgroundColor: isDark ? 'rgba(232,134,42,0.12)' : '#FFF7ED',
-                  borderWidth: 1,
-                  borderColor: isDark ? 'rgba(232,134,42,0.22)' : '#FDE8D0',
-                }}
-              >
-                <View
-                  className="w-10 h-10 rounded-xl items-center justify-center"
-                  style={{ backgroundColor: isDark ? 'rgba(232,134,42,0.18)' : '#FDE8D0' }}
-                >
-                  {isAllCenters ? <Globe size={18} color="#E8862A" /> : <Building2 size={18} color="#E8862A" />}
-                </View>
-                <View style={{ flex: 1 }}>
-                  <Text className="text-content dark:text-content-dark font-sans" style={{ fontSize: 15 }} numberOfLines={1}>
-                    {isAllCenters ? 'All centers' : areaCenter?.name}
-                  </Text>
-                  <Text className="text-stone-500 dark:text-stone-400 font-sans" style={{ fontSize: 12.5 }} numberOfLines={1}>
-                    {isAllCenters
-                      ? 'Events everywhere · tap to change'
-                      : isHomeArea
-                        ? `Your center${areaCenter?.memberCount ? ` · ${areaCenter.memberCount} members` : ''}`
-                        : 'Events near here · tap to change'}
-                  </Text>
-                </View>
-                <ChevronDown size={18} color="#a8a29e" />
-              </Pressable>
-            )}
-
-            {/* In-sheet center picker header — title + Close. The list itself
-                renders in the ScrollView below. */}
-            {centerPickerOpen && (
-              <View
-                className="flex-row items-center justify-between px-4"
-                style={{ paddingTop: 2, paddingBottom: 8 }}
-              >
-                <Text className="font-sans text-stone-500 dark:text-stone-400 uppercase" style={{ fontSize: 11.5, letterSpacing: 0.9 }}>
-                  Show events near
-                </Text>
-                <Pressable onPress={() => setCenterPickerOpen(false)} hitSlop={8}>
-                  <Text style={{ fontSize: 13, fontWeight: '500', color: '#E8862A' }}>Close</Text>
-                </Pressable>
-              </View>
-            )}
-
-            {/* Filter chips — Today / Going + Create button */}
-            {!centerPickerOpen && (
-              <View className="flex-row items-center px-4 py-1.5" style={{ gap: 8 }}>
-                <View className="flex-1 flex-row flex-wrap items-center" style={{ gap: 8 }}>
-                  <FilterChip
-                    label="Today"
-                    variant="outline"
-                    active={selectedDate === todayStr}
-                    onPress={() => {
-                      setSelectedDate((prev) => {
-                        const next = prev === todayStr ? null : todayStr
-                        if (next) track('discover_date_selected', { date: next, source: 'discover' })
-                        return next
-                      })
-                    }}
-                  />
-                  {user && (
-                    <FilterChip
-                      label="Going"
-                      variant="outline"
-                      active={showGoingOnly}
-                      onPress={() => {
-                        track('discover_going_filter_toggled', { enabled: !showGoingOnly, source: 'discover' })
-                        setShowGoingOnly((prev: boolean) => !prev)
-                      }}
-                    />
-                  )}
-                </View>
-                {user && (
-                  <Pressable
-                    accessibilityRole="button"
-                    accessibilityLabel="Create event"
-                    hitSlop={8}
-                    onPress={() => {
-                      track('nav_create_event', { source: 'discover' })
-                      router.push('/events/form')
-                    }}
-                    className="flex-row items-center active:opacity-70"
-                    style={{
-                      flexShrink: 0,
-                      gap: 4,
-                      paddingHorizontal: 12,
-                      paddingVertical: 6,
-                      borderRadius: 999,
-                      borderWidth: 1.5,
-                      borderColor: '#E8862A',
-                    }}
-                  >
-                    <Plus size={16} color="#E8862A" strokeWidth={2.5} />
-                    <Text style={{ fontWeight: '600', fontSize: 13, lineHeight: 18, color: '#E8862A' }}>
-                      Create
-                    </Text>
-                  </Pressable>
-                )}
-              </View>
-            )}
-          </div>
-
-          {/* Loading skeleton */}
-          {loading && (
-            <View style={{ paddingHorizontal: 12 }}>
-              <DiscoverListSkeleton count={4} />
-            </View>
-          )}
-
-          {/* Scrollable list */}
-          <ScrollView
-            className="flex-1"
-            contentContainerStyle={{ paddingHorizontal: 4, paddingTop: 12, paddingBottom: 32, gap: 4 }}
-            showsVerticalScrollIndicator={false}
-            scrollEnabled={centerPickerOpen || (sheetSnap !== 'collapsed' && sheetTranslateY === null)}
-          >
-            {/* In-sheet center picker — "Show events near <center>". */}
-            {centerPickerOpen && (
-              <>
-                {/* All centers — show events from every center, no area scoping. */}
-                <Pressable
-                  onPress={() => {
-                    track('explore_area_all_selected')
-                    setSelectedCenter('__all__')
-                    setCenterPickerOpen(false)
-                  }}
-                  accessibilityRole="button"
-                  accessibilityLabel="Show events from all centers"
-                  className="flex-row items-center px-4 active:opacity-60"
-                  style={{ minHeight: 56, gap: 12 }}
-                >
-                  <View
-                    className="w-10 h-10 rounded-xl items-center justify-center"
-                    style={{ backgroundColor: isDark ? 'rgba(232,134,42,0.18)' : '#FDE8D0' }}
-                  >
-                    <Globe size={18} color="#E8862A" />
-                  </View>
-                  <View style={{ flex: 1 }}>
-                    <Text className="text-content dark:text-content-dark font-sans" style={{ fontSize: 15 }} numberOfLines={1}>
-                      All centers
-                    </Text>
-                    <Text className="text-stone-500 dark:text-stone-400 font-sans" style={{ fontSize: 12.5 }} numberOfLines={1}>
-                      Events from every center
-                    </Text>
-                  </View>
-                  {isAllCenters ? <Check size={18} color="#E8862A" /> : null}
-                </Pressable>
-
-                {centerOptions.map((opt) => (
-                  <View key={opt.value}>
-                    <View className="bg-stone-200/70 dark:bg-neutral-800" style={{ height: 1, marginHorizontal: 16 }} />
-                    <View className="flex-row items-center px-4" style={{ minHeight: 56, gap: 8 }}>
-                      {/* Tap the row to scope events to this center's area. */}
-                      <Pressable
-                        onPress={() => {
-                          track('explore_area_center_selected', { centerId: opt.value })
-                          setSelectedCenter(opt.value)
-                          setCenterPickerOpen(false)
-                        }}
-                        accessibilityRole="button"
-                        accessibilityLabel={`Show events near ${opt.label}`}
-                        className="flex-1 flex-row items-center active:opacity-60"
-                        style={{ gap: 12, minHeight: 56 }}
-                      >
-                        <View
-                          className="w-10 h-10 rounded-xl items-center justify-center"
-                          style={{ backgroundColor: isDark ? 'rgba(232,134,42,0.18)' : '#FDE8D0' }}
-                        >
-                          <Building2 size={18} color="#E8862A" />
-                        </View>
-                        <View style={{ flex: 1 }}>
-                          <Text className="text-content dark:text-content-dark font-sans" style={{ fontSize: 15 }} numberOfLines={1}>
-                            {opt.label}
-                          </Text>
-                          <Text className="text-stone-500 dark:text-stone-400 font-sans" style={{ fontSize: 12.5 }} numberOfLines={1}>
-                            {opt.sublabel}{opt.count ? ` · ${opt.count} event${opt.count === 1 ? '' : 's'}` : ''}
-                          </Text>
-                        </View>
-                      </Pressable>
-                      {opt.value === areaCenterId ? <Check size={18} color="#E8862A" /> : null}
-                      {/* Distinct "view this center's page" action. */}
-                      <Pressable
-                        onPress={() => {
-                          track('explore_center_page_opened', { centerId: opt.value })
-                          router.push(`/center/${opt.value}`)
-                        }}
-                        accessibilityRole="button"
-                        accessibilityLabel={`View ${opt.label} page`}
-                        hitSlop={6}
-                        className="items-center justify-center active:opacity-60"
-                        style={{
-                          width: 30,
-                          height: 30,
-                          borderRadius: 15,
-                          backgroundColor: isDark ? '#262626' : '#F3F4F6',
-                        }}
-                      >
-                        <ChevronRight size={16} color={isDark ? '#A8A29E' : '#78716C'} />
-                      </Pressable>
-                    </View>
-                  </View>
-                ))}
-              </>
-            )}
-            {!centerPickerOpen && !loading && displayItems.length === 0 && (
-              <EmptyState variant={selectedDate ? 'date' : searchQuery ? 'search' : 'events'} />
-            )}
-            {!centerPickerOpen && displayItems.map((item) => {
-              if (item.type !== 'event') return null
-              return (
-                <EventItem
-                  key={`event-${item.data.id}`}
-                  event={item.data as EventDisplay}
-                  centerName={allCenters.find((c) => c.id === (item.data as EventDisplay).centerId)?.name}
-                  onPress={() => {
-                    track('event_list_item_pressed', { eventId: item.data.id, source: 'discover' })
-                    router.push(`/events/${item.data.id}`)
-                  }}
-                />
-              )
-            })}
-          </ScrollView>
-        </div>
-      </div>
-    </div>
-  )
-}
-
 // ─── Desktop Discover Screen ────────────────────────────
 
 export default function DiscoverScreenWeb() {
@@ -1021,7 +272,7 @@ export default function DiscoverScreenWeb() {
   const [selectedCenterDesktop, setSelectedCenterDesktop] = useState<string | null>(null)
   // The in-panel center picker opens a list inline (not a modal).
   const [centerPickerOpenDesktop, setCenterPickerOpenDesktop] = useState(false)
-  const [selectedItem, setSelectedItem] = useState<{ type: 'event' | 'center'; id: string } | null>(
+  const [selectedItem, setSelectedItem] = useState<ExploreSelection | null>(
     null
   )
   const [autoOpenPoint, setAutoOpenPoint] = useState<{ id: string; type: 'event' | 'center'; key: number } | null>(null)
@@ -1054,6 +305,9 @@ export default function DiscoverScreenWeb() {
     [isAllCentersDesktop, allCenters, areaCenterIdDesktop, userCenterFromList]
   )
   const isHomeAreaDesktop = !!areaCenterDesktop && areaCenterDesktop.id === user?.centerID
+  // Users without a home center (or none selected) get the "All centers" view
+  // so the filter still renders and they can pick a center from the picker.
+  const showAllCentersDesktop = isAllCentersDesktop || !areaCenterDesktop
 
   useFocusEffect(
     useCallback(() => {
@@ -1132,6 +386,14 @@ export default function DiscoverScreenWeb() {
         (item) => item.type === 'event' && (item.data as EventDisplay).date === selectedDate
       )
     }
+    // An explicit center pick filters events to that center + a ~100mi radius.
+    // The default / home-center case below only sorts, so the list never starts empty.
+    if (areaCenterDesktop && selectedCenterDesktop && !isAllCentersDesktop && result.every((i) => i.type === 'event')) {
+      result = result.filter((item) => {
+        const e = item.data as EventDisplay
+        return e.centerId === areaCenterDesktop.id || milesBetween(areaCenterDesktop, e) <= 100
+      })
+    }
     // Order events by nearness to the selected area center so "what's on around
     // <center>" surfaces first. Sorting (not filtering) keeps the list from ever
     // going empty — same approach as MobileDiscoverFallback.
@@ -1143,7 +405,15 @@ export default function DiscoverScreenWeb() {
       )
     }
     return result
-  }, [items, selectedDate, areaCenterDesktop])
+  }, [items, selectedDate, areaCenterDesktop, selectedCenterDesktop, isAllCentersDesktop])
+
+  // Map markers honor the same explicit-center radius filter as the list.
+  const mapPointsDesktop = useMemo(() => {
+    if (!areaCenterDesktop || !selectedCenterDesktop || isAllCentersDesktop) return filteredPoints
+    return filteredPoints.filter(
+      (p) => p.id === areaCenterDesktop.id || milesBetween(areaCenterDesktop, p) <= 100
+    )
+  }, [filteredPoints, areaCenterDesktop, selectedCenterDesktop, isAllCentersDesktop])
 
   // Filter chip helpers — counts over upcoming events
   const todayStrDesktop = new Date().toISOString().split('T')[0]
@@ -1169,6 +439,85 @@ export default function DiscoverScreenWeb() {
         return a.label.localeCompare(b.label)
       })
   }, [allCenters, eventsForCountsDesktop, user?.centerID])
+
+  // One picker row. Centers WITH events are selectable (scope the list + fly the
+  // map to that area); centers WITHOUT events are non-selectable and only offer
+  // the "view page" chevron — they're grouped separately below.
+  const renderCenterRowDesktop = (opt: FilterPickerOption<string>) => {
+    const selectable = opt.count > 0
+    const openPage = () => {
+      track('explore_center_page_opened', { centerId: opt.value })
+      setCenterPickerOpenDesktop(false)
+      setSelectedItem({ type: 'center', id: opt.value })
+    }
+    const scopeToCenter = () => {
+      track('explore_area_center_selected', { centerId: opt.value })
+      setSelectedCenterDesktop(opt.value)
+      setCenterPickerOpenDesktop(false)
+      setSearchQuery('')
+      const c = allCenters.find((cc) => cc.id === opt.value)
+      if (c && Number.isFinite(c.latitude) && Number.isFinite(c.longitude)) {
+        setMapFlyTo((prev) => ({
+          latitude: c.latitude as number,
+          longitude: c.longitude as number,
+          zoom: 10, // area view — a little more zoomed out than a single-pin focus
+          key: (prev?.key ?? 0) + 1,
+        }))
+      }
+    }
+    return (
+      <View key={opt.value}>
+        <View className="bg-stone-200/70 dark:bg-neutral-800" style={{ height: 1, marginHorizontal: 16 }} />
+        <View className="flex-row items-center px-4" style={{ minHeight: 56, gap: 8 }}>
+          <Pressable
+            onPress={selectable ? scopeToCenter : openPage}
+            accessibilityRole="button"
+            accessibilityLabel={selectable ? `Show events near ${opt.label}` : `View ${opt.label} page`}
+            className="flex-1 flex-row items-center active:opacity-60"
+            style={{ gap: 12, minHeight: 56 }}
+          >
+            <View
+              className="w-10 h-10 rounded-xl items-center justify-center"
+              style={{ backgroundColor: isDark ? 'rgba(232,134,42,0.18)' : '#FDE8D0' }}
+            >
+              <Building2 size={18} color="#E8862A" />
+            </View>
+            <View style={{ flex: 1 }}>
+              <Text className="text-content dark:text-content-dark font-sans" style={{ fontSize: 15 }} numberOfLines={1}>
+                {opt.label}
+              </Text>
+              <Text className="text-stone-500 dark:text-stone-400 font-sans" style={{ fontSize: 12.5 }} numberOfLines={1}>
+                {opt.sublabel}
+              </Text>
+            </View>
+          </Pressable>
+          {selectable ? (
+            <View className="rounded-full px-2.5 py-1" style={{ backgroundColor: isDark ? 'rgba(232,134,42,0.18)' : '#FDE8D0' }}>
+              <Text className="font-sans" style={{ fontSize: 12, fontWeight: '600', color: '#E8862A' }}>
+                {opt.count} {opt.count === 1 ? 'event' : 'events'}
+              </Text>
+            </View>
+          ) : null}
+          {opt.value === areaCenterIdDesktop ? <Check size={18} color="#E8862A" /> : null}
+          {/* Distinct "view this center's page in the panel" action. */}
+          <Pressable
+            onPress={() => {
+              track('explore_center_page_opened', { centerId: opt.value })
+              setCenterPickerOpenDesktop(false)
+              setSelectedItem({ type: 'center', id: opt.value })
+            }}
+            accessibilityRole="button"
+            accessibilityLabel={`View ${opt.label} page`}
+            hitSlop={6}
+            className="items-center justify-center active:opacity-60"
+            style={{ width: 30, height: 30, borderRadius: 15, backgroundColor: isDark ? '#262626' : '#F3F4F6' }}
+          >
+            <ChevronRight size={16} color={isDark ? '#A8A29E' : '#78716C'} />
+          </Pressable>
+        </View>
+      </View>
+    )
+  }
 
   // Map popover state
   const mapPanelRef = useRef<View>(null)
@@ -1262,7 +611,7 @@ export default function DiscoverScreenWeb() {
           >
             <Map
               initialCenter={userCenter?.latitude && userCenter?.longitude ? [userCenter.latitude, userCenter.longitude] : undefined}
-              points={filteredPoints}
+              points={mapPointsDesktop}
               onPointPress={handlePointPress}
               onPointHover={handlePointHover}
               onPointClick={handlePointClick}
@@ -1345,7 +694,7 @@ export default function DiscoverScreenWeb() {
                 <Search size={16} color="#9CA3AF" />
                 <TextInput
                   className="flex-1 ml-2 text-sm font-sans text-content dark:text-content-dark outline-none"
-                  placeholder="Search events and centers..."
+                  placeholder={centerPickerOpenDesktop ? 'Search centers...' : 'Search events...'}
                   placeholderTextColor="#9CA3AF"
                   value={searchQuery}
                   onChangeText={setSearchQuery}
@@ -1361,7 +710,7 @@ export default function DiscoverScreenWeb() {
               {/* Center dropdown — picks which center's area to show events for.
                   Defaults to the member's home center; clicking opens the in-panel
                   center list so they can see what's on around any center. */}
-              {!centerPickerOpenDesktop && user && (isAllCentersDesktop || areaCenterDesktop) && (
+              {!centerPickerOpenDesktop && (isAllCentersDesktop || areaCenterDesktop || allCenters.length > 0) && (
                 <Pressable
                   onPress={() => {
                     track('explore_area_center_opened', { centerId: areaCenterDesktop?.id ?? 'all' })
@@ -1369,7 +718,7 @@ export default function DiscoverScreenWeb() {
                   }}
                   accessibilityRole="button"
                   accessibilityLabel={
-                    isAllCentersDesktop
+                    showAllCentersDesktop
                       ? 'Showing events from all centers. Click to change.'
                       : `Showing events near ${areaCenterDesktop?.name}. Click to change center.`
                   }
@@ -1387,14 +736,14 @@ export default function DiscoverScreenWeb() {
                     className="w-10 h-10 rounded-xl items-center justify-center"
                     style={{ backgroundColor: isDark ? 'rgba(232,134,42,0.18)' : '#FDE8D0' }}
                   >
-                    {isAllCentersDesktop ? <Globe size={18} color="#E8862A" /> : <Building2 size={18} color="#E8862A" />}
+                    {showAllCentersDesktop ? <Globe size={18} color="#E8862A" /> : <Building2 size={18} color="#E8862A" />}
                   </View>
                   <View style={{ flex: 1 }}>
                     <Text className="text-content dark:text-content-dark font-sans" style={{ fontSize: 15 }} numberOfLines={1}>
-                      {isAllCentersDesktop ? 'All centers' : areaCenterDesktop?.name}
+                      {showAllCentersDesktop ? 'All centers' : areaCenterDesktop?.name}
                     </Text>
                     <Text className="text-stone-500 dark:text-stone-400 font-sans" style={{ fontSize: 12.5 }} numberOfLines={1}>
-                      {isAllCentersDesktop
+                      {showAllCentersDesktop
                         ? 'Events everywhere · click to change'
                         : isHomeAreaDesktop
                           ? `Your center${areaCenterDesktop?.memberCount ? ` · ${areaCenterDesktop.memberCount} members` : ''}`
@@ -1505,6 +854,7 @@ export default function DiscoverScreenWeb() {
                       track('explore_area_all_selected')
                       setSelectedCenterDesktop('__all__')
                       setCenterPickerOpenDesktop(false)
+                      setSearchQuery('')
                     }}
                     accessibilityRole="button"
                     accessibilityLabel="Show events from all centers"
@@ -1528,61 +878,30 @@ export default function DiscoverScreenWeb() {
                     {isAllCentersDesktop ? <Check size={18} color="#E8862A" /> : null}
                   </Pressable>
 
-                  {centerOptionsDesktop.map((opt) => (
-                    <View key={opt.value}>
-                      <View className="bg-stone-200/70 dark:bg-neutral-800" style={{ height: 1, marginHorizontal: 16 }} />
-                      <View className="flex-row items-center px-4" style={{ minHeight: 56, gap: 8 }}>
-                        {/* Click the row to scope events to this center's area. */}
-                        <Pressable
-                          onPress={() => {
-                            track('explore_area_center_selected', { centerId: opt.value })
-                            setSelectedCenterDesktop(opt.value)
-                            setCenterPickerOpenDesktop(false)
-                          }}
-                          accessibilityRole="button"
-                          accessibilityLabel={`Show events near ${opt.label}`}
-                          className="flex-1 flex-row items-center active:opacity-60"
-                          style={{ gap: 12, minHeight: 56 }}
-                        >
-                          <View
-                            className="w-10 h-10 rounded-xl items-center justify-center"
-                            style={{ backgroundColor: isDark ? 'rgba(232,134,42,0.18)' : '#FDE8D0' }}
-                          >
-                            <Building2 size={18} color="#E8862A" />
-                          </View>
-                          <View style={{ flex: 1 }}>
-                            <Text className="text-content dark:text-content-dark font-sans" style={{ fontSize: 15 }} numberOfLines={1}>
-                              {opt.label}
-                            </Text>
-                            <Text className="text-stone-500 dark:text-stone-400 font-sans" style={{ fontSize: 12.5 }} numberOfLines={1}>
-                              {opt.sublabel}{opt.count ? ` · ${opt.count} event${opt.count === 1 ? '' : 's'}` : ''}
-                            </Text>
-                          </View>
-                        </Pressable>
-                        {opt.value === areaCenterIdDesktop ? <Check size={18} color="#E8862A" /> : null}
-                        {/* Distinct "view this center's page in the panel" action. */}
-                        <Pressable
-                          onPress={() => {
-                            track('explore_center_page_opened', { centerId: opt.value })
-                            setCenterPickerOpenDesktop(false)
-                            setSelectedItem({ type: 'center', id: opt.value })
-                          }}
-                          accessibilityRole="button"
-                          accessibilityLabel={`View ${opt.label} page`}
-                          hitSlop={6}
-                          className="items-center justify-center active:opacity-60"
-                          style={{
-                            width: 30,
-                            height: 30,
-                            borderRadius: 15,
-                            backgroundColor: isDark ? '#262626' : '#F3F4F6',
-                          }}
-                        >
-                          <ChevronRight size={16} color={isDark ? '#A8A29E' : '#78716C'} />
-                        </Pressable>
-                      </View>
-                    </View>
-                  ))}
+                  {(() => {
+                    const q = searchQuery.trim().toLowerCase()
+                    const matches = q
+                      ? centerOptionsDesktop.filter((o) => o.label.toLowerCase().includes(q) || (o.sublabel ?? '').toLowerCase().includes(q))
+                      : centerOptionsDesktop
+                    const withEvents = matches.filter((o) => o.count > 0)
+                    const withoutEvents = matches.filter((o) => o.count === 0)
+                    return (
+                      <>
+                        {withEvents.length > 0 && (
+                          <Text className="font-sans text-stone-400 dark:text-stone-500 uppercase px-4 pt-3 pb-1" style={{ fontSize: 11, letterSpacing: 0.8 }}>
+                            Centers with events
+                          </Text>
+                        )}
+                        {withEvents.map(renderCenterRowDesktop)}
+                        {withoutEvents.length > 0 && (
+                          <Text className="font-sans text-stone-400 dark:text-stone-500 uppercase px-4 pt-5 pb-1" style={{ fontSize: 11, letterSpacing: 0.8 }}>
+                            Other centers
+                          </Text>
+                        )}
+                        {withoutEvents.map(renderCenterRowDesktop)}
+                      </>
+                    )
+                  })()}
                 </>
               )}
 
@@ -1593,7 +912,7 @@ export default function DiscoverScreenWeb() {
               {!centerPickerOpenDesktop && displayItems.map((item) => {
                 if (item.type !== 'event') return null
                 return (
-                  <EventItem
+                  <ExploreEventItem
                     key={`event-${item.data.id}`}
                     event={item.data as EventDisplay}
                     centerName={allCenters.find((c) => c.id === (item.data as EventDisplay).centerId)?.name}

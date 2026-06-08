@@ -223,6 +223,9 @@ export function FeaturedEventCard({
   const attendeesList = event?.attendeesList?.slice(0, 4)
   const fallbackAttendees = mock?.attendees ?? []
   const heroImage = event?.image
+  const heroDate = event?.date ? new Date(`${event.date}T00:00:00`) : null
+  const heroMonth = heroDate ? heroDate.toLocaleDateString('en-US', { month: 'short' }).toUpperCase() : null
+  const heroDay = heroDate ? String(heroDate.getDate()) : null
 
   return (
     <Pressable
@@ -246,6 +249,16 @@ export function FeaturedEventCard({
         ) : (
           <GradientHero isDark={isDark} />
         )}
+        {!heroImage && heroDay ? (
+          <View style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, alignItems: 'center', justifyContent: 'center' }}>
+            <Text style={{ fontFamily: 'Inclusive Sans', fontSize: 11, letterSpacing: 1.6, color: isDark ? '#FDBA74' : '#9A3412' }}>
+              {heroMonth}
+            </Text>
+            <Text style={{ fontFamily: 'Inclusive Sans', fontSize: 36, lineHeight: 40, color: isDark ? '#FFF7ED' : '#7C2D12' }}>
+              {heroDay}
+            </Text>
+          </View>
+        ) : null}
         <View style={{ position: 'absolute', top: 12, left: 12, flexDirection: 'row', gap: 6 }}>
           {countdown && <InkPill label={countdown} />}
           {goingPill && <GoingPill label="You're going" />}

@@ -72,7 +72,7 @@ export const NotificationPreferencesPanel: React.FC = () => {
   }
 
   return (
-    <ScrollView style={{ flex: 1, backgroundColor: c.card }} contentContainerStyle={{ padding: 16 }}>
+    <ScrollView style={{ flex: 1, backgroundColor: c.card }} contentContainerStyle={{ padding: 16, width: '100%', maxWidth: 680, alignSelf: 'center' }}>
       {/* Main Channels */}
       <View style={{ marginBottom: 24 }}>
         <Text style={{ fontSize: 16, fontWeight: '600', color: c.text, marginBottom: 12, paddingBottom: 8, borderBottomWidth: 1, borderBottomColor: c.border }}>
@@ -87,10 +87,11 @@ export const NotificationPreferencesPanel: React.FC = () => {
         />
 
         <PreferenceRow
-          label="Push Notifications (Coming Soon)"
+          label="Push Notifications"
+          description="Get alerts on your device"
           value={preferences.pushEnabled}
           onValueChange={(value) => updatePreference('pushEnabled', value)}
-          disabled={saving || true}
+          disabled={saving}
         />
 
         <PreferenceRow
@@ -152,6 +153,45 @@ export const NotificationPreferencesPanel: React.FC = () => {
           description="Important updates from your center"
           value={preferences.centerAnnouncements}
           onValueChange={(value) => updatePreference('centerAnnouncements', value)}
+          disabled={saving}
+        />
+      </View>
+
+      {/* Boards */}
+      <View style={{ marginBottom: 24 }}>
+        <Text style={{ fontSize: 16, fontWeight: '600', color: c.text, marginBottom: 12, paddingBottom: 8, borderBottomWidth: 1, borderBottomColor: c.border }}>
+          Boards
+        </Text>
+
+        <PreferenceRow
+          label="New Posts"
+          description="Posts on your center board and events you've joined"
+          value={preferences.boardPosts}
+          onValueChange={(value) => updatePreference('boardPosts', value)}
+          disabled={saving}
+        />
+
+        <PreferenceRow
+          label="Replies"
+          description="When someone replies to your post"
+          value={preferences.boardReplies}
+          onValueChange={(value) => updatePreference('boardReplies', value)}
+          disabled={saving}
+        />
+
+        <PreferenceRow
+          label="Reactions"
+          description="When someone reacts to your post"
+          value={preferences.boardReactions}
+          onValueChange={(value) => updatePreference('boardReactions', value)}
+          disabled={saving}
+        />
+
+        <PreferenceRow
+          label="Mentions"
+          description="When someone mentions you"
+          value={preferences.boardMentions}
+          onValueChange={(value) => updatePreference('boardMentions', value)}
           disabled={saving}
         />
       </View>

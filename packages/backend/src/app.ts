@@ -31,6 +31,7 @@ import {
 import * as db from './db'
 import * as inviteCodes from './inviteCodes'
 import * as notifications from './notifications'
+import * as push from './push'
 import * as passwordReset from './passwordReset'
 import { sendVerificationEmail } from './email'
 import { ADMIN_EMAIL, NORMAL_USER, SEVAK, BRAHMACHARI, TIER_DESCALE, ADMIN_CUTOFF, DEVELOPER_EMAILS, UNVERIFIED_USER } from './constants'
@@ -63,6 +64,7 @@ function boardPostToApi(post: db.BoardPostWithAuthor): BoardPostApiResponse {
   return {
     id: post.id,
     boardId: post.board_id,
+    visibility: post.visibility,
     body: post.body,
     imageUrl: post.image_url,
     createdAt: post.created_at,
@@ -73,6 +75,37 @@ function boardPostToApi(post: db.BoardPostWithAuthor): BoardPostApiResponse {
     author: userRowToApi(post.author),
     reactions: post.reactions,
     replyCount: post.reply_count,
+  }
+}
+
+/**
+ * Fire notification fan-out without blocking the response (#102). Uses
+ * executionCtx.waitUntil when available (production / dev Workers runtime) so
+ * the originating write returns immediately; falls back to awaiting in test
+ * environments where executionCtx is absent. Errors are swallowed — a push
+ * failure must never surface as a failed post / RSVP.
+ */
+/** Human-friendly name for notification copy. Falls back to username. */
+function displayName(user: Pick<UserRow, 'first_name' | 'last_name' | 'username'>): string {
+  const full = `${user.first_name ?? ''} ${user.last_name ?? ''}`.trim()
+  return full || user.username || 'Someone'
+}
+
+/** Trim a post body to a single-line preview for the notification message. */
+function preview(text: string, max = 140): string {
+  const oneLine = text.replace(/\s+/g, ' ').trim()
+  return oneLine.length > max ? oneLine.slice(0, max - 1) + '…' : oneLine
+}
+
+function fireNotify(c: any, work: Promise<unknown>): void {
+  const safe = Promise.resolve(work).catch((err) =>
+    console.error('[notify] fan-out failed:', err),
+  )
+  try {
+    c.executionCtx?.waitUntil(safe)
+  } catch {
+    // No executionCtx (tests) — let it run detached.
+    void safe
   }
 }
 
@@ -183,6 +216,7 @@ app.use(
         'https://www.chinmayajanata.org',
         'https://project-janatha.pages.dev',
         'https://main.project-janatha.pages.dev',
+        'https://v2preview.project-janatha.pages.dev',
         'https://chinmaya-janata.pages.dev', // legacy frozen project
         'http://localhost:8081',
         'http://localhost:8787',
@@ -190,8 +224,6 @@ app.use(
       ]
       if (allowed.includes(origin)) return origin
       if (origin.startsWith('http://localhost:')) return origin
-      if (origin.endsWith('.project-janatha.pages.dev')) return origin
-      if (origin.endsWith('.chinmaya-janata.pages.dev')) return origin // legacy
       return ''
     },
     allowMethods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
@@ -1294,6 +1326,76 @@ app.post('/boards/:type/:id/posts', authMiddleware, async (c) => {
     return c.json({ message: 'Board post created but could not be loaded' }, 500)
   }
 
+  // Fan out BOARD_POST to everyone on this board (except the author).
+  fireNotify(
+    c,
+    (async () => {
+      const recipientIds = await db.getBoardRecipientIds(c.env.DB, typeParam, parentId)
+      const authorName = displayName(user)
+      const where =
+        typeParam === 'event' ? 'an event you’re attending' : 'your center board'
+      await push.dispatchNotification(
+        c.env,
+        recipientIds,
+        notifications.NOTIFICATION_TYPES.BOARD_POST,
+        `${authorName} posted in ${where}`,
+        preview(text),
+        {
+          excludeUserId: user.id,
+          actionUrl: `/feed/${postId}`,
+          relatedUserId: user.id,
+          data: { boardType: typeParam, parentId, postId },
+        },
+      )
+    })(),
+  )
+
+  return c.json({ post: boardPostToApi(post) }, 201)
+})
+
+app.post('/feed/public', authMiddleware, async (c) => {
+  const user = c.get('user')
+
+  const suspended = suspendedPostingResponse(c, user)
+  if (suspended) return suspended
+
+  const body: { body?: string; imageUrl?: string | null } = await c.req
+    .json<{ body?: string; imageUrl?: string | null }>()
+    .catch(() => ({}))
+  const text = typeof body.body === 'string' ? body.body.trim() : ''
+  if (!text) {
+    return c.json({ message: 'Post body is required' }, 400)
+  }
+  if (text.length > 2000) {
+    return c.json({ message: 'Post body must be 2000 characters or fewer' }, 400)
+  }
+
+  const imageUrl = body.imageUrl ?? null
+  const validImageUrl = validate.url(imageUrl || undefined)
+  if (validImageUrl === false) {
+    return c.json({ message: 'Image URL is invalid' }, 400)
+  }
+
+  const postId = crypto.randomUUID()
+  const created = await db.createBoardPost(c.env.DB, {
+    id: postId,
+    board_id: null,
+    author_id: user.id,
+    body: text,
+    image_url: validImageUrl ?? null,
+    visibility: 'public_signed_in',
+  })
+
+  if (!created.success) {
+    console.error('createPublicPost error:', created.error)
+    return c.json({ message: 'Failed to create public post' }, 500)
+  }
+
+  const post = await db.getBoardPostWithAuthorById(c.env.DB, postId)
+  if (!post) {
+    return c.json({ message: 'Public post created but could not be loaded' }, 500)
+  }
+
   return c.json({ post: boardPostToApi(post) }, 201)
 })
 
@@ -1305,13 +1407,16 @@ app.post('/boards/posts/:postId/reactions', authMiddleware, async (c) => {
     return c.json({ message: 'Board post not found' }, 404)
   }
 
-  const board = await db.getBoardById(c.env.DB, post.board_id)
-  if (!board) {
-    return c.json({ message: 'Board not found' }, 404)
-  }
+  let board: Awaited<ReturnType<typeof db.getBoardById>> = null
+  if (post.board_id !== null) {
+    board = await db.getBoardById(c.env.DB, post.board_id)
+    if (!board) {
+      return c.json({ message: 'Board not found' }, 404)
+    }
 
-  const accessError = await verifyBoardAccess(c, board.type, board.parent_id, user)
-  if (accessError) return accessError
+    const accessError = await verifyBoardAccess(c, board.type, board.parent_id, user)
+    if (accessError) return accessError
+  }
 
   const body: { emoji?: string } = await c.req.json<{ emoji?: string }>().catch(() => ({}))
   if (!body.emoji || !BOARD_REACTIONS.has(body.emoji)) {
@@ -1319,6 +1424,30 @@ app.post('/boards/posts/:postId/reactions', authMiddleware, async (c) => {
   }
 
   const result = await db.toggleBoardPostReaction(c.env.DB, post.id, user.id, body.emoji)
+
+  // Only notify when a reaction is ADDED (not on un-react), and never the
+  // author reacting to their own post (BOARD_REACTION).
+  if (result.active && post.author_id !== user.id) {
+    fireNotify(
+      c,
+      push.dispatchNotification(
+        c.env,
+        [post.author_id],
+        notifications.NOTIFICATION_TYPES.BOARD_REACTION,
+        `${displayName(user)} reacted ${body.emoji} to your post`,
+        preview(post.body),
+        {
+          excludeUserId: user.id,
+          actionUrl: `/feed/${post.id}`,
+          relatedUserId: user.id,
+          data: board
+            ? { boardType: board.type, parentId: board.parent_id, postId: post.id }
+            : { boardType: 'public', parentId: 'public', postId: post.id },
+        },
+      ),
+    )
+  }
+
   return c.json(result)
 })
 
@@ -1335,12 +1464,14 @@ app.patch('/boards/posts/:postId', authMiddleware, async (c) => {
   if (!post) {
     return c.json({ message: 'Board post not found' }, 404)
   }
-  const board = await db.getBoardById(c.env.DB, post.board_id)
-  if (!board) {
-    return c.json({ message: 'Board not found' }, 404)
+  if (post.board_id !== null) {
+    const board = await db.getBoardById(c.env.DB, post.board_id)
+    if (!board) {
+      return c.json({ message: 'Board not found' }, 404)
+    }
+    const accessError = await verifyBoardAccess(c, board.type, board.parent_id, user)
+    if (accessError) return accessError
   }
-  const accessError = await verifyBoardAccess(c, board.type, board.parent_id, user)
-  if (accessError) return accessError
 
   const body: { body?: string } = await c.req
     .json<{ body?: string }>()
@@ -1371,8 +1502,10 @@ app.patch('/boards/posts/:postId', authMiddleware, async (c) => {
   }
 
   // Return the updated post in the same shape as the create response.
-  const refreshed = await db.listBoardPosts(c.env.DB, post.board_id, { limit: 100 })
-  const updated = refreshed.find((p) => p.id === postId)
+  const updated = post.board_id === null
+    ? await db.getBoardPostWithAuthorById(c.env.DB, postId)
+    : (await db.listBoardPosts(c.env.DB, post.board_id, { limit: 100 }))
+        .find((p) => p.id === postId)
   if (!updated) {
     return c.json({ message: 'Post edited but could not be reloaded' }, 500)
   }
@@ -1391,14 +1524,16 @@ app.delete('/boards/posts/:postId', authMiddleware, async (c) => {
   if (!post) {
     return c.json({ message: 'Board post not found' }, 404)
   }
-  const board = await db.getBoardById(c.env.DB, post.board_id)
-  if (!board) {
-    return c.json({ message: 'Board not found' }, 404)
+  if (post.board_id !== null) {
+    const board = await db.getBoardById(c.env.DB, post.board_id)
+    if (!board) {
+      return c.json({ message: 'Board not found' }, 404)
+    }
+    // Read access (deletion gate is finer-grained inside softDeleteBoardPost,
+    // but we still want to 403 non-members of the board)
+    const accessError = await verifyBoardAccess(c, board.type, board.parent_id, user)
+    if (accessError) return accessError
   }
-  // Read access (deletion gate is finer-grained inside softDeleteBoardPost,
-  // but we still want to 403 non-members of the board)
-  const accessError = await verifyBoardAccess(c, board.type, board.parent_id, user)
-  if (accessError) return accessError
 
   const result = await db.softDeleteBoardPost(c.env.DB, postId, {
     id: user.id,
@@ -1432,6 +1567,9 @@ app.post('/boards/posts/:postId/pin', authMiddleware, async (c) => {
   const post = await db.getBoardPostById(c.env.DB, postId)
   if (!post) {
     return c.json({ message: 'Board post not found' }, 404)
+  }
+  if (post.board_id === null) {
+    return c.json({ message: 'Public posts cannot be pinned' }, 409)
   }
   const board = await db.getBoardById(c.env.DB, post.board_id)
   if (!board) {
@@ -1473,6 +1611,9 @@ app.post('/boards/posts/:postId/unpin', authMiddleware, async (c) => {
   if (!post) {
     return c.json({ message: 'Board post not found' }, 404)
   }
+  if (post.board_id === null) {
+    return c.json({ message: 'Public posts cannot be unpinned' }, 409)
+  }
   const board = await db.getBoardById(c.env.DB, post.board_id)
   if (!board) {
     return c.json({ message: 'Board not found' }, 404)
@@ -1513,12 +1654,15 @@ app.post('/boards/posts/:postId/replies', authMiddleware, async (c) => {
   if (!parent) {
     return c.json({ message: 'Board post not found' }, 404)
   }
-  const board = await db.getBoardById(c.env.DB, parent.board_id)
-  if (!board) {
-    return c.json({ message: 'Board not found' }, 404)
+  let board: Awaited<ReturnType<typeof db.getBoardById>> = null
+  if (parent.board_id !== null) {
+    board = await db.getBoardById(c.env.DB, parent.board_id)
+    if (!board) {
+      return c.json({ message: 'Board not found' }, 404)
+    }
+    const accessError = await verifyBoardAccess(c, board.type, board.parent_id, user)
+    if (accessError) return accessError
   }
-  const accessError = await verifyBoardAccess(c, board.type, board.parent_id, user)
-  if (accessError) return accessError
 
   const suspended = suspendedPostingResponse(c, user)
   if (suspended) return suspended
@@ -1566,6 +1710,27 @@ app.post('/boards/posts/:postId/replies', authMiddleware, async (c) => {
   if (!created) {
     return c.json({ message: 'Reply created but could not be loaded' }, 500)
   }
+
+  // Notify the parent post's author that someone replied (BOARD_REPLY).
+  fireNotify(
+    c,
+    push.dispatchNotification(
+      c.env,
+      [parent.author_id],
+      notifications.NOTIFICATION_TYPES.BOARD_REPLY,
+      `${displayName(user)} replied to your post`,
+      preview(text),
+      {
+        excludeUserId: user.id,
+        actionUrl: `/feed/${parentPostId}`,
+        relatedUserId: user.id,
+        data: board
+          ? { boardType: board.type, parentId: board.parent_id, postId: parentPostId }
+          : { boardType: 'public', parentId: 'public', postId: parentPostId },
+      },
+    ),
+  )
+
   return c.json({ reply: boardPostToApi(created) }, 201)
 })
 
@@ -1577,12 +1742,14 @@ app.get('/boards/posts/:postId/replies', authMiddleware, async (c) => {
   if (!parent) {
     return c.json({ message: 'Board post not found' }, 404)
   }
-  const board = await db.getBoardById(c.env.DB, parent.board_id)
-  if (!board) {
-    return c.json({ message: 'Board not found' }, 404)
+  if (parent.board_id !== null) {
+    const board = await db.getBoardById(c.env.DB, parent.board_id)
+    if (!board) {
+      return c.json({ message: 'Board not found' }, 404)
+    }
+    const accessError = await verifyBoardAccess(c, board.type, board.parent_id, user)
+    if (accessError) return accessError
   }
-  const accessError = await verifyBoardAccess(c, board.type, board.parent_id, user)
-  if (accessError) return accessError
 
   const replies = await db.listBoardPostReplies(c.env.DB, parentPostId)
   return c.json({
@@ -1770,6 +1937,27 @@ app.post('/addEvent', authMiddleware, async (c) => {
   const tier = calculateTier(endorsers, attendeeCount)
   await db.updateEvent(c.env.DB, eventId, { tier, people_attending: attendeeCount })
 
+  // Notify members of the host center about the new event (EVENT_CREATED).
+  fireNotify(
+    c,
+    (async () => {
+      const recipientIds = await db.getBoardRecipientIds(c.env.DB, 'center', validCenterID)
+      await push.dispatchNotification(
+        c.env,
+        recipientIds,
+        notifications.NOTIFICATION_TYPES.EVENT_CREATED,
+        `New event at ${center.name}`,
+        validTitle ?? 'A new event was just posted.',
+        {
+          excludeUserId: user.id,
+          actionUrl: `/events/${eventId}`,
+          relatedEventId: eventId,
+          relatedUserId: user.id,
+        },
+      )
+    })(),
+  )
+
   return c.json({ id: eventId, tier })
 })
 
@@ -1795,8 +1983,26 @@ app.post('/removeEvent', authMiddleware, async (c) => {
     )
   }
 
+  // Capture attendees BEFORE deleting — the cascade wipes event_attendees.
+  const attendeeIds = (await db.getBoardRecipientIds(c.env.DB, 'event', id)).filter(
+    (uid) => uid !== user.id,
+  )
+
   const result = await db.deleteEvent(c.env.DB, id)
   if (result.success) {
+    if (attendeeIds.length > 0) {
+      fireNotify(
+        c,
+        push.dispatchNotification(
+          c.env,
+          attendeeIds,
+          notifications.NOTIFICATION_TYPES.EVENT_CANCELLED,
+          `Event cancelled: ${existing.title}`,
+          'An event you RSVP’d to has been cancelled.',
+          { relatedUserId: user.id },
+        ),
+      )
+    }
     return c.json({ message: 'Event removed' })
   }
   return c.json({ message: 'Failed to remove event' }, 500)
@@ -1864,6 +2070,33 @@ app.post('/updateEvent', authMiddleware, async (c) => {
 
   const result = await db.updateEvent(c.env.DB, eventId, updates)
   if (result.success) {
+    // Notify attendees that event details changed (EVENT_UPDATED). Only fire
+    // when a guest-visible field actually changed (skip pure tier/count writes).
+    const meaningful = ['title', 'description', 'date', 'address', 'center_id'].some(
+      (k) => (updates as Record<string, unknown>)[k] !== undefined,
+    )
+    if (meaningful) {
+      fireNotify(
+        c,
+        (async () => {
+          const recipientIds = (
+            await db.getBoardRecipientIds(c.env.DB, 'event', eventId)
+          ).filter((uid) => uid !== user.id)
+          await push.dispatchNotification(
+            c.env,
+            recipientIds,
+            notifications.NOTIFICATION_TYPES.EVENT_UPDATED,
+            `Event updated: ${updates.title ?? existing.title}`,
+            'Details changed for an event you RSVP’d to.',
+            {
+              actionUrl: `/events/${eventId}`,
+              relatedEventId: eventId,
+              relatedUserId: user.id,
+            },
+          )
+        })(),
+      )
+    }
     return c.json({ message: 'Event updated' })
   }
   return c.json({ message: 'Update failed' }, 400)
@@ -1920,6 +2153,26 @@ app.post('/attendEvent', authMiddleware, async (c) => {
   const result = await db.addEventAttendee(c.env.DB, eventID, user.id)
   if (!result.success) {
     return c.json({ message: 'Failed to register attendance', error: result.error }, 500)
+  }
+
+  // Notify the event creator that someone joined (ATTENDEE_JOINED).
+  if (event.created_by && event.created_by !== user.id) {
+    fireNotify(
+      c,
+      push.dispatchNotification(
+        c.env,
+        [event.created_by],
+        notifications.NOTIFICATION_TYPES.ATTENDEE_JOINED,
+        `${displayName(user)} is attending ${event.title}`,
+        `${displayName(user)} just RSVP’d to your event.`,
+        {
+          excludeUserId: user.id,
+          actionUrl: `/events/${eventID}`,
+          relatedEventId: eventID,
+          relatedUserId: user.id,
+        },
+      ),
+    )
   }
 
   const updated = await db.getEventById(c.env.DB, eventID)
@@ -2093,7 +2346,9 @@ app.post('/profile/uploadImage', authMiddleware, async (c) => {
     },
   })
 
-  const baseUrl = 'https://avatars.chinmayajanata.org/avatars'
+  // R2 custom domain is bound at the bucket root → public URL is domain + key
+  // (key already includes the avatars/ folder). No extra "/avatars" segment.
+  const baseUrl = 'https://avatars.chinmayajanata.org'
   const url = `${baseUrl}/${key}`
 
   // Update user profile with new image URL
@@ -2102,6 +2357,43 @@ app.post('/profile/uploadImage', authMiddleware, async (c) => {
   })
 
   return c.json({ message: 'Profile image uploaded successfully', imageUrl: url })
+})
+
+// Board image upload (#283). Mirrors /profile/uploadImage but stores under a
+// `boards/` prefix and does NOT touch the user's profile — it just returns a
+// URL the client passes to createBoardPost as `imageUrl`.
+app.post('/board/uploadImage', authMiddleware, async (c) => {
+  const user = c.get('user')
+
+  const body = await c.req.parseBody()
+  const file = body['file']
+
+  if (!(file instanceof File)) {
+    return c.json({ message: 'No file uploaded' }, 400)
+  }
+  if (!ALLOWED_TYPES.includes(file.type)) {
+    return c.json(
+      { message: 'Unsupported file type. Allowed types are JPEG, PNG, GIF, WebP, HEIC' },
+      400
+    )
+  }
+  if (file.size > MAX_FILE_SIZE) {
+    return c.json({ message: 'File size exceeds 5MB limit' }, 400)
+  }
+
+  const ext = file.name.split('.').pop() || 'jpg'
+  const key = `boards/${user.id}/${crypto.randomUUID()}.${ext}`
+
+  await c.env.AVATARS.put(key, file.stream(), {
+    httpMetadata: { contentType: file.type },
+    customMetadata: { userId: user.id, originalFileName: file.name },
+  })
+
+  // The R2 custom domain is bound at the bucket root, so the public URL is
+  // domain + object key (the key already namespaces under boards/). A previous
+  // extra "/avatars" segment 404'd — board photos showed as a grey box.
+  const url = `https://avatars.chinmayajanata.org/${key}`
+  return c.json({ message: 'Image uploaded', imageUrl: url })
 })
 
 // ── Fun route ─────────────────────────────────────────────────────────
@@ -2193,6 +2485,7 @@ app.put('/admin/centers/:id', adminMiddleware, async (c) => {
     image?: string
     acharya?: string
     pointOfContact?: string
+    description?: string
   }>()
 
   const updates: Partial<CenterRow> = {}
@@ -2203,6 +2496,7 @@ app.put('/admin/centers/:id', adminMiddleware, async (c) => {
   if (body.image !== undefined) updates.image = body.image
   if (body.acharya !== undefined) updates.acharya = body.acharya
   if (body.pointOfContact !== undefined) updates.point_of_contact = body.pointOfContact
+  if (body.description !== undefined) updates.description = body.description
 
   const result = await db.updateCenter(c.env.DB, centerId, updates)
   if (result.success) {
@@ -2572,7 +2866,9 @@ app.put('/notifications/preferences', authMiddleware, async (c) => {
   const BOOL_KEYS = [
     'inAppEnabled', 'pushEnabled', 'emailEnabled',
     'eventReminders', 'eventCreated', 'eventCancelled', 'eventUpdated',
-    'attendeeJoined', 'centerAnnouncements', 'quietHoursEnabled',
+    'attendeeJoined', 'centerAnnouncements',
+    'boardPosts', 'boardReplies', 'boardReactions', 'boardMentions',
+    'quietHoursEnabled',
   ] as const
   for (const k of BOOL_KEYS) {
     if (body[k] !== undefined && typeof body[k] !== 'boolean') {
@@ -2598,6 +2894,10 @@ app.put('/notifications/preferences', authMiddleware, async (c) => {
   if (body.eventUpdated !== undefined) updates.event_updated = body.eventUpdated ? 1 : 0
   if (body.attendeeJoined !== undefined) updates.attendee_joined = body.attendeeJoined ? 1 : 0
   if (body.centerAnnouncements !== undefined) updates.center_announcements = body.centerAnnouncements ? 1 : 0
+  if (body.boardPosts !== undefined) updates.board_posts = body.boardPosts ? 1 : 0
+  if (body.boardReplies !== undefined) updates.board_replies = body.boardReplies ? 1 : 0
+  if (body.boardReactions !== undefined) updates.board_reactions = body.boardReactions ? 1 : 0
+  if (body.boardMentions !== undefined) updates.board_mentions = body.boardMentions ? 1 : 0
   if (body.quietHoursStart !== undefined) updates.quiet_hours_start = body.quietHoursStart as string | null
   if (body.quietHoursEnd !== undefined) updates.quiet_hours_end = body.quietHoursEnd as string | null
   if (body.quietHoursEnabled !== undefined) updates.quiet_hours_enabled = body.quietHoursEnabled ? 1 : 0
@@ -2609,6 +2909,42 @@ app.put('/notifications/preferences', authMiddleware, async (c) => {
   }
 
   return c.json(notifications.preferencesRowToApi(prefs))
+})
+
+// ═══════════════════════════════════════════════════════════════════════
+// PUSH TOKENS (#102)
+// ═══════════════════════════════════════════════════════════════════════
+
+/**
+ * POST /push/register
+ * Register (or refresh) this device's Expo push token. Called after the app
+ * obtains permission and a token. Idempotent — re-registering updates the row.
+ */
+app.post('/push/register', authMiddleware, async (c) => {
+  const user = c.get('user')
+  const body: { token?: string; platform?: string; deviceId?: string } = await c.req
+    .json()
+    .catch(() => ({}))
+
+  if (!push.isExpoPushToken(body.token)) {
+    return c.json({ message: 'A valid Expo push token is required' }, 400)
+  }
+
+  await push.registerPushToken(c.env, user.id, body.token, body.platform, body.deviceId)
+  return c.json({ ok: true })
+})
+
+/**
+ * POST /push/unregister
+ * Remove a device token (logout / disable push). Idempotent.
+ */
+app.post('/push/unregister', authMiddleware, async (c) => {
+  const body: { token?: string } = await c.req.json().catch(() => ({}))
+  if (!body.token || typeof body.token !== 'string') {
+    return c.json({ message: 'token is required' }, 400)
+  }
+  await push.removePushToken(c.env, body.token)
+  return c.json({ ok: true })
 })
 
 // ═══════════════════════════════════════════════════════════════════════

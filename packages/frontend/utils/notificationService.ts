@@ -54,6 +54,10 @@ export interface NotificationPreferences {
   eventUpdated: boolean
   attendeeJoined: boolean
   centerAnnouncements: boolean
+  boardPosts: boolean
+  boardReplies: boolean
+  boardReactions: boolean
+  boardMentions: boolean
   quietHoursStart: string | null
   quietHoursEnd: string | null
   quietHoursEnabled: boolean
@@ -69,7 +73,34 @@ export const NotificationTypes = {
   ATTENDEE_JOINED: 5,
   CENTER_ANNOUNCEMENT: 6,
   SYSTEM_NOTIFICATION: 7,
+  BOARD_POST: 8,
+  BOARD_REPLY: 9,
+  BOARD_REACTION: 10,
+  BOARD_MENTION: 11,
 } as const
+
+/**
+ * Register this device's Expo push token with the backend so it can receive
+ * push notifications. Safe to call repeatedly (idempotent server-side).
+ */
+export async function registerPushToken(
+  token: string,
+  platform?: string,
+  deviceId?: string,
+): Promise<void> {
+  await authFetch('/push/register', {
+    method: 'POST',
+    body: JSON.stringify({ token, platform, deviceId }),
+  })
+}
+
+/** Unregister a device token (logout / disable push). */
+export async function unregisterPushToken(token: string): Promise<void> {
+  await authFetch('/push/unregister', {
+    method: 'POST',
+    body: JSON.stringify({ token }),
+  })
+}
 
 /**
  * Get all notifications for the current user
@@ -169,6 +200,10 @@ export function getNotificationTypeName(typeId: number): string {
     5: 'Attendee Joined',
     6: 'Center Announcement',
     7: 'System Notification',
+    8: 'Board Post',
+    9: 'Reply',
+    10: 'Reaction',
+    11: 'Mention',
   }
   return typeMap[typeId] || 'Notification'
 }
@@ -185,6 +220,10 @@ export function getNotificationTypeIcon(typeId: number): string {
     5: 'user-plus',
     6: 'megaphone',
     7: 'info',
+    8: 'message-square',
+    9: 'corner-down-right',
+    10: 'heart',
+    11: 'at-sign',
   }
   return iconMap[typeId] || 'bell'
 }

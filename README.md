@@ -37,13 +37,20 @@ Om Sri Chinmaya Sadgurave Namaha. Om Sri Gurubyo Namaha.
 ```bash
 git clone https://github.com/Project-Janatha/Project-Janatha.git
 cd Project-Janatha
-npm run setup    # Installs deps + runs D1 migrations + seeds test data
+
+# One command for a fully working local stack: installs deps, applies all
+# migrations to a sandboxed local D1, seeds centers/events, and registers the
+# 5 Developer-Mode role accounts (member@/sevak@/admin@… · PreviewTest2026!).
+npm run setup:local
+
+# (lower-level: `npm run setup` installs + migrates + seeds, no role accounts)
 ```
 
 ### Running
 
 ```bash
-npm run dev      # Starts both API (8787) + Frontend (8081)
+npm run local    # setup:local, then start API (8787) + Frontend (8081)
+npm run dev      # Just start both (API 8787 + Frontend 8081)
 ```
 
 - **API**: http://localhost:8787 — Hono backend on Cloudflare Workers

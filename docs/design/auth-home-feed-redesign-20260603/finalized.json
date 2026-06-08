@@ -1,0 +1,17 @@
+{
+  "screen": "auth-home-feed-redesign",
+  "date": "2026-06-03",
+  "mode": "plan-driven",
+  "html": "/Users/kishparikh/.gstack/projects/Project-Janatha-Project-Janatha/designs/auth-home-feed-redesign-20260603/finalized.html",
+  "plan": "/Users/kishparikh/conductor/workspaces/Project-Janatha/nairobi/.context/auth-home-feed-redesign-full-plan.md",
+  "source_context": [
+    "packages/frontend/app/auth.tsx",
+    "packages/frontend/app/auth.web.tsx",
+    "packages/frontend/components/ui/AuthPromptModal.tsx",
+    "packages/frontend/components/center/CenterSearch.tsx",
+    "packages/frontend/app/(tabs)/index.tsx",
+    "packages/frontend/app/(tabs)/feed.tsx",
+    "packages/frontend/components/feed/FeedEmptyState.tsx"
+  ],
+  "decision": "Use shared auth flow rendered as sheet/modal/full-page fallback, reduce blocking onboarding to name plus home center, and make Home/Feed state-specific across iOS and web."
+}

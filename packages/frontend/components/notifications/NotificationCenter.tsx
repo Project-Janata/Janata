@@ -6,6 +6,7 @@
 
 import React, { useEffect, useState } from 'react'
 import { View, Text, FlatList, ActivityIndicator, TouchableOpacity, Alert } from 'react-native'
+import { Bell } from 'lucide-react-native'
 import type { Notification } from '../../utils/notificationService'
 import {
   getNotifications,
@@ -170,9 +171,17 @@ export const NotificationCenter: React.FC<NotificationCenterProps> = ({ onNotifi
           <Text style={{ marginTop: 12, fontSize: 14, color: c.textMuted }}>Loading notifications...</Text>
         </View>
       ) : notifications.length === 0 ? (
-        <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center' }}>
-          <Text style={{ fontSize: 16, color: c.textFaint }}>
-            {filter === 'unread' ? 'No unread notifications' : 'No notifications yet'}
+        <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center', paddingHorizontal: 32 }}>
+          <View style={{ width: 56, height: 56, borderRadius: 18, backgroundColor: c.accentSoft, alignItems: 'center', justifyContent: 'center' }}>
+            <Bell size={26} color={c.accent} />
+          </View>
+          <Text style={{ marginTop: 16, fontFamily: 'Inclusive Sans', fontSize: 16, color: c.text, textAlign: 'center' }}>
+            {filter === 'unread' ? "You're all caught up" : 'No notifications yet'}
+          </Text>
+          <Text style={{ marginTop: 6, fontSize: 13.5, lineHeight: 19, color: c.textMuted, textAlign: 'center', maxWidth: 300 }}>
+            {filter === 'unread'
+              ? 'New unread notifications will show up here.'
+              : 'Replies, mentions, and updates from your center and the events you join will appear here.'}
           </Text>
         </View>
       ) : (

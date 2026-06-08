@@ -1,5 +1,5 @@
-import React, { useState } from 'react'
-import { View, Pressable, ScrollView, Modal, Alert } from 'react-native'
+import React, { useState, useEffect } from 'react'
+import { View, Pressable, ScrollView, Modal, Alert, Platform } from 'react-native'
 import { useRouter } from 'expo-router'
 import {
   Shield,
@@ -9,6 +9,7 @@ import {
   LogOut,
   AlertTriangle,
   UserPlus,
+  Bell,
 } from 'lucide-react-native'
 import { useUser, useTheme } from '../../components/contexts'
 import { Avatar, Text, Section, StackHeader } from '../../components/ui'
@@ -20,7 +21,13 @@ const APP_VERSION = Constants.expoConfig?.version || '0.2.0'
 
 export default function PreferencesNative() {
   const router = useRouter()
-  const { user, logout } = useUser()
+  const { user, loading, logout } = useUser()
+
+  // Account-only screen — bounce guests to sign-in (a deep link / returnTo
+  // could otherwise land a logged-out visitor here).
+  useEffect(() => {
+    if (Platform.OS !== 'web' && !loading && !user) router.replace('/auth')
+  }, [user, loading])
   const { isDark } = useTheme()
   const { deleteAccount } = useUser()
   const { track } = useAnalytics()
@@ -169,6 +176,27 @@ export default function PreferencesNative() {
           </View>
         </Section>
         {/* Connect */}
+        <Section title="NOTIFICATIONS" titleColor={faintColor}>
+          <View
+            style={{
+              borderTopWidth: 1,
+              borderBottomWidth: 1,
+              borderColor,
+              marginHorizontal: -16,
+            }}
+          >
+            <MenuRow onPress={() => {
+              track('settings_notifications_pressed', { source: 'settings' })
+              router.push('/settings/notifications')
+            }}>
+              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12 }}>
+                <Bell size={20} color={textColor} />
+                <Text style={{ fontSize: 15, color: textColor }}>Notification preferences</Text>
+              </View>
+            </MenuRow>
+          </View>
+        </Section>
+
         <Section title="CONNECT" titleColor={faintColor}>
           <View
             style={{

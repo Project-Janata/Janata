@@ -1,9 +1,10 @@
 import React, { useEffect, useRef, useState } from 'react'
-import { ActivityIndicator, Modal, Platform, Pressable, ScrollView, Text, TextInput, View } from 'react-native'
+import { ActivityIndicator, Image, Modal, Platform, Pressable, ScrollView, Text, TextInput, View } from 'react-native'
 import {
   Building2,
   CalendarDays,
   ChevronUp,
+  Globe2,
   MoreHorizontal,
   Pencil,
   Pin,
@@ -12,7 +13,7 @@ import {
   SmilePlus,
   Trash2,
 } from 'lucide-react-native'
-import { Avatar } from '../ui'
+import { Avatar, ImageLightbox } from '../ui'
 import { useUser } from '../contexts'
 import type { AppColors } from '../../tokens'
 import { boardPostToMessage, type BoardMessage } from '../boards'
@@ -84,7 +85,7 @@ export function PostThread({
   const [actionBusy, setActionBusy] = useState(false)
   const [actionError, setActionError] = useState<string | null>(null)
 
-  const canPin = canPinPosts(user)
+  const canPin = post.groupKind !== 'public' && canPinPosts(user)
   const isAuthor = canModifyPost(user, post.author.id)
   const hasMenu = canPin || isAuthor
 
@@ -149,6 +150,7 @@ export function PostThread({
   }
 
   const handleReact = async (emoji: string) => {
+    if (!user) return
     const prev = reactions
     setReactions(applyOptimisticReaction(prev, emoji))
     track('feed_post_reacted', { post_id: post.postId, emoji, source: 'post_thread' })
@@ -200,6 +202,7 @@ export function PostThread({
   }, [post.postId])
 
   const handleSend = async () => {
+    if (!user) return
     const body = draft.trim()
     if (!body || sending) return
     const tempId = `temp-${Date.now()}`
@@ -213,6 +216,13 @@ export function PostThread({
       setReplies((prev) => prev.map((r) => (r.id === tempId ? boardPostToMessage(created) : r)))
       setRepliesLoaded(true)
       track('feed_reply_sent', { post_id: post.postId, source: 'post_thread' })
+      // Replies are content too — count them in the cross-surface north-star.
+      track('content_created', {
+        content_type: 'reply',
+        surface: 'post_thread',
+        parent_id: post.postId,
+        character_count: body?.length ?? 0,
+      })
     } catch (err: any) {
       // Roll back the optimistic reply and give the user their text back.
       setReplies((prev) => prev.filter((r) => r.id !== tempId))
@@ -427,6 +437,7 @@ export function PostThread({
 
 function SourceBoardChip({ post, colors }: { post: FeedPost; colors: AppColors }) {
   const isEvent = post.groupKind === 'event'
+  const isPublic = post.groupKind === 'public'
   return (
     <View
       style={{
@@ -441,13 +452,15 @@ function SourceBoardChip({ post, colors }: { post: FeedPost; colors: AppColors }
         gap: 6,
       }}
     >
-      {isEvent ? (
+      {isPublic ? (
+        <Globe2 size={13} color={colors.accent} strokeWidth={2.3} />
+      ) : isEvent ? (
         <CalendarDays size={13} color={colors.accent} strokeWidth={2.3} />
       ) : (
         <Building2 size={13} color={colors.accent} strokeWidth={2.3} />
       )}
       <Text style={{ fontFamily: 'Inclusive Sans', fontSize: 12, color: colors.accent }}>
-        {post.sourceTitle} - Board
+        {isPublic ? post.sourceTitle : `${post.sourceTitle} - Board`}
       </Text>
     </View>
   )
@@ -598,6 +611,7 @@ function OriginalPost({
 }) {
   const { track } = useAnalytics()
   const [pickerOpen, setPickerOpen] = useState(false)
+  const [lightboxOpen, setLightboxOpen] = useState(false)
   return (
     <View style={{ flexDirection: 'row', gap: 12 }}>
       <Avatar
@@ -652,6 +666,20 @@ function OriginalPost({
         >
           {body}
         </Text>
+
+        {post.imageUrl ? (
+          <>
+            <Pressable
+              onPress={() => setLightboxOpen(true)}
+              accessibilityRole="button"
+              accessibilityLabel="View image full screen"
+              style={{ marginTop: 12, width: '100%', maxWidth: 420, height: 280, borderRadius: 16, overflow: 'hidden', backgroundColor: colors.surface }}
+            >
+              <Image source={{ uri: post.imageUrl }} style={{ width: '100%', height: '100%' }} resizeMode="cover" />
+            </Pressable>
+            <ImageLightbox uri={post.imageUrl} visible={lightboxOpen} onClose={() => setLightboxOpen(false)} />
+          </>
+        ) : null}
 
         <View
           style={{

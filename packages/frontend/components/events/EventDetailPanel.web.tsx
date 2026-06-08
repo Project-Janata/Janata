@@ -1,16 +1,18 @@
-import React, { useMemo } from 'react'
+import React, { useMemo, useState } from 'react'
 import { View, Text, Image, ScrollView, Pressable, ActivityIndicator, Linking } from 'react-native'
-import { MapPin, Users, User, Clock, CheckCircle, ChevronLeft, Pencil, ExternalLink, Trash2 } from 'lucide-react-native'
+import { MapPin, Users, User, Clock, CheckCircle, ChevronLeft, Pencil, ExternalLink, Trash2, CalendarPlus } from 'lucide-react-native'
 import CopyLinkButton from '../ui/CopyLinkButton'
 import Badge from '../ui/Badge'
 import { DetailSection } from '../ui'
 import Avatar from '../ui/Avatar'
 import PrimaryButton from '../ui/buttons/PrimaryButton'
-import DestructiveButton from '../ui/buttons/DestructiveButton'
 import { useDetailColors, type DetailColors } from '../../hooks/useDetailColors'
+import { useColors } from '../../hooks/useColors'
 import { useBoard } from '../../hooks/useApiData'
 import { createBoardPost } from '../../utils/api'
 import { ThreadPanel, boardPostToMessage, type BoardMessage } from '../boards'
+import { PostThread, type FeedPost } from '../feed'
+import { buildFeedPostFromMessage } from '../feed/feedData'
 import { useUser } from '../contexts'
 
 // ---------------------------------------------------------------------------
@@ -399,6 +401,26 @@ function MetaSection({
         </View>
       )}
 
+      {/* Add to calendar (universal events pattern — Luma/Partiful) */}
+      {(() => {
+        const cal = googleCalendarUrl(event)
+        if (!cal) return null
+        return (
+          <Pressable
+            onPress={() => Linking.openURL(cal)}
+            accessibilityRole="button"
+            accessibilityLabel="Add to calendar"
+            className="flex-row items-center"
+            style={{ gap: 12 }}
+          >
+            <MetaIcon icon={CalendarPlus} color="#E8862A" colors={colors} />
+            <Text style={{ fontFamily: 'Inclusive Sans', fontSize: 14, color: '#E8862A' }}>
+              Add to calendar
+            </Text>
+          </Pressable>
+        )
+      })()}
+
       {/* Point of contact row */}
       {event.pointOfContact && (
         <View className="flex-row items-center" style={{ gap: 12 }}>
@@ -581,9 +603,6 @@ function PeopleTab({ attendees, colors }: { attendees: Attendee[]; colors: Detai
                   {a.subtitle}
                 </Text>
               </View>
-              {i === 0 && (
-                <Badge label="HOST" variant="host" />
-              )}
             </View>
           ))}
         </View>
@@ -655,6 +674,7 @@ function RegisteredContent({
   canPostToThread,
   boardMessages,
   onSubmitPost,
+  onMessagePress,
 }: {
   event: EventDetailPanelProps['event']
   attendees: Attendee[]
@@ -662,6 +682,7 @@ function RegisteredContent({
   canPostToThread: boolean
   boardMessages: BoardMessage[]
   onSubmitPost: (body: string) => Promise<void>
+  onMessagePress: (message: BoardMessage) => void
 }) {
   return (
     <View style={{ flex: 1 }}>
@@ -706,6 +727,7 @@ function RegisteredContent({
             composerPlaceholder="Write to the group..."
             composerState={canPostToThread ? 'open' : 'locked'}
             onSubmitPost={onSubmitPost}
+            onMessagePress={onMessagePress}
           />
         </DetailSection>
       </ScrollView>
@@ -732,6 +754,91 @@ function hostnameOf(url: string): string {
   } catch {
     return 'official site'
   }
+}
+
+// Build a Google Calendar "add event" link from the event (a universal events
+// pattern — Luma/Partiful). Returns null if the date is unusable; falls back to
+// an all-day entry when the time can't be parsed.
+function googleCalendarUrl(e: {
+  title?: string
+  date?: string
+  time?: string
+  location?: string
+  address?: string
+  description?: string
+}): string | null {
+  const ymd = (e.date || '').replace(/-/g, '')
+  if (!/^\d{8}$/.test(ymd)) return null
+  const text = encodeURIComponent(e.title || 'Event')
+  const location = encodeURIComponent(e.location || e.address || '')
+  const details = encodeURIComponent(e.description || '')
+  let dates: string
+  const m = (e.time || '').match(/(\d{1,2}):(\d{2})\s*(am|pm)?/i)
+  if (m) {
+    let h = parseInt(m[1], 10)
+    const min = m[2]
+    const ap = m[3]?.toLowerCase()
+    if (ap === 'pm' && h < 12) h += 12
+    if (ap === 'am' && h === 12) h = 0
+    const sh = String(h).padStart(2, '0')
+    const eh = String((h + 2) % 24).padStart(2, '0')
+    dates = `${ymd}T${sh}${min}00/${ymd}T${eh}${min}00`
+  } else {
+    const d = new Date(`${e.date}T00:00:00`)
+    d.setDate(d.getDate() + 1)
+    const next = `${d.getFullYear()}${String(d.getMonth() + 1).padStart(2, '0')}${String(d.getDate()).padStart(2, '0')}`
+    dates = `${ymd}/${next}`
+  }
+  return `https://calendar.google.com/calendar/render?action=TEMPLATE&text=${text}&dates=${dates}&details=${details}&location=${location}`
+}
+
+function QuietCancelButton({
+  onPress,
+  disabled,
+  loading,
+  colors,
+}: {
+  onPress: () => void
+  disabled?: boolean
+  loading?: boolean
+  colors: DetailColors
+}) {
+  const isDisabled = disabled || loading
+  return (
+    <Pressable
+      onPress={!isDisabled ? onPress : undefined}
+      disabled={isDisabled}
+      accessibilityRole="button"
+      accessibilityLabel="Cancel registration"
+      style={({ pressed }) => ({
+        borderWidth: 1,
+        borderColor: pressed ? '#FCA5A5' : colors.border,
+        backgroundColor: pressed ? '#FEF2F2' : 'transparent',
+        paddingHorizontal: 16,
+        paddingVertical: 11,
+        borderRadius: 999,
+        alignItems: 'center',
+        justifyContent: 'center',
+        opacity: isDisabled ? 0.55 : 1,
+      })}
+    >
+      {loading ? (
+        <ActivityIndicator size="small" color={colors.textMuted} />
+      ) : (
+        <Text
+          style={{
+            fontFamily: 'Inclusive Sans',
+            fontSize: 14,
+            lineHeight: 20,
+            color: '#B91C1C',
+            textAlign: 'center',
+          }}
+        >
+          Cancel Registration
+        </Text>
+      )}
+    </Pressable>
+  )
 }
 
 function ActionBar({
@@ -767,13 +874,12 @@ function ActionBar({
         }}
       >
         {isRegistered ? (
-          <DestructiveButton
+          <QuietCancelButton
             onPress={onToggleRegistration}
             disabled={isToggling}
             loading={isToggling}
-          >
-            Cancel Registration
-          </DestructiveButton>
+            colors={colors}
+          />
         ) : (
           <PrimaryButton
             onPress={onToggleRegistration}
@@ -845,13 +951,12 @@ function ActionBar({
           backgroundColor: colors.panelBg,
         }}
       >
-        <DestructiveButton
+        <QuietCancelButton
           onPress={onToggleRegistration}
           disabled={isToggling}
           loading={isToggling}
-        >
-          Cancel Registration
-        </DestructiveButton>
+          colors={colors}
+        />
       </View>
     )
   }
@@ -903,7 +1008,9 @@ export default function EventDetailPanel({
   onDelete,
 }: EventDetailPanelProps) {
   const colors = useDetailColors()
+  const appColors = useColors()
   const { user } = useUser()
+  const [threadDetailPost, setThreadDetailPost] = useState<FeedPost | null>(null)
   const isRegistered = event.isRegistered && !isPast
   const canPostToThread = !!user && (!!isRegistered || !!isAdmin)
   const { posts: boardPosts, refetch: refetchBoard } = useBoard('event', event.id, canPostToThread)
@@ -912,6 +1019,56 @@ export default function EventDetailPanel({
   const handleCreateThreadPost = async (body: string) => {
     await createBoardPost('event', event.id, body)
     await refetchBoard()
+  }
+
+  const openThreadPost = (message: BoardMessage) => {
+    setThreadDetailPost(
+      buildFeedPostFromMessage(message, {
+        groupId: `event-${event.id}`,
+        kind: 'event',
+        parentId: event.id,
+        title: event.title,
+        subtitle: event.location || `${event.attendees ?? 0} going`,
+      })
+    )
+  }
+
+  if (threadDetailPost) {
+    return (
+      <View
+        style={{
+          maxWidth: 440,
+          width: '100%',
+          height: '100%',
+          backgroundColor: appColors.bg,
+          borderLeftWidth: 1,
+          borderLeftColor: appColors.border,
+        }}
+      >
+        <View style={{ paddingTop: 12 }}>
+          <Pressable
+            onPress={() => setThreadDetailPost(null)}
+            accessibilityRole="button"
+            accessibilityLabel="Back to discussion"
+            style={{ flexDirection: 'row', alignItems: 'center', gap: 6, paddingHorizontal: 16, paddingVertical: 10 }}
+          >
+            <ChevronLeft size={20} color={appColors.accent} />
+            <Text style={{ fontSize: 14, color: appColors.accent }}>Back to discussion</Text>
+          </Pressable>
+        </View>
+        <View style={{ flex: 1 }}>
+          <PostThread
+            post={threadDetailPost}
+            colors={appColors}
+            onPostChanged={refetchBoard}
+            onPostDeleted={() => {
+              setThreadDetailPost(null)
+              refetchBoard()
+            }}
+          />
+        </View>
+      </View>
+    )
   }
 
   return (
@@ -947,6 +1104,7 @@ export default function EventDetailPanel({
           canPostToThread={canPostToThread}
           boardMessages={boardMessages}
           onSubmitPost={handleCreateThreadPost}
+          onMessagePress={openThreadPost}
         />
       ) : (
         <DefaultContent

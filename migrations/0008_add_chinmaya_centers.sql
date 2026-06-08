@@ -77,3 +77,26 @@ INSERT INTO centers (
   NULL,
   datetime('now'), datetime('now')
 );
+
+-- Centers 008/009/015/016/047/057/065/067/088 are referenced by the events in
+-- 0010_seed_chinmaya_events_2026.sql but were never created by any migration
+-- (they predate the c1000001-prefixed seed_centers.sql rewrite, which left these
+-- c0000001 references orphaned). A fresh `npm run d1:migrate:all` therefore
+-- FK-failed on 0010. Recreate them here (before 0010) so the chain applies
+-- cleanly. INSERT OR IGNORE keeps this idempotent — environments where these
+-- rows already exist (e.g. the stateful preview/prod D1) are left untouched.
+-- Geo/address are a representative event location per center; richer metadata
+-- can be backfilled later. See issue #331.
+INSERT OR IGNORE INTO centers (
+  id, name, latitude, longitude, address, member_count, is_verified,
+  created_at, updated_at
+) VALUES
+  ('c0000001-0000-0000-0000-000000000008', 'Chinmaya Sandeepany San Jose', 37.3593226, -121.8095066, '10160 Clayton Rd, San Jose, CA - 95127, US', 0, 1, datetime('now'), datetime('now')),
+  ('c0000001-0000-0000-0000-000000000009', 'Chinmaya Prabha (Houston)', 29.6659766, -95.615816, '10353 Synott Rd, Sugar Land, TX - 77498, US', 0, 1, datetime('now'), datetime('now')),
+  ('c0000001-0000-0000-0000-000000000015', 'Chinmaya Mission Chicago', 41.7143174, -87.9470168, '11S080 Kingery Hwy, Willowbrook, IL - 60527, US', 0, 1, datetime('now'), datetime('now')),
+  ('c0000001-0000-0000-0000-000000000016', 'Chinmaya Mission Orlando', 28.6680904, -81.2926141, 'Casselberry, FL, US', 0, 1, datetime('now'), datetime('now')),
+  ('c0000001-0000-0000-0000-000000000047', 'Chinmaya Mission Portland', 45.5446737, -122.8807329, '3551 NW John Olsen Pl, Hillsboro, OR - 97124, US', 0, 1, datetime('now'), datetime('now')),
+  ('c0000001-0000-0000-0000-000000000057', 'Chinmaya Somnath (Washington DC)', 38.903992, -77.478483, '4350 Blue Spring Dr, Chantilly, VA - 20151, US', 0, 1, datetime('now'), datetime('now')),
+  ('c0000001-0000-0000-0000-000000000065', 'Chinmaya Mission Atlanta', 33.9004478, -84.1743202, '5511 Williams Rd, Norcross, GA - 30093, US', 0, 1, datetime('now'), datetime('now')),
+  ('c0000001-0000-0000-0000-000000000067', 'Chinmaya Mission Niagara', 43.0986956, -79.0896157, 'Niagara Region, ON, CA', 0, 1, datetime('now'), datetime('now')),
+  ('c0000001-0000-0000-0000-000000000088', 'Chinmaya-Saaket (Dallas-Fort Worth)', 32.9903214, -96.7942022, '17701 Davenport Rd, Dallas, TX - 75252, US', 0, 1, datetime('now'), datetime('now'));

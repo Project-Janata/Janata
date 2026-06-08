@@ -16,6 +16,7 @@
 import { useEffect, useRef } from 'react'
 import { usePathname } from 'expo-router'
 import { usePostHog } from 'posthog-react-native'
+import { resolveFirstSession, buildSuperProperties } from './analyticsEnv'
 
 export { usePostHog }
 
@@ -186,6 +187,57 @@ export type KnownAnalyticsEvent =
   | 'signup_failed'
   | 'signup_success'
   | 'terms_viewed'
+  // --- Funnel completeness (wired in the analytics-instrumentation pass) ---
+  | 'onboarding_started'
+  | 'profile_completed'
+  // --- Engagement / content-creation scaffolding (north-star events) ---
+  // Some of these are not wired yet; named here so future work uses the
+  // canonical name and dashboards can be pre-built. See docs/analytics-events.md.
+  | 'activation_reached'
+  | 'compose_opened'
+  | 'compose_submitted'
+  | 'content_created'
+  | 'draft_saved'
+  | 'media_attached'
+  | 'first_post_created'
+  | 'first_reaction_added'
+  | 'first_event_registered'
+  // Social graph + content interactions
+  | 'feed_post_shared'
+  | 'feed_post_saved'
+  | 'feed_post_reported'
+  | 'feed_post_link_opened'
+  | 'feed_post_impression'
+  | 'feed_refreshed'
+  | 'board_followed'
+  | 'board_unfollowed'
+  | 'board_opened'
+  | 'profile_viewed'
+  | 'user_followed'
+  | 'user_unfollowed'
+  | 'connection_requested'
+  | 'connection_accepted'
+  // Direct messages (Connect/Chat surface)
+  | 'dm_thread_opened'
+  | 'dm_sent'
+  | 'dm_reaction_added'
+  // Growth / invites
+  | 'invite_sent'
+  | 'invite_link_copied'
+  | 'invite_accepted'
+  | 'invite_redeemed'
+  // Notifications / push
+  | 'notification_opened'
+  | 'push_permission_granted'
+  | 'push_permission_denied'
+  | 'notification_settings_changed'
+  // Search / discovery
+  | 'search_performed'
+  | 'search_result_pressed'
+  // In-app surveys (SDK also emits its own "survey shown/sent" events)
+  | 'survey_shown'
+  | 'survey_dismissed'
+  | 'survey_completed'
 
 /**
  * LiteralUnion: known event names autocomplete, but ANY string is still a valid
@@ -214,10 +266,79 @@ export function useAnalytics(): {
 }
 
 /**
+ * Coarse product area for a route, so screen views (and any event) can be
+ * sliced by section without enumerating every path. Keyed off the first
+ * non-empty URL segment (expo-router route groups like `(tabs)` are
+ * transparent, so `/` is Home and `/feed` `/explore` `/profile` are tabs).
+ */
+export type ScreenCategory =
+  | 'home'
+  | 'feed'
+  | 'explore'
+  | 'events'
+  | 'centers'
+  | 'messages'
+  | 'profile'
+  | 'settings'
+  | 'auth'
+  | 'onboarding'
+  | 'landing'
+  | 'notifications'
+  | 'admin'
+  | 'legal'
+  | 'other'
+
+const CATEGORY_BY_PREFIX: Record<string, ScreenCategory> = {
+  '': 'home',
+  feed: 'feed',
+  explore: 'explore',
+  events: 'events',
+  center: 'centers',
+  'center-picker': 'centers',
+  chat: 'messages',
+  profile: 'profile',
+  'edit-profile': 'profile',
+  settings: 'settings',
+  auth: 'auth',
+  verification: 'auth',
+  onboarding: 'onboarding',
+  intro: 'onboarding',
+  landing: 'landing',
+  notifications: 'notifications',
+  admin: 'admin',
+  privacy: 'legal',
+  terms: 'legal',
+  cookies: 'legal',
+}
+
+/** Looks like an opaque id segment (uuid, long hash, numeric, or long token). */
+function isIdSegment(seg: string): boolean {
+  return (
+    /^[0-9]+$/.test(seg) ||
+    /^[0-9a-f]{8,}$/i.test(seg) ||
+    /^[A-Za-z0-9_-]{16,}$/.test(seg)
+  )
+}
+
+/**
+ * Turns a live pathname into a stable screen name + category. Dynamic id
+ * segments collapse to `:id` so `/events/abc123` and `/events/def456` group as
+ * one screen (`/events/:id`) instead of fragmenting the dashboard.
+ */
+export function classifyScreen(pathname: string): { name: string; category: ScreenCategory } {
+  if (!pathname || pathname === '/') return { name: '/', category: 'home' }
+  const segments = pathname.split('/').filter(Boolean)
+  const prefix = segments[0] ?? ''
+  const category = CATEGORY_BY_PREFIX[prefix] ?? 'other'
+  const name = '/' + segments.map((seg) => (isIdSegment(seg) ? ':id' : seg)).join('/')
+  return { name, category }
+}
+
+/**
  * Central screen-view tracker. Renders nothing; on each distinct pathname it
- * fires a single screen view. Works on native and web because it reads
- * expo-router's `usePathname()` rather than any platform-specific navigation
- * container. Render once inside the PostHogProvider.
+ * fires a single screen view with a stable name + product category. Works on
+ * native and web because it reads expo-router's `usePathname()` rather than any
+ * platform-specific navigation container. Render once inside the PostHogProvider.
  *
  * Prefers the SDK's `screen(name, props)` method; falls back to a manual
  * `$screen` capture if that method is unavailable.
@@ -233,12 +354,43 @@ export function AnalyticsScreenTracker(): null {
     if (lastPathname.current === pathname) return
     lastPathname.current = pathname
 
+    const { name, category } = classifyScreen(pathname)
+    const props = { $screen_name: name, screen_category: category, path: pathname }
+
     if (typeof posthog.screen === 'function') {
-      posthog.screen(pathname, { $screen_name: pathname })
+      posthog.screen(name, props)
     } else {
-      posthog.capture('$screen', { $screen_name: pathname })
+      posthog.capture('$screen', props)
     }
   }, [posthog, pathname])
+
+  return null
+}
+
+/**
+ * Registers session-wide super properties (environment, release channel,
+ * platform, new-vs-returning) once the PostHog client is ready, so every
+ * subsequent event is filterable by where it came from. Renders nothing; mount
+ * once inside the PostHogProvider alongside AnalyticsScreenTracker.
+ *
+ * Device facts ($os, $device_type, $app_version, …) are auto-added by the SDK,
+ * so this only registers what the SDK can't infer.
+ */
+export function AnalyticsBootstrap(): null {
+  const posthog = usePostHog()
+
+  useEffect(() => {
+    if (!posthog) return
+    let active = true
+    void (async () => {
+      const isFirstSession = await resolveFirstSession()
+      if (!active || !posthog) return
+      void posthog.register(buildSuperProperties(isFirstSession))
+    })()
+    return () => {
+      active = false
+    }
+  }, [posthog])
 
   return null
 }

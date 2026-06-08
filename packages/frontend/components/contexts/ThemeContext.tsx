@@ -3,6 +3,7 @@ import { useColorScheme as useNativeWindColorScheme } from 'nativewind'
 import { useCallback, useContext, useEffect, useMemo, useRef, useState, createContext } from 'react'
 import { Appearance, Platform, View, Animated } from 'react-native'
 import AsyncStorage from '@react-native-async-storage/async-storage'
+import { supportsNativeDriver } from '../../utils/animation'
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -138,7 +139,7 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
         Animated.timing(fadeAnim, {
           toValue: 0,
           duration: 300,
-          useNativeDriver: true,
+          useNativeDriver: supportsNativeDriver,
         }).start()
       }
       previousTheme.current = theme

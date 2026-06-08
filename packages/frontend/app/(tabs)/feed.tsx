@@ -12,18 +12,23 @@ import {
 import { useFocusEffect, useNavigation, useRouter } from 'expo-router'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
 import { useAnalytics } from '../../utils/analytics'
+import { supportsNativeDriver } from '../../utils/animation'
 import { useUser } from '../../components/contexts'
 import { useColors } from '../../hooks/useColors'
 import { toThreadColors } from '../../tokens'
 import { useHeaderAction } from '../../components/contexts/HeaderActionContext'
 import { useCenterList, useMyEvents } from '../../hooks/useApiData'
 import { extractCityState } from '../../utils/addressParsing'
-import { SignInCallout, CreatePostSheet, boardPostToMessage, type BoardMessage } from '../../components/boards'
-import { createBoardPost, fetchBoard } from '../../utils/api'
+import { CreatePostSheet, boardPostToMessage, type BoardMessage } from '../../components/boards'
+import AuthPromptModal from '../../components/ui/AuthPromptModal'
+import { centerPickerStore } from '../../utils/centerPickerStore'
+import { createBoardPost, createPublicPost, fetchAggregatedFeed, fetchBoard } from '../../utils/api'
 import {
   FeedHeader,
   NativeChatHeader,
   FeedWorkspace,
+  FeedEmptyState,
+  GhostPostCard,
   PostThread,
   type GroupBoard,
 } from '../../components/feed'
@@ -137,6 +142,21 @@ function eventToGroup(event: EventDisplay, fallbackCenterName?: string, distance
   }
 }
 
+function publicToGroup(messages: BoardMessage[]): GroupBoard {
+  return {
+    id: 'public',
+    kind: 'public',
+    title: 'Public',
+    eyebrow: 'Public',
+    subtitle: 'Visible to all signed-in members',
+    meta: messages.length ? `${messages.length} posts` : 'No posts yet',
+    preview: 'Share updates, requests, and reflections with Janata.',
+    unreadCount: 0,
+    messages,
+    parentId: 'public',
+  }
+}
+
 function sortGroupsByDistance(groups: GroupBoard[]) {
   return [...groups].sort((a, b) => {
     const aDistance = a.distanceMi ?? Number.POSITIVE_INFINITY
@@ -154,7 +174,7 @@ function matchesQuery(value: string, query: string) {
 export default function FeedScreen() {
   const router = useRouter()
   const navigation = useNavigation()
-  const { user } = useUser()
+  const { user, updateProfile } = useUser()
   const colors = useColors()
   const { width } = useWindowDimensions()
   const insets = useSafeAreaInsets()
@@ -171,6 +191,7 @@ export default function FeedScreen() {
   const [query, setQuery] = useState('')
   const [selectedPostId, setSelectedPostId] = useState('')
   const [createPostOpen, setCreatePostOpen] = useState(false)
+  const [authPromptOpen, setAuthPromptOpen] = useState(false)
   const [boardMessagesByGroup, setBoardMessagesByGroup] = useState<Record<string, BoardMessage[]>>({})
   const [boardsLoading, setBoardsLoading] = useState(false)
   const { setCreateHandler } = useHeaderAction()
@@ -182,15 +203,38 @@ export default function FeedScreen() {
     }, [refetchMyEvents, refetchCenters])
   )
 
+  // Only offer the compose (+) action to signed-in members — a guest has no
+  // boards to post to, so the affordance sat above the sign-in wall doing nothing.
   useEffect(() => {
+    if (!user) { setCreateHandler(null); return }
     setCreateHandler(() => setCreatePostOpen(true))
     return () => setCreateHandler(null)
-  }, [setCreateHandler])
+  }, [setCreateHandler, user])
 
   const threadColors = toThreadColors(colors)
 
   const canAccessBoards = !!user
   const userCenter = allCenters.find((item) => item.id === user?.centerID)
+
+  useEffect(() => {
+    if (!user || !centerPickerStore.result) return
+
+    const centerId = centerPickerStore.result
+    centerPickerStore.result = null
+    updateProfile({ centerID: centerId })
+      .then((result) => {
+        if (result.success) {
+          track('feed_setup_center_joined', { center_id: centerId, source: 'feed_empty_auth_return' })
+          refetchCenters()
+        } else {
+          track('feed_setup_center_join_failed', { center_id: centerId, source: 'feed_empty_auth_return' })
+        }
+      })
+      .catch(() => {
+        track('feed_setup_center_join_failed', { center_id: centerId, source: 'feed_empty_auth_return' })
+      })
+  }, [user, updateProfile, track, refetchCenters])
+
   const groups = useMemo<GroupBoard[]>(() => {
     const nextGroups: GroupBoard[] = []
 
@@ -222,7 +266,7 @@ export default function FeedScreen() {
   )
 
   const loadBoards = useCallback(async () => {
-    if (!canAccessBoards || groups.length === 0) {
+    if (!canAccessBoards) {
       setBoardMessagesByGroup({})
       setBoardsLoading(false)
       return
@@ -230,13 +274,25 @@ export default function FeedScreen() {
 
     setBoardsLoading(true)
     try {
-      const entries = await Promise.all(
-        groups.map(async (group) => {
-          const data = await fetchBoard(group.kind, group.parentId)
-          return [group.id, data.posts.map(boardPostToMessage)] as const
-        })
+      const boardGroups = groups.filter(
+        (group): group is GroupBoard & { kind: 'center' | 'event' } => group.kind !== 'public'
       )
-      setBoardMessagesByGroup(Object.fromEntries(entries))
+      const [entries, aggregatePosts] = await Promise.all([
+        Promise.all(
+          boardGroups.map(async (group) => {
+            const data = await fetchBoard(group.kind, group.parentId)
+            return [group.id, data.posts.map(boardPostToMessage)] as const
+          })
+        ),
+        fetchAggregatedFeed({ limit: 100 }),
+      ])
+      const publicMessages = aggregatePosts
+        .filter((post) => post.boardId === null || post.visibility === 'public_signed_in')
+        .map(boardPostToMessage)
+      setBoardMessagesByGroup({
+        ...Object.fromEntries(entries),
+        public: publicMessages,
+      })
     } finally {
       setBoardsLoading(false)
     }
@@ -247,12 +303,16 @@ export default function FeedScreen() {
   }, [loadBoards])
 
   const groupsWithMessages = useMemo<GroupBoard[]>(
-    () =>
-      groups.map((group) => ({
+    () => {
+      const boardGroups = groups.map((group) => ({
         ...group,
         messages: boardMessagesByGroup[group.id] ?? [],
-      })),
-    [boardMessagesByGroup, groups]
+      }))
+      return user
+        ? [publicToGroup(boardMessagesByGroup.public ?? []), ...boardGroups]
+        : boardGroups
+    },
+    [boardMessagesByGroup, groups, user]
   )
 
   const feedPosts = useMemo(() => buildFeedPosts(groupsWithMessages), [groupsWithMessages])
@@ -277,6 +337,9 @@ export default function FeedScreen() {
   const nativeDetailOpen = Platform.OS !== 'web' && mobilePostOpen
   const listTopPadding = Platform.OS === 'web' ? 20 : 8
   const isLoading = user ? myEventsLoading || centersLoading || boardsLoading : false
+  // Guests, and signed-in members with nothing in the feed yet (and no active
+  // search), get the state-aware ghost empty state instead of the post stream.
+  const showEmptyState = !user || (filteredFeedPosts.length === 0 && !query.trim())
   const nativeTabBarStyle = {
     backgroundColor: colors.surface,
     borderTopColor: colors.border,
@@ -312,7 +375,7 @@ export default function FeedScreen() {
       toValue: 0,
       duration: 280,
       easing: Easing.out(Easing.cubic),
-      useNativeDriver: true,
+      useNativeDriver: supportsNativeDriver,
     }).start()
   }, [detailTranslateX, nativeDetailOpen, width])
 
@@ -341,15 +404,39 @@ export default function FeedScreen() {
     }
   }, [query])
 
-  const handleBoardAccessCta = () => {
-    if (!user) {
-      track('connect_signin_pressed', { source: 'feed_cta' })
-      router.push('/auth')
-      return
-    }
-    track('connect_explore_pressed', { source: 'feed_cta' })
+  const handleSignIn = useCallback(() => {
+    track('connect_signin_pressed', { source: 'feed_setup' })
+    setAuthPromptOpen(true)
+  }, [track])
+
+  const handleBrowseEvents = useCallback(() => {
+    track('connect_explore_pressed', { source: 'feed_setup' })
     router.push('/explore' as never)
-  }
+  }, [router, track])
+
+  // Inline "join your center" from the empty-state rail. A guest can't persist a
+  // center yet, so we stash the pick and route to auth (it survives sign-in via
+  // centerPickerStore). A signed-in member joins immediately via updateProfile,
+  // which optimistically updates user.centerID and reflows the feed.
+  const handleJoinCenter = useCallback(
+    async (centerId: string): Promise<boolean> => {
+      if (!user) {
+        centerPickerStore.result = centerId
+        track('feed_setup_center_pick_guest', { center_id: centerId, source: 'feed_empty' })
+        setAuthPromptOpen(true)
+        return false
+      }
+      const result = await updateProfile({ centerID: centerId })
+      if (result.success) {
+        track('feed_setup_center_joined', { center_id: centerId, source: 'feed_empty' })
+        refetchCenters()
+        return true
+      }
+      track('feed_setup_center_join_failed', { center_id: centerId, source: 'feed_empty' })
+      return false
+    },
+    [user, updateProfile, track, refetchCenters]
+  )
 
   const closeDetail = () => {
     track('feed_post_detail_closed', { postId: selectedPostId, source: 'feed' })
@@ -359,7 +446,7 @@ export default function FeedScreen() {
         toValue: width,
         duration: 230,
         easing: Easing.in(Easing.cubic),
-        useNativeDriver: true,
+        useNativeDriver: supportsNativeDriver,
       }).start(({ finished }) => {
         if (finished) {
           clearDetailSelection()
@@ -383,17 +470,19 @@ export default function FeedScreen() {
   }
 
   const handleCreatePost = async (
-    group: { kind: 'center' | 'event'; parentId: string },
-    body: string
+    group: { kind: 'center' | 'event' | 'public'; parentId: string },
+    body: string,
+    imageUrl?: string | null
   ) => {
-    try {
-      await createBoardPost(group.kind, group.parentId, body)
-      track('feed_post_created', { kind: group.kind, parentId: group.parentId, source: 'feed' })
-      await loadBoards()
-    } catch (err) {
-      track('feed_post_create_failed', { kind: group.kind, parentId: group.parentId, source: 'feed' })
-      throw err
+    // Post create/fail analytics live in CreatePostSheet (the only caller of
+    // this handler) so a single post fires ONE content_created / board_post_*
+    // event, not a duplicate pair. Just do the work and let errors propagate.
+    if (group.kind === 'public') {
+      await createPublicPost(body, imageUrl)
+    } else {
+      await createBoardPost(group.kind, group.parentId, body, imageUrl)
     }
+    await loadBoards()
   }
 
   return (
@@ -421,79 +510,30 @@ export default function FeedScreen() {
           />
         ) : null}
 
-        {!user ? (
-          <SignInCallout
-            title="Sign in for Feed"
-            subtitle="Your member feed, group boards, and announcements live here."
-            colors={colors}
-            onPress={() => {
-              track('connect_signin_pressed', { source: 'feed_banner' })
-              router.push('/auth')
-            }}
-          />
-        ) : null}
-
         {isLoading ? (
           <View style={{ gap: 12, paddingTop: 8 }}>
             {Array.from({ length: 3 }).map((_, i) => (
-              <View
-                key={i}
-                style={{
-                  backgroundColor: colors.card,
-                  borderRadius: 16,
-                  padding: 16,
-                  borderWidth: 1,
-                  borderColor: colors.border,
-                  gap: 10,
-                }}
-              >
-                <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10 }}>
-                  <View
-                    style={{
-                      width: 44,
-                      height: 44,
-                      borderRadius: 14,
-                      backgroundColor: colors.panel,
-                    }}
-                  />
-                  <View style={{ flex: 1, gap: 6 }}>
-                    <View
-                      style={{
-                        width: '50%',
-                        height: 14,
-                        borderRadius: 7,
-                        backgroundColor: colors.panel,
-                      }}
-                    />
-                    <View
-                      style={{
-                        width: '30%',
-                        height: 12,
-                        borderRadius: 6,
-                        backgroundColor: colors.panel,
-                      }}
-                    />
-                  </View>
-                </View>
-                <View
-                  style={{
-                    width: '80%',
-                    height: 12,
-                    borderRadius: 6,
-                    backgroundColor: colors.panel,
-                  }}
-                />
-                <View
-                  style={{
-                    width: '60%',
-                    height: 12,
-                    borderRadius: 6,
-                    backgroundColor: colors.panel,
-                  }}
-                />
-              </View>
+              <GhostPostCard key={i} colors={colors} />
             ))}
           </View>
+        ) : showEmptyState ? (
+          <FeedEmptyState
+            colors={colors}
+            isDesktop={isDesktop}
+            isSignedIn={!!user}
+            groups={groupsWithMessages}
+            query={query}
+            centerName={userCenter?.name}
+            onChangeQuery={setQuery}
+            onSignIn={handleSignIn}
+            onJoinCenter={handleJoinCenter}
+            onBrowseEvents={handleBrowseEvents}
+            onCompose={() => {
+              track('feed_compose_pressed', { source: 'feed_empty_panel' })
+              setCreatePostOpen(true)
+            }}
+            onOpenGroup={openGroup}
+          />
         ) : (
           <FeedWorkspace
             posts={filteredFeedPosts}
@@ -505,11 +545,8 @@ export default function FeedScreen() {
             query={query}
             onChangeQuery={setQuery}
             onBack={closeDetail}
-            canAccessBoards={canAccessBoards}
-            isSignedIn={!!user}
             nativeDetailOpen={nativeDetailOpen}
             mobilePostOpen={mobilePostOpen}
-            onRequestAccess={handleBoardAccessCta}
             onOpenGroup={openGroup}
             onSelectPost={openPost}
             onCompose={() => {
@@ -593,6 +630,19 @@ export default function FeedScreen() {
           setCreatePostOpen(false)
         }}
         onSubmit={handleCreatePost}
+      />
+
+      <AuthPromptModal
+        visible={authPromptOpen}
+        onClose={() => setAuthPromptOpen(false)}
+        returnTo="/feed"
+        title="Join the conversation."
+        subtitle="Sign in or create an account to follow your center, RSVP to events, and join your boards."
+        bullets={[
+          'Follow your center board and stay in the loop',
+          'Join event boards after you RSVP',
+          'Post updates, questions, and reflections with your sangha',
+        ]}
       />
     </View>
   )
