@@ -13,10 +13,7 @@ const MONO_FONT = Platform.select({
   default: 'monospace',
 })
 
-// One canonical invite link format (see #104). The screen always builds the
-// chinmayajanata.org link from the member's code; the deep-link resolution lives
-// in the universal-link plumbing, not here.
-const linkForCode = (code: string) => `https://chinmayajanata.org/i/${code}`
+const linkForCode = (code: string) => `https://janata.app/i/${code}`
 
 export default function InviteScreen() {
   const { getToken } = useUser()
@@ -180,7 +177,7 @@ export default function InviteScreen() {
                     ellipsizeMode="tail"
                     style={{ flex: 1, fontFamily: MONO_FONT, fontSize: 13, color: c.text }}
                   >
-                    chinmayajanata.org/i/{code}
+                    janata.app/i/{code}
                   </Text>
                 </View>
 

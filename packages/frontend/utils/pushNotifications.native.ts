@@ -17,14 +17,19 @@ export interface PushTapPayload {
 }
 
 // Foreground behaviour: show a banner + play sound even when the app is open.
-Notifications.setNotificationHandler({
-  handleNotification: async () => ({
-    shouldShowBanner: true,
-    shouldShowList: true,
-    shouldPlaySound: true,
-    shouldSetBadge: true,
-  }),
-})
+// Guarded: ExpoPushTokenManager is unavailable on simulators and will throw.
+try {
+  Notifications.setNotificationHandler({
+    handleNotification: async () => ({
+      shouldShowBanner: true,
+      shouldShowList: true,
+      shouldPlaySound: true,
+      shouldSetBadge: true,
+    }),
+  })
+} catch {
+  // Push notifications not available (simulator or Expo Go without native build)
+}
 
 /**
  * Ensure the Android "default" channel exists. iOS has no channels; no-op there.
@@ -86,17 +91,17 @@ function extractTap(response: Notifications.NotificationResponse): PushTapPayloa
 export function addNotificationResponseListener(
   handler: (payload: PushTapPayload) => void,
 ): () => void {
-  // Warm taps while the app is running.
-  const sub = Notifications.addNotificationResponseReceivedListener((response) => {
-    handler(extractTap(response))
-  })
-
-  // Cold start: the app was launched by tapping a notification.
-  Notifications.getLastNotificationResponseAsync().then((response) => {
-    if (response) handler(extractTap(response))
-  })
-
-  return () => sub.remove()
+  try {
+    const sub = Notifications.addNotificationResponseReceivedListener((response) => {
+      handler(extractTap(response))
+    })
+    Notifications.getLastNotificationResponseAsync().then((response) => {
+      if (response) handler(extractTap(response))
+    })
+    return () => sub.remove()
+  } catch {
+    return () => {}
+  }
 }
 
 export const isPushSupported = true
