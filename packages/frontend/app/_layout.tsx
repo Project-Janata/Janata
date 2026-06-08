@@ -232,6 +232,7 @@ function RootLayoutNav({ onAuthReady }: { onAuthReady: () => void }) {
         pathname.startsWith('/feed/') ||
         pathname.startsWith('/events/') ||
         pathname.startsWith('/center/') ||
+        pathname.startsWith('/i/') ||
         pathname.startsWith('/privacy') ||
         pathname.startsWith('/terms') ||
         pathname.startsWith('/cookies')
