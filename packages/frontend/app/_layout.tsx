@@ -1,9 +1,6 @@
 import '@expo/metro-runtime'
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { Animated, LogBox, Platform, Text, View, useWindowDimensions } from 'react-native'
-
-// Suppress non-fatal WorkletsTurboModule error in Expo Go (reanimated v4 compat)
-LogBox.ignoreLogs(['Exception in HostFunction: <unknown>'])
 import {
   InclusiveSans_300Light,
   InclusiveSans_400Regular,
@@ -33,6 +30,9 @@ import { supportsNativeDriver } from '../utils/animation'
 import { usePushNotifications } from '../hooks/usePushNotifications'
 import { getIntroShown } from '../utils/introStorage'
 import '../globals.css'
+
+// Suppress non-fatal WorkletsTurboModule error in Expo Go (reanimated v4 compat)
+LogBox.ignoreLogs(['Exception in HostFunction: <unknown>'])
 
 export const unstable_settings = {
   initialRouteName: '(tabs)',
