@@ -77,11 +77,20 @@ fi
 echo "▶ Applying ${#FILES[@]} migrations against $([ -z "$MODE" ] && echo PRODUCTION || echo local) D1"
 echo
 
+CENTERS_SEED="packages/backend/src/seed/centers.sql"
+
 for f in "${FILES[@]}"; do
   echo "  → $(basename "$f")"
   npx wrangler d1 execute "$DB_NAME" $MODE --file="$f" --config "$CONFIG" >/dev/null 2>&1 \
     || { echo "✗ FAILED on $(basename "$f")" >&2; exit 1; }
+
+  # Seed the full centers list before the events migration that references them.
+  if [[ "$(basename "$f")" == "0009_extend_events_schema.sql" && -f "$CENTERS_SEED" ]]; then
+    echo "  → centers seed ($(basename "$CENTERS_SEED"))"
+    npx wrangler d1 execute "$DB_NAME" $MODE --file="$CENTERS_SEED" --config "$CONFIG" >/dev/null 2>&1 \
+      || { echo "✗ FAILED on centers seed" >&2; exit 1; }
+  fi
 done
 
 echo
-echo "✓ ${#FILES[@]} migrations applied."
+echo "✓ ${#FILES[@]} migrations + centers seed applied."
