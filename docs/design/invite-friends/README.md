@@ -39,7 +39,7 @@ This folder is the full context for the invite-links feature: the design we land
 - **Canonical share URL alignment:** backend currently mints `chinmayajanata.org/join?code=`; align it to `/i/CODE` so screen, share, and backend agree.
 - **Server-side attribution:** persist inviter→invitee for the post-MSC vouching system + abuse tracing.
 - **Native share message copy:** define what the share sheet pre-fills.
-- **Short-link layer (`janata.app`):** wire `janata.app/CODE` as a redirect/deep-link wrapper over the canonical `chinmayajanata.org/i/CODE` link (t.co-style) — deep link on mobile, 301/expand to the full link on web. Shareable in its own right.
+- **Short-link layer (`janata.app`):** wire `janata.app/CODE` (short code at root, no `/i/`) as a redirect/deep-link wrapper over the canonical `chinmayajanata.org/i/CODE` (t.co-style) — deep link on mobile, 301/expand to the full link on web. **Full build + test spec: `janata-app-shortlink-spec.md` → tracked in #104 (assigned to @theabhiramr).**
 - **Reconcile #104** to the canonical/short-link split: canonical = chinmayajanata.org, janata.app = short redirect (the issue still treats janata.app as the primary domain).
 
 Full session artifacts (sketches, IA options, all mock versions): `~/.gstack/projects/Project-Janatha-Project-Janatha/refine/20260607-191425-invite-links-flow/`.
