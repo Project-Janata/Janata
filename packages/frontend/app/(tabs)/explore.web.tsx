@@ -35,7 +35,6 @@ import EventDetailPanel from '../../components/events/EventDetailPanel.web'
 import EventFormPanel from '../../components/events/EventFormPanel.web'
 import CenterDetailPanel from '../../components/center/CenterDetailPanel.web'
 import { useDetailColors } from '../../hooks/useDetailColors'
-import AuthPromptModal from '../../components/ui/AuthPromptModal'
 import type { MapPoint, EventDisplay, AttendeeInfo } from '../../utils/api'
 import { removeEvent } from '../../utils/api'
 import { extractCityState } from '../../utils/addressParsing'
@@ -103,6 +102,7 @@ function EventPanelInner({
   ) => void
 }) {
   const { user } = useUser()
+  const router = useRouter()
   const { event, attendees, loading, toggleRegistration, isToggling, isCreator } = useEventDetail(
     eventId,
     user?.username,
@@ -131,11 +131,9 @@ function EventPanelInner({
       prevRegisteredRef.current = event.isRegistered
     }
   }, [event?.isRegistered, event?.attendees, attendees, onStatusChange])
-  const [showAuthPrompt, setShowAuthPrompt] = useState(false)
-
   const handleToggleRegistration = async () => {
     if (!user) {
-      setShowAuthPrompt(true)
+      router.replace('/auth')
       return
     }
     if (!user.username) return
@@ -191,12 +189,6 @@ function EventPanelInner({
               }
             : undefined
         }
-      />
-      <AuthPromptModal
-        visible={showAuthPrompt}
-        onClose={() => setShowAuthPrompt(false)}
-        returnTo={`/explore?detail=event&id=${eventId}`}
-        eventTitle={event.title}
       />
     </>
   )

@@ -11,7 +11,6 @@ import Avatar from '../../components/ui/Avatar'
 import Badge from '../../components/ui/Badge'
 import PrimaryButton from '../../components/ui/buttons/PrimaryButton'
 import DestructiveButton from '../../components/ui/buttons/DestructiveButton'
-import AuthPromptModal from '../../components/ui/AuthPromptModal'
 import { DetailSection } from '../../components/ui'
 import { useDetailColors, type DetailColors } from '../../hooks/useDetailColors'
 import { useColors } from '../../hooks/useColors'
@@ -85,7 +84,6 @@ function MobileEventDetail({ eventId }: { eventId: string }) {
   const { event, loading, toggleRegistration, isToggling, attendees, isCreator } = useEventDetail(eventId, user?.username, user?.id)
   const colors = useDetailColors()
   const appColors = useColors()
-  const [showAuthPrompt, setShowAuthPrompt] = useState(false)
   const [isDeleting, setIsDeleting] = useState(false)
   const [threadDetailPost, setThreadDetailPost] = useState<FeedPost | null>(null)
   const hasTrackedView = useRef(false)
@@ -367,7 +365,7 @@ function MobileEventDetail({ eventId }: { eventId: string }) {
                   onPress={() => {
                     if (!user) {
                       track('event_auth_prompt_shown', { eventId, source: 'event_detail' })
-                      setShowAuthPrompt(true)
+                      router.replace('/auth')
                     } else if (user.username) {
                       track('event_registered', { eventId, source: 'event_detail' })
                       toggleRegistration(user.username)
@@ -437,12 +435,6 @@ function MobileEventDetail({ eventId }: { eventId: string }) {
         </View>
       )}
 
-      <AuthPromptModal
-        visible={showAuthPrompt}
-        onClose={() => setShowAuthPrompt(false)}
-        returnTo={`/events/${eventId}`}
-        eventTitle={event?.title}
-      />
     </View>
   )
 }

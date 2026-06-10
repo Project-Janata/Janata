@@ -1,4 +1,4 @@
-import React, { useCallback, useMemo, useState } from 'react'
+import React, { useCallback, useMemo } from 'react'
 import { ActivityIndicator, Platform, Pressable, ScrollView, Text, View, useWindowDimensions } from 'react-native'
 import { ChevronRight, Compass, MapPin, Shield } from 'lucide-react-native'
 import { useFocusEffect, useRouter } from 'expo-router'
@@ -14,7 +14,6 @@ import { FeaturedEventCard, type FeaturedSource } from '../../components/home/Fe
 import { MiniEventRow, type WeekItem } from '../../components/home/MiniEventRow'
 import { BoardPostCard, SignInCallout, boardPostToMessage, type BoardMessage } from '../../components/boards'
 import { DesktopColumns, desktopScrollContent, useDesktopLayout } from '../../components/layout/DesktopColumns'
-import AuthPromptModal from '../../components/ui/AuthPromptModal'
 import type { AppColors } from '../../tokens'
 
 function formatDatePill(dateStr: string): { month: string; day: string } {
@@ -61,7 +60,6 @@ export default function HomeScreen() {
   const { width } = useWindowDimensions()
   const { track } = useAnalytics()
   const { user } = useUser()
-  const [showAuthPrompt, setShowAuthPrompt] = useState(false)
   const c = useColors()
   const detailColors = useDetailColors()
   const { events: myEvents, loading: myEventsLoading, refetch: refetchMyEvents } = useMyEvents(user?.username)
@@ -192,25 +190,10 @@ export default function HomeScreen() {
       colors={c}
       onPress={() => {
         track('home_signin_pressed', { source: 'home_nudge' })
-        setShowAuthPrompt(true)
+        router.replace('/auth')
       }}
     />
   ) : null
-
-  const authPrompt = (
-    <AuthPromptModal
-      visible={showAuthPrompt}
-      onClose={() => setShowAuthPrompt(false)}
-      returnTo="/"
-      title="Make Janata yours."
-      subtitle="Sign in or create an account to follow your center, RSVP to events, and join your boards."
-      bullets={[
-        'Follow your local center and see what is coming up',
-        'RSVP to events and keep details handy',
-        'Join boards for your center and gatherings',
-      ]}
-    />
-  )
 
   // Role-aware: admins get a quick path to the dashboard from Home.
   const adminShortcut = isSuperAdmin(user) ? (
@@ -409,7 +392,6 @@ export default function HomeScreen() {
             rail={rail}
           />
         </ScrollView>
-        {authPrompt}
       </>
     )
   }
