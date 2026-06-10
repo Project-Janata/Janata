@@ -19,8 +19,8 @@ What changes structurally:
 ## 2. Before / after
 
 - **Before:** `capture/inventory-board.html` — no landing (blank redirect), no vouch, everyone in one `auth.tsx` funnel.
-- **After (core):** `hifi/mock-v1.png` — the two doors with real tokens.
-- **After (full flow):** `hifi/mock-v2.png` — account creation, full onboarding, landing-vs-Home/Explore, desktop.
+- **After (core):** `hifi/mock-v1.html` — the two doors with real tokens.
+- **After (full flow):** `hifi/mock-v2.html` — account creation, full onboarding, landing-vs-Home/Explore, desktop.
 - Notice: the vouch moment ("Anand invited you") at the top of Door 1, and Door 2 leading with real events under a location pill instead of an email field.
 
 ## 3. Approved IA tree
