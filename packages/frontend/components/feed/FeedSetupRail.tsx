@@ -53,6 +53,7 @@ export function FeedSetupRail({
   onSignIn,
   onJoinCenter,
   onBrowseEvents,
+  onPasteInvite,
 }: {
   colors: AppColors
   isSignedIn: boolean
@@ -60,6 +61,8 @@ export function FeedSetupRail({
   /** Resolve true on success. Guest mode routes to auth and may not resolve. */
   onJoinCenter: (centerId: string) => Promise<boolean> | void
   onBrowseEvents: () => void
+  /** Hard-gate path for the not-yet-invited: paste an invite link or code. */
+  onPasteInvite?: () => void
 }) {
   const [joiningId, setJoiningId] = useState<string | null>(null)
 
@@ -87,10 +90,12 @@ export function FeedSetupRail({
       }}
     >
       <Text style={{ fontFamily: 'Inclusive Sans', fontSize: 17, color: colors.text }}>
-        Finish setting up your feed
+        {isSignedIn ? 'Almost there' : 'Join the conversation'}
       </Text>
       <Text style={{ fontSize: 13, lineHeight: 18, color: colors.textMuted, marginBottom: 14 }}>
-        Two quick steps and your community shows up here.
+        {isSignedIn
+          ? 'Join a center to unlock its boards.'
+          : 'Boards for your center and events. Members only.'}
       </Text>
 
       {/* Step 1 — Sign in */}
@@ -107,18 +112,32 @@ export function FeedSetupRail({
               fontWeight: step1 === 'active' ? '600' : '400',
             }}
           >
-            {step1 === 'done' ? 'Signed in' : 'Sign in'}
+            {step1 === 'done' ? 'Logged in' : 'Log in'}
           </Text>
           {step1 === 'active' ? (
-            <Pressable
-              onPress={onSignIn}
-              accessibilityRole="button"
-              style={{ marginTop: 10, backgroundColor: colors.accent, borderRadius: 999, paddingVertical: 11, alignItems: 'center' }}
-            >
-              <Text style={{ fontFamily: 'Inclusive Sans', fontSize: 14, color: colors.textInverse }}>
-                Sign in to continue
-              </Text>
-            </Pressable>
+            <View style={{ gap: 8 }}>
+              <Pressable
+                onPress={onSignIn}
+                accessibilityRole="button"
+                style={{ marginTop: 10, backgroundColor: colors.accent, borderRadius: 999, paddingVertical: 11, alignItems: 'center' }}
+              >
+                <Text style={{ fontFamily: 'Inclusive Sans', fontSize: 14, color: colors.textInverse }}>
+                  Log in
+                </Text>
+              </Pressable>
+              {onPasteInvite ? (
+                <Pressable onPress={onPasteInvite} accessibilityRole="button" style={{ alignItems: 'center', paddingVertical: 2 }}>
+                  <Text style={{ fontSize: 13, color: colors.textMuted }}>
+                    Have an invite? <Text style={{ color: colors.accent, fontWeight: '600' }}>Paste it</Text>
+                  </Text>
+                </Pressable>
+              ) : null}
+              <Pressable onPress={onBrowseEvents} accessibilityRole="button" style={{ alignItems: 'center', paddingVertical: 2 }}>
+                <Text style={{ fontSize: 12.5, color: colors.textMuted }}>
+                  Or RSVP to events without an account
+                </Text>
+              </Pressable>
+            </View>
           ) : null}
         </View>
       </View>
