@@ -188,7 +188,8 @@ export default function HomeScreen() {
   const guestNudge = !user ? (
     <SignInCallout
       title="Make Janata yours"
-      subtitle="Sign in to follow your center, RSVP to events, and join your boards."
+      subtitle="Log in or paste an invite to RSVP and join boards."
+      ctaLabel="Log in"
       colors={c}
       onPress={() => {
         track('home_signin_pressed', { source: 'home_nudge' })
@@ -233,7 +234,9 @@ export default function HomeScreen() {
     </Pressable>
   ) : null
 
-  const welcomeBanner = !isVerifiedMember || isNewUser ? (
+  // Guests don't get the banner anymore — their Home leads with live events
+  // (new-30); the compact guestNudge below the content is the only callout.
+  const welcomeBanner = (!!user && !isVerifiedMember) || isNewUser ? (
     <WelcomeBanner
       c={c}
       centerName={centerName || undefined}
@@ -271,8 +274,10 @@ export default function HomeScreen() {
     />
   ) : null
 
-  const upNextSection = isVerifiedMember && (!isNewUser || featured) ? (
-    <SectionHeader eyebrow="UP NEXT FOR YOU" trailing="See all" accentColor={c.accent} faintColor={c.textFaint} onTrailingPress={() => {
+  // Guests get the same live section (new-30): real events at zero taps,
+  // headed "Happening near you" instead of the personalized "Up next".
+  const upNextSection = (!user || isVerifiedMember) && (!isNewUser || featured) ? (
+    <SectionHeader eyebrow={user ? 'UP NEXT FOR YOU' : 'HAPPENING NEAR YOU'} trailing="See all" accentColor={c.accent} faintColor={c.textFaint} onTrailingPress={() => {
       track('home_see_all_pressed', { section: 'up_next' })
       router.push('/explore' as never)
     }}>
@@ -287,9 +292,13 @@ export default function HomeScreen() {
       ) : (
         <View style={{ borderRadius: 18, borderWidth: 1, borderColor: c.border, backgroundColor: c.card, padding: 16, gap: 10 }}>
           <View style={{ gap: 4 }}>
-            <Text style={{ fontFamily: 'Inclusive Sans', fontSize: 17, color: c.text }}>No upcoming events at your center yet</Text>
+            <Text style={{ fontFamily: 'Inclusive Sans', fontSize: 17, color: c.text }}>
+              {user ? 'No upcoming events at your center yet' : 'No events nearby yet'}
+            </Text>
             <Text style={{ fontSize: 14, lineHeight: 20, color: c.textMuted }}>
-              Explore other CHYK events while your center's calendar fills in.
+              {user
+                ? "Explore other CHYK events while your center's calendar fills in."
+                : 'Browse centers and events across the network.'}
             </Text>
           </View>
           <Pressable
@@ -348,7 +357,7 @@ export default function HomeScreen() {
     </SectionHeader>
   ) : null
 
-  const weekSection = isVerifiedMember && (!isNewUser || weekItems.length > 0) ? (
+  const weekSection = (!user || isVerifiedMember) && (!isNewUser || weekItems.length > 0) ? (
     <SectionHeader
       eyebrow={signedUpEvents.length > 0 ? 'THIS WEEK' : 'COMING UP'}
       trailing="See all"
@@ -381,7 +390,9 @@ export default function HomeScreen() {
   // stranding a narrow column in empty gray. Reuses the exact same section
   // blocks as mobile; only their arrangement differs.
   if (isWideDesktop) {
-    const rail = isNewUser ? firstRunOverview : (
+    // Guests: live events in the main column, the compact log-in callout as
+    // the rail (new-30). Members keep first-run overview / boards there.
+    const rail = !user ? guestNudge : isNewUser ? firstRunOverview : (
       <View style={{ gap: 22 }}>{boardsSection}</View>
     )
     return (
@@ -395,7 +406,6 @@ export default function HomeScreen() {
             header={
               <>
                 {greeting}
-                {guestNudge}
                 {adminShortcut}
                 {welcomeBanner}
               </>
@@ -431,13 +441,15 @@ export default function HomeScreen() {
             (the desktop right rail) below it, so the order matches desktop. */}
         <View style={{ width: '100%', maxWidth: 640, alignSelf: 'center', gap: 22 }}>
           {greeting}
-          {guestNudge}
           {adminShortcut}
           {welcomeBanner}
           {upNextSection}
           {weekSection}
           {firstRunOverview}
           {boardsSection}
+          {/* Guest callout sits below the live content (new-30): events sell
+              the app, the callout just names the next step. */}
+          {guestNudge}
         </View>
       </ScrollView>
       {authPrompt}
@@ -454,9 +466,9 @@ function WelcomeBanner({ c, onExplore, centerName }: { c: AppColors; onExplore: 
   // Login/role-state personalization: a member who's already joined a center
   // isn't "new" — greet them by their center and nudge toward RSVPing, rather
   // than the generic "Welcome to Janata" shown to first-touch/no-center users.
-  const title = centerName ? `You're all set at ${centerName}` : 'Welcome to Janata'
+  const title = centerName ? `You're in at ${centerName}` : 'Welcome to Janata'
   const subtitle = centerName
-    ? 'Nothing on your calendar yet — find an event to RSVP to.'
+    ? 'RSVP to your first event, then say hello on your center board.'
     : 'Find satsangs, camps, and classes near you.'
   return (
     <View style={[cardBase, { flexDirection: 'row', alignItems: 'center', gap: 14, padding: 16 }]}>
