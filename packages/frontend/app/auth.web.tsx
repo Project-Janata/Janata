@@ -299,7 +299,7 @@ export default function AuthScreen() {
   }
 
   const focusInputStyle: React.CSSProperties = {
-    borderColor: '#C2410C',
+    borderColor: '#E8862A',
     boxShadow: '0 0 0 3px rgba(194,65,12,0.1)',
     backgroundColor: '#FFFFFF',
   }
@@ -409,7 +409,7 @@ export default function AuthScreen() {
               fontSize: 14,
               fontFamily: 'Inclusive Sans, sans-serif',
               fontWeight: '500',
-              color: '#C2410C',
+              color: '#E8862A',
               minHeight: 44,
               display: 'flex',
               alignItems: 'center',
@@ -487,7 +487,7 @@ export default function AuthScreen() {
                 'Stay connected with your center and sangha',
               ].map((line) => (
                 <div key={line} style={{ display: 'flex', gap: 10, alignItems: 'flex-start', marginBottom: 9 }}>
-                  <span style={{ color: '#C2410C', fontSize: 14, lineHeight: '22px' }}>✓</span>
+                  <span style={{ color: '#E8862A', fontSize: 14, lineHeight: '22px' }}>✓</span>
                   <span style={{ fontFamily: 'Inclusive Sans, sans-serif', fontSize: 14.5, lineHeight: '22px', color: '#57534E' }}>{line}</span>
                 </div>
               ))}
@@ -592,7 +592,7 @@ export default function AuthScreen() {
                   border: 'none',
                   padding: 0,
                   marginTop: -4,
-                  color: '#C2410C',
+                  color: '#E8862A',
                   fontSize: 13,
                   cursor: 'pointer',
                   textDecoration: 'underline',
@@ -643,7 +643,7 @@ export default function AuthScreen() {
                 width: '100%',
                 height: 48,
                 minHeight: 44,
-                backgroundColor: '#C2410C',
+                backgroundColor: '#E8862A',
                 color: '#FFFFFF',
                 border: 'none',
                 borderRadius: 8,
@@ -724,7 +724,7 @@ export default function AuthScreen() {
                   }
                 }}
                 style={{
-                  color: '#C2410C',
+                  color: '#E8862A',
                   cursor: 'pointer',
                   padding: '8px 4px',
                   margin: '-8px -4px',
@@ -758,7 +758,7 @@ export default function AuthScreen() {
                   }
                 }}
                 style={{
-                  color: '#C2410C',
+                  color: '#E8862A',
                   cursor: 'pointer',
                   padding: '8px 4px',
                   margin: '-8px -4px',
@@ -821,7 +821,7 @@ export default function AuthScreen() {
               tabIndex={0}
               onClick={() => { track('terms_viewed', { source: 'auth' }); router.push('/terms') }}
               onKeyDown={(e) => { if (e.key === 'Enter') { track('terms_viewed', { source: 'auth' }); router.push('/terms') } }}
-              style={{ color: '#C2410C', cursor: 'pointer' }}
+              style={{ color: '#E8862A', cursor: 'pointer' }}
             >
               Terms of Service
             </span>
@@ -831,7 +831,7 @@ export default function AuthScreen() {
               tabIndex={0}
               onClick={() => { track('privacy_policy_viewed', { source: 'auth' }); router.push('/privacy') }}
               onKeyDown={(e) => { if (e.key === 'Enter') { track('privacy_policy_viewed', { source: 'auth' }); router.push('/privacy') } }}
-              style={{ color: '#C2410C', cursor: 'pointer' }}
+              style={{ color: '#E8862A', cursor: 'pointer' }}
             >
               Privacy Policy
             </span>
