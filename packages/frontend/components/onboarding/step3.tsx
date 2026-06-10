@@ -26,15 +26,28 @@ export default function Step3() {
             </View>
 
             {/* Shared center search — same behavior as the feed's "join your
-                center" step. Auto-picks the nearest result like before. */}
+                center" step. Auto-picks the nearest result like before.
+                farThresholdMi keeps it from auto-picking a center half a
+                world away (onb-3b, real for every city outside the US). */}
             <View className="w-full max-w-md self-center">
               <CenterSearch
                 selectedCenterId={centerID}
                 autoSelectNearest
+                farThresholdMi={150}
                 placeholder="City or town name"
                 onSelect={(center) => {
                   setCenterID(center.id)
                 }}
+                emptyState={
+                  <View className="mt-3 rounded-2xl border border-dashed border-stone-300 dark:border-stone-600 px-4 py-5">
+                    <Text className="text-base font-sans font-semibold text-content dark:text-content-dark text-center mb-1">
+                      No centers near you yet
+                    </Text>
+                    <Text className="text-sm font-sans text-stone-500 dark:text-stone-400 text-center">
+                      Janata is growing. Skip for now, you can join any center later.
+                    </Text>
+                  </View>
+                }
               />
             </View>
           </View>

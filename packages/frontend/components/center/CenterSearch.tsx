@@ -28,6 +28,8 @@ export function CenterSearch({
   maxResults = 6,
   maxListHeight = 260,
   autoSelectNearest = false,
+  farThresholdMi,
+  emptyState,
 }: {
   onSelect: (center: CenterSearchResult) => void
   selectedCenterId?: string | null
@@ -42,6 +44,12 @@ export function CenterSearch({
   maxListHeight?: number
   /** Onboarding auto-picks the nearest center once results land. */
   autoSelectNearest?: boolean
+  /** When set, a nearest result farther than this renders `emptyState`
+      instead of the list (and skips auto-select). Lets onboarding say
+      "no centers near you" while center pickers still offer far ones. */
+  farThresholdMi?: number
+  /** Rendered when the search lands in the no-centers-near-you state. */
+  emptyState?: React.ReactNode
 }) {
   const fallbackColors = useColors()
   const colors = colorsProp ?? fallbackColors
@@ -51,6 +59,9 @@ export function CenterSearch({
   const [results, setResults] = useState<CenterSearchResult[]>([])
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
+  // Searched fine, but the nearest center is past farThresholdMi — the
+  // "no centers near you yet" state (real today for most of the world).
+  const [tooFar, setTooFar] = useState(false)
   const debounce = useRef<ReturnType<typeof setTimeout> | null>(null)
   const autoSelectedFor = useRef<string>('')
 
@@ -75,9 +86,12 @@ export function CenterSearch({
     }
     setLoading(true)
     setError('')
+    setTooFar(false)
     try {
+      // Global geocoding (was countrycodes=us) — a Mumbai search should
+      // resolve Mumbai, then the farThresholdMi check decides what to show.
       const res = await fetch(
-        `https://nominatim.openstreetmap.org/search?q=${encodeURIComponent(query)}&format=json&limit=1&countrycodes=us`
+        `https://nominatim.openstreetmap.org/search?q=${encodeURIComponent(query)}&format=json&limit=1`
       )
       if (!res.ok) throw new Error('geocode failed')
       const data = await res.json()
@@ -97,6 +111,14 @@ export function CenterSearch({
         }))
         .sort((a, b) => (a.distance ?? Infinity) - (b.distance ?? Infinity))
         .slice(0, maxResults)
+      const nearestMi = ranked[0]?.distance ?? Infinity
+      if (farThresholdMi != null && nearestMi > farThresholdMi) {
+        // Don't auto-pick a center half a world away; let the host render
+        // its "no centers near you yet" state instead.
+        setResults([])
+        setTooFar(true)
+        return
+      }
       setResults(ranked)
       setError('')
       if (autoSelectNearest && ranked.length > 0 && autoSelectedFor.current !== query) {
@@ -118,6 +140,7 @@ export function CenterSearch({
     } else {
       setResults([])
       setError('')
+      setTooFar(false)
     }
     return () => {
       if (debounce.current) clearTimeout(debounce.current)
@@ -159,6 +182,14 @@ export function CenterSearch({
       {error ? (
         <Text style={{ fontSize: 12.5, color: colors.textMuted, marginTop: 8 }}>{error}</Text>
       ) : null}
+
+      {tooFar
+        ? emptyState ?? (
+            <Text style={{ fontSize: 12.5, color: colors.textMuted, marginTop: 8 }}>
+              No centers near you yet.
+            </Text>
+          )
+        : null}
 
       {results.length > 0 ? (
         <ScrollView style={{ maxHeight: maxListHeight, marginTop: 8 }} keyboardShouldPersistTaps="handled">
