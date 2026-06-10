@@ -1,0 +1,690 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1"/>
+<title>Hifi v2 · full flow — account, onboarding, landing/desktop</title>
+<link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inclusive+Sans:wght@400;500;600;700&family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --primary:#E8862A;--primaryPress:#D97520;--soft:#FFF7ED;
+    --card:#FFFFFF;--panel:#F7F4EF;--bg:#F5F5F4;--bgStrong:#F0EDE8;
+    --text:#1C1917;--text2:#44403C;--muted:#78716C;--faint:#A8A29E;
+    --border:#E7E5E4;--outline:#D6D3D1;--success:#059669;
+    --disp:'Inclusive Sans',system-ui,sans-serif;--ui:'Inter',system-ui,sans-serif;--mono:'JetBrains Mono',monospace;
+  }
+  *{box-sizing:border-box}
+  body{margin:0;background:#c9c6c2;font-family:var(--ui);color:var(--text);padding:26px 18px 80px}
+  .wrap{max-width:1480px;margin:0 auto}
+  h1{font-size:20px;margin:0 0 2px}
+  .lede{font-size:12.5px;color:#383430;margin:0 0 12px;max-width:980px;line-height:1.5}
+  .section{background:#d3d0cc;border-radius:16px;padding:16px 18px 22px;margin-bottom:18px}
+  .section h2{font-size:14px;margin:0 0 3px}
+  .section .note{font-size:12px;color:#403c37;margin:0 0 14px;line-height:1.5;max-width:1000px}
+  .rowlabel{font-size:11px;letter-spacing:.06em;text-transform:uppercase;color:#54514c;font-weight:700;margin:18px 0 10px}
+  .flow{display:flex;gap:14px;flex-wrap:wrap;align-items:flex-start}
+  .step{display:flex;flex-direction:column;align-items:center;gap:7px}
+  .cap{font-size:10.5px;color:#4f4b46;font-weight:600;text-align:center;max-width:280px}
+  .arrow{align-self:center;color:#8a857d;font-size:18px;margin-top:330px}
+  .arrow.sm{margin-top:330px}
+  /* phone — true iPhone proportions (300 × 650 ≈ 19.5:9) */
+  .ph{width:300px;height:650px;background:var(--bg);border-radius:34px;overflow:hidden;box-shadow:0 16px 38px rgba(28,25,23,.20);border:1px solid rgba(0,0,0,.05);position:relative;display:flex;flex-direction:column}
+  .status{height:32px;flex:none;display:flex;align-items:center;justify-content:space-between;padding:0 20px;font-size:12px;font-weight:600}
+  .status .bar{display:inline-block;width:16px;height:9px;border:1.4px solid var(--text);border-radius:2px;position:relative}
+  .status .bar::before{content:"";position:absolute;left:1px;top:1px;bottom:1px;width:9px;background:var(--text);border-radius:1px}
+  .url{height:25px;flex:none;background:var(--bgStrong);display:flex;align-items:center;justify-content:center;gap:5px;font-family:var(--mono);font-size:10px;color:var(--muted)}
+  .ic{width:16px;height:16px;vertical-align:middle}.ic-sm{width:13px;height:13px}
+  /* progress bar (onboarding) */
+  .prog{flex:none;padding:16px 22px 12px;background:var(--card)}
+  .prog .track{height:7px;border-radius:6px;background:#EAE7E2;overflow:hidden}
+  .prog .fill{height:100%;background:var(--primary);border-radius:6px}
+  .prog .lbl{text-align:center;font-size:11px;color:var(--muted);margin-top:7px}
+  /* generic body */
+  .body{padding:22px 18px 22px;display:flex;flex-direction:column;flex:1;overflow:hidden}
+  .center{align-items:center;text-align:center;justify-content:center}
+  .lbl{font-size:10px;letter-spacing:.09em;color:var(--faint);font-weight:600;margin:0 0 6px;align-self:flex-start}
+  .field{width:100%;height:46px;border:1px solid var(--border);border-radius:11px;background:var(--card);display:flex;align-items:center;padding:0 13px;font-size:13.5px;color:var(--faint);margin-bottom:13px}
+  .field.filled{color:var(--text)}
+  .title{font-family:var(--disp);font-weight:700;font-size:22px;margin:0 0 6px;line-height:1.18}
+  .title.big{font-size:27px}
+  .sub{font-family:var(--disp);font-size:13px;color:var(--muted);line-height:1.45;margin-bottom:16px}
+  .hint{font-size:11.5px;color:var(--faint);margin-top:-6px;margin-bottom:14px}
+  .spacer{flex:1}
+  .btn{width:100%;background:var(--primary);color:#fff;border:none;border-radius:13px;padding:14px;font-family:var(--ui);font-size:15px;font-weight:600;cursor:pointer;box-shadow:0 6px 16px rgba(232,134,42,.26)}
+  .btn.sec{background:var(--card);color:var(--text);border:1px solid var(--outline);box-shadow:none}
+  .skip{text-align:center;font-size:12.5px;color:var(--faint);margin-top:12px}
+  .ghost{text-align:center;font-size:12.5px;color:var(--muted);margin-top:13px}
+  .ghost b{color:var(--primary);font-weight:600}
+  .applied{display:flex;gap:9px;align-items:center;background:var(--soft);border:1px solid #F4DEBE;border-radius:12px;padding:9px 12px;margin-bottom:16px;width:100%}
+  .applied .t{font-size:11.5px;color:var(--text2);line-height:1.35}.applied .t b{color:var(--text)}
+  .av{width:24px;height:24px;border-radius:50%;background:linear-gradient(145deg,#FBB36A,#D97520);color:#fff;display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:700;flex:none}
+  /* strength meter */
+  .strength{display:flex;gap:5px;width:100%;margin:-4px 0 6px}
+  .strength i{flex:1;height:5px;border-radius:3px;background:#E3E0DB}
+  .strength i.on{background:var(--success)}
+  .strength i.mid{background:var(--primary)}
+  .strength .txt{font-size:11px;color:var(--success);margin-top:2px}
+  /* chips */
+  .chips{display:flex;flex-wrap:wrap;justify-content:center;gap:10px}
+  .chip{padding:11px 18px;border-radius:24px;border:2px solid transparent;background:#EDEAE5;color:var(--text2);font-size:13.5px;font-weight:600}
+  .chip.on{background:var(--primary);border-color:var(--primary);color:#fff;box-shadow:0 4px 12px rgba(232,134,42,.28)}
+  .datebox{width:100%;display:flex;gap:8px;justify-content:center;margin:6px 0 4px}
+  .datebox .d{flex:1;height:52px;border:1px solid var(--border);border-radius:11px;background:var(--card);display:flex;align-items:center;justify-content:center;font-size:15px;font-weight:600}
+  .datebox .d span{font-size:10px;color:var(--faint);position:absolute;margin-top:-30px;font-weight:600;letter-spacing:.05em}
+  .check{width:62px;height:62px;border-radius:50%;background:var(--success);display:flex;align-items:center;justify-content:center;margin:0 0 6px;box-shadow:0 10px 22px rgba(5,150,105,.28)}
+  .art{object-fit:contain;filter:drop-shadow(0 8px 16px rgba(180,120,40,.22))}
+  /* vouch + hero (door1) */
+  .vouch{flex:none;display:flex;align-items:center;gap:8px;justify-content:center;padding:10px 14px;background:var(--soft);border-bottom:1px solid #F4DEBE}
+  .vouch .av{width:26px;height:26px;font-size:12px}.vouch .t{font-size:12.5px;font-weight:600}
+  .hero{position:relative;flex:1;min-height:200px;background:radial-gradient(circle at 50% 40%, #FCEBD3 0%, rgba(252,235,211,0) 66%), var(--bg);display:flex;flex-direction:column;align-items:center;justify-content:center;padding:20px;text-align:center}
+  .h-title{font-family:var(--disp);font-weight:700;font-size:23px;line-height:1.14;margin:14px 0 7px}
+  .h-sub{font-family:var(--disp);font-size:13px;color:var(--muted);line-height:1.4;max-width:220px}
+  .dots{display:flex;gap:5px;margin-top:12px}
+  .dot{width:6px;height:6px;border-radius:50%;background:var(--outline)}.dot.on{width:17px;border-radius:4px;background:var(--primary)}
+  .ctaWrap{flex:none;padding:15px 18px 22px;background:var(--bg)}
+  /* landing = logged-out explore (mobile) */
+  .lobar{flex:none;display:flex;align-items:center;justify-content:space-between;padding:12px 16px 9px}
+  .logo{font-family:var(--disp);font-weight:700;font-size:17px}
+  .lobar .right{font-size:12px;color:var(--muted)}.lobar .right b{color:var(--primary)}
+  .valuestrip{flex:none;padding:0 16px 10px;font-family:var(--disp);font-size:12.5px;color:var(--text2)}
+  .map{flex:none;height:120px;background:linear-gradient(160deg,#E5E9E0,#DCE3DA);position:relative;display:flex;align-items:center;justify-content:center;color:#8a958a;font-size:11px;font-weight:600}
+  .map .pin{position:absolute;width:14px;height:14px;border-radius:50% 50% 50% 0;background:var(--primary);transform:rotate(-45deg);box-shadow:0 2px 4px rgba(0,0,0,.2)}
+  .pill{display:inline-flex;align-items:center;gap:4px;background:var(--card);border:1px solid var(--border);border-radius:20px;padding:5px 10px;font-size:11.5px;font-weight:600;color:var(--text2)}
+  .pill svg{color:var(--primary)}
+  .sec-l{font-family:var(--disp);font-size:14px;font-weight:700;margin:10px 0 8px;padding:0 16px}
+  .evlist{flex:none;padding:0 16px;display:flex;flex-direction:column;gap:8px}
+  .ev{display:flex;gap:10px;align-items:center;background:var(--card);border:1px solid var(--border);border-radius:13px;padding:9px 10px}
+  .ev .thumb{width:44px;height:44px;border-radius:9px;flex:none;display:flex;align-items:center;justify-content:center;color:#fff}
+  .thumb.a{background:linear-gradient(145deg,#FBB36A,#E8862A)}.thumb.b{background:linear-gradient(145deg,#7DA9C9,#4E7FA6)}.thumb.c{background:linear-gradient(145deg,#9AC79A,#5E9E6B)}
+  .ev .n{font-size:13px;font-weight:600;color:var(--text)}.ev .d{font-size:11px;color:var(--muted);margin-top:2px}.ev .who{font-size:10.5px;color:var(--faint);margin-top:2px}
+  .lofoot{flex:none;margin-top:auto;padding:12px 16px;border-top:1px solid var(--border);display:flex;justify-content:center;gap:8px;font-size:12px;color:var(--muted);background:var(--bg)}
+  .lofoot b{color:var(--primary);font-weight:600}
+  /* home destination */
+  .greet{flex:none;padding:16px 18px 6px}
+  .greet .hi{font-family:var(--disp);font-size:20px;font-weight:700}
+  .greet .date{font-size:11.5px;color:var(--muted);margin-top:2px}
+  .upnext{margin:10px 16px;border-radius:14px;overflow:hidden;border:1px solid var(--border);background:var(--card)}
+  .upnext .cv{height:80px;background:linear-gradient(135deg,#FBB36A,#E8862A)}
+  .upnext .meta{padding:10px 12px}
+  /* DESKTOP frame */
+  .desk{width:1000px;height:600px;background:var(--bg);border-radius:14px;overflow:hidden;box-shadow:0 16px 40px rgba(28,25,23,.2);border:1px solid rgba(0,0,0,.06);display:flex;flex-direction:column}
+  .deskbar{flex:none;height:54px;display:flex;align-items:center;justify-content:space-between;padding:0 22px;background:var(--card);border-bottom:1px solid var(--border)}
+  .deskbar .logo{font-size:18px}
+  .deskbar .right{display:flex;align-items:center;gap:16px;font-size:13px;color:var(--muted)}
+  .deskbar .right .lnk b{color:var(--text);font-weight:600}
+  .deskbar .right .invbtn{background:var(--primary);color:#fff;border-radius:10px;padding:8px 14px;font-size:13px;font-weight:600}
+  .desk-split{flex:1;display:flex;min-height:0}
+  .desk-map{flex:1;background:linear-gradient(160deg,#E5E9E0,#D7E0D4);position:relative;display:flex;align-items:center;justify-content:center;color:#8a958a;font-size:13px;font-weight:600}
+  .desk-map .pin{position:absolute;width:18px;height:18px;border-radius:50% 50% 50% 0;background:var(--primary);transform:rotate(-45deg);box-shadow:0 3px 6px rgba(0,0,0,.25)}
+  .desk-panel{width:380px;flex:none;background:var(--card);border-left:1px solid var(--border);display:flex;flex-direction:column;overflow:hidden}
+  .desk-panel .ptop{padding:16px 18px 10px}
+  .desk-panel .search{height:42px;border:1px solid var(--border);border-radius:10px;display:flex;align-items:center;gap:8px;padding:0 12px;color:var(--faint);font-size:13px;margin-bottom:10px}
+  .desk-panel .plist{padding:0 14px 16px;overflow:auto;display:flex;flex-direction:column;gap:9px}
+  /* desktop centered card (door1 / create account) */
+  .desk-center{flex:1;display:flex;align-items:center;justify-content:center;background:var(--bg)}
+  .dcard{width:420px;background:var(--card);border:1px solid var(--border);border-radius:18px;box-shadow:0 12px 30px rgba(28,25,23,.10);padding:0;overflow:hidden}
+  .dcard .pad{padding:28px 30px 30px}
+  .badge-new{display:inline-block;font-size:9px;font-weight:700;color:#fff;background:#2563EB;border-radius:4px;padding:1px 5px;margin-left:6px;vertical-align:middle;letter-spacing:.03em}
+  /* round-2 edge states (section E) */
+  .ph.mini{width:240px;height:540px}
+  .dim{position:absolute;inset:0;background:rgba(28,25,23,.45);z-index:2;display:flex;flex-direction:column;justify-content:flex-end}
+  .sheet{background:var(--bg);border-radius:22px 22px 0 0;padding:20px 18px 26px;text-align:center;display:flex;flex-direction:column;align-items:center}
+  .cover{flex:none;height:110px;background:linear-gradient(135deg,#FBB36A 0%,#E8862A 55%,#D97520 100%);display:flex;align-items:flex-end;padding:12px 16px;color:#fff;font-family:var(--disp);font-weight:700;font-size:13px}
+  .empty{width:100%;border:1.5px dashed var(--outline);border-radius:13px;padding:15px 14px;text-align:center;font-size:12px;color:var(--muted);line-height:1.5;margin-bottom:12px}
+  .store{display:inline-flex;align-items:center;gap:8px;background:#1C1917;color:#fff;border:none;border-radius:12px;padding:13px 18px;font-size:13.5px;font-weight:600;width:100%;justify-content:center;cursor:pointer}
+  .tos{text-align:center;font-size:10.5px;color:var(--faint);margin-top:10px;line-height:1.4}
+  .tos u{text-decoration-color:var(--outline)}
+  .lockpanel{width:100%;background:var(--panel);border:1px solid var(--border);border-radius:14px;padding:16px 14px;text-align:center;margin-top:10px}
+  .blurcard{filter:blur(3px);opacity:.65;pointer-events:none}
+  /* section F — home/feed logged-out + empty */
+  .steps{width:100%;background:var(--card);border:1px solid var(--border);border-radius:14px;padding:13px 14px;text-align:left}
+  .steps .st{font-family:var(--disp);font-weight:700;font-size:14px;margin-bottom:8px}
+  .steps .s{display:flex;gap:9px;align-items:center;padding:6px 0;font-size:12.5px;color:var(--text2)}
+  .steps .n{width:20px;height:20px;border-radius:50%;background:var(--bgStrong);color:var(--muted);font-size:11px;font-weight:700;display:flex;align-items:center;justify-content:center;flex:none}
+  .steps .n.done{background:var(--success);color:#fff}
+  .tabbar{flex:none;display:flex;justify-content:space-around;padding:10px 8px 14px;border-top:1px solid var(--border);background:var(--card);font-size:10px;color:var(--faint);font-weight:600}
+  .tabbar .on{color:var(--primary)}
+  .emptycard{margin:0 16px;border:1.5px dashed var(--outline);border-radius:14px;padding:18px 14px;text-align:center}
+  .emptycard .t{font-size:13px;color:var(--muted);line-height:1.45;margin-bottom:10px}
+  .legendwrap{margin-top:18px;background:#fff;border:1px solid var(--border);border-radius:12px;padding:14px 18px;font-size:11.5px;color:#4f4b46;line-height:1.6}
+  .legendwrap b{color:#1c1917}
+</style></head>
+<body><div class="wrap">
+  <h1>Hifi v2 · the full flow</h1>
+  <p class="lede">Adds the complete account-creation sequence, the real 5-step onboarding, the landing-as-logged-out-Explore decision, and desktop. Real tokens from <code>tailwind.config.js</code>. Onboarding copy pulled verbatim from <code>components/onboarding/step1–4 + complete</code>.</p>
+
+  <!-- ===== SECTION A: full account creation ===== -->
+  <div class="section">
+    <h2>A · Account creation — Accept invite → email → both passwords</h2>
+    <p class="note">After Accept, the invite is pre-applied (verified at inception). Email first, then password + confirm with the live strength meter. Two short screens, no invite-code typing — the link was the door.</p>
+    <div class="flow">
+      <div class="step"><div class="cap">Accept invite (from Door 1)</div>
+        <div class="ph">
+          <div class="status">9:41<span class="bar"></span></div>
+          <div class="url">🔒 chinmayajanata.org/i/3FK9Q2</div>
+          <div class="vouch" data-ia-id="new-01"><span class="av">A</span><span class="t">Anand invited you to Janata</span></div>
+          <div class="hero" data-ia-id="new-02">
+            <img class="art" style="width:120px;height:120px" src="assets/compass.png" alt="">
+            <div class="h-title">Find your center.<br>Grow together.</div>
+            <div class="h-sub">Discover events near you and connect with your sangha.</div>
+            <div class="dots"><span class="dot on"></span><span class="dot"></span><span class="dot"></span></div>
+          </div>
+          <div class="ctaWrap" data-ia-id="new-03"><button class="btn">Accept invite</button><div class="ghost">Already a member? <b>Log in</b></div></div>
+        </div>
+      </div>
+      <div class="arrow">→</div>
+      <div class="step"><div class="cap">Email <span class="badge-new">new-20</span></div>
+        <div class="ph">
+          <div class="status">9:41<span class="bar"></span></div>
+          <div class="body">
+            <div class="applied" data-ia-id="create-account"><span class="av">A</span><span class="t"><b>Anand's invite applied.</b> You're a member the moment you finish.</span></div>
+            <div class="title">What's your email?</div>
+            <div class="sub">We'll use it to sign you in.</div>
+            <div class="lbl">EMAIL</div><div class="field filled" data-ia-id="new-20">priya@email.com</div>
+            <div class="spacer"></div>
+            <button class="btn">Continue</button>
+            <div class="tos">By continuing you agree to the <u>Terms</u> and <u>Privacy Policy</u>.</div>
+          </div>
+        </div>
+      </div>
+      <div class="arrow">→</div>
+      <div class="step"><div class="cap">Password + confirm + strength <span class="badge-new">new-21</span></div>
+        <div class="ph">
+          <div class="status">9:41<span class="bar"></span></div>
+          <div class="body">
+            <div class="title">Create a password</div>
+            <div class="sub">At least 8 characters.</div>
+            <div class="lbl">PASSWORD</div><div class="field filled" data-ia-id="new-21">••••••••••</div>
+            <div class="strength"><i class="on"></i><i class="on"></i><i class="on"></i><i></i></div>
+            <div class="txt" style="font-size:11px;color:var(--success);margin:-2px 0 12px">Strong password</div>
+            <div class="lbl">CONFIRM PASSWORD</div><div class="field filled">••••••••••</div>
+            <div class="spacer"></div>
+            <button class="btn">Create account</button>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ===== SECTION B: full onboarding ===== -->
+  <div class="section">
+    <h2>B · Onboarding — the real 5 steps (copy verbatim from code)</h2>
+    <p class="note">Runs right after the account is created. Steps 2–4 are optional (Skip for now). Progress bar uses the brand accent. <b>Flag:</b> code currently uses 3 different oranges here (onboarding <code>#ea580c</code>, auth <code>#C2410C</code>, token <code>#E8862A</code>) — spec recommends unifying on the token.</p>
+    <div class="flow">
+      <div class="step"><div class="cap">Step 1 · Name</div>
+        <div class="ph">
+          <div class="status">9:41<span class="bar"></span></div>
+          <div class="prog"><div class="track"><div class="fill" style="width:25%"></div></div><div class="lbl">Step 1 of 4</div></div>
+          <div class="body center" data-ia-id="onb-1">
+            <div class="title big">Welcome to Janata!</div>
+            <div class="sub">Enter your name to get started with your journey.</div>
+            <div class="lbl">FIRST NAME</div><div class="field filled">Priya</div>
+            <div class="lbl">LAST NAME</div><div class="field filled">Krishnan</div>
+            <div class="spacer"></div><button class="btn">Continue</button>
+          </div>
+        </div>
+      </div>
+      <div class="arrow sm">→</div>
+      <div class="step"><div class="cap">Step 2 · Birthday (optional)</div>
+        <div class="ph">
+          <div class="status">9:41<span class="bar"></span></div>
+          <div class="prog"><div class="track"><div class="fill" style="width:50%"></div></div><div class="lbl">Step 2 of 4</div></div>
+          <div class="body center" data-ia-id="onb-2">
+            <div class="title big">When's your birthday?</div>
+            <div class="sub">We'll use this to personalize your experience.</div>
+            <div class="datebox"><div class="d">12</div><div class="d">Aug</div><div class="d">1998</div></div>
+            <div class="spacer"></div><button class="btn">Continue</button>
+            <div class="skip">Skip for now</div>
+          </div>
+        </div>
+      </div>
+      <div class="arrow sm">→</div>
+      <div class="step"><div class="cap">Step 3 · Center</div>
+        <div class="ph">
+          <div class="status">9:41<span class="bar"></span></div>
+          <div class="prog"><div class="track"><div class="fill" style="width:75%"></div></div><div class="lbl">Step 3 of 4</div></div>
+          <div class="body center" data-ia-id="onb-3">
+            <div class="title big">Choose your center</div>
+            <div class="sub">Enter your city or town to see nearby centers.</div>
+            <div class="lbl">CITY OR TOWN</div><div class="field filled">Edison, NJ</div>
+            <div class="evlist" style="padding:0;width:100%"><div class="ev"><div class="thumb c"><svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 21h18"/><path d="M5 21V7l8-4v18"/><path d="M19 21V11l-6-4"/></svg></div><div><div class="n">Chinmaya Edison</div><div class="d">2.3 mi</div></div></div></div>
+            <div class="spacer"></div><button class="btn">Continue</button>
+            <div class="skip">Skip for now</div>
+          </div>
+        </div>
+      </div>
+      <div class="arrow sm">→</div>
+      <div class="step"><div class="cap">Step 4 · Interests</div>
+        <div class="ph">
+          <div class="status">9:41<span class="bar"></span></div>
+          <div class="prog"><div class="track"><div class="fill" style="width:100%"></div></div><div class="lbl">Step 4 of 4</div></div>
+          <div class="body center" data-ia-id="onb-4">
+            <div class="title big">What are your interests?</div>
+            <div class="sub">Select topics that interest you.</div>
+            <div class="chips">
+              <span class="chip on">Satsangs</span><span class="chip">Bhiksha</span><span class="chip on">Global Events</span><span class="chip">Local Events</span><span class="chip">Casual</span><span class="chip">Formal</span>
+            </div>
+            <div class="spacer"></div><button class="btn">Continue</button>
+            <div class="skip">Skip for now</div>
+          </div>
+        </div>
+      </div>
+      <div class="arrow sm">→</div>
+      <div class="step"><div class="cap">Complete → Home</div>
+        <div class="ph">
+          <div class="status">9:41<span class="bar"></span></div>
+          <div class="body center" data-ia-id="onb-5">
+            <div class="check"><svg class="ic" style="width:30px;height:30px" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6 9 17l-5-5"/></svg></div>
+            <div class="title big">Welcome to Janata!</div>
+            <div class="sub">Begin your spiritual journey now.</div>
+            <button class="btn" style="margin-top:6px">Enter Janata</button>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ===== SECTION C: landing vs home/explore ===== -->
+  <div class="section">
+    <h2>C · Landing vs Home vs Explore — the landing IS logged-out Explore</h2>
+    <p class="note"><b>Home</b> is a personalized dashboard (logged out it goes live with nearby events — §F new-30). <b>Explore</b> is already guest-browsable (map + events + centers, no auth wall). <b>Feed</b> stays gated. So <code>landing.tsx</code> renders logged-out Explore + logged-out chrome (logo, Log in, Have an invite?) + a one-line value strip — not a new duplicate page. Below: the logged-out landing (left) vs the member Home it becomes after joining (right).</p>
+    <div class="flow">
+      <div class="step"><div class="cap">Door 2 · Landing = logged-out Explore</div>
+        <div class="ph">
+          <div class="status">9:41<span class="bar"></span></div>
+          <div class="lobar"><span class="logo">Janata</span><span class="right"><b>Log in</b> · Have an invite?</span></div>
+          <div class="valuestrip" data-ia-id="new-14">Find Chinmaya events &amp; centers near you.</div>
+          <div class="map"><span class="pin" style="left:40%;top:40%"></span><span class="pin" style="left:62%;top:55%"></span>map · events near you</div>
+          <div class="sec-l" data-ia-id="new-10" style="display:flex;justify-content:space-between;align-items:center"><span>Events near you</span><span class="pill"><svg class="ic-sm" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 10c0 4.993-5.539 10.193-7.399 11.799a1 1 0 0 1-1.202 0C9.539 20.193 4 14.993 4 10a8 8 0 0 1 16 0"/><circle cx="12" cy="10" r="3"/></svg> Edison ▾</span></div>
+          <div class="evlist">
+            <div class="ev"><div class="thumb a"><svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M8 2v4"/><path d="M16 2v4"/><rect width="18" height="18" x="3" y="4" rx="2"/><path d="M3 10h18"/></svg></div><div><div class="n">Bala Vihar</div><div class="d">Sat 10:00am · Edison</div><div class="who">24 going</div></div></div>
+            <div class="ev"><div class="thumb b"><svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 7v14"/><path d="M3 18a1 1 0 0 1-1-1V4a1 1 0 0 1 1-1h5a4 4 0 0 1 4 4 4 4 0 0 1 4-4h5a1 1 0 0 1 1 1v13a1 1 0 0 1-1 1h-6a3 3 0 0 0-3 3 3 3 0 0 0-3-3z"/></svg></div><div><div class="n">Gita study circle</div><div class="d">Sun 6:00pm · Online</div></div></div>
+          </div>
+          <div class="lofoot" data-ia-id="new-13"><b>Log in</b><span style="color:var(--faint)">·</span>Have an invite?</div>
+        </div>
+      </div>
+      <div class="arrow">vs</div>
+      <div class="step"><div class="cap">Member Home (after joining) — personalized, members-only</div>
+        <div class="ph">
+          <div class="status">9:41<span class="bar"></span></div>
+          <div class="greet"><div class="hi">Namaste, Priya</div><div class="date">Monday, June 9 · Chinmaya Edison</div></div>
+          <div class="sec-l" style="padding:0 18px;margin-top:6px">Up Next</div>
+          <div class="upnext"><div class="cv"></div><div class="meta"><div class="n" style="font-weight:600">Bala Vihar</div><div class="d" style="font-size:11.5px;color:var(--muted)">Sat 10:00am · You're going</div></div></div>
+          <div class="sec-l" style="padding:0 18px">This Week</div>
+          <div class="evlist"><div class="ev"><div class="thumb b"></div><div><div class="n">Gita study circle</div><div class="d">Sun 6:00pm</div></div></div></div>
+          <div class="lofoot" style="border:none;color:var(--faint)">Home · Explore · Feed · Profile</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ===== SECTION D: desktop ===== -->
+  <div class="section">
+    <h2>D · Desktop</h2>
+    <p class="note">Door 2 landing on desktop reuses Explore's web split (map left, list right) with logged-out chrome. Door 1 + account creation become a centered card on the warm background.</p>
+
+    <div class="rowlabel">Desktop · Landing = logged-out Explore (map left, list right)</div>
+    <div class="flow"><div class="step">
+      <div class="desk">
+        <div class="deskbar"><span class="logo" style="font-family:var(--disp);font-weight:700">Janata</span>
+          <div class="right"><span class="lnk"><b>Log in</b></span><span class="invbtn" data-ia-id="new-13">Have an invite?</span></div></div>
+        <div class="desk-split">
+          <div class="desk-map" data-ia-id="new-10"><span class="pin" style="left:38%;top:42%"></span><span class="pin" style="left:55%;top:58%"></span><span class="pin" style="left:48%;top:30%"></span>map · Chinmaya events &amp; centers near you</div>
+          <div class="desk-panel">
+            <div class="ptop">
+              <div style="font-family:var(--disp);font-weight:700;font-size:15px;margin-bottom:4px">Find events &amp; centers near you</div>
+              <div class="search"><svg class="ic-sm" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m21 21-4.34-4.34"/><circle cx="11" cy="11" r="8"/></svg> Search events</div>
+              <span class="pill"><svg class="ic-sm" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 10c0 4.993-5.539 10.193-7.399 11.799a1 1 0 0 1-1.202 0C9.539 20.193 4 14.993 4 10a8 8 0 0 1 16 0"/><circle cx="12" cy="10" r="3"/></svg> Edison, NJ ▾</span>
+            </div>
+            <div class="plist">
+              <div class="ev"><div class="thumb a"><svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M8 2v4"/><path d="M16 2v4"/><rect width="18" height="18" x="3" y="4" rx="2"/><path d="M3 10h18"/></svg></div><div><div class="n">Bala Vihar</div><div class="d">Sat 10:00am · Chinmaya Edison</div><div class="who">24 going</div></div></div>
+              <div class="ev"><div class="thumb b"><svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 7v14"/><path d="M3 18a1 1 0 0 1-1-1V4a1 1 0 0 1 1-1h5a4 4 0 0 1 4 4 4 4 0 0 1 4-4h5a1 1 0 0 1 1 1v13a1 1 0 0 1-1 1h-6a3 3 0 0 0-3 3 3 3 0 0 0-3-3z"/></svg></div><div><div class="n">Gita study circle</div><div class="d">Sun 6:00pm · Online</div><div class="who">11 going</div></div></div>
+              <div class="ev"><div class="thumb c"><svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 21h18"/><path d="M5 21V7l8-4v18"/><path d="M19 21V11l-6-4"/></svg></div><div><div class="n">Chinmaya Mission Edison</div><div class="d">2.3 mi · 6 upcoming</div></div></div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div></div>
+
+    <div class="rowlabel">Desktop · Door 1 invite landing + account creation (centered card)</div>
+    <div class="flow">
+      <div class="step"><div class="cap">Invite landing (desktop)</div>
+        <div class="desk" style="height:560px">
+          <div class="deskbar"><span class="logo" style="font-family:var(--disp);font-weight:700">Janata</span><div class="right"><span class="lnk"><b>Log in</b></span></div></div>
+          <div class="desk-center">
+            <div class="dcard">
+              <div class="vouch" data-ia-id="new-01" style="border-radius:0"><span class="av">A</span><span class="t">Anand invited you to Janata</span></div>
+              <div class="pad" style="text-align:center">
+                <img class="art" style="width:120px;height:120px" src="assets/compass.png" alt="">
+                <div class="h-title" style="margin-top:12px">Find your center.<br>Grow together.</div>
+                <div class="h-sub" style="max-width:300px;margin:0 auto 18px">Discover events near you and connect with your sangha beyond the group chat.</div>
+                <button class="btn" data-ia-id="new-03">Accept invite</button>
+                <div class="ghost">Already a member? <b>Log in</b></div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+      <div class="step"><div class="cap">Create account (desktop)</div>
+        <div class="desk" style="height:560px">
+          <div class="deskbar"><span class="logo" style="font-family:var(--disp);font-weight:700">Janata</span><div class="right"><span class="lnk"><b>Log in</b></span></div></div>
+          <div class="desk-center">
+            <div class="dcard"><div class="pad">
+              <div class="applied" data-ia-id="create-account"><span class="av">A</span><span class="t"><b>Anand's invite applied.</b> You're a member the moment you finish.</span></div>
+              <div class="title" style="text-align:center">Create your account</div>
+              <div class="sub" style="text-align:center">Just an email and a password.</div>
+              <div class="lbl">EMAIL</div><div class="field filled">priya@email.com</div>
+              <div class="lbl">PASSWORD</div><div class="field filled">••••••••••</div>
+              <div class="strength"><i class="on"></i><i class="on"></i><i class="on"></i><i></i></div>
+              <div class="lbl" style="margin-top:8px">CONFIRM PASSWORD</div><div class="field filled">••••••••••</div>
+              <button class="btn" style="margin-top:6px">Create account</button>
+              <div class="tos">By continuing you agree to the <u>Terms</u> and <u>Privacy Policy</u>.</div>
+            </div></div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ===== SECTION E: round-2 edge states (grounded in PR #440 + v2 code) ===== -->
+  <div class="section">
+    <h2>E · Edge states — round 2 (grounded in PR #440 + v2 code)</h2>
+    <p class="note">States the first pass missed, found by reading the real code. Key facts: the invite wall is a <b>state of the existing <code>AuthPromptModal</code></b>, not a new page; onboarding resume is already enforced by <code>_layout.tsx</code> (incomplete profile → forced back to /onboarding); the vouch banner needs an inviter name the backend may not return at launch, so every vouch surface gets a no-name variant.</p>
+
+    <div class="rowlabel">The wall + the fallbacks</div>
+    <div class="flow">
+      <div class="step"><div class="cap">Invite wall = AuthPromptModal state <span class="badge-new">new-12</span> — replaces the modal's open-signup tab under the hard gate</div>
+        <div class="ph">
+          <div class="status">9:41<span class="bar"></span></div>
+          <div style="position:relative;flex:1;display:flex;flex-direction:column;overflow:hidden">
+            <div class="cover">Chinmaya Edison</div>
+            <div class="body"><div class="title" style="font-size:21px">Bala Vihar</div><div class="sub">Sat 10:00am · Chinmaya Edison</div></div>
+            <div class="dim"><div class="sheet" data-ia-id="new-12">
+              <img class="art" style="width:80px;height:80px" src="assets/worldmap.png" alt="">
+              <div class="title" style="font-size:20px;margin:8px 0 4px">Janata is invite-only</div>
+              <div class="sub" style="margin-bottom:14px">Members join through a friend's invite.</div>
+              <button class="btn">RSVP to events without an account</button>
+              <button class="btn sec" style="margin-top:9px">Have an invite? Paste it</button>
+              <div class="ghost">Already a member? <b>Log in</b></div>
+            </div></div>
+          </div>
+        </div>
+      </div>
+      <div class="step"><div class="cap">Door 1, no inviter name <span class="badge-new">new-01b</span> — resolver has no name until attribution (#413)</div>
+        <div class="ph">
+          <div class="status">9:41<span class="bar"></span></div>
+          <div class="url">🔒 chinmayajanata.org/i/3FK9Q2</div>
+          <div class="vouch" data-ia-id="new-01b"><span class="av"><svg class="ic-sm" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect width="20" height="16" x="2" y="4" rx="2"/><path d="m22 7-8.97 5.7a1.94 1.94 0 0 1-2.06 0L2 7"/></svg></span><span class="t">You're invited to Janata</span></div>
+          <div class="hero">
+            <img class="art" style="width:120px;height:120px" src="assets/compass.png" alt="">
+            <div class="h-title">Find your center.<br>Grow together.</div>
+            <div class="h-sub">Discover events near you and connect with your sangha.</div>
+            <div class="dots"><span class="dot on"></span><span class="dot"></span><span class="dot"></span></div>
+          </div>
+          <div class="ctaWrap"><button class="btn">Accept invite</button><div class="ghost">Already a member? <b>Log in</b></div></div>
+        </div>
+      </div>
+      <div class="step"><div class="cap">"Have an invite?" target <span class="badge-new">new-25</span> — neutral copy (new-04 reuses this UI with error copy)</div>
+        <div class="ph">
+          <div class="status">9:41<span class="bar"></span></div>
+          <div class="body center" style="justify-content:center" data-ia-id="new-25">
+            <div class="title">Have an invite?</div>
+            <div class="sub">Paste your invite link or code.</div>
+            <div class="field" style="width:100%">chinmayajanata.org/i/…</div>
+            <button class="btn">Continue</button>
+            <div class="ghost">No invite? <b>Browse events</b></div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="rowlabel">Account collisions + the web → app handoff</div>
+    <div class="flow">
+      <div class="step"><div class="cap">Email already registered <span class="badge-new">new-22</span> — flips to login, invite held</div>
+        <div class="ph">
+          <div class="status">9:41<span class="bar"></span></div>
+          <div class="body" data-ia-id="new-22">
+            <div class="applied"><span class="av">A</span><span class="t"><b>Anand's invite applied.</b> Held while you log in.</span></div>
+            <div class="title">You already have an account</div>
+            <div class="sub">Log in and we'll apply the invite to it.</div>
+            <div class="lbl">EMAIL</div><div class="field filled">priya@email.com</div>
+            <div class="lbl">PASSWORD</div><div class="field">••••••••</div>
+            <div class="spacer"></div>
+            <button class="btn">Log in</button>
+            <div class="ghost" style="color:var(--muted)">Forgot password?</div>
+          </div>
+        </div>
+      </div>
+      <div class="arrow">·</div>
+      <div class="step"><div class="cap">Web, after onboarding <span class="badge-new">new-23</span> — the app handoff (kills the deferred-deep-link problem)</div>
+        <div class="ph">
+          <div class="status">9:41<span class="bar"></span></div>
+          <div class="url">🔒 chinmayajanata.org</div>
+          <div class="body center" style="justify-content:center" data-ia-id="new-23">
+            <div class="check"><svg class="ic" style="width:30px;height:30px" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6 9 17l-5-5"/></svg></div>
+            <div class="title big">You're in</div>
+            <div class="sub">Janata lives on your phone.<br>Get the app and log in.</div>
+            <button class="store"><svg class="ic" viewBox="0 0 24 24" fill="currentColor"><path d="M18.7 19.5c-.83 1.24-1.71 2.45-3.05 2.47-1.34.03-1.77-.79-3.29-.79-1.53 0-2 .77-3.27.82-1.31.05-2.3-1.32-3.14-2.53C4.25 17 2.94 12.45 4.7 9.39c.87-1.52 2.43-2.48 4.12-2.51 1.28-.02 2.5.87 3.29.87.78 0 2.26-1.07 3.81-.91.65.03 2.47.26 3.64 1.98-.09.06-2.17 1.28-2.15 3.81.03 3.02 2.65 4.03 2.68 4.04-.03.07-.42 1.44-1.39 2.83M13 3.5c.73-.83 1.94-1.46 2.94-1.5.13 1.17-.34 2.35-1.04 3.19-.69.85-1.83 1.51-2.95 1.42-.15-1.15.41-2.35 1.05-3.11z"/></svg>Download on the App Store</button>
+            <div class="ghost">or <b>Continue on web</b></div>
+          </div>
+        </div>
+      </div>
+      <div class="arrow">→</div>
+      <div class="step"><div class="cap">First native open <span class="badge-new">new-24</span> — just a login, the account already exists</div>
+        <div class="ph">
+          <div class="status">9:41<span class="bar"></span></div>
+          <div class="body center" style="justify-content:center" data-ia-id="new-24">
+            <img class="art" style="width:88px;height:88px" src="assets/diya.png" alt="">
+            <div class="title" style="margin-top:8px">Welcome back</div>
+            <div class="sub">Log in with the account you just created.</div>
+            <div class="lbl">EMAIL</div><div class="field filled">priya@email.com</div>
+            <div class="lbl">PASSWORD</div><div class="field">••••••••</div>
+            <button class="btn">Log in</button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="rowlabel">Onboarding + guest RSVP + feed</div>
+    <div class="flow">
+      <div class="step"><div class="cap">Step 3, no centers near city <span class="badge-new">onb-3b</span> — real for all of India today (91 centers, none there)</div>
+        <div class="ph">
+          <div class="status">9:41<span class="bar"></span></div>
+          <div class="prog"><div class="track"><div class="fill" style="width:75%"></div></div><div class="lbl">Step 3 of 4</div></div>
+          <div class="body center" data-ia-id="onb-3b">
+            <div class="title big">Choose your center</div>
+            <div class="sub">Enter your city or town to see nearby centers.</div>
+            <div class="lbl">CITY OR TOWN</div><div class="field filled">Mumbai</div>
+            <div class="empty">No centers near you yet.<br>Janata is growing. Pick Global for now, or skip.</div>
+            <div class="chips"><span class="chip on">Global / Online</span></div>
+            <div class="spacer"></div><button class="btn">Continue</button>
+            <div class="skip">Skip for now</div>
+          </div>
+        </div>
+      </div>
+      <div class="step"><div class="cap">Guest RSVPs twice <span class="badge-new">new-11b</span> — dedupe by email, point at the confirmation email</div>
+        <div class="ph">
+          <div class="status">9:41<span class="bar"></span></div>
+          <div class="body center" style="justify-content:center" data-ia-id="new-11b">
+            <div class="check"><svg class="ic" style="width:30px;height:30px" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6 9 17l-5-5"/></svg></div>
+            <div class="title">You're already on the list</div>
+            <div class="sub">We sent your confirmation to ravi@email.com.<br>Can't make it? Cancel from that email.</div>
+            <button class="btn sec">Back to event</button>
+          </div>
+        </div>
+      </div>
+      <div class="step"><div class="cap">Feed, logged out <span class="badge-new">new-15</span> — ghost feed is the content; compact rail, no wall (route stays public, _layout.tsx:231)</div>
+        <div class="ph mini">
+          <div class="status">9:41<span class="bar"></span></div>
+          <div class="lobar"><span class="logo">Janata</span><span class="right"><b>Log in</b></span></div>
+          <div class="body" style="padding-top:6px" data-ia-id="new-15">
+            <div class="ev blurcard" style="margin-bottom:8px"><div class="thumb a"></div><div><div class="n">Satsang reflections…</div><div class="d">Meera · 2h ago</div></div></div>
+            <div class="ev blurcard"><div class="thumb b"></div><div><div class="n">Carpool for Bala Vihar?</div><div class="d">Arjun · 5h ago</div></div></div>
+            <div class="lockpanel">
+              <div class="title" style="font-size:17px">Join the conversation</div>
+              <div class="sub" style="margin-bottom:12px">The feed is for members.</div>
+              <button class="btn" style="font-size:13.5px;padding:11px">Log in</button>
+              <div class="ghost" style="font-size:11.5px">Have an invite? <b>Paste it</b></div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ===== SECTION F: home + feed — logged-out and empty (web + iOS) ===== -->
+  <div class="section">
+    <h2>F · Home &amp; Feed — logged-out and empty states (web + iOS)</h2>
+    <p class="note"><b>Logged out = as close to live as possible.</b> Tabs stay. Home renders REAL events near the visitor — center/location from the pill or geo, "Popular this week" fallback shared with Door 2 — plus one compact log-in callout. Not a wall, not a redirect. Feed shows the ghost feed with the guest rail (existing <code>FeedEmptyState</code>; only the rail copy changes under the hard gate — the sign-up step becomes Log in / paste an invite). On web the logged-out ENTRY stays the landing (= logged-out Explore, §C/§D); the live guest Home below is the native Home tab.</p>
+
+    <div class="rowlabel">Logged out — live, not walled</div>
+    <div class="flow">
+      <div class="step"><div class="cap">Home, logged out · iOS <span class="badge-new">new-30</span> — live events near the picked location; tabs stay; one compact callout</div>
+        <div class="ph">
+          <div class="status">9:41<span class="bar"></span></div>
+          <div class="greet" style="display:flex;justify-content:space-between;align-items:flex-start" data-ia-id="new-30">
+            <div><div class="hi">Namaste</div><div class="date">Monday, June 9</div></div>
+            <span class="pill" style="margin-top:4px"><svg class="ic-sm" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 10c0 4.993-5.539 10.193-7.399 11.799a1 1 0 0 1-1.202 0C9.539 20.193 4 14.993 4 10a8 8 0 0 1 16 0"/><circle cx="12" cy="10" r="3"/></svg> Edison ▾</span>
+          </div>
+          <div class="sec-l" style="padding:0 18px;margin-top:8px">Happening near you</div>
+          <div class="evlist">
+            <div class="ev"><div class="thumb a"><svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M8 2v4"/><path d="M16 2v4"/><rect width="18" height="18" x="3" y="4" rx="2"/><path d="M3 10h18"/></svg></div><div><div class="n">Bala Vihar</div><div class="d">Sat 10:00am · Chinmaya Edison</div><div class="who">24 going</div></div></div>
+            <div class="ev"><div class="thumb b"><svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 7v14"/><path d="M3 18a1 1 0 0 1-1-1V4a1 1 0 0 1 1-1h5a4 4 0 0 1 4 4 4 4 0 0 1 4-4h5a1 1 0 0 1 1 1v13a1 1 0 0 1-1 1h-6a3 3 0 0 0-3 3 3 3 0 0 0-3-3z"/></svg></div><div><div class="n">Gita study circle</div><div class="d">Sun 6:00pm · Online</div></div></div>
+          </div>
+          <div class="sec-l" style="padding:0 18px">Centers near you</div>
+          <div class="evlist">
+            <div class="ev"><div class="thumb c"><svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 21h18"/><path d="M5 21V7l8-4v18"/><path d="M19 21V11l-6-4"/></svg></div><div><div class="n">Chinmaya Edison</div><div class="d">2.3 mi · 6 upcoming</div></div></div>
+          </div>
+          <div style="margin:12px 16px 0">
+            <div class="lockpanel" style="margin-top:0;padding:11px 13px;text-align:left;display:flex;align-items:center;gap:10px">
+              <div style="flex:1"><div style="font-weight:700;font-size:12.5px;font-family:var(--disp)">Make Janata yours</div><div style="font-size:11px;color:var(--muted);margin-top:2px;line-height:1.35">Log in or paste an invite to RSVP and join boards.</div></div>
+              <button class="btn" style="width:auto;padding:9px 14px;font-size:12px;flex:none">Log in</button>
+            </div>
+          </div>
+          <div class="spacer" style="flex:1"></div>
+          <div class="tabbar"><span class="on">Home</span><span>Explore</span><span>Feed</span><span>Profile</span></div>
+        </div>
+      </div>
+      <div class="step"><div class="cap">Home, logged out · desktop <span class="badge-new">new-30</span> — same live treatment, content column; deskbar carries Log in + Have an invite?</div>
+        <div class="desk" style="height:560px">
+          <div class="deskbar"><span class="logo" style="font-family:var(--disp);font-weight:700">Janata</span>
+            <div class="right"><span class="lnk"><b>Log in</b></span><span class="invbtn">Have an invite?</span></div></div>
+          <div style="flex:1;overflow:hidden;display:flex;justify-content:center;background:var(--bg)">
+            <div style="width:560px;padding:24px 0" data-ia-id="new-30">
+              <div class="greet" style="padding:0 0 4px;display:flex;justify-content:space-between;align-items:flex-start">
+                <div><div class="hi" style="font-size:24px">Namaste</div><div class="date">Monday, June 9</div></div>
+                <span class="pill" style="margin-top:6px"><svg class="ic-sm" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 10c0 4.993-5.539 10.193-7.399 11.799a1 1 0 0 1-1.202 0C9.539 20.193 4 14.993 4 10a8 8 0 0 1 16 0"/><circle cx="12" cy="10" r="3"/></svg> Edison, NJ ▾</span>
+              </div>
+              <div class="sec-l" style="padding:0;margin-top:10px">Happening near you</div>
+              <div class="evlist" style="padding:0">
+                <div class="ev"><div class="thumb a"><svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M8 2v4"/><path d="M16 2v4"/><rect width="18" height="18" x="3" y="4" rx="2"/><path d="M3 10h18"/></svg></div><div><div class="n">Bala Vihar</div><div class="d">Sat 10:00am · Chinmaya Edison</div><div class="who">24 going</div></div></div>
+                <div class="ev"><div class="thumb b"><svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 7v14"/><path d="M3 18a1 1 0 0 1-1-1V4a1 1 0 0 1 1-1h5a4 4 0 0 1 4 4 4 4 0 0 1 4-4h5a1 1 0 0 1 1 1v13a1 1 0 0 1-1 1h-6a3 3 0 0 0-3 3 3 3 0 0 0-3-3z"/></svg></div><div><div class="n">Gita study circle</div><div class="d">Sun 6:00pm · Online</div><div class="who">11 going</div></div></div>
+              </div>
+              <div class="sec-l" style="padding:0">Centers near you</div>
+              <div class="evlist" style="padding:0">
+                <div class="ev"><div class="thumb c"><svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 21h18"/><path d="M5 21V7l8-4v18"/><path d="M19 21V11l-6-4"/></svg></div><div><div class="n">Chinmaya Edison</div><div class="d">2.3 mi · 6 upcoming</div></div></div>
+              </div>
+              <div class="lockpanel" style="margin-top:12px;padding:12px 14px;text-align:left;display:flex;align-items:center;gap:12px">
+                <div style="flex:1"><div style="font-weight:700;font-size:13px;font-family:var(--disp)">Make Janata yours</div><div style="font-size:11.5px;color:var(--muted);margin-top:2px">Log in or paste an invite to RSVP and join boards.</div></div>
+                <button class="btn" style="width:auto;padding:10px 16px;font-size:12.5px;flex:none">Log in</button>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+      <div class="step"><div class="cap">Feed, logged out · desktop <span class="badge-new">new-15</span> — ghost feed IS the content; rail = existing FeedSetupRail, hard-gate copy</div>
+        <div class="desk">
+          <div class="deskbar"><span class="logo" style="font-family:var(--disp);font-weight:700">Janata</span>
+            <div class="right"><span class="lnk"><b>Log in</b></span><span class="invbtn">Have an invite?</span></div></div>
+          <div class="desk-split">
+            <div style="flex:1;padding:20px 22px;display:flex;flex-direction:column;gap:10px;min-width:0" data-ia-id="new-15">
+              <div style="font-family:var(--disp);font-weight:700;font-size:16px;margin-bottom:2px">Feed</div>
+              <div class="ev blurcard"><div class="thumb a"></div><div><div class="n">Satsang reflections from Sunday…</div><div class="d">Meera · Chinmaya Edison board · 2h ago</div></div></div>
+              <div class="ev blurcard"><div class="thumb b"></div><div><div class="n">Carpool for Bala Vihar this weekend?</div><div class="d">Arjun · Bala Vihar board · 5h ago</div></div></div>
+              <div class="ev blurcard"><div class="thumb c"></div><div><div class="n">Photos from the Gita study circle</div><div class="d">Lakshmi · 1d ago</div></div></div>
+            </div>
+            <div class="desk-panel"><div class="ptop">
+              <div class="steps">
+                <div class="st">Join the conversation</div>
+                <div class="s"><span class="n">1</span>Log in — or paste a friend's invite</div>
+                <div class="s"><span class="n">2</span>Join your center's boards</div>
+                <div class="s"><span class="n">3</span>Say hello</div>
+                <button class="btn" style="margin-top:10px;padding:11px;font-size:13.5px">Log in</button>
+                <div class="ghost" style="font-size:11.5px;margin-top:9px">Have an invite? <b>Paste it</b></div>
+              </div>
+              <div class="ghost" style="font-size:11.5px;margin-top:12px">Or <b>RSVP to events</b> without an account</div>
+            </div></div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="rowlabel">Logged in, empty — first run after onboarding (the Ram-ji moment): SAME live layout, one compact nudge</div>
+    <div class="flow">
+      <div class="step"><div class="cap">Home, new member · iOS <span class="badge-new">new-32</span> — identical to logged-out Home; greeting gains name + center, callout becomes the RSVP nudge</div>
+        <div class="ph">
+          <div class="status">9:41<span class="bar"></span></div>
+          <div class="greet" data-ia-id="new-32"><div class="hi">Namaste, Priya</div><div class="date">Monday, June 9 · Chinmaya Edison</div></div>
+          <div class="sec-l" style="padding:0 18px;margin-top:8px">Happening near you</div>
+          <div class="evlist">
+            <div class="ev"><div class="thumb a"><svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M8 2v4"/><path d="M16 2v4"/><rect width="18" height="18" x="3" y="4" rx="2"/><path d="M3 10h18"/></svg></div><div><div class="n">Bala Vihar</div><div class="d">Sat 10:00am · Chinmaya Edison</div><div class="who">24 going</div></div></div>
+            <div class="ev"><div class="thumb b"><svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 7v14"/><path d="M3 18a1 1 0 0 1-1-1V4a1 1 0 0 1 1-1h5a4 4 0 0 1 4 4 4 4 0 0 1 4-4h5a1 1 0 0 1 1 1v13a1 1 0 0 1-1 1h-6a3 3 0 0 0-3 3 3 3 0 0 0-3-3z"/></svg></div><div><div class="n">Gita study circle</div><div class="d">Sun 6:00pm · Online</div><div class="who">11 going</div></div></div>
+            <div class="ev"><div class="thumb c"><svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 21h18"/><path d="M5 21V7l8-4v18"/><path d="M19 21V11l-6-4"/></svg></div><div><div class="n">A Passion for Peace</div><div class="d">Jul 25 · Chinmaya Edison</div></div></div>
+          </div>
+          <div style="margin:12px 16px 0">
+            <div class="lockpanel" style="margin-top:0;padding:11px 13px;text-align:left;display:flex;align-items:center;gap:10px">
+              <span class="n done" style="width:22px;height:22px;border-radius:50%;background:var(--success);display:flex;align-items:center;justify-content:center;flex:none"><svg class="ic-sm" style="width:11px;height:11px" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6 9 17l-5-5"/></svg></span>
+              <div style="flex:1"><div style="font-weight:700;font-size:12.5px;font-family:var(--disp)">You're in, through Anand's invite</div><div style="font-size:11px;color:var(--muted);margin-top:2px;line-height:1.35">RSVP to your first event, then say hello on your center board.</div></div>
+            </div>
+          </div>
+          <div class="spacer" style="flex:1"></div>
+          <div class="tabbar"><span class="on">Home</span><span>Explore</span><span>Feed</span><span>Profile</span></div>
+        </div>
+      </div>
+      <div class="step"><div class="cap">Home, new member · desktop — same content column as logged-out desktop; only the callout differs</div>
+        <div class="desk" style="height:560px">
+          <div class="deskbar"><span class="logo" style="font-family:var(--disp);font-weight:700">Janata</span>
+            <div class="right"><span class="lnk">Home</span><span class="lnk">Explore</span><span class="lnk">Feed</span><span class="av" style="width:28px;height:28px;font-size:12px">P</span></div></div>
+          <div style="flex:1;overflow:hidden;display:flex;justify-content:center;background:var(--bg)">
+            <div style="width:560px;padding:24px 0">
+              <div class="greet" style="padding:0 0 4px"><div class="hi" style="font-size:24px">Namaste, Priya</div><div class="date">Monday, June 9 · Chinmaya Edison</div></div>
+              <div class="sec-l" style="padding:0;margin-top:10px">Happening near you</div>
+              <div class="evlist" style="padding:0">
+                <div class="ev"><div class="thumb a"><svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M8 2v4"/><path d="M16 2v4"/><rect width="18" height="18" x="3" y="4" rx="2"/><path d="M3 10h18"/></svg></div><div><div class="n">Bala Vihar</div><div class="d">Sat 10:00am · Chinmaya Edison</div><div class="who">24 going</div></div></div>
+                <div class="ev"><div class="thumb b"><svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 7v14"/><path d="M3 18a1 1 0 0 1-1-1V4a1 1 0 0 1 1-1h5a4 4 0 0 1 4 4 4 4 0 0 1 4-4h5a1 1 0 0 1 1 1v13a1 1 0 0 1-1 1h-6a3 3 0 0 0-3 3 3 3 0 0 0-3-3z"/></svg></div><div><div class="n">Gita study circle</div><div class="d">Sun 6:00pm · Online</div><div class="who">11 going</div></div></div>
+              </div>
+              <div class="lockpanel" style="margin-top:12px;padding:12px 14px;text-align:left;display:flex;align-items:center;gap:12px">
+                <span class="n done" style="width:22px;height:22px;border-radius:50%;background:var(--success);display:flex;align-items:center;justify-content:center;flex:none"><svg class="ic-sm" style="width:11px;height:11px" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6 9 17l-5-5"/></svg></span>
+                <div style="flex:1"><div style="font-weight:700;font-size:13px;font-family:var(--disp)">You're in, through Anand's invite</div><div style="font-size:11.5px;color:var(--muted);margin-top:2px">RSVP to your first event, then say hello on your center board.</div></div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+      <div class="step"><div class="cap">Feed, signed in, no center <span class="badge-new">new-33</span> — same ghost-feed treatment; the rail nudge becomes one-tap Join</div>
+        <div class="ph">
+          <div class="status">9:41<span class="bar"></span></div>
+          <div class="lobar"><span class="logo">Feed</span></div>
+          <div class="body" style="padding-top:6px" data-ia-id="new-33">
+            <div class="ev blurcard" style="margin-bottom:8px"><div class="thumb a"></div><div><div class="n">Satsang reflections from Sunday…</div><div class="d">Meera · Chinmaya Edison board · 2h</div></div></div>
+            <div class="ev blurcard" style="margin-bottom:8px"><div class="thumb b"></div><div><div class="n">Carpool for Bala Vihar?</div><div class="d">Arjun · Bala Vihar board · 5h</div></div></div>
+            <div class="ev blurcard"><div class="thumb c"></div><div><div class="n">Photos from the study circle</div><div class="d">Lakshmi · 1d</div></div></div>
+            <div class="lockpanel" style="text-align:left;display:flex;align-items:center;gap:10px;padding:11px 13px">
+              <div style="flex:1"><div style="font-weight:700;font-size:12.5px;font-family:var(--disp)">Join a center to unlock its boards</div><div style="font-size:11px;color:var(--muted);margin-top:2px;line-height:1.35">Chinmaya Edison · 2.3 mi · 142 members</div></div>
+              <button class="btn" style="width:auto;padding:9px 14px;font-size:12px;flex:none">Join</button>
+            </div>
+            <div class="ghost" style="font-size:11.5px;margin-top:9px">Not now — <b>browse events instead</b></div>
+            <div class="spacer"></div>
+          </div>
+          <div class="tabbar"><span>Home</span><span>Explore</span><span class="on">Feed</span><span>Profile</span></div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="legendwrap">
+    <b>New constructs added at hifi v2:</b> <code>new-14</code> value strip · <code>new-20</code> email step · <code>new-21</code> password+confirm step · <code>onb-1…5</code> onboarding steps (existing screens, re-skinned to token). <b>Decision:</b> landing.tsx = logged-out Explore (reuse, not duplicate). <b>Flag for spec:</b> unify the 3 oranges (<code>#ea580c</code>/<code>#C2410C</code>/<code>#E8862A</code>) onto the token.<br><br>
+    <b>Round 2 (section E):</b> <code>new-01b</code> vouch without inviter name · <code>new-12</code> invite wall as AuthPromptModal state · <code>new-15</code> logged-out feed wall · <code>new-22</code> email-collision → login with invite held · <code>new-23</code> get-the-app handoff · <code>new-24</code> first-native-open login · <code>new-25</code> neutral paste-invite screen · <code>onb-3b</code> no-centers-near-you. <b>Build note:</b> signup stays ONE screen (email+password+confirm, matching <code>auth.tsx</code>) — Section A's two-step split is superseded; the desktop card was already one screen.<br><br>
+    <b>Section F:</b> logged out = live, not walled. <code>new-30</code> logged-out live Home (real events near the picked location, tabs stay, one compact callout) · <code>new-15</code> = FeedEmptyState guest variant: ghost feed + hard-gate rail copy (NOT a new component) · <code>new-32</code> Home first-run Get-connected checklist (re-copy of the existing isNewUser home) · <code>new-33</code> feed joinCenter state (exists; keep, reskin). Web logged-out ENTRY stays the landing (§C/§D); the live Home is the native Home tab.
+  </div>
+
+</div></body></html>

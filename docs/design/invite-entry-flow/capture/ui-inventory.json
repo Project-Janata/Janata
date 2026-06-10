@@ -1,0 +1,48 @@
+{
+  "screen": "invite-entry-flow",
+  "platform": "react-native-expo (iOS) + web (expo-router)",
+  "captured": "2026-06-09T00:00:00Z",
+  "screenshot": "missing",
+  "mode": "code-only",
+  "repo": "/Users/kishparikh/conductor/workspaces/Project-Janatha/macau",
+  "note": "Two entry doors. Today neither exists as designed: landing.tsx is a 17-line redirect to /auth, and the invite resolver (PR #440 app/invite/[code].tsx) is a spinner that hands off into auth signup. The de-facto current entry experience for everyone is the auth.tsx multi-step funnel. Inventory below = that current funnel (the baseline we restructure) + the net-new constructs the two doors imply.",
+  "items": [
+    { "id": "state-01", "kind": "state", "label": "Landing = blank 'Redirecting...' then router.replace('/auth')", "source": "packages/frontend/app/landing.tsx:9", "notes": "Screen 2 today: no browse-first landing exists; cold visitors get dumped straight into auth." },
+
+    { "id": "blk-01", "kind": "blk", "label": "Auth funnel container (single screen, 4 internal steps)", "source": "packages/frontend/app/auth.tsx:31", "notes": "Steps: initial -> (login | invite-code) -> signup. Everyone funnels here." },
+    { "id": "nav-01", "kind": "nav", "label": "Janata wordmark (Logo, taps to /landing)", "source": "packages/frontend/app/auth.tsx:303", "notes": "" },
+    { "id": "nav-02", "kind": "nav", "label": "Discover -> (browse app logged out)", "source": "packages/frontend/app/auth.tsx:259", "notes": "initial step only, top-right; the only browse-first affordance today" },
+    { "id": "act-01", "kind": "action", "label": "Back (returns to initial step)", "source": "packages/frontend/app/auth.tsx:285", "notes": "non-initial steps" },
+
+    { "id": "copy-01", "kind": "copy", "label": "Heading: 'Welcome.' / 'Welcome back.' / 'Enter your invite link.' / 'Join the community.'", "source": "packages/frontend/app/auth.tsx:313", "notes": "swaps by step" },
+    { "id": "blk-02", "kind": "blk", "label": "3 benefit bullets (Discover satsangs/camps/classes; RSVP in a tap; Stay connected)", "source": "packages/frontend/app/auth.tsx:325", "notes": "initial step only; 'what Janata is' before email" },
+    { "id": "copy-02", "kind": "copy", "label": "Subtitle: 'Enter your email to get started' (and per-step variants)", "source": "packages/frontend/app/auth.tsx:339", "notes": "" },
+
+    { "id": "form-01", "kind": "form", "label": "Email field", "source": "packages/frontend/app/auth.tsx:366", "notes": "initial step; checkUserExists routes to login vs invite-code" },
+    { "id": "form-02", "kind": "form", "label": "Password field (login)", "source": "packages/frontend/app/auth.tsx:375", "notes": "login step" },
+    { "id": "form-03", "kind": "form", "label": "Invite link/code field", "source": "packages/frontend/app/auth.tsx:387", "notes": "invite-code step; validates against /auth/validate-invite-code" },
+    { "id": "form-04", "kind": "form", "label": "Password + Confirm password + PasswordStrength meter", "source": "packages/frontend/app/auth.tsx:400", "notes": "signup step" },
+    { "id": "act-02", "kind": "action", "label": "Primary button: Continue / Log In / Sign Up", "source": "packages/frontend/app/auth.tsx:427", "notes": "label swaps by step" },
+    { "id": "act-03", "kind": "action", "label": "Forgot password? -> /auth/forgot", "source": "packages/frontend/app/auth.tsx:443", "notes": "login step" },
+    { "id": "copy-03", "kind": "copy", "label": "Footer: 'By continuing you agree to Terms / Privacy'", "source": "packages/frontend/app/auth.tsx:454", "notes": "" },
+    { "id": "state-02", "kind": "state", "label": "Error block (red, list of messages)", "source": "packages/frontend/app/auth.tsx:354", "notes": "" },
+    { "id": "state-03", "kind": "state", "label": "Loading state on primary button", "source": "packages/frontend/app/auth.tsx:429", "notes": "" },
+    { "id": "act-04", "kind": "action", "label": "Dev/demo tools (role switch)", "source": "packages/frontend/app/auth.tsx:474", "notes": "dev/preview only; ignore for design" },
+
+    { "id": "new-01", "kind": "blk", "label": "DOOR 1 vouch banner: 'Anand invited you to Janata' (inviter avatar + name)", "source": "PR#440 mock-invite-open-flow.html (explored, owned by #403)", "notes": "net-new: the personal vouch that makes an invite feel earned" },
+    { "id": "new-02", "kind": "blk", "label": "DOOR 1 reused onboarding intro carousel (3 slides: Find your center / 50+ centers / Made by sevaks)", "source": "PR#440 mock-invite-open-flow.html", "notes": "net-new: teach what Janata is before asking for an email; reuses real onboarding slides+3D art" },
+    { "id": "new-03", "kind": "action", "label": "DOOR 1 'Accept invite' primary + 'Already a member? Log in' ghost", "source": "PR#440 mock-invite-open-flow.html", "notes": "net-new" },
+    { "id": "new-04", "kind": "state", "label": "DOOR 1 invalid/expired-invite state -> 'paste a link / request one' gate", "source": "implied (#403)", "notes": "net-new; what happens when the code is dead" },
+    { "id": "new-05", "kind": "state", "label": "DOOR 1 already-signed-in -> one-tap join / open app (no signup)", "source": "implied (#403)", "notes": "net-new; the auto-logged-in case from the journey review" },
+
+    { "id": "new-10", "kind": "blk", "label": "DOOR 2 browse-first landing: real events/centers visible before any auth", "source": "implied (#404)", "notes": "net-new: what a cold/not-invited visitor sees first" },
+    { "id": "new-11", "kind": "action", "label": "DOOR 2 account-less RSVP path (name+email, no password, no invite)", "source": "implied (#403 RSVP intent)", "notes": "net-new: the low-friction funnel for the not-invited" },
+    { "id": "new-12", "kind": "state", "label": "DOOR 2 'you need an invite to create a member account' wall (+ RSVP / ask a member)", "source": "implied", "notes": "net-new: not-invited tries to create an account" },
+    { "id": "new-13", "kind": "action", "label": "DOOR 2 'Log in' affordance for existing members", "source": "implied", "notes": "net-new" }
+  ],
+  "not_visible_but_implied": [
+    "Universal-link resolution: chinmayajanata.org/i/CODE opens app or web fallback (#104 plumbing)",
+    "Deep-link resume: a pending action (RSVP an event) survives the auth detour and completes after",
+    "Auto-logged-in users hitting an invite link should NOT see signup"
+  ]
+}

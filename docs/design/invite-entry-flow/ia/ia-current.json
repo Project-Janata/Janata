@@ -1,0 +1,40 @@
+{
+  "goals": {
+    "door1": {
+      "primary_user": "Invited friend, on phone, tapping a trusted person's link for the first time",
+      "top_tasks": [
+        "Trust it's real (a friend vouched) and feel it's earned",
+        "Get in fast — one strong screen, not a forced tour",
+        "Understand in one line what Janata is; deeper slides optional/swipeable"
+      ]
+    },
+    "door2": {
+      "primary_user": "Cold / not-invited visitor, no account, no friend behind them",
+      "top_tasks": [
+        "Immediately see real events/centers that are relevant — proof there's something for them",
+        "Have that relevance shaped by where they are (city / center), without a hard location gate",
+        "Secondary: RSVP to a thing without an account, or realize they want a member invite"
+      ]
+    }
+  },
+  "current_tree": {
+    "id": "root", "label": "Entry (everyone funnels into /auth)",
+    "children": [
+      { "id": "state-01", "label": "landing.tsx → blank redirect to /auth", "children": [] },
+      { "id": "blk-01", "label": "auth.tsx funnel", "children": [
+        { "id": "initial", "label": "Step: initial", "children": ["nav-01", "nav-02", "copy-01", "blk-02", "form-01", "act-02", "copy-03"] },
+        { "id": "login", "label": "Step: login", "children": ["form-01", "form-02", "act-02", "act-03"] },
+        { "id": "invite-code", "label": "Step: invite-code", "children": ["form-03", "act-02"] },
+        { "id": "signup", "label": "Step: signup", "children": ["form-01", "form-04", "act-02"] }
+      ]}
+    ]
+  },
+  "problems": [
+    { "id": "p1", "severity": "high", "items": ["new-10", "nav-02", "state-01"], "problem": "Door 2 doesn't exist. A cold visitor is email-gated before seeing any value; the only browse affordance is a tiny 'Discover →' link top-right. Inverts the #1 task (see relevant events first)." },
+    { "id": "p2", "severity": "high", "items": ["new-01", "new-02"], "problem": "Door 1 doesn't exist. An invited friend lands in the same generic funnel — the personal vouch ('Anand invited you'), the single biggest trust signal in the growth loop, is lost." },
+    { "id": "p3", "severity": "high", "items": ["form-03"], "problem": "Invite is modeled as a code typed mid-funnel, not as the door. Contradicts the locked 'the link is the door' hard-gate model." },
+    { "id": "p4", "severity": "med", "items": ["form-01"], "problem": "Email-first ordering forces commitment before the user knows if Janata is for them or which path (member vs RSVP) fits — mixed altitude, intent buried." },
+    { "id": "p5", "severity": "med", "items": ["new-11", "new-12"], "problem": "No account-less RSVP path. The not-invited dead-end; there's no low-friction funnel and no graceful 'you need an invite' wall." },
+    { "id": "p6", "severity": "med", "items": ["new-05"], "problem": "Auto-logged-in / existing member hitting an invite link would be shown signup — hidden state with wrong outcome." }
+  ]
+}
