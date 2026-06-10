@@ -1,0 +1,25 @@
+DIRECTION C — COMPACT / ACTION-FIRST (fast, dense, above-the-fold)
+==================================================================
+
+  DOOR 1 · invited                      DOOR 2 · cold / browse-first
+  ┌────────────────────────┐            ┌────────────────────────┐
+  │ (A) Anand invited you   │ ← vouch    │ ⌕ Search · 📍 Edison ▾ │ ← search+location bar
+  │     to Janata           │   tight    ├────────────────────────┤
+  ├────────────────────────┤            │ [ Events ] [ Centers ]  │ ← tabs
+  │ ◆sm  Find your center.  │ ← small    ├────────────────────────┤
+  │      Grow together.     │   art +    │ ▢ Bala Vihar   Sat 10am │ ← dense rows,
+  │      one line on Janata │   headline │ ▢ Gita class   Sun 6pm  │   more per screen
+  │                         │   side by  │ ▢ Youth camp   Jun 14   │
+  │ [    Accept invite    ] │ ← ABOVE    │ ▢ Satsang      Fri 7pm  │
+  │  Already a member? Log in│   the fold │ ▢ Seva day     Jun 20   │
+  ├────────────────────────┤            │ ▢ Bhajan night Sat 8pm  │
+  │ ⌄ What is Janata?       │ ← optional ├────────────────────────┤
+  │   (tap to expand slides)│   expand   │ Members join by invite. │ ← inline
+  │                         │            │ [Log in] [Have invite?] │   wall hint
+  └────────────────────────┘            └────────────────────────┘
+
+KEY MOVE: get to the action fastest. Door 1 puts Accept ABOVE THE FOLD —
+art shrinks, "what is Janata?" collapses into an optional expander. Door 2
+is Meetup-style utility: search+location first, Events/Centers tabs, a
+dense scannable list (6+ items visible). Least emotional, most efficient;
+best when the user already knows roughly what they want.

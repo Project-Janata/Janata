@@ -1,0 +1,89 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1"/>
+<title>Capture — invite-entry-flow</title>
+<style>
+  :root{--bg:#F5F5F4;--card:#fff;--border:#E7E5E4;--text:#1C1917;--muted:#78716C;--accent:#C2410C;--soft:#FFF7ED;--new:#2563EB;--newsoft:#EFF6FF;--green:#059669}
+  *{box-sizing:border-box}
+  body{margin:0;background:#cbc8c4;font-family:Inter,system-ui,sans-serif;color:var(--text);padding:28px 20px 64px}
+  .wrap{max-width:1180px;margin:0 auto}
+  h1{font-size:21px;margin:0 0 3px}
+  .sub{font-size:13px;color:#4b4843;margin:0 0 18px;max-width:760px;line-height:1.5}
+  .grid{display:grid;grid-template-columns:1fr 1fr;gap:18px}
+  .col{background:var(--card);border:1px solid var(--border);border-radius:14px;padding:18px 18px 20px}
+  .col h2{font-size:14px;margin:0 0 4px;letter-spacing:.02em}
+  .col .ctx{font-size:11.5px;color:var(--muted);margin:0 0 14px;line-height:1.45}
+  .row{display:flex;gap:9px;padding:7px 0;border-top:1px solid #f3f1ee;align-items:flex-start}
+  .row:first-of-type{border-top:none}
+  .tag{font-family:ui-monospace,monospace;font-size:10px;font-weight:600;padding:2px 6px;border-radius:5px;flex:none;margin-top:1px}
+  .t-cur{background:#F1F0EE;color:#57534E}
+  .t-new{background:var(--newsoft);color:var(--new)}
+  .lab{font-size:12.5px;line-height:1.4}
+  .lab .n{font-size:11px;color:var(--muted);display:block;margin-top:1px}
+  .legend{display:flex;gap:16px;margin:16px 0 0;font-size:11.5px;color:#4b4843;flex-wrap:wrap}
+  .legend span{display:inline-flex;align-items:center;gap:6px}
+  .chip{width:11px;height:11px;border-radius:3px;display:inline-block}
+  .band{background:#fff;border:1px solid var(--border);border-radius:12px;padding:14px 16px;margin-top:18px;font-size:12.5px;line-height:1.55;color:#3f3c38}
+  .band b{color:#1c1917}
+  .doors{display:flex;gap:10px;margin:14px 0 4px}
+  .door{flex:1;border:1px dashed var(--newsoft);background:var(--newsoft);border-color:#bfdbfe;border-radius:10px;padding:11px 13px}
+  .door h3{margin:0 0 4px;font-size:12.5px;color:var(--new)}
+  .door p{margin:0;font-size:11.5px;color:#3f5a8a;line-height:1.45}
+  .warn{font-size:12px;color:#92400e;background:#fffbeb;border:1px solid #fde68a;border-radius:9px;padding:9px 12px;margin-top:14px}
+</style></head>
+<body><div class="wrap">
+  <h1>Capture — invite-entry-flow</h1>
+  <p class="sub">Two entry doors into the app. <b>Neither exists as designed today.</b> Landing is a blank redirect; the invite resolver is a spinner. So everyone funnels into one screen — <code>auth.tsx</code>. That funnel is the baseline we restructure. The blue items are the net-new constructs the two doors need.</p>
+
+  <div class="doors">
+    <div class="door"><h3>Door 1 — Invite landing</h3><p>From <code>chinmayajanata.org/i/CODE</code>. A friend vouched. Should feel earned and explain Janata before asking anything.</p></div>
+    <div class="door"><h3>Door 2 — Browse-first landing</h3><p>Cold / not-invited visitor. Real events + centers first; RSVP without an account; invite is the only door to a member account.</p></div>
+  </div>
+
+  <div class="grid">
+    <div class="col">
+      <h2>Current entry funnel — <code>auth.tsx</code> + <code>landing.tsx</code></h2>
+      <p class="ctx">What everyone hits today. One screen, 4 internal steps: initial → (login | invite-code) → signup.</p>
+      <div class="row"><span class="tag t-cur">state-01</span><span class="lab">Landing = blank "Redirecting…" → /auth<span class="n">no browse-first landing exists</span></span></div>
+      <div class="row"><span class="tag t-cur">blk-01</span><span class="lab">Auth funnel container (4 steps)</span></div>
+      <div class="row"><span class="tag t-cur">nav-01</span><span class="lab">Janata wordmark</span></div>
+      <div class="row"><span class="tag t-cur">nav-02</span><span class="lab">"Discover →" (browse logged out)<span class="n">only browse-first affordance today; top-right, initial step</span></span></div>
+      <div class="row"><span class="tag t-cur">copy-01</span><span class="lab">Heading (swaps per step): Welcome / Welcome back / Enter your invite link / Join the community</span></div>
+      <div class="row"><span class="tag t-cur">blk-02</span><span class="lab">3 benefit bullets (what Janata is)<span class="n">initial step only</span></span></div>
+      <div class="row"><span class="tag t-cur">form-01</span><span class="lab">Email field → checkUserExists routes login vs invite</span></div>
+      <div class="row"><span class="tag t-cur">form-02</span><span class="lab">Password (login)</span></div>
+      <div class="row"><span class="tag t-cur">form-03</span><span class="lab">Invite link/code field</span></div>
+      <div class="row"><span class="tag t-cur">form-04</span><span class="lab">Password + Confirm + strength meter (signup)</span></div>
+      <div class="row"><span class="tag t-cur">act-02</span><span class="lab">Primary button: Continue / Log In / Sign Up</span></div>
+      <div class="row"><span class="tag t-cur">act-03</span><span class="lab">Forgot password?</span></div>
+      <div class="row"><span class="tag t-cur">copy-03</span><span class="lab">Terms / Privacy footer</span></div>
+      <div class="row"><span class="tag t-cur">state-02</span><span class="lab">Error block · <span class="tag t-cur" style="margin-left:4px">state-03</span> loading</span></div>
+    </div>
+
+    <div class="col">
+      <h2>Net-new constructs the two doors need</h2>
+      <p class="ctx">Door 1 = blue 01–05 · Door 2 = blue 10–13. Door 1 starting point already explored in PR&nbsp;#440 (vouch + carousel), owned by #403.</p>
+      <div class="row"><span class="tag t-new">new-01</span><span class="lab">Vouch banner: "Anand invited you to Janata"<span class="n">inviter avatar + name; makes it feel earned</span></span></div>
+      <div class="row"><span class="tag t-new">new-02</span><span class="lab">Reused onboarding intro carousel (3 real slides + 3D art)<span class="n">teach Janata before asking for email</span></span></div>
+      <div class="row"><span class="tag t-new">new-03</span><span class="lab">"Accept invite" primary + "Already a member? Log in"</span></div>
+      <div class="row"><span class="tag t-new">new-04</span><span class="lab">Invalid/expired invite → paste-a-link / request-one gate</span></div>
+      <div class="row"><span class="tag t-new">new-05</span><span class="lab">Already signed in → one-tap join / open app (no signup)</span></div>
+      <div class="row" style="border-top:2px solid #eef2ff"><span class="tag t-new">new-10</span><span class="lab">Browse-first landing: real events/centers before any auth</span></div>
+      <div class="row"><span class="tag t-new">new-11</span><span class="lab">Account-less RSVP (name+email, no password, no invite)<span class="n">low-friction funnel for the not-invited</span></span></div>
+      <div class="row"><span class="tag t-new">new-12</span><span class="lab">"You need an invite to create a member account" wall<span class="n">+ RSVP / ask a member</span></span></div>
+      <div class="row"><span class="tag t-new">new-13</span><span class="lab">"Log in" for existing members</span></div>
+    </div>
+  </div>
+
+  <div class="legend">
+    <span><span class="chip" style="background:#F1F0EE"></span> exists today (the funnel we restructure)</span>
+    <span><span class="chip" style="background:#EFF6FF;border:1px solid #bfdbfe"></span> net-new for the two doors</span>
+  </div>
+
+  <div class="warn"><b>Tokens to reconcile at hifi:</b> code uses accent <code>#C2410C</code>; PR&nbsp;#440 mock uses <code>#E8862A</code>. Pull the real value from <code>tailwind.config.js</code>, not the mock.</div>
+
+  <div class="band">
+    <b>Implied / not visible:</b> &nbsp;• universal-link resolution <code>chinmayajanata.org/i/CODE</code> → app or web fallback (#104) &nbsp;• a pending action (RSVP an event) must survive the auth detour and complete after &nbsp;• auto-logged-in users hitting an invite link must NOT see signup. <br>
+    <b>Scope guard:</b> surfaces map to #403 (invite intent / RSVP) and #404 (browse-first logged-out). This round designs the two doors; those issues own the build.
+  </div>
+</div></body></html>

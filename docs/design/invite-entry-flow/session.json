@@ -1,0 +1,51 @@
+{
+  "screen": "invite-entry-flow",
+  "platform": "react-native-expo (iOS) + web (expo-router)",
+  "repo": "/Users/kishparikh/conductor/workspaces/Project-Janatha/macau",
+  "scope": "Two entry doors: (1) invite landing/resolver from chinmayajanata.org/i/CODE; (2) browse-first landing.tsx for cold/not-invited visitors. Receiving side of the invite growth loop. Sender screen (settings/invite.tsx) already shipped.",
+  "phase": "handoff",
+  "context": {
+    "pr": "#440 (draft, has surface-2 vouch+carousel exploration owned by #403)",
+    "issues": [
+      "#342 hard gate",
+      "#403 AuthFlowCore invite intent / surface 2",
+      "#404 browse-first logged-out / surface 3",
+      "#104 short-link plumbing"
+    ],
+    "model": "HARD invite gate; invited = account = verified at inception; center-agnostic; drop the word 'verified'",
+    "journey_map": "approved 6/6 onboarding-spread-journey (invited / shared-event-link / cold-visitor -> 6 stages -> loop)"
+  },
+  "approvals": {
+    "ia": {
+      "approved": true,
+      "at": "2026-06-09T00:40:00Z",
+      "note": "Option A door-routed; build Door 1 + Door 2 (confirmed matches v2/#440)"
+    },
+    "lofi": {
+      "approved": true,
+      "at": "2026-06-09T01:05:00Z",
+      "note": "Mix direction (immersive Door 1 hero + clean Door 2 rows), full device height; move to hifi"
+    },
+    "hifi": {
+      "approved": true,
+      "at": "2026-06-09T01:40:00Z",
+      "note": "v2 expanded (account+onboarding+landing-as-logged-out-Explore+desktop); full device proportions; approve -> spec"
+    },
+    "capture": {
+      "approved": true,
+      "at": "2026-06-09T00:10:00Z",
+      "note": "Looks complete — move to the IA exercise"
+    }
+  },
+  "versions": {
+    "lofi": 1,
+    "hifi": 2
+  },
+  "started": "2026-06-09T00:00:00Z",
+  "updated": "2026-06-09T01:40:00Z",
+  "final_mocks": {
+    "core": "hifi/mock-v1.html",
+    "full_flow": "hifi/mock-v2.html"
+  },
+  "landing_decision": "landing.tsx renders logged-out Explore (reuse, not duplicate). Home stays members-only. Feed gated."
+}

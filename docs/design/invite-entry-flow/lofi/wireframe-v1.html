@@ -1,0 +1,279 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1"/>
+<title>Mid-fi · invite-entry-flow v1</title>
+<link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inclusive+Sans:wght@400;500;600;700&family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+  /* MID-FI: neutral only. No brand color yet — primary = dark slate. Color + real tokens come at hifi. */
+  :root{
+    --bg:#EFEEEC;--card:#FFFFFF;--surface:#F6F5F3;--border:#E2E0DC;--borderStrong:#CFCCC7;
+    --text:#1C1917;--text2:#46423D;--muted:#78716C;--faint:#A8A29E;
+    --primary:#33302C;--primaryText:#fff;--soft:#ECEAE6;
+    --disp:'Inclusive Sans',system-ui,sans-serif;--ui:'Inter',system-ui,sans-serif;--mono:'JetBrains Mono',monospace;
+  }
+  *{box-sizing:border-box}
+  body{margin:0;background:#c9c6c2;font-family:var(--ui);color:var(--text);padding:26px 18px 70px}
+  .wrap{max-width:1280px;margin:0 auto}
+  h1{font-size:20px;margin:0 0 2px}
+  .lede{font-size:12.5px;color:#383430;margin:0 0 4px;max-width:900px;line-height:1.5}
+  .midnote{display:inline-block;font-size:11px;color:#5b4a36;background:#f3e7d4;border:1px solid #e3cfae;border-radius:7px;padding:6px 11px;margin:8px 0 20px}
+  .rowlabel{font-size:11.5px;letter-spacing:.06em;text-transform:uppercase;color:#54514c;font-weight:700;margin:26px 0 12px}
+  .flow{display:flex;gap:16px;flex-wrap:wrap;align-items:flex-start}
+  .step{display:flex;flex-direction:column;align-items:center;gap:8px}
+  .cap{font-size:11px;color:#4f4b46;font-weight:600;text-align:center;max-width:300px}
+  .arrow{align-self:center;color:#7a766f;font-size:20px;margin-top:320px}
+  /* phone — full device height (300 × 650 ≈ iPhone aspect) */
+  .ph{width:300px;height:650px;background:var(--bg);border-radius:30px;overflow:hidden;box-shadow:0 14px 34px rgba(28,25,23,.20);border:1px solid rgba(0,0,0,.06);position:relative;display:flex;flex-direction:column}
+  .status{height:30px;flex:none;display:flex;align-items:center;justify-content:space-between;padding:0 20px;font-size:12px;font-weight:600}
+  .status .r{display:flex;gap:5px;color:#3f3b36}
+  .url{height:26px;flex:none;background:#E6E3DE;display:flex;align-items:center;justify-content:center;gap:6px;font-family:var(--mono);font-size:10.5px;color:var(--muted)}
+  .badge{position:absolute;z-index:5;width:18px;height:18px;border-radius:50%;background:#1c1917;color:#fff;font-size:9.5px;font-weight:700;display:flex;align-items:center;justify-content:center;font-family:var(--mono)}
+  .ic{width:16px;height:16px;vertical-align:middle}
+  .ic-sm{width:14px;height:14px}
+  /* DOOR 1 immersive */
+  .vouch{flex:none;display:flex;align-items:center;gap:9px;justify-content:center;padding:11px 14px;background:var(--soft);border-bottom:1px solid var(--border)}
+  .av{width:26px;height:26px;border-radius:50%;background:#BBB5AD;color:#fff;display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:700;flex:none}
+  .vouch .t{font-size:13px;font-weight:600;color:var(--text)}
+  .hero{position:relative;flex:1;min-height:230px;background:radial-gradient(circle at 50% 38%, #E4E0DA 0%, #EFEEEC 70%);display:flex;flex-direction:column;align-items:center;justify-content:center;padding:26px 22px;text-align:center}
+  .art{width:118px;height:118px;border-radius:24px;background:repeating-linear-gradient(135deg,#D9D5CF 0 9px,#D1CDC6 9px 18px);display:flex;align-items:center;justify-content:center;color:#8a857d;font-size:11px;font-weight:600}
+  .h-title{font-family:var(--disp);font-weight:700;font-size:23px;line-height:1.15;margin:16px 0 7px}
+  .h-sub{font-family:var(--disp);font-size:13.5px;color:var(--muted);line-height:1.45;max-width:230px}
+  .dots{display:flex;gap:6px;margin-top:13px}
+  .dot{width:6px;height:6px;border-radius:50%;background:var(--borderStrong)}
+  .dot.on{width:18px;border-radius:4px;background:var(--text2)}
+  .ctaWrap{flex:none;padding:16px 18px 22px;background:var(--bg)}
+  .btn{width:100%;background:var(--primary);color:var(--primaryText);border:none;border-radius:13px;padding:14px;font-family:var(--ui);font-size:15px;font-weight:600;cursor:pointer}
+  .btn.sec{background:var(--card);color:var(--text);border:1px solid var(--borderStrong)}
+  .ghost{text-align:center;font-size:13px;color:var(--muted);margin-top:13px}
+  .ghost b{color:var(--text);font-weight:600}
+  /* generic body */
+  .body{padding:22px 18px 24px;display:flex;flex-direction:column;flex:1;overflow:hidden}
+  .applied{display:flex;gap:9px;align-items:center;background:var(--soft);border:1px solid var(--border);border-radius:11px;padding:10px 12px;margin-bottom:16px}
+  .applied .t{font-size:12px;color:var(--text2);line-height:1.35}
+  .applied .t b{color:var(--text)}
+  .lbl{font-size:10.5px;letter-spacing:.09em;color:var(--faint);font-weight:600;margin:0 0 6px}
+  .field{height:46px;border:1px solid var(--border);border-radius:11px;background:var(--card);display:flex;align-items:center;padding:0 13px;font-size:14px;color:var(--faint);margin-bottom:13px}
+  .field.filled{color:var(--text)}
+  .title{font-family:var(--disp);font-weight:700;font-size:22px;margin:0 0 6px;line-height:1.2}
+  .sub{font-family:var(--disp);font-size:13px;color:var(--muted);line-height:1.45;margin-bottom:18px}
+  .spacer{flex:1}
+  /* DOOR 2 browse */
+  .topbar{flex:none;display:flex;align-items:center;justify-content:space-between;padding:13px 16px 9px}
+  .sec-l:first-of-type{margin-top:2px}
+  .logo{font-family:var(--disp);font-weight:700;font-size:17px}
+  .pill{display:inline-flex;align-items:center;gap:5px;background:var(--card);border:1px solid var(--border);border-radius:20px;padding:5px 11px;font-size:12px;font-weight:600;color:var(--text2)}
+  .sec-l{font-family:var(--disp);font-size:15px;font-weight:700;margin:6px 0 9px;padding:0 16px}
+  .evlist{padding:0 16px;display:flex;flex-direction:column;gap:9px}
+  .ev{display:flex;gap:11px;align-items:center;background:var(--card);border:1px solid var(--border);border-radius:13px;padding:10px 11px}
+  .ev .thumb{width:46px;height:46px;border-radius:9px;background:#DDD9D2;flex:none;display:flex;align-items:center;justify-content:center;color:#9a958c}
+  .ev .meta{flex:1;min-width:0}
+  .ev .n{font-size:13.5px;font-weight:600;line-height:1.2}
+  .ev .d{font-size:11.5px;color:var(--muted);margin-top:2px;display:flex;align-items:center;gap:4px}
+  .ev .who{font-size:11px;color:var(--faint);margin-top:3px}
+  .footerbar{flex:none;margin-top:auto;padding:13px 16px;border-top:1px solid var(--border);display:flex;justify-content:center;gap:8px;font-size:12.5px;color:var(--muted);background:var(--bg)}
+  .footerbar b{color:var(--text);font-weight:600}
+  .dotsep{color:var(--faint)}
+  /* event detail / rsvp */
+  .cover{flex:none;height:120px;background:#DDD9D2;display:flex;align-items:center;justify-content:center;color:#9a958c;font-size:12px;font-weight:600}
+  .evlist{flex:none}
+  .going{display:flex;align-items:center;gap:7px;font-size:12px;color:var(--muted);margin:12px 0}
+  .avstack{display:flex}
+  .avstack span{width:22px;height:22px;border-radius:50%;background:#C9C4BC;border:2px solid #fff;margin-left:-7px;display:inline-block}
+  .avstack span:first-child{margin-left:0}
+  .check{width:62px;height:62px;border-radius:50%;background:var(--soft);border:1px solid var(--border);display:flex;align-items:center;justify-content:center;align-self:center;margin:6px 0 4px;color:#3f3b36}
+  .nudge{background:var(--soft);border:1px solid var(--border);border-radius:11px;padding:11px 13px;font-size:12px;color:var(--text2);line-height:1.4;margin-top:14px}
+  .nudge b{color:var(--text)}
+  /* small state frames */
+  .mini{width:230px}
+  .legendwrap{margin-top:30px;background:#fff;border:1px solid var(--border);border-radius:12px;padding:16px 18px}
+  .legendwrap h3{font-size:13px;margin:0 0 10px}
+  .legend{display:grid;grid-template-columns:1fr 1fr;gap:5px 26px;font-size:11.5px;color:#3f3b36}
+  .legend div{display:flex;gap:7px}
+  .legend .num{font-family:var(--mono);font-weight:700;color:#1c1917;flex:none}
+</style></head>
+<body><div class="wrap">
+  <h1>Mid-fi · invite-entry-flow</h1>
+  <p class="lede">The approved door-routed flow, rendered. Mix direction: immersive hero for Door 1, clean rows for Door 2. Real copy, real type, real spacing.</p>
+  <div class="midnote">Mid-fidelity — neutral palette on purpose. Primary buttons are dark slate as a stand-in; brand orange + final tokens get applied at hifi. Judge layout, hierarchy, and flow here.</div>
+
+  <!-- ================= DOOR 1 ================= -->
+  <div class="rowlabel">Door 1 · Invited — chinmayajanata.org/i/CODE</div>
+  <div class="flow">
+    <div class="step"><div class="cap">1 · Vouch + hero (one strong screen)</div>
+      <div class="ph">
+        <span class="badge" style="left:10px;top:42px">1</span>
+        <span class="badge" style="left:10px;top:96px">2</span>
+        <div class="status">9:41<span class="r">●●●</span></div>
+        <div class="url">🔗 chinmayajanata.org/i/3FK9Q2</div>
+        <div class="vouch" data-ia-id="new-01"><span class="av">A</span><span class="t">Anand invited you to Janata</span></div>
+        <div class="hero" data-ia-id="new-02">
+          <div class="art">◆ 3D art</div>
+          <div class="h-title">Find your center.<br>Grow together.</div>
+          <div class="h-sub">Discover events near you and connect with your sangha beyond the group chat.</div>
+          <div class="dots"><span class="dot on"></span><span class="dot"></span><span class="dot"></span></div>
+        </div>
+        <div class="ctaWrap" data-ia-id="new-03">
+          <span class="badge" style="left:10px;top:auto;bottom:64px">3</span>
+          <button class="btn">Accept invite</button>
+          <div class="ghost">Already a member? <b>Log in</b></div>
+        </div>
+      </div>
+    </div>
+    <div class="arrow">→</div>
+    <div class="step"><div class="cap">2 · Create account (invite pre-applied)</div>
+      <div class="ph">
+        <div class="status">9:41<span class="r">●●●</span></div>
+        <div class="body">
+          <div class="applied" data-ia-id="create-account"><span class="av" style="width:24px;height:24px;font-size:11px">A</span><span class="t"><b>Anand's invite applied.</b> You're a member the moment you finish.</span></div>
+          <div class="title">Create your account</div>
+          <div class="sub">Just an email and a password.</div>
+          <div class="lbl">EMAIL</div><div class="field filled">priya@email.com</div>
+          <div class="lbl">PASSWORD</div><div class="field">••••••••</div>
+          <div class="spacer"></div>
+          <button class="btn">Continue</button>
+        </div>
+      </div>
+    </div>
+    <div class="arrow">→</div>
+    <div class="step"><div class="cap">3 · You're in (verified at inception)</div>
+      <div class="ph">
+        <div class="status">9:41<span class="r">●●●</span></div>
+        <div class="body" style="align-items:center;text-align:center;justify-content:center">
+          <div class="check"><svg class="ic" style="width:26px;height:26px" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6 9 17l-5-5"/></svg></div>
+          <div class="title">Welcome, Priya</div>
+          <div class="sub">You're a member of Janata. Anand will see you joined.</div>
+          <button class="btn" style="margin-top:8px">Start exploring</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="rowlabel">Door 1 · edge states</div>
+  <div class="flow">
+    <div class="step"><div class="cap">Invalid / expired invite</div>
+      <div class="ph mini">
+        <div class="status">9:41<span class="r">●●●</span></div>
+        <div class="body" style="text-align:center;align-items:center">
+          <span class="badge" style="position:static;width:18px;height:18px;margin-bottom:10px">4</span>
+          <div class="title" style="font-size:20px" data-ia-id="new-04">This invite isn't active</div>
+          <div class="sub">The link may have expired. Paste a fresh invite, or ask a member for one.</div>
+          <div class="field" style="width:100%">Paste invite link or code</div>
+          <button class="btn">Continue</button>
+          <div class="ghost">Already a member? <b>Log in</b></div>
+        </div>
+      </div>
+    </div>
+    <div class="step"><div class="cap">Already signed in (auto-logged-in)</div>
+      <div class="ph mini">
+        <div class="status">9:41<span class="r">●●●</span></div>
+        <div class="vouch" data-ia-id="new-05"><span class="av">A</span><span class="t">Anand shared an invite</span></div>
+        <div class="body" style="text-align:center;align-items:center;justify-content:center">
+          <div class="title" style="font-size:20px">You're already a member</div>
+          <div class="sub">No need to sign up again.</div>
+          <button class="btn">Open Janata</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ================= DOOR 2 ================= -->
+  <div class="rowlabel">Door 2 · Cold / not-invited — chinmayajanata.org</div>
+  <div class="flow">
+    <div class="step"><div class="cap">1 · Browse-first landing (events at 0 taps)</div>
+      <div class="ph">
+        <span class="badge" style="left:10px;top:38px">A</span>
+        <span class="badge" style="left:10px;top:78px">10</span>
+        <div class="status">9:41<span class="r">●●●</span></div>
+        <div class="topbar"><span class="logo">Janata</span><span class="pill"><svg class="ic-sm" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 10c0 4.993-5.539 10.193-7.399 11.799a1 1 0 0 1-1.202 0C9.539 20.193 4 14.993 4 10a8 8 0 0 1 16 0"/><circle cx="12" cy="10" r="3"/></svg> Edison, NJ <svg class="ic-sm" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m6 9 6 6 6-6"/></svg></span></div>
+        <div class="sec-l" data-ia-id="new-10">Events near you</div>
+        <div class="evlist">
+          <div class="ev"><div class="thumb"><svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M8 2v4"/><path d="M16 2v4"/><rect width="18" height="18" x="3" y="4" rx="2"/><path d="M3 10h18"/></svg></div><div class="meta"><div class="n">Bala Vihar</div><div class="d">Sat 10:00am · Chinmaya Edison</div><div class="who">24 going</div></div></div>
+          <div class="ev"><div class="thumb"><svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M8 2v4"/><path d="M16 2v4"/><rect width="18" height="18" x="3" y="4" rx="2"/><path d="M3 10h18"/></svg></div><div class="meta"><div class="n">Gita study circle</div><div class="d">Sun 6:00pm · Online</div><div class="who">11 going</div></div></div>
+        </div>
+        <div class="sec-l" style="margin-top:16px">Centers near you</div>
+        <div class="evlist">
+          <div class="ev"><div class="thumb"><svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 21h18"/><path d="M5 21V7l8-4v18"/><path d="M19 21V11l-6-4"/></svg></div><div class="meta"><div class="n">Chinmaya Mission Edison</div><div class="d">2.3 mi · 6 upcoming</div></div></div>
+        </div>
+        <div class="footerbar" data-ia-id="new-13"><span><b>Log in</b></span><span class="dotsep">·</span><span>Have an invite?</span></div>
+      </div>
+    </div>
+    <div class="arrow">→</div>
+    <div class="step"><div class="cap">2 · Event detail → RSVP</div>
+      <div class="ph">
+        <div class="status">9:41<span class="r">●●●</span></div>
+        <div class="cover">event cover</div>
+        <div class="body" style="min-height:240px">
+          <div class="title" style="font-size:20px">Bala Vihar</div>
+          <div class="sub" style="margin-bottom:8px">Sat 10:00am · Chinmaya Edison</div>
+          <div class="going"><span class="avstack"><span></span><span></span><span></span></span> 24 going</div>
+          <div class="spacer"></div>
+          <span class="badge" style="position:static;width:18px;height:18px;margin-bottom:8px">11</span>
+          <button class="btn" data-ia-id="new-11">RSVP</button>
+        </div>
+      </div>
+    </div>
+    <div class="arrow">→</div>
+    <div class="step"><div class="cap">3 · Quick RSVP (no account)</div>
+      <div class="ph">
+        <div class="status">9:41<span class="r">●●●</span></div>
+        <div class="body">
+          <div class="title" style="font-size:20px">You're going to Bala Vihar</div>
+          <div class="sub">Just your name and email. No account needed.</div>
+          <div class="lbl">NAME</div><div class="field filled">Ravi Menon</div>
+          <div class="lbl">EMAIL</div><div class="field filled">ravi@email.com</div>
+          <button class="btn">Confirm RSVP</button>
+          <div class="nudge"><b>Want the full app?</b> Members join Janata by invite. Ask a member to send you one.</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="rowlabel">Door 2 · edge states</div>
+  <div class="flow">
+    <div class="step"><div class="cap">Tries to create a member account → invite wall</div>
+      <div class="ph mini">
+        <div class="status">9:41<span class="r">●●●</span></div>
+        <div class="body" style="text-align:center;align-items:center">
+          <span class="badge" style="position:static;width:18px;height:18px;margin-bottom:10px">12</span>
+          <div class="title" style="font-size:19px" data-ia-id="new-12">Janata is invite-only</div>
+          <div class="sub">Members join through a friend's invite. Two ways forward:</div>
+          <button class="btn">RSVP to events without an account</button>
+          <button class="btn sec" style="margin-top:9px">Ask a member for an invite</button>
+        </div>
+      </div>
+    </div>
+    <div class="step"><div class="cap">Existing member taps "Log in" (Condition 3)</div>
+      <div class="ph mini">
+        <div class="status">9:41<span class="r">●●●</span></div>
+        <div style="height:70px;background:#DDD9D2"></div>
+        <div class="body" style="border-top-left-radius:18px;border-top-right-radius:18px;margin-top:-18px;background:var(--bg);min-height:230px">
+          <div class="title" style="font-size:19px">Welcome back</div>
+          <div class="sub">Log in to pick up where you left off.</div>
+          <div class="lbl">EMAIL</div><div class="field filled">meera@email.com</div>
+          <div class="lbl">PASSWORD</div><div class="field">••••••••</div>
+          <button class="btn">Log in</button>
+          <div class="ghost">Forgot password?</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="legendwrap">
+    <h3>Region legend (inventory IDs)</h3>
+    <div class="legend">
+      <div><span class="num">new-01</span> Vouch banner — "Anand invited you to Janata"</div>
+      <div><span class="num">new-10</span> Browse-first: events + centers near you</div>
+      <div><span class="num">new-02</span> One strong hero (3D art + headline + 1 line; optional slides)</div>
+      <div><span class="num">new-11</span> Tap event → RSVP → name+email (account-less)</div>
+      <div><span class="num">new-03</span> Accept invite + Already a member? Log in</div>
+      <div><span class="num">new-12</span> Invite wall (tries member account)</div>
+      <div><span class="num">new-04</span> Invalid / expired invite recovery</div>
+      <div><span class="num">new-13</span> Log in / Have an invite? (footer)</div>
+      <div><span class="num">new-05</span> Auto-logged-in → open app, no signup</div>
+      <div><span class="num">A</span> Logo + location pill (Door 2 top bar)</div>
+      <div><span class="num">create-account</span> Email+password, invite pre-applied, verified at inception</div>
+    </div>
+  </div>
+
+</div></body></html>

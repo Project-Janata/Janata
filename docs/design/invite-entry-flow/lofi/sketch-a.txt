@@ -1,0 +1,32 @@
+DIRECTION A — CLASSIC VERTICAL (balanced, calm, single column)
+================================================================
+
+  DOOR 1 · invited                      DOOR 2 · cold / browse-first
+  ┌────────────────────────┐            ┌────────────────────────┐
+  │ 🔗 …org/i/3FK9Q2        │            │ ◇ Janata   📍 Edison ▾ │ ← logo + location pill
+  ├────────────────────────┤            ├────────────────────────┤
+  │ (A) Anand invited you   │ ← banner   │ Events near you         │ ← section label
+  │     to Janata           │            │ ┌────────────────────┐ │
+  ├────────────────────────┤            │ │▢ Bala Vihar         │ │ ← event row
+  │                         │            │ │  Sat 10am · Edison  │ │
+  │      ╭─────────╮        │            │ └────────────────────┘ │
+  │      │  ◆ 3D   │        │ ← hero art │ ┌────────────────────┐ │
+  │      │   art   │        │            │ │▢ Gita class         │ │
+  │      ╰─────────╯        │            │ │  Sun 6pm · Online   │ │
+  │                         │            │ └────────────────────┘ │
+  │  Find your center.      │ ← headline │ Centers near you        │
+  │  Grow together.         │            │ ┌────────────────────┐ │
+  │  One line on what       │ ← subline  │ │▢ Chinmaya Edison    │ │
+  │  Janata is.             │            │ └────────────────────┘ │
+  │                         │            │                         │
+  │     ● ○ ○  (swipe)      │ ← optional │ ───────────────────────│
+  │                         │            │ Log in  ·  Have invite? │ ← footer
+  ├────────────────────────┤            └────────────────────────┘
+  │ [   Accept invite    ] │ ← primary
+  │  Already a member? Log in│ ← ghost
+  └────────────────────────┘
+
+KEY MOVE: everything in one calm vertical column. Vouch pinned top,
+hero centered, Accept anchored at the bottom. Door 2 = simple scroll:
+labeled sections, full-width event rows. Reads like settings/invite.tsx
+(consistent with what shipped). Slowest to feel "alive" but most legible.

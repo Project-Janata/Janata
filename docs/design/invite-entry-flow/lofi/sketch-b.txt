@@ -1,0 +1,27 @@
+DIRECTION B — IMMERSIVE / CARD-FORWARD (emotional, visual, sticky CTA)
+======================================================================
+
+  DOOR 1 · invited                      DOOR 2 · cold / browse-first
+  ┌────────────────────────┐            ┌────────────────────────┐
+  │▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒│            │ ◇ Janata        📍 ▾ ⌕ │ ← logo, location, search
+  │▒ (A) Anand invited you▒│ ← floating │ ┌──────────────────────┤
+  │▒     chip on art      ▒│   vouch    │ │ ▦▦▦▦▦  Bala Vihar    │ │ ← BIG image card
+  │▒                      ▒│            │ │ ▦ img  Sat 10am      │ │
+  │▒    ◆ full-bleed      ▒│ ← art      │ │ ▦▦▦▦▦  · 24 going    │ │
+  │▒      3D art /         ▒│   fills    │ └──────────────────────┘ │
+  │▒      gradient        ▒│   top 60%  │  ◄ horizontal scroll ►   │ ← carousel
+  │▒                      ▒│            │ ┌──────────────────────┐ │
+  │▒  Find your center.   ▒│ ← headline │ │ ▦▦▦▦▦  Gita class    │ │
+  │▒  Grow together.      ▒│   overlaid │ └──────────────────────┘ │
+  │▒  ● ○ ○               ▒│            │                          │
+  ├────────────────────────┤            │ Centers near you         │
+  │ [   Accept invite    ] │ ← STICKY   │ ┌────┐┌────┐┌────┐       │ ← center chips
+  │  Already a member? Log in│  bottom   │ │▢Edi││▢NYC││▢ NJ│       │
+  └────────────────────────┘   bar      │ └────┘└────┘└────┘       │
+                                         │ Log in  ·  Have invite?  │
+                                         └──────────────────────────┘
+
+KEY MOVE: lead with emotion + imagery. Door 1 art is full-bleed with the
+vouch as a floating chip and a STICKY Accept bar always in reach. Door 2
+is Luma-style: big visual event cards in a horizontal carousel, center
+chips. Most "premium" feel; riskiest on real photo quality + perf.
