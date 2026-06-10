@@ -328,7 +328,7 @@ export default function AuthPromptModal({
                 <View style={{ gap: 9 }}>
                   {promptBullets.map((line) => (
                     <View key={line} style={{ flexDirection: 'row', gap: 10, alignItems: 'flex-start' }}>
-                      <Text style={{ color: '#C2410C', fontSize: 15, lineHeight: 22 }}>{'\u2713'}</Text>
+                      <Text style={{ color: '#E8862A', fontSize: 15, lineHeight: 22 }}>{'\u2713'}</Text>
                       <Text style={{ flex: 1, fontFamily: 'Inclusive Sans', fontSize: 14.5, lineHeight: 22, color: '#57534E' }}>
                         {line}
                       </Text>
@@ -340,7 +340,7 @@ export default function AuthPromptModal({
               <View style={{ gap: 12, marginTop: 4 }}>
                 {authStep !== 'initial' && (
                   <Pressable onPress={handleBack} style={{ alignSelf: 'flex-start', paddingVertical: 2 }}>
-                    <Text style={{ fontFamily: 'Inclusive Sans', fontSize: 14, color: '#C2410C' }}>
+                    <Text style={{ fontFamily: 'Inclusive Sans', fontSize: 14, color: '#E8862A' }}>
                       Back
                     </Text>
                   </Pressable>
@@ -501,7 +501,7 @@ export default function AuthPromptModal({
           <View style={{ gap: 10, marginTop: 4 }}>
             {authStep !== 'initial' && (
               <Pressable onPress={handleBack} style={{ alignSelf: 'flex-start', paddingVertical: 2 }}>
-                <Text style={{ fontSize: 14, fontFamily: 'Inclusive Sans', color: '#C2410C' }}>
+                <Text style={{ fontSize: 14, fontFamily: 'Inclusive Sans', color: '#E8862A' }}>
                   Back
                 </Text>
               </Pressable>

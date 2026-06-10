@@ -262,7 +262,7 @@ export default function AuthScreen() {
             className="absolute right-5"
             style={{ top: insets.top + 12, paddingHorizontal: 4, paddingVertical: 8 }}
           >
-            <Text className="font-sans" style={{ fontSize: 14.5, fontWeight: '500', color: '#C2410C' }}>
+            <Text className="font-sans" style={{ fontSize: 14.5, fontWeight: '500', color: '#E8862A' }}>
               Discover →
             </Text>
           </Pressable>
@@ -329,7 +329,7 @@ export default function AuthScreen() {
                     'Stay connected with your center and sangha',
                   ].map((line) => (
                     <View key={line} style={{ flexDirection: 'row', gap: 10, alignItems: 'flex-start' }}>
-                      <Text style={{ color: '#C2410C', fontSize: 14, lineHeight: 22 }}>✓</Text>
+                      <Text style={{ color: '#E8862A', fontSize: 14, lineHeight: 22 }}>✓</Text>
                       <Text className="font-sans" style={{ flex: 1, fontSize: 14.5, lineHeight: 22, color: '#57534E' }}>{line}</Text>
                     </View>
                   ))}
