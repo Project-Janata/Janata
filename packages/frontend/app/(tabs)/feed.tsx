@@ -645,7 +645,7 @@ export default function FeedScreen() {
         onClose={() => setAuthPromptOpen(false)}
         returnTo="/feed"
         title="Join the conversation."
-        subtitle="Sign in or create an account to follow your center, RSVP to events, and join your boards."
+        subtitle="Janata is invite-only — members join through a friend's invite. Log in, or paste one to get in."
         bullets={[
           'Follow your center board and stay in the loop',
           'Join event boards after you RSVP',

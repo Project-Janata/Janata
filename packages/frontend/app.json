@@ -167,8 +167,6 @@
       "bundleIdentifier": "org.chinmayamission.janata",
       "associatedDomains": [
         "applinks:chinmayajanata.org",
-        "applinks:www.chinmayajanata.org",
-        "applinks:chinmayajanata.org",
         "applinks:www.chinmayajanata.org"
       ]
     },

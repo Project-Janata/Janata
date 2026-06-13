@@ -204,7 +204,7 @@ export default function HomeScreen() {
       onClose={() => setShowAuthPrompt(false)}
       returnTo="/"
       title="Make Janata yours."
-      subtitle="Sign in or create an account to follow your center, RSVP to events, and join your boards."
+      subtitle="Janata is invite-only — members join through a friend's invite. Log in, or paste one to get in."
       bullets={[
         'Follow your local center and see what is coming up',
         'RSVP to events and keep details handy',

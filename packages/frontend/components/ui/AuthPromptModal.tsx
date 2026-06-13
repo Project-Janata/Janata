@@ -3,9 +3,7 @@ import { View, Text, Pressable, Modal, Platform, Image, TextInput } from 'react-
 import { useRouter } from 'expo-router'
 import { useUser } from '../contexts'
 import { useAnalytics } from '../../utils/analytics'
-import { validateEmail, validatePassword } from '../../utils'
-import { extractInviteCode } from '../../utils/validation'
-import PasswordStrength from '../auth/PasswordStrength'
+import { validateEmail } from '../../utils'
 import { useDetailColors } from '../../hooks/useDetailColors'
 import PrimaryButton from './buttons/PrimaryButton'
 import SecondaryButton from './buttons/SecondaryButton'
@@ -21,7 +19,7 @@ const AUTH_CAROUSEL_IMAGES = [
   swamiChinmayanandaOption2,
 ]
 
-type AuthStep = 'initial' | 'login' | 'signup'
+type AuthStep = 'initial' | 'login'
 
 interface AuthPromptModalProps {
   visible: boolean
@@ -33,6 +31,13 @@ interface AuthPromptModalProps {
   bullets?: string[]
 }
 
+/**
+ * Invite wall (new-12). Shown when a guest reaches a member-only action
+ * (posting, joining boards). Janata accounts are invite-only, so this offers
+ * Log in (for existing members) and "Have an invite? Paste it" — NOT open
+ * signup. Account-less RSVP has its own sheet (GuestRsvpSheet); it isn't part
+ * of this wall.
+ */
 export default function AuthPromptModal({
   visible,
   onClose,
@@ -43,16 +48,15 @@ export default function AuthPromptModal({
   bullets,
 }: AuthPromptModalProps) {
   const router = useRouter()
-  const { login, signup, loading } = useUser()
+  const { login, loading } = useUser()
   const { track } = useAnalytics()
   const colors = useDetailColors()
   const [viewportWidth, setViewportWidth] = useState(() =>
-    Platform.OS === 'web' && typeof window !== 'undefined' ? window.innerWidth : 1024
+    Platform.OS === 'web' && typeof window !== 'undefined' ? window.innerWidth : 1024,
   )
   const [authStep, setAuthStep] = useState<AuthStep>('initial')
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
-  const [confirmPassword, setConfirmPassword] = useState('')
   const [errors, setErrors] = useState<{ [key: string]: string }>({})
 
   const trimmedEmail = email.trim()
@@ -61,7 +65,6 @@ export default function AuthPromptModal({
     setAuthStep('initial')
     setEmail('')
     setPassword('')
-    setConfirmPassword('')
     setErrors({})
   }, [])
 
@@ -70,36 +73,30 @@ export default function AuthPromptModal({
     onClose()
   }, [onClose, resetAuthState])
 
-  const validateEmailStep = useCallback(() => {
+  const handleStartLogin = useCallback(() => {
     setErrors({})
     if (!trimmedEmail) {
       setErrors({ email: 'Please enter your email.' })
-      return false
+      return
     }
     if (!validateEmail(trimmedEmail)) {
       setErrors({ email: 'Enter a valid email address.' })
-      return false
+      return
     }
-    return true
-  }, [trimmedEmail])
-
-  const handleStartSignup = useCallback(() => {
-    if (!validateEmailStep()) return
-    track('auth_signup_started', { source: 'auth_modal' })
-    setAuthStep('signup')
-  }, [track, validateEmailStep])
-
-  const handleStartLogin = useCallback(() => {
-    if (!validateEmailStep()) return
     track('auth_login_started', { source: 'auth_modal' })
     setAuthStep('login')
-  }, [track, validateEmailStep])
+  }, [track, trimmedEmail])
+
+  const handlePasteInvite = useCallback(() => {
+    track('invite_wall_paste_pressed', { source: 'auth_modal' })
+    closePrompt()
+    router.push('/join')
+  }, [closePrompt, router, track])
 
   const handleBack = useCallback(() => {
     track('auth_back_pressed', { source: 'auth_modal', from_step: authStep })
     setAuthStep('initial')
     setPassword('')
-    setConfirmPassword('')
     setErrors({})
   }, [authStep, track])
 
@@ -109,7 +106,6 @@ export default function AuthPromptModal({
       setErrors({ password: 'Please enter your password.' })
       return
     }
-
     try {
       const result = await login(trimmedEmail, password)
       if (result.success) {
@@ -125,37 +121,6 @@ export default function AuthPromptModal({
       setErrors({ form: 'Failed to connect to server. Please try again.' })
     }
   }, [closePrompt, login, password, returnTo, router, track, trimmedEmail])
-
-  const handleSignup = useCallback(async () => {
-    setErrors({})
-    if (!password) {
-      setErrors({ password: 'Please enter a password.' })
-      return
-    }
-    if (!validatePassword(password).isValid) {
-      setErrors({ password: 'Password does not meet complexity requirements.' })
-      return
-    }
-    if (password !== confirmPassword) {
-      setErrors({ confirmPassword: 'Passwords do not match.' })
-      return
-    }
-
-    try {
-      const result = await signup(trimmedEmail, password, extractInviteCode('PUBLIC-EXPLORE'))
-      if (result.success) {
-        track('signup_success', { source: 'auth_modal' })
-        closePrompt()
-        router.replace(returnTo ? (`/onboarding?returnTo=${encodeURIComponent(returnTo)}` as never) : '/onboarding')
-      } else {
-        track('signup_failed', { source: 'auth_modal', reason: result.message })
-        setErrors({ form: result.message || 'Failed to sign up. Please try again.' })
-      }
-    } catch {
-      track('signup_failed', { source: 'auth_modal', reason: 'network_error' })
-      setErrors({ form: 'Failed to connect to server. Please try again.' })
-    }
-  }, [closePrompt, confirmPassword, password, returnTo, router, signup, track, trimmedEmail])
 
   // Web: close on Escape key
   useEffect(() => {
@@ -173,7 +138,6 @@ export default function AuthPromptModal({
 
   useEffect(() => {
     if (Platform.OS !== 'web' || typeof window === 'undefined') return
-
     const onResize = () => setViewportWidth(window.innerWidth)
     window.addEventListener('resize', onResize)
     return () => window.removeEventListener('resize', onResize)
@@ -181,29 +145,24 @@ export default function AuthPromptModal({
 
   if (!visible) return null
 
+  const wallTitle = title ?? 'Janata is invite-only'
+  const wallCopy =
+    subtitle ??
+    (eventTitle
+      ? `Members join through a friend's invite. Log in, or paste an invite to join.`
+      : `Members join through a friend's invite. Log in, or paste an invite to join.`)
+  const wallBullets = bullets ?? [
+    "Follow your center and see what's happening",
+    'RSVP and join your center and event boards',
+    'Connect with your sangha beyond the group chat',
+  ]
+
   // Use a portal-style overlay on web for better z-index handling
   if (Platform.OS === 'web') {
     const isDesktop = viewportWidth >= 820
     const modalWidth = isDesktop ? 860 : 380
-    const promptTitle = title ?? 'Sign up to attend.'
-    const promptCopy = subtitle ?? (eventTitle
-      ? `Create a free account to register for ${eventTitle}`
-      : 'Create a free account to register for events')
-    const promptBullets = bullets ?? [
-      'RSVP in a tap and keep event details handy',
-      'See updates from your center and community',
-      'Discover more satsangs, camps, and classes nearby',
-    ]
-    const stepTitle = authStep === 'login'
-      ? 'Welcome back.'
-      : authStep === 'signup'
-        ? 'Create your account.'
-        : promptTitle
-    const stepCopy = authStep === 'login'
-      ? 'Enter your password to continue.'
-      : authStep === 'signup'
-        ? 'Set a password to continue to onboarding.'
-        : promptCopy
+    const stepTitle = authStep === 'login' ? 'Welcome back.' : wallTitle
+    const stepCopy = authStep === 'login' ? 'Enter your password to continue.' : wallCopy
 
     return (
       <View
@@ -270,7 +229,7 @@ export default function AuthPromptModal({
           <Pressable
             onPress={closePrompt}
             accessibilityRole="button"
-            accessibilityLabel="Close sign up prompt"
+            accessibilityLabel="Close"
             style={({ pressed }) => ({
               position: 'absolute',
               top: 14,
@@ -285,7 +244,7 @@ export default function AuthPromptModal({
             })}
           >
             <Text style={{ fontSize: 24, lineHeight: 26, fontFamily: 'Inclusive Sans', color: '#1C1917' }}>
-              {'\u00d7'}
+              {'×'}
             </Text>
           </Pressable>
 
@@ -312,23 +271,16 @@ export default function AuthPromptModal({
                 >
                   {stepTitle}
                 </Text>
-                <Text
-                  style={{
-                    fontSize: 16,
-                    fontFamily: 'Inclusive Sans',
-                    color: '#78716C',
-                    lineHeight: 24,
-                  }}
-                >
+                <Text style={{ fontSize: 16, fontFamily: 'Inclusive Sans', color: '#78716C', lineHeight: 24 }}>
                   {stepCopy}
                 </Text>
               </View>
 
               {isDesktop && authStep === 'initial' && (
                 <View style={{ gap: 9 }}>
-                  {promptBullets.map((line) => (
+                  {wallBullets.map((line) => (
                     <View key={line} style={{ flexDirection: 'row', gap: 10, alignItems: 'flex-start' }}>
-                      <Text style={{ color: '#E8862A', fontSize: 15, lineHeight: 22 }}>{'\u2713'}</Text>
+                      <Text style={{ color: '#E8862A', fontSize: 15, lineHeight: 22 }}>{'✓'}</Text>
                       <Text style={{ flex: 1, fontFamily: 'Inclusive Sans', fontSize: 14.5, lineHeight: 22, color: '#57534E' }}>
                         {line}
                       </Text>
@@ -338,11 +290,9 @@ export default function AuthPromptModal({
               )}
 
               <View style={{ gap: 12, marginTop: 4 }}>
-                {authStep !== 'initial' && (
+                {authStep === 'login' && (
                   <Pressable onPress={handleBack} style={{ alignSelf: 'flex-start', paddingVertical: 2 }}>
-                    <Text style={{ fontFamily: 'Inclusive Sans', fontSize: 14, color: '#E8862A' }}>
-                      Back
-                    </Text>
+                    <Text style={{ fontFamily: 'Inclusive Sans', fontSize: 14, color: '#E8862A' }}>Back</Text>
                   </Pressable>
                 )}
                 <TextInput
@@ -372,7 +322,7 @@ export default function AuthPromptModal({
                 />
                 {errors.email ? <Text style={{ fontFamily: 'Inclusive Sans', fontSize: 13, color: '#B91C1C' }}>{errors.email}</Text> : null}
 
-                {authStep !== 'initial' && (
+                {authStep === 'login' && (
                   <>
                     <TextInput
                       value={password}
@@ -400,57 +350,20 @@ export default function AuthPromptModal({
                   </>
                 )}
 
-                {authStep === 'signup' && (
-                  <>
-                    <PasswordStrength password={password} show={password.length > 0} />
-                    <TextInput
-                      value={confirmPassword}
-                      onChangeText={(value) => {
-                        setConfirmPassword(value)
-                        setErrors((prev) => ({ ...prev, confirmPassword: '', form: '' }))
-                      }}
-                      placeholder="Confirm password"
-                      secureTextEntry
-                      placeholderTextColor="#9CA3AF"
-                      style={{
-                        width: '100%',
-                        height: 48,
-                        borderWidth: 1,
-                        borderColor: '#D6D3D1',
-                        borderRadius: 8,
-                        paddingHorizontal: 16,
-                        fontSize: 16,
-                        fontFamily: 'Inclusive Sans',
-                        color: '#1C1917',
-                        backgroundColor: '#FFFFFF',
-                      }}
-                    />
-                    {errors.confirmPassword ? <Text style={{ fontFamily: 'Inclusive Sans', fontSize: 13, color: '#B91C1C' }}>{errors.confirmPassword}</Text> : null}
-                  </>
-                )}
-
                 {errors.form ? <Text style={{ fontFamily: 'Inclusive Sans', fontSize: 13, color: '#B91C1C', lineHeight: 18 }}>{errors.form}</Text> : null}
 
                 {authStep === 'initial' ? (
                   <>
-                    <PrimaryButton onPress={handleStartSignup} disabled={!trimmedEmail || loading} style={{ borderRadius: 8 }}>
-                      Sign Up
-                    </PrimaryButton>
-                    <SecondaryButton
-                      onPress={handleStartLogin}
-                      disabled={!trimmedEmail || loading}
-                      style={{ borderRadius: 8, backgroundColor: '#FFFFFF' }}
-                    >
+                    <PrimaryButton onPress={handleStartLogin} disabled={!trimmedEmail || loading} style={{ borderRadius: 8 }}>
                       Log In
+                    </PrimaryButton>
+                    <SecondaryButton onPress={handlePasteInvite} style={{ borderRadius: 8, backgroundColor: '#FFFFFF' }}>
+                      Have an invite? Paste it
                     </SecondaryButton>
                   </>
-                ) : authStep === 'login' ? (
+                ) : (
                   <PrimaryButton onPress={handleLogin} disabled={!password || loading} style={{ borderRadius: 8 }}>
                     Log In
-                  </PrimaryButton>
-                ) : (
-                  <PrimaryButton onPress={handleSignup} disabled={!password || !confirmPassword || loading} style={{ borderRadius: 8 }}>
-                    Create Account
                   </PrimaryButton>
                 )}
               </View>
@@ -461,27 +374,14 @@ export default function AuthPromptModal({
     )
   }
 
-  // Native fallback using Modal
-  const nativeTitle = authStep === 'login'
-    ? 'Welcome back'
-    : authStep === 'signup'
-      ? 'Create your account'
-      : title ?? 'Sign up to attend'
-  const nativeCopy = authStep === 'login'
-    ? 'Enter your password to continue.'
-    : authStep === 'signup'
-      ? 'Set a password to continue to onboarding.'
-      : subtitle ?? (eventTitle
-        ? `Create a free account to register for ${eventTitle}`
-        : 'Create a free account to register for events')
+  // Native modal
+  const nativeTitle = authStep === 'login' ? 'Welcome back' : wallTitle
+  const nativeCopy = authStep === 'login' ? 'Enter your password to continue.' : wallCopy
 
   return (
     <Modal visible={visible} transparent animationType="fade" onRequestClose={closePrompt}>
       <View style={{ flex: 1, backgroundColor: 'rgba(0,0,0,0.5)', justifyContent: 'center', alignItems: 'center' }}>
-        <Pressable
-          style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0 }}
-          onPress={closePrompt}
-        />
+        <Pressable style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0 }} onPress={closePrompt} />
         <View
           style={{
             backgroundColor: colors.panelBg,
@@ -499,11 +399,9 @@ export default function AuthPromptModal({
             {nativeCopy}
           </Text>
           <View style={{ gap: 10, marginTop: 4 }}>
-            {authStep !== 'initial' && (
+            {authStep === 'login' && (
               <Pressable onPress={handleBack} style={{ alignSelf: 'flex-start', paddingVertical: 2 }}>
-                <Text style={{ fontSize: 14, fontFamily: 'Inclusive Sans', color: '#E8862A' }}>
-                  Back
-                </Text>
+                <Text style={{ fontSize: 14, fontFamily: 'Inclusive Sans', color: '#E8862A' }}>Back</Text>
               </Pressable>
             )}
             <TextInput
@@ -533,7 +431,7 @@ export default function AuthPromptModal({
             />
             {errors.email ? <Text style={{ fontSize: 13, fontFamily: 'Inclusive Sans', color: '#B91C1C' }}>{errors.email}</Text> : null}
 
-            {authStep !== 'initial' && (
+            {authStep === 'login' && (
               <>
                 <TextInput
                   value={password}
@@ -561,53 +459,20 @@ export default function AuthPromptModal({
               </>
             )}
 
-            {authStep === 'signup' && (
-              <>
-                <PasswordStrength password={password} show={password.length > 0} />
-                <TextInput
-                  value={confirmPassword}
-                  onChangeText={(value) => {
-                    setConfirmPassword(value)
-                    setErrors((prev) => ({ ...prev, confirmPassword: '', form: '' }))
-                  }}
-                  placeholder="Confirm password"
-                  secureTextEntry
-                  placeholderTextColor={colors.textMuted}
-                  style={{
-                    width: '100%',
-                    height: 48,
-                    borderWidth: 1,
-                    borderColor: colors.border,
-                    borderRadius: 8,
-                    paddingHorizontal: 16,
-                    fontSize: 16,
-                    fontFamily: 'Inclusive Sans',
-                    color: colors.text,
-                    backgroundColor: colors.cardBg,
-                  }}
-                />
-                {errors.confirmPassword ? <Text style={{ fontSize: 13, fontFamily: 'Inclusive Sans', color: '#B91C1C' }}>{errors.confirmPassword}</Text> : null}
-              </>
-            )}
-
             {errors.form ? <Text style={{ fontSize: 13, fontFamily: 'Inclusive Sans', color: '#B91C1C', lineHeight: 18 }}>{errors.form}</Text> : null}
 
             {authStep === 'initial' ? (
               <>
-                <PrimaryButton onPress={handleStartSignup} disabled={!trimmedEmail || loading}>
-                  Sign Up
-                </PrimaryButton>
-                <SecondaryButton onPress={handleStartLogin} disabled={!trimmedEmail || loading}>
+                <PrimaryButton onPress={handleStartLogin} disabled={!trimmedEmail || loading}>
                   Log In
+                </PrimaryButton>
+                <SecondaryButton onPress={handlePasteInvite}>
+                  Have an invite? Paste it
                 </SecondaryButton>
               </>
-            ) : authStep === 'login' ? (
+            ) : (
               <PrimaryButton onPress={handleLogin} disabled={!password || loading}>
                 Log In
-              </PrimaryButton>
-            ) : (
-              <PrimaryButton onPress={handleSignup} disabled={!password || !confirmPassword || loading}>
-                Create Account
               </PrimaryButton>
             )}
           </View>
