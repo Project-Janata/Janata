@@ -42,10 +42,14 @@ const SELECT_COLUMNS = `code, label, verification_level, is_active, created_at,
   created_by_user_id, expires_at, max_uses, uses_count`
 
 function normalizeCode(code: string): string {
-  // Tolerate a pasted invite LINK (janata.app/i/<code>) as well as a raw code,
-  // so the client can show "invite link" and either form validates server-side.
   const trimmed = (code ?? '').trim()
-  const fromLink = trimmed.match(/janata\.app\/i\/([^/?#\s]+)/i)
+  const fromJoinLink = trimmed.match(/chinmayajanata\.org\/join\?code=([^&#\s]+)/i)
+  if (fromJoinLink) {
+    return decodeURIComponent(fromJoinLink[1]).trim().toUpperCase()
+  }
+  const fromLink = trimmed.match(
+    /(?:chinmayajanata\.org\/invite\/|chinmayajanata\.org\/i\/)([^/?#\s]+)/i,
+  )
   return (fromLink ? fromLink[1] : trimmed).trim().toUpperCase()
 }
 

@@ -51,6 +51,11 @@
             {
               "scheme": "https",
               "host": "chinmayajanata.org",
+              "pathPrefix": "/i"
+            },
+            {
+              "scheme": "https",
+              "host": "chinmayajanata.org",
               "pathPrefix": "/auth"
             },
             {
@@ -67,6 +72,11 @@
               "scheme": "https",
               "host": "www.chinmayajanata.org",
               "pathPrefix": "/feed"
+            },
+            {
+              "scheme": "https",
+              "host": "www.chinmayajanata.org",
+              "pathPrefix": "/i"
             },
             {
               "scheme": "https",
@@ -101,6 +111,11 @@
             {
               "scheme": "https",
               "host": "chinmayajanata.org",
+              "pathPrefix": "/i"
+            },
+            {
+              "scheme": "https",
+              "host": "chinmayajanata.org",
               "pathPrefix": "/auth"
             },
             {
@@ -117,6 +132,11 @@
               "scheme": "https",
               "host": "www.chinmayajanata.org",
               "pathPrefix": "/feed"
+            },
+            {
+              "scheme": "https",
+              "host": "www.chinmayajanata.org",
+              "pathPrefix": "/i"
             },
             {
               "scheme": "https",

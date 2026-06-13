@@ -41,11 +41,17 @@ export const validatePhoneNumber = (phoneNumber: string): boolean => {
   return phoneNumberRegex.test(phoneNumber);
 };
 
-// Accept either a full invite LINK (e.g. https://janata.app/i/ABC123) or a raw
-// code. Returns the bare code so the UI can say "invite link" while the backend
-// keeps receiving a code. No-op for an already-bare code.
+// Accept a full invite link or a raw code; return the bare code.
+// Handles the canonical chinmayajanata.org/i/CODE route plus older
+// chinmayajanata.org/invite/CODE and /join?code=CODE links.
 export const extractInviteCode = (input: string): string => {
-  const trimmed = (input ?? "").trim();
-  const match = trimmed.match(/janata\.app\/i\/([^/?#\s]+)/i);
-  return (match ? match[1] : trimmed).trim();
-};
+  const trimmed = (input ?? '').trim()
+  const fromJoinLink = trimmed.match(/chinmayajanata\.org\/join\?code=([^&#\s]+)/i)
+  if (fromJoinLink) {
+    return decodeURIComponent(fromJoinLink[1]).trim()
+  }
+  const match = trimmed.match(
+    /(?:chinmayajanata\.org\/invite\/|chinmayajanata\.org\/i\/)([^/?#\s]+)/i,
+  )
+  return (match ? match[1] : trimmed).trim()
+}

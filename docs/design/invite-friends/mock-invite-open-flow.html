@@ -1,0 +1,170 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1"/>
+<title>Invite-open flow v3 — vouch + intro reuse, 'verified' dropped</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inclusive+Sans:wght@300;400;500;600;700&family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --bg:#F5F5F4; --surface:#F0EDE8; --card:#FFFFFF; --border:#E7E5E4; --borderStrong:#D6D3D1;
+    --text:#1C1917; --textSecondary:#44403C; --textMuted:#78716C; --textFaint:#A8A29E; --inv:#fff;
+    --accent:#E8862A; --accentPress:#D97520; --accentSoft:#FFF7ED; --success:#059669;
+    --disp:'Inclusive Sans',system-ui,sans-serif; --ui:'Inter',system-ui,sans-serif; --mono:'JetBrains Mono',ui-monospace,monospace;
+  }
+  *{box-sizing:border-box}
+  body{margin:0;background:#cbc8c4;font-family:var(--ui);padding:32px 20px 80px;color:var(--text)}
+  .head{max-width:1180px;margin:0 auto 6px}
+  h1{font-size:20px;margin:0 0 2px;font-weight:700}
+  .sub{font-size:13px;color:#4b4843;margin:0 0 4px}
+  .ribbon{max-width:1180px;margin:0 auto 18px;font-size:12px;color:#5a4a36;background:#fbecd9;border:1px solid #f0d6b0;border-radius:8px;padding:8px 12px;display:inline-block}
+  .rowlabel{max-width:1180px;margin:24px auto 12px;font-size:12px;letter-spacing:.06em;text-transform:uppercase;color:#5a5752;font-weight:700}
+  .flow{display:flex;gap:18px;flex-wrap:wrap;align-items:flex-start;justify-content:center;max-width:1180px;margin:0 auto}
+  .step{display:flex;flex-direction:column;align-items:center;gap:9px}
+  .cap{font-size:11px;letter-spacing:.04em;text-transform:uppercase;color:#5a5752;font-weight:600}
+  .arrow{align-self:center;font-size:22px;color:#7a766f;margin-top:210px}
+  .ph{width:286px;background:var(--bg);border-radius:30px;overflow:hidden;box-shadow:0 16px 42px rgba(28,25,23,.22);border:1px solid rgba(0,0,0,.06)}
+  .status{height:28px;display:flex;align-items:center;justify-content:flex-end;padding:0 18px;gap:6px;font-size:11px;color:var(--text);font-weight:600}
+  .url{height:28px;background:#ECE9E4;display:flex;align-items:center;justify-content:center;gap:6px;font-family:var(--mono);font-size:11px;color:var(--textMuted)}
+  .vouch{display:flex;align-items:center;gap:9px;justify-content:center;padding:12px 14px;background:var(--accentSoft);border-bottom:1px solid #F3D9B5}
+  .miniav{width:28px;height:28px;border-radius:50%;background:linear-gradient(145deg,#fb923c,#c2410c);color:#fff;display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:700;flex:none}
+  .vouch .t{font-size:13px;color:var(--text);font-weight:600}
+  .body{padding:22px 22px 26px;display:flex;flex-direction:column;align-items:center;text-align:center;min-height:420px}
+  .glow{width:160px;height:150px;display:flex;align-items:center;justify-content:center;background:radial-gradient(circle at 50% 45%, #FBE7CB 0%, rgba(251,231,203,0) 68%);margin-top:6px}
+  .glow img{width:120px;height:120px;object-fit:contain}
+  .title{font-family:var(--disp);font-weight:700;font-size:24px;letter-spacing:-.01em;margin:6px 0 9px;line-height:1.18}
+  .bodytext{font-family:var(--disp);font-size:14px;color:var(--textMuted);line-height:1.5;max-width:228px;margin-bottom:18px}
+  .dots{display:flex;gap:7px;margin-bottom:18px}
+  .dot{width:7px;height:7px;border-radius:50%;background:var(--borderStrong)}
+  .dot.on{background:var(--accent);width:20px;border-radius:4px}
+  .btn{width:100%;background:var(--accent);color:var(--inv);border:none;border-radius:12px;padding:14px;font-family:var(--ui);font-size:15px;font-weight:600;box-shadow:0 6px 16px rgba(232,134,42,.28);cursor:pointer;margin-top:auto}
+  .ghostlink{font-family:var(--ui);font-size:13px;color:var(--textMuted);margin-top:14px}
+  .ghostlink b{color:var(--accent);font-weight:600}
+  .lbl{font-size:11px;letter-spacing:.10em;color:var(--textFaint);align-self:flex-start;margin-bottom:7px;font-weight:600}
+  .field{width:100%;height:46px;border:1px solid var(--border);border-radius:11px;background:var(--card);display:flex;align-items:center;padding:0 14px;font-family:var(--ui);font-size:14px;color:var(--textFaint);margin-bottom:12px}
+  .field.filled{color:var(--text)}
+  .invbar{width:100%;display:flex;align-items:center;gap:9px;background:var(--accentSoft);border:1px solid #F3D9B5;border-radius:11px;padding:10px 12px;margin-bottom:18px;text-align:left}
+  .invbar .t{font-size:12px;color:var(--textSecondary);line-height:1.3}
+  .invbar .t b{color:var(--text)}
+  .check{width:74px;height:74px;border-radius:50%;background:var(--success);display:flex;align-items:center;justify-content:center;box-shadow:0 10px 24px rgba(5,150,105,.30);margin-top:14px}
+  .pill{display:inline-flex;align-items:center;gap:6px;background:#FFF1E0;color:#B45309;border-radius:20px;padding:5px 12px;font-size:12px;font-weight:600;margin-top:10px}
+  .ic{width:30px;height:30px}
+  .note{max-width:1180px;margin:24px auto 0;font-size:12.5px;color:#4b4843;background:#fff;border:1px solid var(--border);border-radius:10px;padding:13px 16px;line-height:1.55}
+  .note b{color:#1c1917}
+</style>
+</head>
+<body>
+  <div class="head">
+    <h1>Invite-open flow v3 — what a friend sees after tapping the link</h1>
+    <p class="sub">First screen now explains what Janata is by reusing the onboarding intro (real slides + 3D art). Vouch pinned on top. "Verified" dropped.</p>
+  </div>
+  <div class="ribbon">chinmayajanata.org/i/3FK9Q2 → universal link opens app (#104) · web fallback if not installed → openAuth('invite') · owned by #403</div>
+
+  <div class="rowlabel">A · Invited welcome = vouch + the intro carousel (reused from onboarding)</div>
+  <div class="flow">
+    <div class="step">
+      <div class="cap">Slide 1 (with Accept)</div>
+      <div class="ph">
+        <div class="status">9:41 &nbsp; <span style="opacity:.5">●●●</span></div>
+        <div class="url">🔗 chinmayajanata.org/i/3FK9Q2</div>
+        <div class="vouch"><span class="miniav">A</span><span class="t">Anand invited you to Janata</span></div>
+        <div class="body">
+          <div class="glow"><img src="assets/compass.png" alt=""/></div>
+          <div class="title">Find your center.<br>Grow together.</div>
+          <div class="bodytext">Discover centers and events near you, RSVP in a tap, and connect with the community beyond your group chat.</div>
+          <div class="dots"><span class="dot on"></span><span class="dot"></span><span class="dot"></span></div>
+          <button class="btn">Accept invite</button>
+          <div class="ghostlink">Already a member? <b>Log in</b></div>
+        </div>
+      </div>
+    </div>
+    <div class="step">
+      <div class="cap">Slide 2 (swipe)</div>
+      <div class="ph">
+        <div class="status">9:41 &nbsp; <span style="opacity:.5">●●●</span></div>
+        <div class="url">🔗 chinmayajanata.org/i/3FK9Q2</div>
+        <div class="vouch"><span class="miniav">A</span><span class="t">Anand invited you to Janata</span></div>
+        <div class="body">
+          <div class="glow"><img src="assets/worldmap.png" alt=""/></div>
+          <div class="title">50+ centers,<br>in one place.</div>
+          <div class="bodytext">Events used to be scattered across WhatsApp, email, and flyers. Janata puts every center and event on one map.</div>
+          <div class="dots"><span class="dot"></span><span class="dot on"></span><span class="dot"></span></div>
+          <button class="btn">Accept invite</button>
+          <div class="ghostlink">Already a member? <b>Log in</b></div>
+        </div>
+      </div>
+    </div>
+    <div class="step">
+      <div class="cap">Slide 3 (swipe)</div>
+      <div class="ph">
+        <div class="status">9:41 &nbsp; <span style="opacity:.5">●●●</span></div>
+        <div class="url">🔗 chinmayajanata.org/i/3FK9Q2</div>
+        <div class="vouch"><span class="miniav">A</span><span class="t">Anand invited you to Janata</span></div>
+        <div class="body">
+          <div class="glow"><img src="assets/diya.png" alt=""/></div>
+          <div class="title">Made by sevaks.<br>Run by CHYKs.</div>
+          <div class="bodytext">Janata is volunteer-led, built and run by CHYKs across centers. Join, discover events, and help your community grow.</div>
+          <div class="dots"><span class="dot"></span><span class="dot"></span><span class="dot on"></span></div>
+          <button class="btn">Accept invite</button>
+          <div class="ghostlink">Already a member? <b>Log in</b></div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="rowlabel">B · Then the short account path (→ #403 onboarding)</div>
+  <div class="flow">
+    <div class="step">
+      <div class="cap">Create account</div>
+      <div class="ph">
+        <div class="status">9:41 &nbsp; <span style="opacity:.5">●●●</span></div>
+        <div class="body" style="padding-top:24px">
+          <div class="invbar"><span class="miniav">A</span><span class="t"><b>Anand's invite applied.</b> You're in the moment you finish.</span></div>
+          <div class="title" style="font-size:23px">Create your account</div>
+          <div class="bodytext" style="margin-bottom:20px">Just an email and a password to start.</div>
+          <div class="lbl">EMAIL</div>
+          <div class="field filled">priya@email.com</div>
+          <div class="lbl">PASSWORD</div>
+          <div class="field">••••••••</div>
+          <button class="btn">Continue</button>
+        </div>
+      </div>
+    </div>
+    <div class="arrow">→</div>
+    <div class="step">
+      <div class="cap">Profile (#403 onboarding)</div>
+      <div class="ph">
+        <div class="status">9:41 &nbsp; <span style="opacity:.5">●●●</span></div>
+        <div class="body" style="padding-top:30px">
+          <div class="pill">You're in 🙏</div>
+          <div class="title" style="margin-top:16px">What should we<br>call you?</div>
+          <div class="bodytext">A few quick details and you're set.</div>
+          <div class="lbl">FULL NAME</div>
+          <div class="field filled">Priya Krishnan</div>
+          <div style="font-family:var(--disp);font-size:12px;color:var(--textFaint);align-self:flex-start;margin:-2px 0 0">Next: birthdate · interests</div>
+          <button class="btn">Continue</button>
+        </div>
+      </div>
+    </div>
+    <div class="arrow">→</div>
+    <div class="step">
+      <div class="cap">You're in</div>
+      <div class="ph">
+        <div class="status">9:41 &nbsp; <span style="opacity:.5">●●●</span></div>
+        <div class="body" style="justify-content:center;align-items:center">
+          <div class="check"><svg class="ic" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg></div>
+          <div class="title" style="margin-top:18px">Welcome, Priya</div>
+          <div class="bodytext">You're a member of Janata. Anand will see you joined.</div>
+          <button class="btn" style="margin-top:8px">Start exploring</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="note">
+    <b>Decisions baked in:</b> &nbsp;•&nbsp; First screen = the vouch banner + the reused onboarding intro (3 real slides), so a newcomer learns what Janata is before signing up. &nbsp;•&nbsp; <b>"Verified" dropped</b> — in a hard gate every account is verified, so the value is "you're in instantly," not a status word. &nbsp;•&nbsp; Center-agnostic (invite = Janata membership, not a specific center). &nbsp;•&nbsp; Signed-in users get a one-tap join; no/expired invite → #403's "paste a link / request one" gate. &nbsp;•&nbsp; Web fallback if the app isn't installed (most invitees).
+  </div>
+</body>
+</html>

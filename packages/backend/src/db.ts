@@ -37,8 +37,8 @@ export async function createUser(
         `INSERT INTO users (id, username, password, email, first_name, last_name,
           date_of_birth, phone_number, profile_image, bio, center_id, points,
           is_verified, verification_level, is_active, profile_complete,
-          interests, invite_code, created_at, updated_at)
-         VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10, ?11, ?12, ?13, ?14, ?15, ?16, ?17, ?18, ?19, ?20)`,
+          interests, invite_code, invited_by_user_id, created_at, updated_at)
+         VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10, ?11, ?12, ?13, ?14, ?15, ?16, ?17, ?18, ?19, ?20, ?21)`,
       )
       .bind(
         user.id,
@@ -59,6 +59,7 @@ export async function createUser(
         user.profile_complete ?? 0,
         user.interests ?? null,
         user.invite_code ?? null,
+        user.invited_by_user_id ?? null,
         now,
         now,
       )
