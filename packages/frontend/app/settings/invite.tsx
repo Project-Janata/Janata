@@ -70,14 +70,21 @@ export default function InviteScreen() {
   // per-app tiles.
   const handleShare = async () => {
     if (!inviteUrl) return
-    const message = `Join me on Janata. This invite gets you in instantly: ${inviteUrl}`
+    // Voice: no "verified" — in a hard gate every account is, so the promise is
+    // "you're in instantly" (#440 copy decision).
+    const blurb = 'Join me on Janata. This invite gets you in instantly.'
     try {
       if (isWeb && typeof navigator !== 'undefined' && navigator.clipboard) {
         await navigator.clipboard.writeText(inviteUrl)
         setCopied(true)
         setTimeout(() => setCopied(false), 2000)
+      } else if (Platform.OS === 'ios') {
+        // iOS treats `url` as its own share item (rich link preview), so the
+        // message stays link-free to avoid the link appearing twice.
+        await Share.share({ message: blurb, url: inviteUrl }, { subject: 'Join me on Janata' })
       } else {
-        await Share.share({ message, title: 'Join me on Janata', url: inviteUrl })
+        // Android's share intent ignores `url`, so the link must ride in the message.
+        await Share.share({ message: `${blurb} ${inviteUrl}`, title: 'Join me on Janata' })
       }
     } catch {
       // user dismissed share / clipboard blocked — no-op
