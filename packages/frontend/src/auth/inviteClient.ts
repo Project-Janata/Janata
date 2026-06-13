@@ -101,7 +101,35 @@ export interface RedeemResponse extends GenericSuccessResponse {
   user: User
 }
 
+export interface InviteLookup {
+  valid: boolean
+  /** Inviter's first name for the Door 1 vouch, or null → nameless vouch. */
+  inviterFirstName: string | null
+}
+
 export const inviteClient = {
+  /**
+   * Look up an invite code for Door 1: is it usable, and who minted it. Public
+   * (no auth). Treats any network/parse failure as an invalid code so the
+   * screen degrades to the recovery state rather than hanging.
+   */
+  async lookup(code: string): Promise<InviteLookup> {
+    try {
+      const response = await withTimeout(
+        buildUrl('/auth/validate-invite-code'),
+        { method: 'POST', body: JSON.stringify({ code }) },
+        API_TIMEOUTS.standard,
+      )
+      const data = await safeJson<{ valid?: boolean; inviterFirstName?: string | null }>(response)
+      if (!response.ok || !data?.valid) {
+        return { valid: false, inviterFirstName: null }
+      }
+      return { valid: true, inviterFirstName: data.inviterFirstName ?? null }
+    } catch {
+      return { valid: false, inviterFirstName: null }
+    }
+  },
+
   /**
    * Mint a new multi-use invite code tied to the caller. Defaults to 25 uses
    * / 7-day expiry; pass `options` to adjust (server clamps maxUses to

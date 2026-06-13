@@ -320,7 +320,10 @@ app.post('/auth/validate-invite-code', rateLimit(10, 60_000), async (c) => {
 
   const status = await inviteCodes.classifyInviteCode(c.env, body.code)
   if (status === 'ok') {
-    return c.json({ valid: true })
+    // Door 1 vouch (#403): include the inviter's first name when the link was
+    // minted by a member. Null for admin cohort codes → nameless vouch.
+    const inviterFirstName = await inviteCodes.getInviterFirstName(c.env, body.code)
+    return c.json({ valid: true, inviterFirstName })
   }
 
   const messages: Record<Exclude<inviteCodes.InviteCodeStatus, 'ok'>, string> = {
