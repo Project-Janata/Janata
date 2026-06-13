@@ -19,7 +19,6 @@ import { extractInviteCode } from '../utils/validation'
 import { inviteClient } from '../src/auth/inviteClient'
 import { PasswordStrength } from '../components'
 import DevPanel from '../components/DevPanel'
-import { API_BASE_URL } from '../src/config/api'
 // __DEV__ is a React Native/Expo global — always false in production builds.
 // EXPO_PUBLIC_SHOW_DEV_TOOLS=1 also enables the dev/demo tools (set on the
 // isolated v2 preview build), so role-switching works for demos there too.
@@ -27,7 +26,7 @@ const isDev =
   (typeof __DEV__ !== 'undefined' && __DEV__) ||
   process.env.EXPO_PUBLIC_SHOW_DEV_TOOLS === '1'
 
-type AuthStep = 'initial' | 'login' | 'invite-code' | 'signup'
+type AuthStep = 'initial' | 'login' | 'signup'
 
 export default function AuthScreen() {
   const router = useRouter()
@@ -115,8 +114,10 @@ export default function AuthScreen() {
         track('auth_user_exists', { source: 'auth' })
         setAuthStep('login')
       } else {
+        // form-03 cut (#403): the invite is the door, so a new email goes
+        // straight to account creation. Manual codes enter via /join (new-25).
         track('auth_user_new', { source: 'auth' })
-        setAuthStep('invite-code')
+        setAuthStep('signup')
       }
     } catch (e: any) {
       track('auth_check_failed', { source: 'auth' })
@@ -163,34 +164,6 @@ export default function AuthScreen() {
       setErrors({ form: 'Failed to connect to server. Please try again.' })
     }
   }, [username, password, inviteCode, login, getToken, router, track, params.returnTo])
-
-  const handleInviteCodeContinue = useCallback(async () => {
-    setErrors({})
-    if (!inviteCode) {
-      setErrors({ inviteCode: 'Please enter your invite code.' })
-      return
-    }
-    try {
-      track('auth_invite_code_submitted', { source: 'auth' })
-      // Validate the invite code with the backend
-      const response = await fetch(`${API_BASE_URL}/auth/validate-invite-code`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ code: extractInviteCode(inviteCode) }),
-      })
-      const data = await response.json()
-      if (data.valid) {
-        track('auth_invite_code_valid', { source: 'auth' })
-        setAuthStep('signup')
-      } else {
-        track('auth_invite_code_invalid', { source: 'auth' })
-        setErrors({ form: data.error || 'Invalid or inactive invite code.' })
-      }
-    } catch (e: any) {
-      track('auth_invite_code_check_failed', { source: 'auth' })
-      setErrors({ form: 'Failed to validate invite code. Please try again.' })
-    }
-  }, [inviteCode, track])
 
   const handleSignup = useCallback(async () => {
     setErrors({})
@@ -244,15 +217,13 @@ export default function AuthScreen() {
 
       if (authStep === 'login') {
         handleLogin()
-      } else if (authStep === 'invite-code') {
-        handleInviteCodeContinue()
       } else if (authStep === 'signup') {
         handleSignup()
       } else {
         handleContinue()
       }
     },
-    [authStep, handleLogin, handleInviteCodeContinue, handleSignup, handleContinue]
+    [authStep, handleLogin, handleSignup, handleContinue]
   )
 
   const handleBack = useCallback(() => {
@@ -268,8 +239,7 @@ export default function AuthScreen() {
   const isButtonDisabled =
     loading ||
     (authStep === 'initial' && !username) ||
-    (authStep === 'invite-code' && !inviteCode) ||
-    (authStep !== 'initial' && authStep !== 'invite-code' && !password) ||
+    (authStep !== 'initial' && !password) ||
     (authStep === 'signup' && !confirmPassword)
 
   // Collect error messages to display
@@ -289,11 +259,6 @@ export default function AuthScreen() {
   const handleConfirmPasswordChange = useCallback((text: string) => {
     setConfirmPassword(text)
     setErrors((prev) => ({ ...prev, confirmPassword: '' }))
-  }, [])
-
-  const handleInviteCodeChange = useCallback((text: string) => {
-    setInviteCode(text)
-    setErrors((prev) => ({ ...prev, inviteCode: '' }))
   }, [])
 
   return (
@@ -366,8 +331,6 @@ export default function AuthScreen() {
                   ? collisionFlip
                     ? 'You already have an account'
                     : 'Welcome back.'
-                  : authStep === 'invite-code'
-                  ? 'Enter your invite link.'
                   : authStep === 'signup'
                   ? 'Join the community.'
                   : 'Welcome.'}
@@ -398,8 +361,6 @@ export default function AuthScreen() {
                   ? collisionFlip
                     ? "Log in and we'll apply the invite to it."
                     : 'Enter your password to continue'
-                  : authStep === 'invite-code'
-                  ? 'Paste your invite link or code to continue'
                   : authStep === 'signup'
                   ? 'Create your account to get started'
                   : 'Enter your email to get started'}
@@ -467,19 +428,6 @@ export default function AuthScreen() {
                 </View>
               )}
 
-              {authStep === 'invite-code' && (
-                <View>
-                  <AuthInput
-                    placeholder="Invite link or code"
-                    onChangeText={handleInviteCodeChange}
-                    value={inviteCode}
-                    secureTextEntry={false}
-                    autoComplete="off"
-                    style={{}}
-                  />
-                </View>
-              )}
-
               {authStep === 'signup' && (
                 <>
                   <View>
@@ -515,8 +463,6 @@ export default function AuthScreen() {
               >
                {authStep === 'login'
                    ? 'Log In'
-                   : authStep === 'invite-code'
-                   ? 'Continue'
                    : authStep === 'signup'
                    ? 'Sign Up'
                   : 'Continue'}
@@ -529,6 +475,19 @@ export default function AuthScreen() {
                   onPress={() => { track('auth_forgot_password_pressed', { source: 'auth' }); router.push('/auth/forgot') }}
                 >
                   <Text className="text-primary font-sans font-medium">Forgot password?</Text>
+                </Pressable>
+              )}
+
+              {/* Have an invite? — manual code entry now that the typed step is
+                  cut (form-03). Routes to the neutral paste screen (new-25). */}
+              {authStep === 'initial' && (
+                <Pressable
+                  className="items-center mt-2"
+                  onPress={() => { track('auth_have_invite_pressed', { source: 'auth' }); router.push('/join') }}
+                >
+                  <Text className="font-sans" style={{ fontSize: 14, color: '#78716C' }}>
+                    Have an invite? <Text style={{ color: '#E8862A', fontWeight: '600' }}>Paste it</Text>
+                  </Text>
                 </Pressable>
               )}
             </View>

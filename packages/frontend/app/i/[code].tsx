@@ -1,13 +1,5 @@
 import { useEffect, useState, useCallback } from 'react'
-import {
-  View,
-  Text,
-  Pressable,
-  ActivityIndicator,
-  Image,
-  TextInput,
-  useWindowDimensions,
-} from 'react-native'
+import { View, Text, Pressable, ActivityIndicator, Image, useWindowDimensions } from 'react-native'
 import { useLocalSearchParams, useRouter } from 'expo-router'
 import { useUser } from '../../components/contexts'
 import { useColors } from '../../hooks/useColors'
@@ -15,6 +7,7 @@ import { extractInviteCode } from '../../utils/validation'
 import { inviteClient } from '../../src/auth/inviteClient'
 import { INTRO_STEPS } from '../../components/intro/IntroSteps'
 import IntroCard from '../../components/intro/IntroCard'
+import PasteInvite from '../../components/invite/PasteInvite'
 import { useAnalytics } from '../../utils/analytics'
 
 /**
@@ -45,7 +38,6 @@ export default function InviteLinkScreen() {
 
   const [phase, setPhase] = useState<Phase>('resolving')
   const [inviterName, setInviterName] = useState<string | null>(null)
-  const [pasted, setPasted] = useState('')
 
   useEffect(() => {
     if (loading) return
@@ -88,13 +80,7 @@ export default function InviteLinkScreen() {
     router.replace(`/auth?mode=login&inviteCode=${encodeURIComponent(code)}`)
   }, [code, router])
 
-  const openPasted = useCallback(() => {
-    const next = extractInviteCode(pasted)
-    if (next) router.replace(`/i/${encodeURIComponent(next)}`)
-  }, [pasted, router])
-
   const heroWidth = Math.min(width, 440)
-  const canOpenPasted = !!extractInviteCode(pasted)
 
   return (
     <View style={{ flex: 1, backgroundColor: c.bg, alignItems: 'center', justifyContent: 'center' }}>
@@ -182,63 +168,12 @@ export default function InviteLinkScreen() {
         )}
 
         {phase === 'invalid' && (
-          // new-04 — dead/expired code: recovery, never a silent dump into signup.
-          <View style={{ width: '100%', alignItems: 'center', gap: 16 }}>
-            <View style={{ gap: 6, alignItems: 'center' }}>
-              <Text
-                style={{
-                  fontFamily: 'Inclusive Sans',
-                  fontSize: 26,
-                  color: c.text,
-                  textAlign: 'center',
-                }}
-              >
-                This invite isn't active
-              </Text>
-              <Text style={{ fontSize: 15, color: c.textMuted, textAlign: 'center', lineHeight: 22 }}>
-                The link may have expired. Paste a fresh invite, or ask a member for one.
-              </Text>
-            </View>
-            <View style={{ width: '100%', gap: 10 }}>
-              <TextInput
-                value={pasted}
-                onChangeText={setPasted}
-                placeholder="Paste an invite link"
-                placeholderTextColor={c.textFaint}
-                autoCapitalize="none"
-                autoCorrect={false}
-                onSubmitEditing={openPasted}
-                style={{
-                  backgroundColor: c.surface,
-                  borderRadius: 8,
-                  paddingVertical: 12,
-                  paddingHorizontal: 14,
-                  fontSize: 15,
-                  color: c.text,
-                }}
-              />
-              <Pressable
-                onPress={openPasted}
-                disabled={!canOpenPasted}
-                style={{
-                  backgroundColor: canOpenPasted ? c.accent : c.surface,
-                  borderRadius: 12,
-                  paddingVertical: 15,
-                  alignItems: 'center',
-                }}
-              >
-                <Text
-                  style={{
-                    color: canOpenPasted ? c.textInverse : c.textFaint,
-                    fontSize: 16,
-                    fontWeight: '600',
-                  }}
-                >
-                  Open invite
-                </Text>
-              </Pressable>
-            </View>
-          </View>
+          // new-04 — dead/expired code: recovery (error variant of new-25).
+          // Never a silent dump into signup.
+          <PasteInvite
+            title="This invite isn't active"
+            subtitle="The link may have expired. Paste a fresh invite, or ask a member for one."
+          />
         )}
       </View>
     </View>
