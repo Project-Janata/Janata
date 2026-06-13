@@ -16,7 +16,7 @@
 import { useEffect, useRef } from 'react'
 import { usePathname } from 'expo-router'
 import { usePostHog } from 'posthog-react-native'
-import { resolveFirstSession, buildSuperProperties } from './analyticsEnv'
+import { resolveFirstSession, buildSuperProperties, readWebAcquisition } from './analyticsEnv'
 
 export { usePostHog }
 
@@ -386,6 +386,14 @@ export function AnalyticsBootstrap(): null {
       const isFirstSession = await resolveFirstSession()
       if (!active || !posthog) return
       void posthog.register(buildSuperProperties(isFirstSession))
+      // #413: web acquisition attribution. Register utm_*/referrer as super
+      // properties for this session, and stamp first-touch person properties
+      // via $set_once so signup/content_created break down by channel.
+      const acq = readWebAcquisition()
+      if (acq) {
+        void posthog.register(acq.superProps)
+        posthog.capture('web_acquisition', { ...acq.superProps, $set_once: acq.setOnce })
+      }
     })()
     return () => {
       active = false

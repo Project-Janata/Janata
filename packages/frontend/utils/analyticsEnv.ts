@@ -20,6 +20,9 @@ import { Platform } from 'react-native'
 import AsyncStorage from '@react-native-async-storage/async-storage'
 
 const FIRST_SEEN_KEY = '@analytics_first_seen_at'
+const ACQUISITION_KEY = '@analytics_acquisition_v1'
+
+const UTM_KEYS = ['utm_source', 'utm_medium', 'utm_campaign', 'utm_term', 'utm_content'] as const
 
 /** expo-updates is optional at runtime (absent in some web/dev contexts). */
 function getReleaseChannel(): string {
@@ -53,6 +56,69 @@ export async function resolveFirstSession(): Promise<boolean> {
     return true
   } catch {
     return false
+  }
+}
+
+/**
+ * Web acquisition attribution (#413). posthog-react-native doesn't auto-capture
+ * utm_* / referrer the way posthog-js does, so read them from the first landing
+ * URL + document.referrer and return:
+ *   - superProps: utm_* + $referrer/$referring_domain → register() so this
+ *     session's events (signup, content_created) are filterable by source.
+ *   - setOnce: $initial_* variants → first-touch person properties that stick
+ *     across sessions (PostHog's first-touch convention).
+ *
+ * Returns null off-web, after the first capture (localStorage-guarded so it's
+ * truly first-touch and internal navigations never overwrite it), or when
+ * there's nothing to attribute (no utm tags + same-origin/empty referrer).
+ */
+export function readWebAcquisition(): {
+  superProps: Record<string, string>
+  setOnce: Record<string, string>
+} | null {
+  if (Platform.OS !== 'web' || typeof window === 'undefined') return null
+  try {
+    if (localStorage.getItem(ACQUISITION_KEY)) return null
+
+    const params = new URLSearchParams(window.location.search)
+    const utm: Record<string, string> = {}
+    for (const key of UTM_KEYS) {
+      const v = params.get(key)
+      if (v) utm[key] = v
+    }
+
+    const referrer = document.referrer || ''
+    let referringDomain = ''
+    try {
+      referringDomain = referrer ? new URL(referrer).hostname : ''
+    } catch {
+      referringDomain = ''
+    }
+    const isExternalReferrer = !!referringDomain && referringDomain !== window.location.hostname
+
+    // Stamp now either way so we only inspect the genuine first landing.
+    localStorage.setItem(ACQUISITION_KEY, new Date().toISOString())
+
+    // Nothing to attribute: no campaign tags and no external referrer.
+    if (Object.keys(utm).length === 0 && !isExternalReferrer) return null
+
+    const referrerValue = isExternalReferrer ? referrer : '$direct'
+    const referringDomainValue = isExternalReferrer ? referringDomain : '$direct'
+
+    const superProps: Record<string, string> = {
+      ...utm,
+      $referrer: referrerValue,
+      $referring_domain: referringDomainValue,
+    }
+    const setOnce: Record<string, string> = {
+      $initial_referrer: referrerValue,
+      $initial_referring_domain: referringDomainValue,
+    }
+    for (const [k, v] of Object.entries(utm)) setOnce[`$initial_${k}`] = v
+
+    return { superProps, setOnce }
+  } catch {
+    return null
   }
 }
 
