@@ -101,17 +101,22 @@ export interface RedeemResponse extends GenericSuccessResponse {
   user: User
 }
 
-export interface InviteLookup {
-  valid: boolean
-  /** Inviter's first name for the Door 1 vouch, or null → nameless vouch. */
-  inviterFirstName: string | null
-}
+/**
+ * Outcome of an invite lookup. `valid`/`invalid` are definitive answers from the
+ * server; `error` is transient (network, 429 rate limit, 5xx) and the caller
+ * should offer a retry rather than declaring the invite dead.
+ */
+export type InviteLookup =
+  | { status: 'valid'; inviterFirstName: string | null }
+  | { status: 'invalid' }
+  | { status: 'error' }
 
 export const inviteClient = {
   /**
    * Look up an invite code for Door 1: is it usable, and who minted it. Public
-   * (no auth). Treats any network/parse failure as an invalid code so the
-   * screen degrades to the recovery state rather than hanging.
+   * (no auth). A `200 { valid:false }` is a genuinely dead code (invalid); a
+   * network failure or 429/5xx is transient (error) so callers can retry — a
+   * rate-limited invitee at a shared-IP venue must not see "invite isn't active".
    */
   async lookup(code: string): Promise<InviteLookup> {
     try {
@@ -120,13 +125,13 @@ export const inviteClient = {
         { method: 'POST', body: JSON.stringify({ code }) },
         API_TIMEOUTS.standard,
       )
+      if (!response.ok) return { status: 'error' }
       const data = await safeJson<{ valid?: boolean; inviterFirstName?: string | null }>(response)
-      if (!response.ok || !data?.valid) {
-        return { valid: false, inviterFirstName: null }
-      }
-      return { valid: true, inviterFirstName: data.inviterFirstName ?? null }
+      if (!data) return { status: 'error' }
+      if (!data.valid) return { status: 'invalid' }
+      return { status: 'valid', inviterFirstName: data.inviterFirstName ?? null }
     } catch {
-      return { valid: false, inviterFirstName: null }
+      return { status: 'error' }
     }
   },
 

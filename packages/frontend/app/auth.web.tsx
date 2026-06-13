@@ -55,11 +55,14 @@ export default function AuthScreen() {
 
   // Read mode, returnTo, inviteCode, and email from URL params.
   // useLocalSearchParams stays reactive during Expo Router SPA navigation.
-  const params = useLocalSearchParams<{ mode?: string; returnTo?: string; inviteCode?: string; email?: string }>()
+  const params = useLocalSearchParams<{ mode?: string; returnTo?: string; inviteCode?: string; email?: string; inviter?: string }>()
   const initialMode = typeof params.mode === 'string' ? params.mode : ''
   const returnTo = typeof params.returnTo === 'string' ? params.returnTo : null
   const urlInviteCode = typeof params.inviteCode === 'string' ? params.inviteCode : ''
   const urlEmail = typeof params.email === 'string' ? params.email : ''
+  // Door 1 carries the resolved inviter name forward, so the applied bar shows
+  // the vouch without a second lookup. Absent → nameless.
+  const inviterName = typeof params.inviter === 'string' && params.inviter ? params.inviter : null
 
   // When inviteCode is provided via URL (e.g. from public explore flow), skip
   // the invite-code step and go straight to signup. mode=login still needs a
@@ -76,7 +79,6 @@ export default function AuthScreen() {
   const [errors, setErrors] = useState<{ [key: string]: string }>({})
   const [showDevPanel, setShowDevPanel] = useState(false)
   // Invite intent (#403 slice 2): applied-invite bar + email-collision flip.
-  const [inviterName, setInviterName] = useState<string | null>(null)
   const [collisionFlip, setCollisionFlip] = useState(false)
   const hasInvite = !!extractInviteCode(inviteCode)
   const emailEditable = authStep === 'initial' || (authStep === 'signup' && !urlEmail)
@@ -102,23 +104,6 @@ export default function AuthScreen() {
     setCollisionFlip(false)
     setErrors({})
   }, [initialMode, urlEmail, urlInviteCode])
-
-  // Resolve the inviter's name for the applied bar whenever a code is present.
-  // Best-effort: a miss falls back to the nameless copy.
-  useEffect(() => {
-    const code = extractInviteCode(inviteCode)
-    if (!code) {
-      setInviterName(null)
-      return
-    }
-    let cancelled = false
-    inviteClient.lookup(code).then((res) => {
-      if (!cancelled) setInviterName(res.valid ? res.inviterFirstName : null)
-    })
-    return () => {
-      cancelled = true
-    }
-  }, [inviteCode])
 
   useEffect(() => {
     if (typeof window === 'undefined') return
