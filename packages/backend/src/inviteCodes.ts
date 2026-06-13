@@ -83,6 +83,26 @@ export async function validateInviteCode(
 }
 
 /**
+ * Resolve the first name of whoever minted this code, for the Door 1 vouch
+ * banner ("Anand invited you to Janata"). User-minted links carry a
+ * `created_by_user_id`; admin cohort codes don't, so this returns null and the
+ * UI falls back to the nameless vouch. Also null when the inviter has no first
+ * name set, so Door 1 can never render "undefined invited you" (#403).
+ */
+export async function getInviterFirstName(
+  env: Env,
+  code: string,
+): Promise<string | null> {
+  const row = await getInviteCode(env, code)
+  if (!row || !row.created_by_user_id) return null
+  const inviter = await env.DB.prepare('SELECT first_name FROM users WHERE id = ?')
+    .bind(row.created_by_user_id)
+    .first<{ first_name: string | null }>()
+  const name = inviter?.first_name?.trim()
+  return name && name.length > 0 ? name : null
+}
+
+/**
  * Get an invite code regardless of state (active/expired/exhausted).
  * Used for admin lookups and consumption flows that need to inspect
  * a previously-valid code.
