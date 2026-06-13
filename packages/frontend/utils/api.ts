@@ -416,6 +416,30 @@ export async function fetchEventUsers(eventID: string): Promise<UserData[]> {
   }
 }
 
+/**
+ * Account-less RSVP (new-11): name + email, no auth. Returns `alreadyRsvped`
+ * so the sheet can show the dedupe state (new-11b). Throws with `.status` set
+ * so callers can special-case 403 (event requires a verified account).
+ */
+export async function attendEventGuest(
+  eventID: string,
+  name: string,
+  email: string,
+): Promise<{ alreadyRsvped: boolean }> {
+  const response = await apiFetch('/attendEventGuest', {
+    method: 'POST',
+    body: JSON.stringify({ eventID, name, email }),
+  })
+  if (!response.ok) {
+    const err = await response.json().catch(() => ({ message: 'Failed to RSVP' }))
+    const e = new Error(err.message || 'Failed to RSVP') as Error & { status?: number }
+    e.status = response.status
+    throw e
+  }
+  const data = await response.json()
+  return { alreadyRsvped: data.alreadyRsvped === true }
+}
+
 export async function attendEvent(eventID: string): Promise<{ peopleAttending: number }> {
   const response = await authFetch('/attendEvent', {
     method: 'POST',

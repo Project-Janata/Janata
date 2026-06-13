@@ -25,7 +25,7 @@ import { createBoardPost, removeEvent } from '../../utils/api'
 import { ThreadPanel, boardPostToMessage, type BoardMessage } from '../../components/boards'
 import { PostThread, type FeedPost } from '../../components/feed'
 import { buildFeedPostFromMessage } from '../../components/feed/feedData'
-import AuthPromptModal from '../../components/ui/AuthPromptModal'
+import GuestRsvpSheet from '../../components/events/GuestRsvpSheet'
 
 const ADMIN_EMAIL = 'chinmayajanata@gmail.com'
 
@@ -589,7 +589,7 @@ export default function EventDetailPage() {
   const appColors = useColors()
   const hasTrackedView = useRef(false)
   const [threadDetailPost, setThreadDetailPost] = useState<FeedPost | null>(null)
-  const [showAuthPrompt, setShowAuthPrompt] = useState(false)
+  const [showGuestRsvp, setShowGuestRsvp] = useState(false)
 
   const isAdmin = user?.email === ADMIN_EMAIL || (user?.verificationLevel !== undefined && user.verificationLevel >= 107)
   const canEdit = isAdmin || isCreator
@@ -635,10 +635,11 @@ export default function EventDetailPage() {
   }
 
   const handleToggleRegistration = async () => {
-    // Guest taps RSVP → prompt to sign in (mirrors the web event detail).
+    // Guest taps RSVP → account-less RSVP sheet (name+email). Accounts are
+    // invite-only; the member path is the invite wall (#404), not RSVP.
     if (!user) {
-      track('event_auth_prompt_shown', { eventId: id, source: 'event_detail' })
-      setShowAuthPrompt(true)
+      track('event_guest_rsvp_opened', { eventId: id, source: 'event_detail' })
+      setShowGuestRsvp(true)
       return
     }
     if (!user.username) return
@@ -857,10 +858,10 @@ export default function EventDetailPage() {
         colors={colors}
       />
 
-      <AuthPromptModal
-        visible={showAuthPrompt}
-        onClose={() => setShowAuthPrompt(false)}
-        returnTo={`/events/${id}`}
+      <GuestRsvpSheet
+        visible={showGuestRsvp}
+        onClose={() => setShowGuestRsvp(false)}
+        eventId={id as string}
         eventTitle={event?.title}
       />
     </SafeAreaView>
