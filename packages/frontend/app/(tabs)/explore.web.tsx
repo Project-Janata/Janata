@@ -35,7 +35,7 @@ import EventDetailPanel from '../../components/events/EventDetailPanel.web'
 import EventFormPanel from '../../components/events/EventFormPanel.web'
 import CenterDetailPanel from '../../components/center/CenterDetailPanel.web'
 import { useDetailColors } from '../../hooks/useDetailColors'
-import AuthPromptModal from '../../components/ui/AuthPromptModal'
+import GuestRsvpSheet from '../../components/events/GuestRsvpSheet'
 import type { MapPoint, EventDisplay, AttendeeInfo } from '../../utils/api'
 import { removeEvent } from '../../utils/api'
 import { extractCityState } from '../../utils/addressParsing'
@@ -131,11 +131,11 @@ function EventPanelInner({
       prevRegisteredRef.current = event.isRegistered
     }
   }, [event?.isRegistered, event?.attendees, attendees, onStatusChange])
-  const [showAuthPrompt, setShowAuthPrompt] = useState(false)
+  const [showGuestRsvp, setShowGuestRsvp] = useState(false)
 
   const handleToggleRegistration = async () => {
     if (!user) {
-      setShowAuthPrompt(true)
+      setShowGuestRsvp(true)
       return
     }
     if (!user.username) return
@@ -192,10 +192,10 @@ function EventPanelInner({
             : undefined
         }
       />
-      <AuthPromptModal
-        visible={showAuthPrompt}
-        onClose={() => setShowAuthPrompt(false)}
-        returnTo={`/explore?detail=event&id=${eventId}`}
+      <GuestRsvpSheet
+        visible={showGuestRsvp}
+        onClose={() => setShowGuestRsvp(false)}
+        eventId={eventId}
         eventTitle={event.title}
       />
     </>
