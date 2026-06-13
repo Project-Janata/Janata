@@ -1,4 +1,4 @@
-import React, { useEffect, useState, useCallback } from 'react'
+import React, { useState } from 'react'
 import {
   View,
   Text,
@@ -8,17 +8,16 @@ import {
   Pressable,
   TouchableOpacity,
 } from 'react-native'
-import { useRouter, useLocalSearchParams } from 'expo-router'
+import { useRouter } from 'expo-router'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
 import { Code, ArrowLeft } from 'lucide-react-native'
 import { useAnalytics } from '../utils/analytics'
 import { AuthInput, Logo, PrimaryButton } from '../components/ui'
-import { useUser, useTheme } from '../components/contexts'
-import { validateEmail, validatePassword } from '../utils'
-import { extractInviteCode } from '../utils/validation'
-import { inviteClient } from '../src/auth/inviteClient'
+import { useTheme } from '../components/contexts'
 import { PasswordStrength } from '../components'
 import DevPanel from '../components/DevPanel'
+import { useAuthFlow } from '../components/auth/useAuthFlow'
+
 // __DEV__ is a React Native/Expo global — always false in production builds.
 // EXPO_PUBLIC_SHOW_DEV_TOOLS=1 also enables the dev/demo tools (set on the
 // isolated v2 preview build), so role-switching works for demos there too.
@@ -26,224 +25,35 @@ const isDev =
   (typeof __DEV__ !== 'undefined' && __DEV__) ||
   process.env.EXPO_PUBLIC_SHOW_DEV_TOOLS === '1'
 
-type AuthStep = 'initial' | 'login' | 'signup'
-
 export default function AuthScreen() {
   const router = useRouter()
   const insets = useSafeAreaInsets()
   const { isDark } = useTheme()
-  const { checkUserExists, login, signup, loading, getToken } = useUser()
   const { track } = useAnalytics()
 
-  // Read params for deep-link support (e.g. from AuthPromptModal, or
-  // /auth/forgot's "Back to sign in" button).
-  const params = useLocalSearchParams<{ mode?: string; returnTo?: string; inviteCode?: string; email?: string; inviter?: string }>()
-  const urlInviteCode = params.inviteCode
-  const urlEmail = typeof params.email === 'string' ? params.email : ''
-  // Door 1 carries the resolved inviter name forward, so the applied bar shows
-  // the vouch without a second lookup. Absent → nameless.
-  const inviterName = typeof params.inviter === 'string' && params.inviter ? params.inviter : null
-
-  // mode=login needs a prefilled email. mode=signup can work with only an
-  // invite code because the email field stays editable in that flow.
-  const [authStep, setAuthStep] = useState<AuthStep>(
-    params.mode === 'login' && urlEmail ? 'login'
-      : params.mode === 'signup' && urlInviteCode ? 'signup'
-      : 'initial'
-  )
-  const [username, setUsername] = useState(urlEmail)
-  const [password, setPassword] = useState('')
-  const [confirmPassword, setConfirmPassword] = useState('')
-  const [inviteCode, setInviteCode] = useState(urlInviteCode || '')
-  const [errors, setErrors] = useState<{ [key: string]: string }>({})
-  const emailEditable = authStep === 'initial' || (authStep === 'signup' && !urlEmail)
-
-  // Invite intent (#403 slice 2): the applied-invite bar + email-collision flip.
-  // `collisionFlip` = we bounced a signup whose email already exists into login,
-  // holding the invite to apply on the way in (new-22).
-  const [collisionFlip, setCollisionFlip] = useState(false)
-  const hasInvite = !!extractInviteCode(inviteCode)
+  // All auth state + handlers live in the shared hook (see auth.web.tsx — same
+  // logic, different presentation). This file is RN markup only.
+  const {
+    authStep,
+    username,
+    password,
+    confirmPassword,
+    errorMessages,
+    loading,
+    inviterName,
+    hasInvite,
+    emailEditable,
+    isButtonDisabled,
+    heading,
+    subtitle,
+    changeUsername,
+    changePassword,
+    changeConfirm,
+    handleSubmit,
+    handleBack,
+  } = useAuthFlow()
 
   const [showDevPanel, setShowDevPanel] = useState(false)
-
-  useEffect(() => {
-    const nextStep =
-      params.mode === 'login' && urlEmail ? 'login'
-        : params.mode === 'signup' && urlInviteCode ? 'signup'
-        : 'initial'
-
-    setAuthStep(nextStep)
-    setUsername(urlEmail)
-    setInviteCode(urlInviteCode || '')
-    setPassword('')
-    setConfirmPassword('')
-    setCollisionFlip(false)
-    setErrors({})
-  }, [params.mode, urlEmail, urlInviteCode])
-
-  const handleContinue = useCallback(async () => {
-    setErrors({})
-    if (!username) {
-      setErrors({ username: 'Please enter a username.' })
-      return
-    }
-    if (!validateEmail(username)) {
-      setErrors({ username: 'You must enter a valid email address.' })
-      return
-    }
-    try {
-      track('auth_email_submitted', { source: 'auth' })
-      const exists = await checkUserExists(username)
-      if (exists) {
-        track('auth_user_exists', { source: 'auth' })
-        setAuthStep('login')
-      } else {
-        // form-03 cut (#403): the invite is the door, so a new email goes
-        // straight to account creation. Manual codes enter via /join (new-25).
-        track('auth_user_new', { source: 'auth' })
-        setAuthStep('signup')
-      }
-    } catch (e: any) {
-      track('auth_check_failed', { source: 'auth' })
-      setErrors({ form: e.message || 'Failed to connect to server.' })
-    }
-  }, [username, checkUserExists, track])
-
-  const handleLogin = useCallback(async () => {
-    setErrors({})
-    if (!username) {
-      setErrors({ username: 'Please enter a username.' })
-      return
-    }
-
-    if (!password) {
-      setErrors({ password: 'Please enter your password.' })
-      return
-    }
-    try {
-      const result = await login(username, password)
-      if (result.success) {
-        track('login_success', { source: 'auth' })
-        // new-22 grandfather upgrade: if the invite was held through the login
-        // (collision flip or "Already a member?" from Door 1), apply it now so
-        // an existing open-signup account gets promoted. Best-effort — a stale
-        // or already-consumed code must never block the login.
-        const heldCode = extractInviteCode(inviteCode)
-        if (heldCode) {
-          try {
-            const token = await getToken()
-            if (token) await inviteClient.redeem(token, heldCode)
-            track('invite_applied_on_login', { source: 'auth' })
-          } catch {
-            // ignore — login already succeeded
-          }
-        }
-        router.replace(params.returnTo ? (params.returnTo as never) : '/(tabs)')
-      } else {
-        track('login_failed', { source: 'auth', reason: result.message })
-        setErrors({ form: result.message || 'Username or password is incorrect.' })
-      }
-    } catch (e: any) {
-      track('login_failed', { source: 'auth', reason: 'network_error' })
-      setErrors({ form: 'Failed to connect to server. Please try again.' })
-    }
-  }, [username, password, inviteCode, login, getToken, router, track, params.returnTo])
-
-  const handleSignup = useCallback(async () => {
-    setErrors({})
-    if (!username) {
-      setErrors({ username: 'Please enter a username.' })
-      return
-    }
-    if (!password) {
-      setErrors({ password: 'Please enter a password.' })
-      return
-    }
-    if (!validatePassword(password).isValid) {
-      setErrors({ password: 'Password does not meet complexity requirements.' })
-      return
-    }
-    if (password !== confirmPassword) {
-      setErrors({ confirmPassword: 'Passwords do not match.' })
-      return
-    }
-    try {
-      const result = await signup(username, password, extractInviteCode(inviteCode))
-      if (result.success) {
-        track('signup_success', { source: 'auth' })
-        router.replace(params.returnTo ? `/onboarding?returnTo=${encodeURIComponent(params.returnTo)}` : '/onboarding')
-      } else if (/already exists/i.test(result.message || '')) {
-        // new-22: the email is already registered. Don't dead-end — flip to
-        // login holding the invite + returnTo. The held code is applied after
-        // login (see handleLogin) so a grandfathered account gets upgraded.
-        track('auth_email_collision', { source: 'auth' })
-        setCollisionFlip(true)
-        setAuthStep('login')
-        setPassword('')
-        setConfirmPassword('')
-        setErrors({})
-      } else {
-        track('signup_failed', { source: 'auth', reason: result.message })
-        setErrors({ form: result.message || 'Failed to sign up. Please try again.' })
-      }
-    } catch (e: any) {
-      track('signup_failed', { source: 'auth', reason: 'network_error' })
-      setErrors({ form: 'Failed to connect to server. Please try again.' })
-    }
-  }, [username, password, confirmPassword, inviteCode, signup, router, track, params.returnTo])
-
-  const handleSubmit = useCallback(
-    (e?: any) => {
-      if (Platform.OS === 'web' && e) {
-        e.preventDefault?.()
-        e.stopPropagation?.()
-      }
-
-      if (authStep === 'login') {
-        handleLogin()
-      } else if (authStep === 'signup') {
-        handleSignup()
-      } else {
-        handleContinue()
-      }
-    },
-    [authStep, handleLogin, handleSignup, handleContinue]
-  )
-
-  const handleBack = useCallback(() => {
-    track('auth_back_pressed', { source: 'auth', from_step: authStep })
-    setAuthStep('initial')
-    setPassword('')
-    setConfirmPassword('')
-    setInviteCode('')
-    setCollisionFlip(false)
-    setErrors({})
-  }, [authStep, track])
-
-  const isButtonDisabled =
-    loading ||
-    (authStep === 'initial' && !username) ||
-    (authStep !== 'initial' && !password) ||
-    (authStep === 'signup' && !confirmPassword)
-
-  // Collect error messages to display
-  const errorMessages = Object.values(errors).filter(Boolean)
-
-  // Memoize input handlers to prevent recreation
-  const handleUsernameChange = useCallback((text: string) => {
-    setUsername(text)
-    setErrors((prev) => ({ ...prev, username: '' }))
-  }, [])
-
-  const handlePasswordChange = useCallback((text: string) => {
-    setPassword(text)
-    setErrors((prev) => ({ ...prev, password: '' }))
-  }, [])
-
-  const handleConfirmPasswordChange = useCallback((text: string) => {
-    setConfirmPassword(text)
-    setErrors((prev) => ({ ...prev, confirmPassword: '' }))
-  }, [])
 
   return (
     <KeyboardAvoidingView
@@ -272,16 +82,10 @@ export default function AuthScreen() {
         {/* Main content */}
         <View
           className="flex-1 justify-center items-center w-full px-6"
-          style={{
-            paddingTop: 60,
-            paddingBottom: 48,
-          }}
+          style={{ paddingTop: 60, paddingBottom: 48 }}
         >
           {/* Container */}
-          <View
-            className="w-full"
-            style={{ maxWidth: 400 }}
-          >
+          <View className="w-full" style={{ maxWidth: 400 }}>
             {/* Back Button */}
             {authStep !== 'initial' && (
               <TouchableOpacity
@@ -290,13 +94,8 @@ export default function AuthScreen() {
                 className="flex-row items-center gap-2 mb-6 rounded-xl px-3 py-2 self-start"
                 style={{ alignSelf: 'flex-start' }}
               >
-                <ArrowLeft
-                  size={20}
-                  className={isDark ? 'text-white' : 'text-content'}
-                />
-                <Text className="font-sans font-medium text-content dark:text-content-dark">
-                  Back
-                </Text>
+                <ArrowLeft size={20} className={isDark ? 'text-white' : 'text-content'} />
+                <Text className="font-sans font-medium text-content dark:text-content-dark">Back</Text>
               </TouchableOpacity>
             )}
 
@@ -311,13 +110,7 @@ export default function AuthScreen() {
                 style={{ fontFamily: '"Inclusive Sans"', fontSize: 36, fontWeight: '400' }}
                 className="text-content dark:text-content-dark"
               >
-                {authStep === 'login'
-                  ? collisionFlip
-                    ? 'You already have an account'
-                    : 'Welcome back.'
-                  : authStep === 'signup'
-                  ? 'Join the community.'
-                  : 'Welcome.'}
+                {heading}
               </Text>
 
               {/* What Janata is — first step only, so a new member knows what
@@ -337,17 +130,8 @@ export default function AuthScreen() {
                 </View>
               )}
 
-              <Text
-                className="text-base font-sans mt-2"
-                style={{ color: '#78716C' }}
-              >
-                {authStep === 'login'
-                  ? collisionFlip
-                    ? "Log in and we'll apply the invite to it."
-                    : 'Enter your password to continue'
-                  : authStep === 'signup'
-                  ? 'Create your account to get started'
-                  : 'Enter your email to get started'}
+              <Text className="text-base font-sans mt-2" style={{ color: '#78716C' }}>
+                {subtitle}
               </Text>
             </View>
 
@@ -378,7 +162,7 @@ export default function AuthScreen() {
               </View>
             )}
 
-            {/* Form */}
+            {/* Errors */}
             {errorMessages.length > 0 && (
               <View className="w-full font-sans bg-red-50 dark:bg-red-900/20 rounded-xl px-4 py-3 mb-4">
                 {errorMessages.map((msg, idx) => (
@@ -389,11 +173,12 @@ export default function AuthScreen() {
               </View>
             )}
 
+            {/* Form */}
             <View className="gap-4">
               <View>
                 <AuthInput
                   placeholder="Email"
-                  onChangeText={handleUsernameChange}
+                  onChangeText={changeUsername}
                   value={username}
                   secureTextEntry={false}
                   editable={emailEditable}
@@ -403,7 +188,7 @@ export default function AuthScreen() {
                 <View>
                   <AuthInput
                     placeholder="Password"
-                    onChangeText={handlePasswordChange}
+                    onChangeText={changePassword}
                     value={password}
                     secureTextEntry
                     autoComplete="password"
@@ -418,7 +203,7 @@ export default function AuthScreen() {
                     <PasswordStrength password={password} show={password.length > 0} />
                     <AuthInput
                       placeholder="Password"
-                      onChangeText={handlePasswordChange}
+                      onChangeText={changePassword}
                       value={password}
                       secureTextEntry
                       autoComplete="password-new"
@@ -428,7 +213,7 @@ export default function AuthScreen() {
                   <View>
                     <AuthInput
                       placeholder="Confirm password"
-                      onChangeText={handleConfirmPasswordChange}
+                      onChangeText={changeConfirm}
                       value={confirmPassword}
                       secureTextEntry
                       autoComplete="password-new"
@@ -445,11 +230,7 @@ export default function AuthScreen() {
                 loading={loading}
                 style={{ marginTop: 8 }}
               >
-               {authStep === 'login'
-                   ? 'Log In'
-                   : authStep === 'signup'
-                   ? 'Sign Up'
-                  : 'Continue'}
+                {authStep === 'login' ? 'Log In' : authStep === 'signup' ? 'Sign Up' : 'Continue'}
               </PrimaryButton>
 
               {/* Forgot Password (only on login) */}

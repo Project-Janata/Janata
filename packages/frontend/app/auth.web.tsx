@@ -1,12 +1,9 @@
-import React, { useState, useCallback, useEffect } from 'react'
-import { useLocalSearchParams, useRouter } from 'expo-router'
-import { useUser } from '../components/contexts'
+import React, { useState, useEffect } from 'react'
+import { useRouter } from 'expo-router'
 import { useAnalytics } from '../utils/analytics'
-import { validateEmail, validatePassword } from '../utils'
-import { extractInviteCode } from '../utils/validation'
-import { inviteClient } from '../src/auth/inviteClient'
 import PasswordStrength from '../components/auth/PasswordStrength'
 import { ImageCarousel } from '../components/auth/ImageCarousel'
+import { useAuthFlow } from '../components/auth/useAuthFlow'
 // eslint-disable-next-line @typescript-eslint/no-var-requires
 const swamiChinmayanandaJpg = require('../assets/images/landing/Swami Chinmayananda.jpg')
 const swamiChinmayanandaAlt = require('../assets/images/landing/Swami Chinmayananda (1).jpg')
@@ -40,8 +37,6 @@ if (typeof document !== 'undefined') {
   }
 }
 
-type AuthStep = 'initial' | 'login' | 'signup'
-
 const AUTH_CAROUSEL_IMAGES = [
   swamiChinmayanandaJpg,
   swamiChinmayanandaAlt,
@@ -50,228 +45,45 @@ const AUTH_CAROUSEL_IMAGES = [
 
 export default function AuthScreen() {
   const router = useRouter()
-  const { checkUserExists, login, signup, loading, getToken } = useUser()
   const { track } = useAnalytics()
 
-  // Read mode, returnTo, inviteCode, and email from URL params.
-  // useLocalSearchParams stays reactive during Expo Router SPA navigation.
-  const params = useLocalSearchParams<{ mode?: string; returnTo?: string; inviteCode?: string; email?: string; inviter?: string }>()
-  const initialMode = typeof params.mode === 'string' ? params.mode : ''
-  const returnTo = typeof params.returnTo === 'string' ? params.returnTo : null
-  const urlInviteCode = typeof params.inviteCode === 'string' ? params.inviteCode : ''
-  const urlEmail = typeof params.email === 'string' ? params.email : ''
-  // Door 1 carries the resolved inviter name forward, so the applied bar shows
-  // the vouch without a second lookup. Absent → nameless.
-  const inviterName = typeof params.inviter === 'string' && params.inviter ? params.inviter : null
+  // Shared auth state machine (see auth.tsx — same logic, RN presentation).
+  const {
+    authStep,
+    username,
+    password,
+    confirmPassword,
+    errorMessages,
+    loading,
+    inviterName,
+    hasInvite,
+    emailEditable,
+    isButtonDisabled,
+    heading,
+    subtitle,
+    changeUsername,
+    changePassword,
+    changeConfirm,
+    handleSubmit,
+    handleBack,
+    createAccount,
+  } = useAuthFlow()
 
-  // When inviteCode is provided via URL (e.g. from public explore flow), skip
-  // the invite-code step and go straight to signup. mode=login still needs a
-  // prefilled email, while signup without an email keeps the email field editable.
-  const [authStep, setAuthStep] = useState<AuthStep>(
-    initialMode === 'login' && urlEmail ? 'login'
-      : initialMode === 'signup' && urlInviteCode ? 'signup'
-      : 'initial'
-  )
-  const [username, setUsername] = useState(urlEmail)
-  const [password, setPassword] = useState('')
-  const [confirmPassword, setConfirmPassword] = useState('')
-  const [inviteCode, setInviteCode] = useState(urlInviteCode || '')
-  const [errors, setErrors] = useState<{ [key: string]: string }>({})
+  // Web-only presentation state.
   const [showDevPanel, setShowDevPanel] = useState(false)
-  // Invite intent (#403 slice 2): applied-invite bar + email-collision flip.
-  const [collisionFlip, setCollisionFlip] = useState(false)
-  const hasInvite = !!extractInviteCode(inviteCode)
-  const emailEditable = authStep === 'initial' || (authStep === 'signup' && !urlEmail)
-  // Focus state for input styling
   const [emailFocused, setEmailFocused] = useState(false)
   const [passwordFocused, setPasswordFocused] = useState(false)
   const [confirmPasswordFocused, setConfirmPasswordFocused] = useState(false)
   const [viewportWidth, setViewportWidth] = useState(() =>
-    typeof window !== 'undefined' ? window.innerWidth : 1280
+    typeof window !== 'undefined' ? window.innerWidth : 1280,
   )
 
   useEffect(() => {
-    const nextStep =
-      initialMode === 'login' && urlEmail ? 'login'
-        : initialMode === 'signup' && urlInviteCode ? 'signup'
-        : 'initial'
-
-    setAuthStep(nextStep)
-    setUsername(urlEmail)
-    setInviteCode(urlInviteCode || '')
-    setPassword('')
-    setConfirmPassword('')
-    setCollisionFlip(false)
-    setErrors({})
-  }, [initialMode, urlEmail, urlInviteCode])
-
-  useEffect(() => {
     if (typeof window === 'undefined') return
-
     const onResize = () => setViewportWidth(window.innerWidth)
     window.addEventListener('resize', onResize)
     return () => window.removeEventListener('resize', onResize)
   }, [])
-
-  // --- Auth Handlers (same logic as auth.tsx) ---
-
-  const handleContinue = useCallback(async () => {
-    setErrors({})
-    if (!username) {
-      setErrors({ username: 'Please enter a username.' })
-      return
-    }
-    if (!validateEmail(username)) {
-      setErrors({ username: 'You must enter a valid email address.' })
-      return
-    }
-    try {
-      track('auth_email_submitted', { source: 'auth' })
-      const exists = await checkUserExists(username)
-      if (exists) {
-        track('auth_user_exists', { source: 'auth' })
-        setAuthStep('login')
-      } else {
-        // form-03 cut (#403): the invite is the door, so a new email goes
-        // straight to account creation. Manual codes enter via /join (new-25).
-        track('auth_user_new', { source: 'auth' })
-        setAuthStep('signup')
-      }
-    } catch (e: any) {
-      track('auth_check_failed', { source: 'auth' })
-      setErrors({ form: e.message || 'Failed to connect to server.' })
-    }
-  }, [username, checkUserExists, track])
-
-  const handleLogin = useCallback(async () => {
-    setErrors({})
-    if (!username) {
-      setErrors({ username: 'Please enter a username.' })
-      return
-    }
-    if (!password) {
-      setErrors({ password: 'Please enter your password.' })
-      return
-    }
-    try {
-      const result = await login(username, password)
-      if (result.success) {
-        track('login_success', { source: 'auth' })
-        // new-22 grandfather upgrade: apply an invite held through login (from a
-        // collision flip or Door 1's "Already a member?") so an existing
-        // open-signup account gets promoted. Best-effort — never blocks login.
-        const heldCode = extractInviteCode(inviteCode)
-        if (heldCode) {
-          try {
-            const token = await getToken()
-            if (token) await inviteClient.redeem(token, heldCode)
-            track('invite_applied_on_login', { source: 'auth' })
-          } catch {
-            // ignore — login already succeeded
-          }
-        }
-        router.replace(returnTo ? (returnTo as never) : '/(tabs)')
-      } else {
-        track('login_failed', { source: 'auth', reason: result.message })
-        setErrors({ form: result.message || 'Username or password is incorrect.' })
-      }
-    } catch (e: any) {
-      track('login_failed', { source: 'auth', reason: 'network_error' })
-      setErrors({ form: 'Failed to connect to server. Please try again.' })
-    }
-  }, [username, password, inviteCode, returnTo, login, getToken, router, track])
-
-  const handleSignup = useCallback(async () => {
-    setErrors({})
-    if (!username) {
-      setErrors({ username: 'Please enter a username.' })
-      return
-    }
-    if (!password) {
-      setErrors({ password: 'Please enter a password.' })
-      return
-    }
-    if (!validatePassword(password).isValid) {
-      setErrors({ password: 'Password does not meet complexity requirements.' })
-      return
-    }
-    if (password !== confirmPassword) {
-      setErrors({ confirmPassword: 'Passwords do not match.' })
-      return
-    }
-    try {
-      const result = await signup(username, password, extractInviteCode(inviteCode))
-      if (result.success) {
-        track('signup_success', { source: 'auth' })
-        router.replace(returnTo ? `/onboarding?returnTo=${encodeURIComponent(returnTo)}` : '/onboarding')
-      } else if (/already exists/i.test(result.message || '')) {
-        // new-22: email already registered → flip to login holding the invite,
-        // applied after login (handleLogin) to upgrade a grandfathered account.
-        track('auth_email_collision', { source: 'auth' })
-        setCollisionFlip(true)
-        setAuthStep('login')
-        setPassword('')
-        setConfirmPassword('')
-        setErrors({})
-      } else {
-        track('signup_failed', { source: 'auth', reason: result.message })
-        setErrors({ form: result.message || 'Failed to sign up. Please try again.' })
-      }
-    } catch (e: any) {
-      track('signup_failed', { source: 'auth', reason: 'network_error' })
-      setErrors({ form: 'Failed to connect to server. Please try again.' })
-    }
-  }, [username, password, confirmPassword, inviteCode, returnTo, signup, router, track])
-
-  const handleSubmit = useCallback(
-    (e?: any) => {
-      if (e) {
-        e.preventDefault?.()
-        e.stopPropagation?.()
-      }
-      if (authStep === 'login') {
-        handleLogin()
-      } else if (authStep === 'signup') {
-        handleSignup()
-      } else {
-        handleContinue()
-      }
-    },
-    [authStep, handleLogin, handleSignup, handleContinue]
-  )
-
-  const handleBack = useCallback(() => {
-    track('auth_back_pressed', { source: 'auth', from_step: authStep })
-    setAuthStep('initial')
-    setPassword('')
-    setConfirmPassword('')
-    setInviteCode('')
-    setCollisionFlip(false)
-    setErrors({})
-  }, [authStep, track])
-
-  const handleUsernameChange = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
-    setUsername(e.target.value)
-    setErrors((prev) => ({ ...prev, username: '' }))
-  }, [])
-
-  const handlePasswordChange = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
-    setPassword(e.target.value)
-    setErrors((prev) => ({ ...prev, password: '' }))
-  }, [])
-
-  const handleConfirmPasswordChange = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
-    setConfirmPassword(e.target.value)
-    setErrors((prev) => ({ ...prev, confirmPassword: '' }))
-  }, [])
-
-  const isButtonDisabled =
-    loading ||
-    (authStep === 'initial' && !username) ||
-    (authStep !== 'initial' && !password) ||
-    (authStep === 'signup' && !confirmPassword)
-
-  const errorMessages = Object.values(errors).filter(Boolean)
 
   // --- Input style helpers ---
 
@@ -292,37 +104,15 @@ export default function AuthScreen() {
     boxSizing: 'border-box' as const,
     WebkitAppearance: 'none' as const,
   }
-
   const focusInputStyle: React.CSSProperties = {
     borderColor: '#E8862A',
     boxShadow: '0 0 0 3px rgba(194,65,12,0.1)',
     backgroundColor: '#FFFFFF',
   }
-
   const getInputStyle = (focused: boolean): React.CSSProperties => ({
     ...baseInputStyle,
     ...(focused ? focusInputStyle : {}),
   })
-
-  // --- Heading and subtitle per step ---
-
-  const heading =
-    authStep === 'login'
-      ? collisionFlip
-        ? 'You already have an account'
-        : 'Welcome back.'
-      : authStep === 'signup'
-        ? 'Join the community.'
-        : 'Welcome.'
-
-  const subtitle =
-    authStep === 'login'
-      ? collisionFlip
-        ? "Log in and we'll apply the invite to it."
-        : 'Enter your password to continue'
-      : authStep === 'signup'
-        ? 'Create your account to get started'
-        : 'Enter your email to get started'
 
   const buttonText = loading
     ? 'Please wait...'
@@ -560,17 +350,14 @@ export default function AuthScreen() {
           )}
 
           {/* Form */}
-          <form
-            onSubmit={handleSubmit}
-            style={{ display: 'flex', flexDirection: 'column', gap: 16 }}
-          >
+          <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
             {/* Email input */}
             <input
               className="auth-input"
               type="email"
               placeholder="Email"
               value={username}
-              onChange={handleUsernameChange}
+              onChange={(e) => changeUsername(e.target.value)}
               disabled={!emailEditable}
               onFocus={() => setEmailFocused(true)}
               onBlur={() => setEmailFocused(false)}
@@ -584,7 +371,7 @@ export default function AuthScreen() {
                 type="password"
                 placeholder="Password"
                 value={password}
-                onChange={handlePasswordChange}
+                onChange={(e) => changePassword(e.target.value)}
                 autoComplete="current-password"
                 onFocus={() => setPasswordFocused(true)}
                 onBlur={() => setPasswordFocused(false)}
@@ -600,7 +387,7 @@ export default function AuthScreen() {
                   type="password"
                   placeholder="Password"
                   value={password}
-                  onChange={handlePasswordChange}
+                  onChange={(e) => changePassword(e.target.value)}
                   autoComplete="new-password"
                   onFocus={() => setPasswordFocused(true)}
                   onBlur={() => setPasswordFocused(false)}
@@ -614,7 +401,7 @@ export default function AuthScreen() {
                   type="password"
                   placeholder="Confirm password"
                   value={confirmPassword}
-                  onChange={handleConfirmPasswordChange}
+                  onChange={(e) => changeConfirm(e.target.value)}
                   autoComplete="new-password"
                   onFocus={() => setConfirmPasswordFocused(true)}
                   onBlur={() => setConfirmPasswordFocused(false)}
@@ -665,53 +452,8 @@ export default function AuthScreen() {
               <span
                 role="button"
                 tabIndex={0}
-                onClick={async () => {
-                  if (!username) {
-                    setErrors({ username: 'Please enter your email first.' })
-                    return
-                  }
-                  if (!validateEmail(username)) {
-                    setErrors({ username: 'You must enter a valid email address.' })
-                    return
-                  }
-                  track('auth_create_account_pressed', { source: 'auth' })
-                  try {
-                    const exists = await checkUserExists(username)
-                    if (exists) {
-                      setErrors({ form: 'An account with this email already exists. Please log in.' })
-                      setAuthStep('login')
-                    } else {
-                      setAuthStep('signup')
-                    }
-                  } catch (e: any) {
-                    setErrors({ form: e.message || 'Failed to connect to server.' })
-                  }
-                }}
-                onKeyDown={async (e) => {
-                  if (e.key === 'Enter' || e.key === ' ') {
-                    e.preventDefault()
-                    if (!username) {
-                      setErrors({ username: 'Please enter your email first.' })
-                      return
-                    }
-                    if (!validateEmail(username)) {
-                      setErrors({ username: 'You must enter a valid email address.' })
-                      return
-                    }
-                    track('auth_create_account_pressed', { source: 'auth' })
-                    try {
-                      const exists = await checkUserExists(username)
-                      if (exists) {
-                        setErrors({ form: 'An account with this email already exists. Please log in.' })
-                        setAuthStep('login')
-                      } else {
-                        setAuthStep('signup')
-                      }
-                    } catch (e: any) {
-                      setErrors({ form: e.message || 'Failed to connect to server.' })
-                    }
-                  }
-                }}
+                onClick={createAccount}
+                onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); createAccount() } }}
                 style={{
                   color: '#E8862A',
                   cursor: 'pointer',
