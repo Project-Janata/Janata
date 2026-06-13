@@ -234,6 +234,7 @@ function RootLayoutNav({ onAuthReady }: { onAuthReady: () => void }) {
         pathname.startsWith('/center/') ||
         pathname.startsWith('/i/') ||
         pathname.startsWith('/invite/') ||
+        pathname === '/join' ||
         pathname.startsWith('/privacy') ||
         pathname.startsWith('/terms') ||
         pathname.startsWith('/cookies')

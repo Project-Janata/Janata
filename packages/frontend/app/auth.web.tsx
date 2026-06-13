@@ -13,7 +13,6 @@ const swamiChinmayanandaAlt = require('../assets/images/landing/Swami Chinmayana
 const swamiChinmayanandaOption2 = require('../assets/images/landing/Swami Chinmayananda Option 2.jpeg')
 import DevPanel from '../components/DevPanel'
 import Logo from '../components/ui/Logo'
-import { API_BASE_URL } from '../src/config/api'
 
 // __DEV__ is a React Native/Expo global — always false in production builds.
 // EXPO_PUBLIC_SHOW_DEV_TOOLS=1 also enables the dev/demo tools (set on the
@@ -41,7 +40,7 @@ if (typeof document !== 'undefined') {
   }
 }
 
-type AuthStep = 'initial' | 'login' | 'invite-code' | 'signup'
+type AuthStep = 'initial' | 'login' | 'signup'
 
 const AUTH_CAROUSEL_IMAGES = [
   swamiChinmayanandaJpg,
@@ -85,7 +84,6 @@ export default function AuthScreen() {
   const [emailFocused, setEmailFocused] = useState(false)
   const [passwordFocused, setPasswordFocused] = useState(false)
   const [confirmPasswordFocused, setConfirmPasswordFocused] = useState(false)
-  const [inviteCodeFocused, setInviteCodeFocused] = useState(false)
   const [viewportWidth, setViewportWidth] = useState(() =>
     typeof window !== 'undefined' ? window.innerWidth : 1280
   )
@@ -149,8 +147,10 @@ export default function AuthScreen() {
         track('auth_user_exists', { source: 'auth' })
         setAuthStep('login')
       } else {
+        // form-03 cut (#403): the invite is the door, so a new email goes
+        // straight to account creation. Manual codes enter via /join (new-25).
         track('auth_user_new', { source: 'auth' })
-        setAuthStep('invite-code')
+        setAuthStep('signup')
       }
     } catch (e: any) {
       track('auth_check_failed', { source: 'auth' })
@@ -238,34 +238,6 @@ export default function AuthScreen() {
     }
   }, [username, password, confirmPassword, inviteCode, returnTo, signup, router, track])
 
-  const handleInviteCodeContinue = useCallback(async () => {
-    setErrors({})
-    if (!inviteCode) {
-      setErrors({ inviteCode: 'Please enter your invite code.' })
-      return
-    }
-    try {
-      track('auth_invite_code_submitted', { source: 'auth' })
-      // Validate the invite code with the backend
-      const response = await fetch(`${API_BASE_URL}/auth/validate-invite-code`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ code: extractInviteCode(inviteCode) }),
-      })
-      const data = await response.json()
-      if (data.valid) {
-        track('auth_invite_code_valid', { source: 'auth' })
-        setAuthStep('signup')
-      } else {
-        track('auth_invite_code_invalid', { source: 'auth' })
-        setErrors({ form: data.error || 'Invalid or inactive invite code.' })
-      }
-    } catch (e: any) {
-      track('auth_invite_code_check_failed', { source: 'auth' })
-      setErrors({ form: 'Failed to validate invite code. Please try again.' })
-    }
-  }, [inviteCode, track])
-
   const handleSubmit = useCallback(
     (e?: any) => {
       if (e) {
@@ -274,15 +246,13 @@ export default function AuthScreen() {
       }
       if (authStep === 'login') {
         handleLogin()
-      } else if (authStep === 'invite-code') {
-        handleInviteCodeContinue()
       } else if (authStep === 'signup') {
         handleSignup()
       } else {
         handleContinue()
       }
     },
-    [authStep, handleLogin, handleInviteCodeContinue, handleSignup, handleContinue]
+    [authStep, handleLogin, handleSignup, handleContinue]
   )
 
   const handleBack = useCallback(() => {
@@ -310,16 +280,10 @@ export default function AuthScreen() {
     setErrors((prev) => ({ ...prev, confirmPassword: '' }))
   }, [])
 
-  const handleInviteCodeChange = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
-    setInviteCode(e.target.value)
-    setErrors((prev) => ({ ...prev, inviteCode: '' }))
-  }, [])
-
   const isButtonDisabled =
     loading ||
     (authStep === 'initial' && !username) ||
-    (authStep === 'invite-code' && !inviteCode) ||
-    (authStep !== 'initial' && authStep !== 'invite-code' && !password) ||
+    (authStep !== 'initial' && !password) ||
     (authStep === 'signup' && !confirmPassword)
 
   const errorMessages = Object.values(errors).filter(Boolean)
@@ -362,32 +326,26 @@ export default function AuthScreen() {
       ? collisionFlip
         ? 'You already have an account'
         : 'Welcome back.'
-      : authStep === 'invite-code'
-        ? 'Enter your invite link.'
-        : authStep === 'signup'
-          ? 'Join the community.'
-          : 'Welcome.'
+      : authStep === 'signup'
+        ? 'Join the community.'
+        : 'Welcome.'
 
   const subtitle =
     authStep === 'login'
       ? collisionFlip
         ? "Log in and we'll apply the invite to it."
         : 'Enter your password to continue'
-      : authStep === 'invite-code'
-        ? 'Paste your invite link or code to continue'
-        : authStep === 'signup'
-          ? 'Create your account to get started'
-          : 'Enter your email to get started'
+      : authStep === 'signup'
+        ? 'Create your account to get started'
+        : 'Enter your email to get started'
 
   const buttonText = loading
     ? 'Please wait...'
     : authStep === 'login'
       ? 'Sign In'
-      : authStep === 'invite-code'
-        ? 'Continue'
-        : authStep === 'signup'
-          ? 'Create Account'
-          : 'Continue'
+      : authStep === 'signup'
+        ? 'Create Account'
+        : 'Continue'
   const isNarrowWeb = viewportWidth < 1024
   const isMobile = viewportWidth < 640
 
@@ -649,43 +607,6 @@ export default function AuthScreen() {
               />
             )}
 
-            {/* Invite code input (invite-code step) */}
-            {authStep === 'invite-code' && (
-              <input
-                className="auth-input"
-                type="text"
-                placeholder="Invite link or code"
-                value={inviteCode}
-                onChange={handleInviteCodeChange}
-                autoComplete="off"
-                onFocus={() => setInviteCodeFocused(true)}
-                onBlur={() => setInviteCodeFocused(false)}
-                style={getInputStyle(inviteCodeFocused)}
-              />
-            )}
-            {authStep === 'invite-code' && (
-              <button
-                type="button"
-                onClick={() => {
-                  track('verification_explainer_opened', { source: 'auth' })
-                  router.push('/verification' as never)
-                }}
-                style={{
-                  background: 'none',
-                  border: 'none',
-                  padding: 0,
-                  marginTop: -4,
-                  color: '#E8862A',
-                  fontSize: 13,
-                  cursor: 'pointer',
-                  textDecoration: 'underline',
-                  alignSelf: 'flex-start',
-                }}
-              >
-                How does verification work?
-              </button>
-            )}
-
             {/* Password + PasswordStrength + Confirm (signup) */}
             {authStep === 'signup' && (
               <>
@@ -815,6 +736,31 @@ export default function AuthScreen() {
                 }}
               >
                 Create one
+              </span>
+            </p>
+          )}
+
+          {/* Have an invite? — manual code entry now that the typed step is cut
+              (form-03). Routes to the neutral paste screen (new-25). */}
+          {authStep === 'initial' && (
+            <p
+              style={{
+                fontSize: 14,
+                color: '#78716C',
+                textAlign: 'center',
+                marginTop: 4,
+                fontFamily: 'Inclusive Sans, sans-serif',
+              }}
+            >
+              Have an invite?{' '}
+              <span
+                role="button"
+                tabIndex={0}
+                onClick={() => { track('auth_have_invite_pressed', { source: 'auth' }); router.push('/join') }}
+                onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); track('auth_have_invite_pressed', { source: 'auth' }); router.push('/join') } }}
+                style={{ color: '#E8862A', cursor: 'pointer', fontWeight: 600, padding: '8px 4px', margin: '-8px -4px', display: 'inline-block' }}
+              >
+                Paste it
               </span>
             </p>
           )}
