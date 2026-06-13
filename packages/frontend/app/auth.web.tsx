@@ -4,6 +4,7 @@ import { useUser } from '../components/contexts'
 import { useAnalytics } from '../utils/analytics'
 import { validateEmail, validatePassword } from '../utils'
 import { extractInviteCode } from '../utils/validation'
+import { inviteClient } from '../src/auth/inviteClient'
 import PasswordStrength from '../components/auth/PasswordStrength'
 import { ImageCarousel } from '../components/auth/ImageCarousel'
 // eslint-disable-next-line @typescript-eslint/no-var-requires
@@ -50,7 +51,7 @@ const AUTH_CAROUSEL_IMAGES = [
 
 export default function AuthScreen() {
   const router = useRouter()
-  const { checkUserExists, login, signup, loading } = useUser()
+  const { checkUserExists, login, signup, loading, getToken } = useUser()
   const { track } = useAnalytics()
 
   // Read mode, returnTo, inviteCode, and email from URL params.
@@ -75,6 +76,10 @@ export default function AuthScreen() {
   const [inviteCode, setInviteCode] = useState(urlInviteCode || '')
   const [errors, setErrors] = useState<{ [key: string]: string }>({})
   const [showDevPanel, setShowDevPanel] = useState(false)
+  // Invite intent (#403 slice 2): applied-invite bar + email-collision flip.
+  const [inviterName, setInviterName] = useState<string | null>(null)
+  const [collisionFlip, setCollisionFlip] = useState(false)
+  const hasInvite = !!extractInviteCode(inviteCode)
   const emailEditable = authStep === 'initial' || (authStep === 'signup' && !urlEmail)
   // Focus state for input styling
   const [emailFocused, setEmailFocused] = useState(false)
@@ -96,8 +101,26 @@ export default function AuthScreen() {
     setInviteCode(urlInviteCode || '')
     setPassword('')
     setConfirmPassword('')
+    setCollisionFlip(false)
     setErrors({})
   }, [initialMode, urlEmail, urlInviteCode])
+
+  // Resolve the inviter's name for the applied bar whenever a code is present.
+  // Best-effort: a miss falls back to the nameless copy.
+  useEffect(() => {
+    const code = extractInviteCode(inviteCode)
+    if (!code) {
+      setInviterName(null)
+      return
+    }
+    let cancelled = false
+    inviteClient.lookup(code).then((res) => {
+      if (!cancelled) setInviterName(res.valid ? res.inviterFirstName : null)
+    })
+    return () => {
+      cancelled = true
+    }
+  }, [inviteCode])
 
   useEffect(() => {
     if (typeof window === 'undefined') return
@@ -149,6 +172,19 @@ export default function AuthScreen() {
       const result = await login(username, password)
       if (result.success) {
         track('login_success', { source: 'auth' })
+        // new-22 grandfather upgrade: apply an invite held through login (from a
+        // collision flip or Door 1's "Already a member?") so an existing
+        // open-signup account gets promoted. Best-effort — never blocks login.
+        const heldCode = extractInviteCode(inviteCode)
+        if (heldCode) {
+          try {
+            const token = await getToken()
+            if (token) await inviteClient.redeem(token, heldCode)
+            track('invite_applied_on_login', { source: 'auth' })
+          } catch {
+            // ignore — login already succeeded
+          }
+        }
         router.replace(returnTo ? (returnTo as never) : '/(tabs)')
       } else {
         track('login_failed', { source: 'auth', reason: result.message })
@@ -158,7 +194,7 @@ export default function AuthScreen() {
       track('login_failed', { source: 'auth', reason: 'network_error' })
       setErrors({ form: 'Failed to connect to server. Please try again.' })
     }
-  }, [username, password, returnTo, login, router, track])
+  }, [username, password, inviteCode, returnTo, login, getToken, router, track])
 
   const handleSignup = useCallback(async () => {
     setErrors({})
@@ -183,6 +219,15 @@ export default function AuthScreen() {
       if (result.success) {
         track('signup_success', { source: 'auth' })
         router.replace(returnTo ? `/onboarding?returnTo=${encodeURIComponent(returnTo)}` : '/onboarding')
+      } else if (/already exists/i.test(result.message || '')) {
+        // new-22: email already registered → flip to login holding the invite,
+        // applied after login (handleLogin) to upgrade a grandfathered account.
+        track('auth_email_collision', { source: 'auth' })
+        setCollisionFlip(true)
+        setAuthStep('login')
+        setPassword('')
+        setConfirmPassword('')
+        setErrors({})
       } else {
         track('signup_failed', { source: 'auth', reason: result.message })
         setErrors({ form: result.message || 'Failed to sign up. Please try again.' })
@@ -246,6 +291,7 @@ export default function AuthScreen() {
     setPassword('')
     setConfirmPassword('')
     setInviteCode('')
+    setCollisionFlip(false)
     setErrors({})
   }, [authStep, track])
 
@@ -313,7 +359,9 @@ export default function AuthScreen() {
 
   const heading =
     authStep === 'login'
-      ? 'Welcome back.'
+      ? collisionFlip
+        ? 'You already have an account'
+        : 'Welcome back.'
       : authStep === 'invite-code'
         ? 'Enter your invite link.'
         : authStep === 'signup'
@@ -322,7 +370,9 @@ export default function AuthScreen() {
 
   const subtitle =
     authStep === 'login'
-      ? 'Enter your password to continue'
+      ? collisionFlip
+        ? "Log in and we'll apply the invite to it."
+        : 'Enter your password to continue'
       : authStep === 'invite-code'
         ? 'Paste your invite link or code to continue'
         : authStep === 'signup'
@@ -506,6 +556,39 @@ export default function AuthScreen() {
           >
             {subtitle}
           </p>
+
+          {/* Applied-invite bar (#403): the vouch carries into account creation,
+              and is "held" when an email collision flips to login. */}
+          {hasInvite && (authStep === 'signup' || authStep === 'login') && (
+            <div
+              style={{
+                display: 'flex',
+                alignItems: 'center',
+                gap: 8,
+                backgroundColor: 'rgba(232,134,42,0.1)',
+                borderRadius: 12,
+                padding: '12px 14px',
+                marginBottom: 16,
+              }}
+            >
+              <span style={{ fontSize: 15 }}>🪔</span>
+              <span
+                style={{
+                  fontFamily: 'Inclusive Sans, sans-serif',
+                  fontSize: 14,
+                  lineHeight: '20px',
+                  color: '#B05A12',
+                }}
+              >
+                <span style={{ fontWeight: 700, color: '#E8862A' }}>
+                  {inviterName ? `${inviterName}'s invite applied.` : 'Invite applied.'}
+                </span>
+                {authStep === 'signup'
+                  ? " You're a member the moment you finish."
+                  : ' Held while you log in.'}
+              </span>
+            </div>
+          )}
 
           {/* Error alert box */}
           {errorMessages.length > 0 && (
