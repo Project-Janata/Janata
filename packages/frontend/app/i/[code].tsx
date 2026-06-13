@@ -24,7 +24,7 @@ import { useAnalytics } from '../../utils/analytics'
  *   - already logged in  → "you're already a member"        (new-05)
  */
 
-type Phase = 'resolving' | 'valid' | 'invalid' | 'member'
+type Phase = 'resolving' | 'valid' | 'invalid' | 'member' | 'error'
 
 export default function InviteLinkScreen() {
   const router = useRouter()
@@ -38,6 +38,8 @@ export default function InviteLinkScreen() {
 
   const [phase, setPhase] = useState<Phase>('resolving')
   const [inviterName, setInviterName] = useState<string | null>(null)
+  // Bumped by the retry button to re-run the lookup after a transient failure.
+  const [reloadKey, setReloadKey] = useState(0)
 
   useEffect(() => {
     if (loading) return
@@ -54,12 +56,16 @@ export default function InviteLinkScreen() {
     setPhase('resolving')
     inviteClient.lookup(code).then((res) => {
       if (cancelled) return
-      if (res.valid) {
+      if (res.status === 'valid') {
         setInviterName(res.inviterFirstName)
         setPhase('valid')
         track('door1_view', { has_inviter_name: !!res.inviterFirstName })
-      } else {
+      } else if (res.status === 'invalid') {
         setPhase('invalid')
+      } else {
+        // Transient (network / rate limit) — let the visitor retry rather than
+        // telling a real invitee their good code is dead.
+        setPhase('error')
       }
     })
     return () => {
@@ -68,17 +74,26 @@ export default function InviteLinkScreen() {
     // `track` is intentionally excluded — including the (unstable) analytics fn
     // re-runs this effect every render, which storms the lookup endpoint.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [loading, code, isAuthenticated])
+  }, [loading, code, isAuthenticated, reloadKey])
+
+  // Carry the resolved inviter name forward so /auth shows the vouch without a
+  // second lookup. Encoded; empty when nameless.
+  const withInviter = useCallback(
+    (mode: 'signup' | 'login') =>
+      `/auth?mode=${mode}&inviteCode=${encodeURIComponent(code)}` +
+      (inviterName ? `&inviter=${encodeURIComponent(inviterName)}` : ''),
+    [code, inviterName],
+  )
 
   const accept = useCallback(() => {
     track('invite_accept_tap', { invite_code: code })
-    router.replace(`/auth?mode=signup&inviteCode=${encodeURIComponent(code)}`)
-  }, [code, router, track])
+    router.replace(withInviter('signup') as never)
+  }, [code, router, track, withInviter])
 
   const logIn = useCallback(() => {
     // Hold the code so a returning member's account gets the upgrade (#403 slice 2).
-    router.replace(`/auth?mode=login&inviteCode=${encodeURIComponent(code)}`)
-  }, [code, router])
+    router.replace(withInviter('login') as never)
+  }, [router, withInviter])
 
   const heroWidth = Math.min(width, 440)
 
@@ -174,6 +189,32 @@ export default function InviteLinkScreen() {
             title="This invite isn't active"
             subtitle="The link may have expired. Paste a fresh invite, or ask a member for one."
           />
+        )}
+
+        {phase === 'error' && (
+          // Transient failure (network / rate limit): retry, don't condemn the code.
+          <View style={{ alignItems: 'center', gap: 16 }}>
+            <View style={{ gap: 6, alignItems: 'center' }}>
+              <Text style={{ fontFamily: 'Inclusive Sans', fontSize: 26, color: c.text, textAlign: 'center' }}>
+                Couldn't open your invite
+              </Text>
+              <Text style={{ fontSize: 15, color: c.textMuted, textAlign: 'center', lineHeight: 22 }}>
+                Check your connection and try again.
+              </Text>
+            </View>
+            <Pressable
+              onPress={() => setReloadKey((k) => k + 1)}
+              style={{
+                backgroundColor: c.accent,
+                borderRadius: 12,
+                paddingVertical: 15,
+                paddingHorizontal: 48,
+                alignItems: 'center',
+              }}
+            >
+              <Text style={{ color: c.textInverse, fontSize: 16, fontWeight: '600' }}>Try again</Text>
+            </Pressable>
+          </View>
         )}
       </View>
     </View>

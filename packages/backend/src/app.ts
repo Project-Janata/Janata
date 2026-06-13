@@ -306,7 +306,12 @@ app.post('/userExistence', async (c) => {
  * Validate an invite code for beta access
  * Public endpoint (no authentication required)
  */
-app.post('/auth/validate-invite-code', rateLimit(10, 60_000), async (c) => {
+// Read-only invite lookup (Door 1 vouch + signup applied bar). Codes are
+// unguessable 48-bit randoms, so brute-force enumeration isn't a real threat;
+// the tight 10/min cap mainly punished legit invitees sharing a venue's NAT IP
+// at MSC. Raised to a venue-friendly 60/min; the client retries transient 429s
+// rather than showing "invite isn't active" (#403).
+app.post('/auth/validate-invite-code', rateLimit(60, 60_000), async (c) => {
   let body: { code?: string } = {}
   try {
     body = await c.req.json<{ code: string }>()

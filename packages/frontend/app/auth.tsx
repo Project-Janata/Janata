@@ -37,9 +37,12 @@ export default function AuthScreen() {
 
   // Read params for deep-link support (e.g. from AuthPromptModal, or
   // /auth/forgot's "Back to sign in" button).
-  const params = useLocalSearchParams<{ mode?: string; returnTo?: string; inviteCode?: string; email?: string }>()
+  const params = useLocalSearchParams<{ mode?: string; returnTo?: string; inviteCode?: string; email?: string; inviter?: string }>()
   const urlInviteCode = params.inviteCode
   const urlEmail = typeof params.email === 'string' ? params.email : ''
+  // Door 1 carries the resolved inviter name forward, so the applied bar shows
+  // the vouch without a second lookup. Absent → nameless.
+  const inviterName = typeof params.inviter === 'string' && params.inviter ? params.inviter : null
 
   // mode=login needs a prefilled email. mode=signup can work with only an
   // invite code because the email field stays editable in that flow.
@@ -56,31 +59,12 @@ export default function AuthScreen() {
   const emailEditable = authStep === 'initial' || (authStep === 'signup' && !urlEmail)
 
   // Invite intent (#403 slice 2): the applied-invite bar + email-collision flip.
-  // `inviterName` powers the vouch copy ("Anand's invite applied"); null → nameless.
   // `collisionFlip` = we bounced a signup whose email already exists into login,
   // holding the invite to apply on the way in (new-22).
-  const [inviterName, setInviterName] = useState<string | null>(null)
   const [collisionFlip, setCollisionFlip] = useState(false)
   const hasInvite = !!extractInviteCode(inviteCode)
 
   const [showDevPanel, setShowDevPanel] = useState(false)
-
-  // Resolve the inviter's name for the applied bar whenever a code is present.
-  // Best-effort: a miss just falls back to the nameless copy.
-  useEffect(() => {
-    const code = extractInviteCode(inviteCode)
-    if (!code) {
-      setInviterName(null)
-      return
-    }
-    let cancelled = false
-    inviteClient.lookup(code).then((res) => {
-      if (!cancelled) setInviterName(res.valid ? res.inviterFirstName : null)
-    })
-    return () => {
-      cancelled = true
-    }
-  }, [inviteCode])
 
   useEffect(() => {
     const nextStep =
