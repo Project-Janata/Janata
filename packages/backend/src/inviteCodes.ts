@@ -43,8 +43,12 @@ const SELECT_COLUMNS = `code, label, verification_level, is_active, created_at,
 
 function normalizeCode(code: string): string {
   const trimmed = (code ?? '').trim()
+  const fromJoinLink = trimmed.match(/chinmayajanata\.org\/join\?code=([^&#\s]+)/i)
+  if (fromJoinLink) {
+    return decodeURIComponent(fromJoinLink[1]).trim().toUpperCase()
+  }
   const fromLink = trimmed.match(
-    /(?:janata\.app\/i\/|chinmayajanata\.org\/invite\/|chinmayajanata\.org\/i\/)([^/?#\s]+)/i,
+    /(?:chinmayajanata\.org\/invite\/|chinmayajanata\.org\/i\/)([^/?#\s]+)/i,
   )
   return (fromLink ? fromLink[1] : trimmed).trim().toUpperCase()
 }

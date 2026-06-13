@@ -366,6 +366,7 @@ app.post('/auth/register', rateLimit(5, 60_000), async (c) => {
 
   let verificationLevel = UNVERIFIED_USER
   let inviteCodeUsed: string | null = null
+  let invitedByUserId: string | null = null
 
   if (isDeveloper) {
     verificationLevel = BRAHMACHARI
@@ -382,6 +383,7 @@ app.post('/auth/register', rateLimit(5, 60_000), async (c) => {
       return c.json({ message: 'Invite code already redeemed or expired' }, 409)
     }
     inviteCodeUsed = inviteCodeData.code
+    invitedByUserId = inviteCodeData.created_by_user_id
     // Invited = verified at inception. Email confirmation stays quiet and
     // non-blocking (used only for password recovery).
     verificationLevel = NORMAL_USER
@@ -398,6 +400,7 @@ app.post('/auth/register', rateLimit(5, 60_000), async (c) => {
       email: normalizedUsername.toLowerCase(),
       verification_level: verificationLevel,
       invite_code: inviteCodeUsed,
+      invited_by_user_id: invitedByUserId,
     })
 
     if (!created.success) {
@@ -684,7 +687,7 @@ app.post('/auth/password-reset/verify', rateLimit(10, 60_000), async (c) => {
 // post-signup via /auth/redeem-invite. See
 // docs/plans/2026-05-05-v2-roles-invites-messaging.md §5.A.
 
-const INVITE_SHARE_URL_BASE = 'https://janata.app/i'
+const INVITE_SHARE_URL_BASE = 'https://chinmayajanata.org/i'
 
 app.post('/auth/invite-codes', authMiddleware, async (c) => {
   const user = c.get('user')
@@ -778,7 +781,10 @@ app.post('/auth/redeem-invite', rateLimit(5, 60_000), authMiddleware, async (c) 
 
   // Record the code on the user. If email is already verified, apply the
   // promotion now. Otherwise the bump happens at email-verify.
-  const updates: Partial<UserRow> = { invite_code: codeRow.code }
+  const updates: Partial<UserRow> = {
+    invite_code: codeRow.code,
+    invited_by_user_id: codeRow.created_by_user_id,
+  }
   let promoted = false
   if (user.email_verified_at && user.verification_level < codeRow.verification_level) {
     updates.verification_level = codeRow.verification_level

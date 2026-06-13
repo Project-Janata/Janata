@@ -13,7 +13,7 @@ const MONO_FONT = Platform.select({
   default: 'monospace',
 })
 
-const linkForCode = (code: string) => `https://janata.app/i/${code}`
+const linkForCode = (code: string) => `https://chinmayajanata.org/i/${code}`
 
 export default function InviteScreen() {
   const { getToken } = useUser()
@@ -70,14 +70,14 @@ export default function InviteScreen() {
   // per-app tiles.
   const handleShare = async () => {
     if (!inviteUrl) return
-    const message = `Join me on Janata: ${inviteUrl}`
+    const message = `Join me on Janata. This invite gets you in instantly: ${inviteUrl}`
     try {
       if (isWeb && typeof navigator !== 'undefined' && navigator.clipboard) {
         await navigator.clipboard.writeText(inviteUrl)
         setCopied(true)
         setTimeout(() => setCopied(false), 2000)
       } else {
-        await Share.share({ message })
+        await Share.share({ message, title: 'Join me on Janata', url: inviteUrl })
       }
     } catch {
       // user dismissed share / clipboard blocked — no-op
@@ -177,7 +177,7 @@ export default function InviteScreen() {
                     ellipsizeMode="tail"
                     style={{ flex: 1, fontFamily: MONO_FONT, fontSize: 13, color: c.text }}
                   >
-                    janata.app/i/{code}
+                    chinmayajanata.org/i/{code}
                   </Text>
                 </View>
 

@@ -31,6 +31,7 @@ const mockUserRow: UserRow = {
   profile_complete: 1,
   interests: '["yoga","vedanta"]',
   invite_code: null,
+  invited_by_user_id: null,
   email_verified_at: null,
   // Minimal profile fields (#210)
   school: 'UC Berkeley',

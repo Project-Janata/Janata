@@ -2602,7 +2602,7 @@ describe('POST /api/auth/invite-codes (mint)', () => {
     const { res, body } = await jsonPost('/api/auth/invite-codes', {}, authHeader(token))
     expect(res.status).toBe(200)
     expect(body.code).toMatch(/^[0-9A-F]{12}$/)
-    expect(body.shareUrl).toContain(body.code)
+    expect(body.shareUrl).toBe(`https://chinmayajanata.org/i/${body.code}`)
     expect(body.maxUses).toBe(25)
     const ttlDays = (new Date(body.expiresAt).getTime() - Date.now()) / (24 * 60 * 60 * 1000)
     expect(ttlDays).toBeGreaterThan(6.9)
@@ -2692,7 +2692,7 @@ describe('GET /api/auth/invite-codes/mine', () => {
     })
     expect(body.codes).toHaveLength(2)
     expect(body.codes[0].isUsable).toBe(true)
-    expect(body.codes[0].shareUrl).toContain(body.codes[0].code)
+    expect(body.codes[0].shareUrl).toBe(`https://chinmayajanata.org/i/${body.codes[0].code}`)
   })
 
   it("does not leak other users' codes", async () => {
@@ -2746,12 +2746,13 @@ describe('POST /api/auth/redeem-invite', () => {
   })
 
   it('rejects users who already have an invite_code associated', async () => {
-    // Sign up using TEST_INVITE_CODE so invite_code is recorded
-    await jsonPost('/api/auth/register', {
-      username: 'hasinv@test.com',
-      password: 'password123',
-      inviteCode: TEST_INVITE_CODE,
-    })
+    // Simulate a legacy/pre-flip user who already has an invite associated but
+    // has not yet reached NORMAL_USER. New invite signups are verified at
+    // inception and hit the "Already verified" guard first.
+    await jsonPost('/api/auth/register', { username: 'hasinv@test.com', password: 'password123' })
+    await env.DB.prepare('UPDATE users SET invite_code = ? WHERE username = ?')
+      .bind(TEST_INVITE_CODE, 'hasinv@test.com')
+      .run()
     const { body: auth } = await jsonPost('/api/auth/authenticate', {
       username: 'hasinv@test.com',
       password: 'password123',
@@ -2894,19 +2895,20 @@ describe('POST /api/auth/redeem-invite', () => {
     )
     expect(ok.res.status).toBe(200)
     const row = await env.DB.prepare(
-      `SELECT ic.created_by_user_id AS inviter
+      `SELECT u.invited_by_user_id AS directInviter, ic.created_by_user_id AS inviter
          FROM users u JOIN invite_codes ic ON ic.code = u.invite_code
         WHERE u.username = ?`,
     )
       .bind('attrib@test.com')
-      .first<{ inviter: string }>()
+      .first<{ directInviter: string; inviter: string }>()
+    expect(row?.directInviter).toBe(dev.id)
     expect(row?.inviter).toBe(dev.id)
   })
 })
 
 describe('POST /api/auth/register — invite code consume', () => {
-  it('single-use code can only be redeemed once at signup', async () => {
-    const { token: devToken } = await registerAsDeveloper()
+  it('single-use code can only be redeemed once at signup and records inviter attribution', async () => {
+    const { token: devToken, user: dev } = await registerAsDeveloper()
     const { body: minted } = await jsonPost(
       '/api/auth/invite-codes',
       { maxUses: 1 },
@@ -2924,6 +2926,14 @@ describe('POST /api/auth/register — invite code consume', () => {
       inviteCode: minted.code,
     })
     expect(a.res.status).toBe(201)
+    const row = await env.DB.prepare(
+      `SELECT invite_code, invited_by_user_id, verification_level FROM users WHERE username = ?`,
+    )
+      .bind('racea@test.com')
+      .first<{ invite_code: string; invited_by_user_id: string; verification_level: number }>()
+    expect(row?.invite_code).toBe(minted.code)
+    expect(row?.invited_by_user_id).toBe(dev.id)
+    expect(row?.verification_level).toBe(45)
     // Sequential: validateInviteCode rejects on the second call (uses_count
     // already at max_uses), returning 401. In a true concurrent race the
     // second signup could get 409 from consumeInviteCode losing. Either

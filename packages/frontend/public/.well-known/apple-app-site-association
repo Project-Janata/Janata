@@ -8,8 +8,8 @@
           "/center/*",
           "/events/*",
           "/feed/*",
-          "/auth/*",
-          "/invite/*"
+          "/i/*",
+          "/auth/*"
         ]
       }
     ]

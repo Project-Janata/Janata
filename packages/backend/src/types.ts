@@ -51,6 +51,7 @@ export interface UserRow {
   profile_complete: number // 0 | 1
   interests: string | null // JSON array
   invite_code: string | null // Invite code used for signup
+  invited_by_user_id: string | null // User who issued the invite, if user was invited
   email_verified_at: string | null // ISO timestamp; NULL until email verified
   // Minimal profile fields (#210, migration 0021)
   school: string | null
