@@ -7,6 +7,8 @@ export interface PersonSummary {
   subtitle?: string
   verification?: VerificationKind
   accentColor?: string
+  /** Handle for linking to the public profile (#441). Absent for "You"/system. */
+  username?: string
 }
 
 export interface BoardMessage {

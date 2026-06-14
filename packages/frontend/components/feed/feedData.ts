@@ -36,6 +36,7 @@ export function authorFromUser(user: User | null): PersonSummary {
     initials,
     verification: verificationFor(user),
     accentColor: colorFor(user.id || user.username),
+    username: user.username,
   }
 }
 

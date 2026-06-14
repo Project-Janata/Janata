@@ -723,6 +723,42 @@ export async function setBoardPostPinned(
 
 // ── Profile endpoints ─────────────────────────────────────────────────
 
+export interface PublicProfile {
+  id: string
+  username: string
+  firstName: string
+  lastName: string
+  profileImage: string | null
+  bio: string | null
+  centerID: string | null
+  centerName: string | null
+  verificationLevel: number
+  isVerified: boolean
+  interests: string[] | null
+  school: string | null
+  work: string | null
+  region: string | null
+  createdAt: string
+}
+
+/** Public member profile (#441). Signed-in only. Returns null if not found. */
+export async function fetchPublicProfile(username: string): Promise<PublicProfile | null> {
+  try {
+    const response = await authFetch(`/profile/${encodeURIComponent(username)}`)
+    if (!response.ok) return null
+    const data = await response.json()
+    const p = data.profile as PublicProfile | undefined
+    if (!p) return null
+    if (p.profileImage && p.profileImage.startsWith('/')) {
+      p.profileImage = `${API_BASE_URL}${p.profileImage}`
+    }
+    return p
+  } catch (err: any) {
+    if (__DEV__) console.warn('[fetchPublicProfile]', err?.message || err)
+    return null
+  }
+}
+
 export async function fetchUserEvents(username: string): Promise<EventData[]> {
   try {
     const response = await authFetch(`/profile/${encodeURIComponent(username)}/events`)

@@ -423,6 +423,41 @@ describe('invite gate (#403)', () => {
 })
 
 // ═══════════════════════════════════════════════════════════════════════
+// PUBLIC MEMBER PROFILE (#441)
+// ═══════════════════════════════════════════════════════════════════════
+
+describe('GET /api/profile/:username — public profile (#441)', () => {
+  it('returns a safe public profile, omitting email and phone', async () => {
+    const { token } = await registerAndLogin('viewer', 'password123')
+    await registerAndLogin('subject', 'password123')
+    await env.DB.prepare('UPDATE users SET first_name = ?, last_name = ?, bio = ? WHERE username = ?')
+      .bind('Subj', 'Ect', 'hi there', 'subject')
+      .run()
+
+    const { res, body } = await fetchJSON('/api/profile/subject', { headers: authHeader(token) })
+    expect(res.status).toBe(200)
+    expect(body.profile.firstName).toBe('Subj')
+    expect(body.profile.bio).toBe('hi there')
+    expect(typeof body.profile.verificationLevel).toBe('number')
+    // Safe subset only — private fields must not leak.
+    expect(body.profile.email).toBeUndefined()
+    expect(body.profile.phoneNumber).toBeUndefined()
+    expect(body.profile.dateOfBirth).toBeUndefined()
+  })
+
+  it('404s for an unknown member', async () => {
+    const { token } = await registerAndLogin('viewer2', 'password123')
+    const { res } = await fetchJSON('/api/profile/nobody', { headers: authHeader(token) })
+    expect(res.status).toBe(404)
+  })
+
+  it('requires authentication', async () => {
+    const { res } = await fetchJSON('/api/profile/whoever')
+    expect(res.status).toBe(401)
+  })
+})
+
+// ═══════════════════════════════════════════════════════════════════════
 // AUTH: AUTHENTICATE
 // ═══════════════════════════════════════════════════════════════════════
 

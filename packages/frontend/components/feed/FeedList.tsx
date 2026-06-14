@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from 'react'
 import { Pressable, Text, View } from 'react-native'
+import { useRouter } from 'expo-router'
 import { Building2, CalendarDays, ChevronRight, Globe2 } from 'lucide-react-native'
 import type { ThreadPanelColors } from '../boards'
 import type { AppColors } from '../../tokens'
@@ -23,6 +24,7 @@ export function FeedList({
   onOpenGroup: (group: GroupBoard) => void
   onSelectPost: (id: string) => void
 }) {
+  const router = useRouter()
   const [visibleCount, setVisibleCount] = useState(25)
   const visiblePosts = posts.slice(0, visibleCount)
   const hasMore = visibleCount < posts.length
@@ -84,6 +86,11 @@ export function FeedList({
           post={post}
           colors={feedColors}
           onPress={() => onSelectPost(post.id)}
+          onAuthorPress={
+            post.author.username && post.author.id !== 'me'
+              ? () => router.push(`/profile/${post.author.username}`)
+              : undefined
+          }
         />
       ))}
       {hasMore ? (

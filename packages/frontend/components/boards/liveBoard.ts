@@ -44,6 +44,7 @@ export function boardPostToMessage(post: BoardPostData): BoardMessage {
       subtitle: post.author.centerID ? 'Verified member' : undefined,
       verification: verificationFor(post.author),
       accentColor: colorFor(post.author.id || post.author.username),
+      username: post.author.username,
     },
     timestamp: formatTimestamp(post.createdAt),
     body: post.body,

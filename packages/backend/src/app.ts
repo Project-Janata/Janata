@@ -13,6 +13,7 @@ import { cors } from 'hono/cors'
 import type { Env, UserRow, EventRow, CenterRow, BoardPostApiResponse, BoardType } from './types'
 import {
   userRowToApi,
+  userRowToPublicProfile,
   centerRowToApi,
   eventRowToApi,
   boardRowToApi,
@@ -1258,6 +1259,21 @@ app.post('/getUserEvents', authMiddleware, async (c) => {
 // ═══════════════════════════════════════════════════════════════════════
 // PROFILE ROUTES
 // ═══════════════════════════════════════════════════════════════════════
+
+// Public member profile (#441): identity + role + center for any signed-in
+// member to view by tapping a feed author. Safe-subset fields only.
+app.get('/profile/:username', authMiddleware, async (c) => {
+  const { username } = c.req.param()
+  const targetUser = await db.getUserByUsername(c.env.DB, username)
+  if (!targetUser) return c.json({ message: 'User not found' }, 404)
+  const profile = userRowToPublicProfile(targetUser)
+  let centerName: string | null = null
+  if (targetUser.center_id) {
+    const center = await db.getCenterById(c.env.DB, targetUser.center_id)
+    centerName = center?.name ?? null
+  }
+  return c.json({ profile: { ...profile, centerName } })
+})
 
 app.get('/profile/:username/events', authMiddleware, async (c) => {
   const { username } = c.req.param()

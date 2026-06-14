@@ -1,5 +1,6 @@
 import React, { useState } from 'react'
 import { Image, Pressable, ScrollView, Text, TextInput, View } from 'react-native'
+import { useRouter } from 'expo-router'
 import { Building2, CalendarDays, Globe2, Lock, MessageCircle, MoreHorizontal, Send } from 'lucide-react-native'
 import { Avatar, ImageLightbox } from '../ui'
 import { useUser } from '../contexts'
@@ -320,6 +321,13 @@ export function BoardPostCard({
   const accent = colors.accent ?? '#E8862A'
   const accentSoft = colors.accentSoft ?? '#FFF7ED'
   const [lightboxOpen, setLightboxOpen] = useState(false)
+  const router = useRouter()
+  // Tap the author → their public profile (#441). Absent for "You"/system.
+  const authorUsername = message.author.username
+  const openAuthor =
+    authorUsername && message.author.id !== 'me'
+      ? () => router.push(`/profile/${authorUsername}`)
+      : undefined
   const isFeedCard = showSource || asCard
   const sourceIcon =
     message.sourceKind === 'public' ? (
@@ -386,12 +394,14 @@ export function BoardPostCard({
       ) : null}
 
       <View style={{ flexDirection: 'row', alignItems: 'flex-start', gap: 12 }}>
-        <Avatar
-          name={message.author.name}
-          initials={message.author.initials}
-          size={42}
-          backgroundColor={message.author.accentColor}
-        />
+        <Pressable onPress={openAuthor} disabled={!openAuthor}>
+          <Avatar
+            name={message.author.name}
+            initials={message.author.initials}
+            size={42}
+            backgroundColor={message.author.accentColor}
+          />
+        </Pressable>
 
         <View style={{ flex: 1, gap: 8 }}>
           <View
@@ -406,14 +416,16 @@ export function BoardPostCard({
               <View
                 style={{ flexDirection: 'row', alignItems: 'center', gap: 7, flexWrap: 'wrap' }}
               >
-                <Text
-                  style={{
-                    fontSize: isFeedCard ? 14 : 16,
-                    color: colors.text,
-                  }}
-                >
-                  {message.author.name}
-                </Text>
+                <Pressable onPress={openAuthor} disabled={!openAuthor}>
+                  <Text
+                    style={{
+                      fontSize: isFeedCard ? 14 : 16,
+                      color: colors.text,
+                    }}
+                  >
+                    {message.author.name}
+                  </Text>
+                </Pressable>
                 {message.author.verification === 'sevak' ? (
                   <Text
                     style={{

@@ -344,6 +344,30 @@ export function userRowToApi(row: UserRow): UserApiResponse {
   }
 }
 
+/**
+ * Public member profile (#441) — the safe subset another signed-in member may
+ * see when tapping a feed author. Deliberately omits email, phone, DOB, points,
+ * lookingFor, and suspension internals; identity + role + community context only.
+ */
+export function userRowToPublicProfile(row: UserRow) {
+  return {
+    id: row.id,
+    username: row.username,
+    firstName: row.first_name,
+    lastName: row.last_name,
+    profileImage: row.profile_image,
+    bio: row.bio,
+    centerID: row.center_id,
+    verificationLevel: row.verification_level,
+    isVerified: row.verification_level >= NORMAL_USER,
+    interests: safeParseJsonArray(row.interests),
+    school: row.school,
+    work: row.work,
+    region: row.region,
+    createdAt: row.created_at,
+  }
+}
+
 export function centerRowToApi(row: CenterRow): CenterApiResponse {
   return {
     centerID: row.id,

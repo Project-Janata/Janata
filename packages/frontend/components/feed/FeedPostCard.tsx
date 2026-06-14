@@ -9,10 +9,13 @@ export function FeedPostCard({
   post,
   colors,
   onPress,
+  onAuthorPress,
 }: {
   post: FeedPost
   colors: AppColors
   onPress?: () => void
+  /** Tap the author (avatar/name) → open their public profile (#441). */
+  onAuthorPress?: () => void
 }) {
   const reactions = post.reactions ?? [{ emoji: '🙏', count: 2 }]
   const replies = post.replyCount ?? 2
@@ -55,15 +58,19 @@ export function FeedPostCard({
       </View>
 
       <View style={{ flexDirection: 'row', gap: 12 }}>
-        <Avatar
-          name={post.author.name}
-          initials={post.author.initials}
-          size={38}
-          backgroundColor={post.author.accentColor}
-        />
+        <Pressable onPress={onAuthorPress} disabled={!onAuthorPress}>
+          <Avatar
+            name={post.author.name}
+            initials={post.author.initials}
+            size={38}
+            backgroundColor={post.author.accentColor}
+          />
+        </Pressable>
         <View style={{ flex: 1, gap: 6 }}>
           <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
-            <Text style={{ fontSize: 14, color: colors.text }}>{post.author.name}</Text>
+            <Pressable onPress={onAuthorPress} disabled={!onAuthorPress}>
+              <Text style={{ fontSize: 14, color: colors.text }}>{post.author.name}</Text>
+            </Pressable>
             {post.author.verification === 'sevak' ? (
               <View
                 style={{
