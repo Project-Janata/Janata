@@ -56,7 +56,11 @@ export default function PublicProfileScreen() {
     return () => {
       cancelled = true
     }
-  }, [username, track])
+    // `track` is intentionally excluded — it isn't referentially stable, and
+    // including it re-runs this effect every render, cancelling the in-flight
+    // fetch so `loading` never clears (infinite spinner).
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [username])
 
   const openEvent = useCallback(
     (id: string) => {
