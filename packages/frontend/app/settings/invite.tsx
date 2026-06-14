@@ -3,9 +3,10 @@ import { useState, useEffect, useCallback } from 'react'
 import { UserPlus, Link as LinkIcon, Check, Share2 } from 'lucide-react-native'
 import { useUser } from '../../components/contexts'
 import { StackHeader, GradientIconBadge } from '../../components/ui'
-import { inviteClient } from '../../src/auth/inviteClient'
+import { inviteClient, type InviteRole } from '../../src/auth/inviteClient'
 import { useColors } from '../../hooks/useColors'
 import { useAnalytics } from '../../utils/analytics'
+import { hasAdminCapability, SEVAK_LEVEL } from '../../utils/admin'
 
 const MONO_FONT = Platform.select({
   ios: 'JetBrains Mono',
@@ -15,12 +16,34 @@ const MONO_FONT = Platform.select({
 
 const linkForCode = (code: string) => `https://chinmayajanata.org/i/${code}`
 
+// Role → verification level the link grants (#451). Mirrors the backend
+// INVITE_ROLE_LEVELS; used to reuse an existing link of the same role.
+const ROLE_LEVEL: Record<InviteRole, number> = { member: 45, sevak: 54, admin: 108 }
+const ROLE_LABEL: Record<InviteRole, string> = { member: 'Member', sevak: 'Sevak', admin: 'Admin' }
+const ROLE_PHRASE: Record<InviteRole, string> = {
+  member: 'a member',
+  sevak: 'a sevak',
+  admin: 'an admin',
+}
+
 export default function InviteScreen() {
-  const { getToken } = useUser()
+  const { getToken, user } = useUser()
   const c = useColors()
   const { track } = useAnalytics()
   const isWeb = Platform.OS === 'web'
 
+  // Which roles this member may grant (#451): everyone shares a member link; a
+  // sevak can also mint sevak links, an admin can mint admin links. Mirrors the
+  // backend guardrail (can't grant above your own level), so the picker only
+  // shows roles the server will accept.
+  const level = user?.verificationLevel ?? 0
+  const availableRoles: InviteRole[] = [
+    'member',
+    ...(level >= SEVAK_LEVEL ? (['sevak'] as InviteRole[]) : []),
+    ...(hasAdminCapability(user) ? (['admin'] as InviteRole[]) : []),
+  ]
+
+  const [role, setRole] = useState<InviteRole>('member')
   const [code, setCode] = useState<string | null>(null)
   const [loading, setLoading] = useState(true)
   const [failed, setFailed] = useState(false)
@@ -29,41 +52,49 @@ export default function InviteScreen() {
 
   const inviteUrl = code ? linkForCode(code) : null
 
-  // The member always has one ready link: reuse the first usable code they've
-  // minted, otherwise mint one. No user-facing "generate" step.
-  const loadLink = useCallback(async () => {
-    setLoading(true)
-    setFailed(false)
-    try {
-      const token = await getToken()
-      if (!token) {
-        setFailed(true)
-        return
-      }
-      const list = await inviteClient.listMyCodes(token)
-      if (list.success) {
-        const usable = list.data.codes.find((e) => e.isUsable) ?? list.data.codes[0]
-        if (usable?.code) {
-          setCode(usable.code)
+  // One ready link per role: reuse the first usable code of that role, else mint
+  // one. No user-facing "generate" step.
+  const loadLink = useCallback(
+    async (forRole: InviteRole) => {
+      setLoading(true)
+      setFailed(false)
+      try {
+        const token = await getToken()
+        if (!token) {
+          setFailed(true)
           return
         }
-      }
-      const minted = await inviteClient.mintCode(token)
-      if (minted.success) {
-        setCode(minted.data.code)
-      } else {
+        const list = await inviteClient.listMyCodes(token)
+        if (list.success) {
+          const usable = list.data.codes.find(
+            (e) => e.isUsable && e.verificationLevel === ROLE_LEVEL[forRole],
+          )
+          if (usable?.code) {
+            setCode(usable.code)
+            return
+          }
+        }
+        const minted = await inviteClient.mintCode(
+          token,
+          forRole === 'member' ? {} : { role: forRole },
+        )
+        if (minted.success) {
+          setCode(minted.data.code)
+        } else {
+          setFailed(true)
+        }
+      } catch {
         setFailed(true)
+      } finally {
+        setLoading(false)
       }
-    } catch {
-      setFailed(true)
-    } finally {
-      setLoading(false)
-    }
-  }, [getToken])
+    },
+    [getToken],
+  )
 
   useEffect(() => {
-    loadLink()
-  }, [loadLink])
+    loadLink(role)
+  }, [loadLink, role])
 
   // Single primary action: copy to clipboard on web, native share sheet on
   // device. The share sheet already offers every channel, so there are no
@@ -126,8 +157,47 @@ export default function InviteScreen() {
               lineHeight: 22,
             }}
           >
-            They get in instantly.
+            {role === 'member'
+              ? 'They get in instantly.'
+              : `They join as ${ROLE_PHRASE[role]}, instantly.`}
           </Text>
+
+          {/* Role picker (#451) — only shown to sevaks/admins, who can mint a
+              link that lands the recipient at that role. */}
+          {availableRoles.length > 1 && (
+            <View style={{ flexDirection: 'row', gap: 8, marginTop: 20 }}>
+              {availableRoles.map((r) => {
+                const active = r === role
+                return (
+                  <Pressable
+                    key={r}
+                    onPress={() => {
+                      if (r !== role) {
+                        track('invite_role_selected', { role: r })
+                        setRole(r)
+                      }
+                    }}
+                    style={{
+                      paddingVertical: 8,
+                      paddingHorizontal: 16,
+                      borderRadius: 999,
+                      backgroundColor: active ? c.accent : c.surface,
+                    }}
+                  >
+                    <Text
+                      style={{
+                        fontSize: 14,
+                        fontWeight: '600',
+                        color: active ? c.textInverse : c.textMuted,
+                      }}
+                    >
+                      {ROLE_LABEL[r]}
+                    </Text>
+                  </Pressable>
+                )
+              })}
+            </View>
+          )}
 
           <View style={{ width: '100%', marginTop: 32 }}>
             <Text style={{ fontSize: 11, letterSpacing: 0.9, color: c.textFaint, marginBottom: 10 }}>
@@ -151,7 +221,7 @@ export default function InviteScreen() {
               </View>
             ) : failed ? (
               <Pressable
-                onPress={loadLink}
+                onPress={() => loadLink(role)}
                 style={{
                   height: 46,
                   borderRadius: 8,

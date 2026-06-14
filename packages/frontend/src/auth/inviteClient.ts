@@ -69,11 +69,16 @@ const safeJson = async <T>(response: Response): Promise<T | null> => {
   }
 }
 
+/** Role a minted link grants on redemption (#451). */
+export type InviteRole = 'member' | 'sevak' | 'admin'
+
 export interface MintedInviteCode {
   code: string
   expiresAt: string
   maxUses: number
   shareUrl: string
+  role?: InviteRole
+  verificationLevel?: number
 }
 
 export interface MintInviteOptions {
@@ -81,6 +86,8 @@ export interface MintInviteOptions {
   maxUses?: number
   /** Days until expiry. Server clamps to [1, 30]. Defaults to 7. */
   expiresInDays?: number
+  /** Role the link grants. Server rejects granting above the minter's level. */
+  role?: InviteRole
 }
 
 export interface MintedCodeListEntry {
@@ -151,6 +158,7 @@ export const inviteClient = {
           body: JSON.stringify({
             ...(options.maxUses !== undefined ? { maxUses: options.maxUses } : {}),
             ...(options.expiresInDays !== undefined ? { expiresInDays: options.expiresInDays } : {}),
+            ...(options.role !== undefined ? { role: options.role } : {}),
           }),
         },
         API_TIMEOUTS.standard,
@@ -172,6 +180,8 @@ export const inviteClient = {
           expiresAt: data.expiresAt,
           maxUses: data.maxUses,
           shareUrl: data.shareUrl,
+          role: (data as { role?: InviteRole }).role,
+          verificationLevel: (data as { verificationLevel?: number }).verificationLevel,
         },
       }
     } catch (error: any) {
