@@ -303,6 +303,53 @@ describe('invite gate (#403)', () => {
     expect(invitee?.invited_by_user_id).toBe(inviter?.id)
   })
 
+  describe('role-bearing invite links (#451)', () => {
+    it('lets an admin mint an admin-role link that lands the recipient at admin', async () => {
+      const adminToken = await createAdmin()
+      const { res, body } = await jsonPost(
+        '/api/auth/invite-codes',
+        { role: 'admin' },
+        authHeader(adminToken),
+      )
+      expect(res.status).toBe(200)
+      expect(body.role).toBe('admin')
+
+      await jsonPost('/api/auth/register', {
+        username: 'newadmin',
+        password: 'password123',
+        inviteCode: body.code,
+      })
+      const row = await env.DB.prepare('SELECT verification_level FROM users WHERE username = ?')
+        .bind('newadmin')
+        .first<{ verification_level: number }>()
+      // BRAHMACHARI (108) clears ADMIN_CUTOFF (107) → admin-capable.
+      expect(row?.verification_level).toBeGreaterThanOrEqual(107)
+    })
+
+    it('defaults to a member link when no role is given', async () => {
+      const { token } = await registerAndLogin('plainminter', 'password123')
+      const { body } = await jsonPost('/api/auth/invite-codes', {}, authHeader(token))
+      expect(body.role).toBe('member')
+      expect(body.verificationLevel).toBe(NORMAL_USER)
+    })
+
+    it('blocks a regular member from minting an elevated link (403)', async () => {
+      const { token } = await registerAndLogin('plainmember', 'password123')
+      const { res } = await jsonPost('/api/auth/invite-codes', { role: 'admin' }, authHeader(token))
+      expect(res.status).toBe(403)
+    })
+
+    it('rejects an unknown role (400)', async () => {
+      const adminToken = await createAdmin()
+      const { res } = await jsonPost(
+        '/api/auth/invite-codes',
+        { role: 'superuser' },
+        authHeader(adminToken),
+      )
+      expect(res.status).toBe(400)
+    })
+  })
+
   describe('guest RSVP (new-11/11b)', () => {
     let eventId: string
 

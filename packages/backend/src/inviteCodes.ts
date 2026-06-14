@@ -14,7 +14,23 @@
  */
 
 import type { Env, InviteCodeRow } from './types'
-import { ADMIN_CUTOFF, NORMAL_USER } from './constants'
+import { ADMIN_CUTOFF, NORMAL_USER, SEVAK, BRAHMACHARI } from './constants'
+
+/**
+ * Roles a member-minted invite link can grant on redemption (#451). Keeps the
+ * staged rollout self-serve: a member shares a normal link, a sevak/admin can
+ * mint a link that lands the recipient straight at their group role.
+ *   - member → NORMAL_USER (verified member)
+ *   - sevak  → SEVAK (moderator: report/remove on their boards)
+ *   - admin  → BRAHMACHARI (admin-capable; the level the app already grants for
+ *              developer/admin accounts, so it clears ADMIN_CUTOFF)
+ */
+export type InviteRole = 'member' | 'sevak' | 'admin'
+export const INVITE_ROLE_LEVELS: Record<InviteRole, number> = {
+  member: NORMAL_USER,
+  sevak: SEVAK,
+  admin: BRAHMACHARI,
+}
 
 const USER_INVITE_CODE_BYTES = 6 // 12 hex chars
 
@@ -203,6 +219,13 @@ export interface MintInviteOptions {
   maxUses?: number
   /** Days until expiry. Clamped to [1, 30]. Defaults to 7. */
   expiresInDays?: number
+  /**
+   * Role level granted on redemption (#451). Defaults to NORMAL_USER. The
+   * caller is responsible for the guardrail (a minter can't grant above their
+   * own level) — this lib only floors it at NORMAL_USER so a link never
+   * downgrades verified-at-inception.
+   */
+  verificationLevel?: number
 }
 
 /**
@@ -221,6 +244,8 @@ export async function mintUserInviteCode(
 > {
   const maxUses = clampMaxUses(options.maxUses ?? USER_INVITE_DEFAULT_MAX_USES)
   const ttlDays = clampTtlDays(options.expiresInDays ?? USER_INVITE_DEFAULT_TTL_DAYS)
+  // Floor at NORMAL_USER so a link never grants below verified-at-inception.
+  const grantLevel = Math.max(NORMAL_USER, Math.floor(options.verificationLevel ?? NORMAL_USER))
 
   // Random 12-char hex code. Collision space is 2^48 ≈ 2.8e14, plenty for
   // user-issued links. Retry up to 3 times in the (vanishingly rare) case
@@ -243,7 +268,7 @@ export async function mintUserInviteCode(
             created_by_user_id, expires_at, max_uses, uses_count)
          VALUES (?, ?, ?, 1, ?, ?, ?, ?, 0)`,
       )
-        .bind(code, `User invite from ${userId}`, NORMAL_USER, now, userId, expiresAt, maxUses)
+        .bind(code, `User invite from ${userId}`, grantLevel, now, userId, expiresAt, maxUses)
         .run()
       return { success: true, code, expiresAt, maxUses }
     } catch (error: any) {

@@ -392,9 +392,11 @@ app.post('/auth/register', rateLimit(5, 60_000), async (c) => {
     }
     inviteCodeUsed = inviteCodeData.code
     invitedByUserId = inviteCodeData.created_by_user_id
-    // Invited = verified at inception. Email confirmation stays quiet and
-    // non-blocking (used only for password recovery).
-    verificationLevel = NORMAL_USER
+    // Invited = verified at inception, at the role the link grants (#451):
+    // member links → NORMAL_USER; sevak/admin links land the recipient at that
+    // role. Floored at NORMAL_USER so a link never downgrades. Email
+    // confirmation stays quiet and non-blocking (used only for password recovery).
+    verificationLevel = Math.max(NORMAL_USER, inviteCodeData.verification_level)
   }
 
   const hashedPassword = await hashPassword(validPassword)
@@ -704,8 +706,8 @@ app.post('/auth/invite-codes', authMiddleware, async (c) => {
   }
 
   const body = await c.req
-    .json<{ maxUses?: number; expiresInDays?: number }>()
-    .catch(() => ({}) as { maxUses?: number; expiresInDays?: number })
+    .json<{ maxUses?: number; expiresInDays?: number; role?: string }>()
+    .catch(() => ({}) as { maxUses?: number; expiresInDays?: number; role?: string })
 
   // Optional overrides; out-of-range values are clamped in the lib, but reject
   // non-integers so a typo doesn't silently fall back to the default.
@@ -716,9 +718,31 @@ app.post('/auth/invite-codes', authMiddleware, async (c) => {
     return c.json({ message: 'expiresInDays must be an integer' }, 400)
   }
 
+  // Role-bearing links (#451): default to a member link. A minter can grant up
+  // to their own level — so sevaks can mint sevak links, admins can mint admin
+  // links, but a member can only mint member links. Email-admins (ADMIN_EMAIL)
+  // count as admin-capable even if their numeric level is low.
+  let verificationLevel = NORMAL_USER
+  let grantedRole: inviteCodes.InviteRole = 'member'
+  if (body.role !== undefined) {
+    const level = inviteCodes.INVITE_ROLE_LEVELS[body.role as inviteCodes.InviteRole]
+    if (level === undefined) {
+      return c.json({ message: 'role must be one of: member, sevak, admin' }, 400)
+    }
+    const minterLevel = isAdmin(user)
+      ? Math.max(user.verification_level, inviteCodes.INVITE_ROLE_LEVELS.admin)
+      : user.verification_level
+    if (level > minterLevel) {
+      return c.json({ message: 'You can only grant a role up to your own.' }, 403)
+    }
+    verificationLevel = level
+    grantedRole = body.role as inviteCodes.InviteRole
+  }
+
   const result = await inviteCodes.mintUserInviteCode(c.env, user.id, {
     maxUses: body.maxUses,
     expiresInDays: body.expiresInDays,
+    verificationLevel,
   })
   if (!result.success) {
     console.error('mintUserInviteCode error:', result.error)
@@ -729,6 +753,8 @@ app.post('/auth/invite-codes', authMiddleware, async (c) => {
     code: result.code,
     expiresAt: result.expiresAt,
     maxUses: result.maxUses,
+    role: grantedRole,
+    verificationLevel,
     shareUrl: `${INVITE_SHARE_URL_BASE}/${result.code}`,
   })
 })
