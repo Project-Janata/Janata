@@ -13,6 +13,7 @@ CFG="packages/backend/wrangler.toml"
 DB="chinmaya-janata-db"            # --local sandboxes this; nothing remote is touched
 PW="PreviewTest2026!"
 CENTER="c0000001-0000-0000-0000-000000000008"   # Chinmaya Sandeepany, San Jose (seeded)
+QA_CODE="QA-TEST"
 # Data-only migrations assume mid-history column orders; skip them (same as the
 # preview setup) and let seed_preview_data.sql provide the demo data.
 SKIP="0002 0007 0008 0010 0012 0013"
@@ -33,6 +34,12 @@ echo "▶ (3/5) seed real centers + demo events"
 npx wrangler d1 execute "$DB" --local --file=packages/backend/src/seed/centers.sql --config "$CFG" >/dev/null
 npx wrangler d1 execute "$DB" --local --file=migrations/seed_preview_data.sql --config "$CFG" >/dev/null
 
+echo "▶ (3b/5) seed local QA invite code ($QA_CODE)"
+# wrangler.toml now enables REQUIRE_INVITE_CODE locally too, so role accounts
+# and manual new-user QA need a valid cohort code.
+npx wrangler d1 execute "$DB" --local --config "$CFG" --command \
+  "INSERT OR IGNORE INTO invite_codes (code, label, verification_level, is_active, max_uses) VALUES ('$QA_CODE', 'Local demo + manual QA', 45, 1, NULL)" >/dev/null
+
 echo "▶ (4/5) start a temp backend to register the 5 role accounts"
 ( cd packages/backend && npx wrangler dev --port 8787 >/tmp/janata-seed-backend.log 2>&1 & )
 API="http://localhost:8787/api"
@@ -41,7 +48,7 @@ for i in $(seq 1 40); do curl -fsS "$API/centers?limit=1" >/dev/null 2>&1 && { o
 [ -n "$ok" ] || { echo "✗ temp backend didn't come up — see /tmp/janata-seed-backend.log"; exit 1; }
 for r in unverified member sevak brahmachari admin; do
   curl -fsS -X POST "$API/auth/register" -H 'Content-Type: application/json' \
-    -d "{\"username\":\"$r@chinmayajanata.org\",\"password\":\"$PW\"}" >/dev/null 2>&1 || true
+    -d "{\"username\":\"$r@chinmayajanata.org\",\"password\":\"$PW\",\"inviteCode\":\"$QA_CODE\"}" >/dev/null 2>&1 || true
 done
 
 echo "▶ (5/5) elevate roles + complete profiles (so logins land on Home)"
@@ -77,5 +84,6 @@ echo
 echo "✓ Local demo DB ready (5 roles + 10 centers + 4 events + sample board posts seeded)."
 echo "  Next:  npm run dev      # web → http://localhost:8081 ; press 'i' for iOS sim"
 echo "  Sign-in screen → bottom-left circle → pick a role, or 'New user'."
+echo "  Invite code for manual signup: $QA_CODE"
 echo "  Manual login (password: $PW):"
 echo "    unverified@ / member@ / sevak@ / brahmachari@ / admin@ chinmayajanata.org"
