@@ -225,8 +225,8 @@ export default function AuthPromptModal({
                   right: 0,
                   bottom: 0,
                   height: '58%',
-                  backgroundImage: 'linear-gradient(to top, rgba(28,25,23,0.74), rgba(28,25,23,0.38), rgba(28,25,23,0))' as any,
-                }}
+                  backgroundImage: 'linear-gradient(to top, rgba(28,25,23,0.74), rgba(28,25,23,0.38), rgba(28,25,23,0))',
+                } as any}
               />
               <View style={{ position: 'absolute', left: 28, right: 28, bottom: 28, gap: 8 }}>
                 <Text style={{ fontFamily: 'Inclusive Sans', fontSize: 24, lineHeight: 30, color: '#FFFFFF' }}>

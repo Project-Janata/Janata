@@ -14,8 +14,13 @@ jest.mock('react-native-safe-area-context', () => ({
 }))
 jest.mock('../../../components/ui/Avatar', () => 'Avatar')
 
-const { usePathname, useRouter } = jest.requireMock('expo-router')
-const { useUser } = jest.requireMock('../../../components/contexts')
+const { usePathname, useRouter } = jest.requireMock('expo-router') as {
+  usePathname: jest.Mock
+  useRouter: jest.Mock
+}
+const { useUser } = jest.requireMock('../../../components/contexts') as {
+  useUser: jest.Mock
+}
 const mockPush = jest.fn()
 const WebBottomNav = require('../../../components/ui/WebBottomNav').default
 
