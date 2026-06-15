@@ -13,6 +13,7 @@ import { cors } from 'hono/cors'
 import type { Env, UserRow, EventRow, CenterRow, BoardPostApiResponse, BoardType } from './types'
 import {
   userRowToApi,
+  userRowToPublicProfile,
   centerRowToApi,
   eventRowToApi,
   boardRowToApi,
@@ -1272,6 +1273,25 @@ app.post('/getUserEvents', authMiddleware, async (c) => {
 // ═══════════════════════════════════════════════════════════════════════
 // PROFILE ROUTES
 // ═══════════════════════════════════════════════════════════════════════
+
+app.get('/public-profiles/:userId', authMiddleware, async (c) => {
+  const userId = c.req.param('userId')
+  const targetUser = await db.getUserById(c.env.DB, userId)
+  if (!targetUser) return c.json({ message: 'User not found' }, 404)
+
+  const center = targetUser.center_id
+    ? await db.getCenterById(c.env.DB, targetUser.center_id)
+    : null
+  const hostedEvents = await db.getUserCreatedEvents(c.env.DB, targetUser.id)
+
+  return c.json({
+    profile: userRowToPublicProfile(
+      targetUser,
+      center?.name ?? null,
+      hostedEvents.map(eventRowToApi),
+    ),
+  })
+})
 
 app.get('/profile/:username/events', authMiddleware, async (c) => {
   const { username } = c.req.param()

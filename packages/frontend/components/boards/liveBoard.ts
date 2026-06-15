@@ -5,14 +5,14 @@ const AVATAR_COLORS = ['#0F766E', '#1D4ED8', '#7C3AED', '#C2410C', '#0369A1', '#
 
 function displayName(user: UserData) {
   const fullName = [user.firstName, user.lastName].filter(Boolean).join(' ').trim()
-  return fullName || user.username
+  return fullName || 'Member'
 }
 
 function initialsFor(user: UserData) {
   if (user.firstName) {
     return `${user.firstName[0] || ''}${user.lastName?.[0] || ''}`.toUpperCase()
   }
-  return user.username.slice(0, 2).toUpperCase()
+  return 'M'
 }
 
 function verificationFor(user: UserData): VerificationKind | undefined {
@@ -43,7 +43,7 @@ export function boardPostToMessage(post: BoardPostData): BoardMessage {
       initials: initialsFor(post.author),
       subtitle: post.author.centerID ? 'Verified member' : undefined,
       verification: verificationFor(post.author),
-      accentColor: colorFor(post.author.id || post.author.username),
+      accentColor: colorFor(post.author.id || 'member'),
     },
     timestamp: formatTimestamp(post.createdAt),
     body: post.body,

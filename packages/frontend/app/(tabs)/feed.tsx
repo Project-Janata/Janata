@@ -470,6 +470,12 @@ export default function FeedScreen() {
     setSelectedPostId(id)
   }
 
+  const openAuthorProfile = (authorId: string) => {
+    if (!authorId || authorId === user?.id) return
+    track('feed_author_profile_pressed', { author_id: authorId, source: 'feed' })
+    router.push(`/members/${encodeURIComponent(authorId)}` as never)
+  }
+
   const openGroup = (group: GroupBoard) => {
     if (!group.routeHref) return
     track('connect_empty_board_opened', { groupId: group.id, kind: group.kind, source: 'feed' })
@@ -557,6 +563,7 @@ export default function FeedScreen() {
             mobilePostOpen={mobilePostOpen}
             onOpenGroup={openGroup}
             onSelectPost={openPost}
+            onAuthorPress={openAuthorProfile}
             onCompose={() => {
               track('feed_compose_pressed', { source: 'feed_empty_panel' })
               setCreatePostOpen(true)
@@ -616,6 +623,7 @@ export default function FeedScreen() {
                     colors={colors}
                     fullScreen
                     bottomInset={insets.bottom}
+                    onAuthorPress={openAuthorProfile}
                     onPostChanged={loadBoards}
                     onPostDeleted={() => {
                       closeDetail()

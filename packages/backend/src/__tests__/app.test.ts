@@ -10,6 +10,7 @@ import { SignJWT } from 'jose'
 import { applyMigration, dropAllTables, TEST_INVITE_CODE } from './setup'
 import { app } from '../app'
 import { hashPassword } from '../auth'
+import * as db from '../db'
 import { clearRateLimits } from '../middleware'
 import { ADMIN_EMAIL, NORMAL_USER } from '../constants'
 
@@ -2343,6 +2344,100 @@ describe('event routes', () => {
       expect(body.events).toHaveLength(1)
       expect(body.events[0].title).toBe('User Event')
     })
+  })
+})
+
+describe('GET /api/public-profiles/:userId', () => {
+  it('requires authentication', async () => {
+    const { res } = await fetchJSON('/api/public-profiles/user-123')
+    expect(res.status).toBe(401)
+  })
+
+  it('returns a safe public profile by user id without email-backed usernames', async () => {
+    const target = await registerAndLogin('profile-target@example.com', 'password123')
+    const viewer = await registerAndLogin('profile-viewer@example.com', 'password123')
+
+    await env.DB.prepare(
+      `UPDATE users
+       SET first_name = ?1,
+           last_name = ?2,
+           phone_number = ?3,
+           date_of_birth = ?4,
+           points = ?5,
+           interests = ?6,
+           school = ?7,
+           work = ?8,
+           region = ?9,
+           looking_for = ?10,
+           suspended_at = ?11,
+           suspended_reason = ?12
+       WHERE id = ?13`,
+    )
+      .bind(
+        'Public',
+        'Member',
+        '555-111-2222',
+        '1999-01-02',
+        108,
+        JSON.stringify(['Gita', 'Seva']),
+        'State University',
+        'Community Organizer',
+        'Bay Area',
+        JSON.stringify(['mentor']),
+        '2026-01-01T00:00:00.000Z',
+        'private moderation note',
+        target.user.id,
+      )
+      .run()
+
+    const eventId = 'hosted-profile-event'
+    await db.createEvent(env.DB, {
+      id: eventId,
+      title: 'Hosted Satsang',
+      date: '2026-07-01T10:00:00Z',
+      latitude: 37.0,
+      longitude: -121.0,
+      created_by: target.user.id,
+    })
+
+    const { res, body } = await fetchJSON(
+      `/api/public-profiles/${encodeURIComponent(target.user.id)}`,
+      { headers: authHeader(viewer.token) },
+    )
+
+    expect(res.status).toBe(200)
+    expect(body.profile).toMatchObject({
+      id: target.user.id,
+      firstName: 'Public',
+      lastName: 'Member',
+      centerName: null,
+      interests: ['Gita', 'Seva'],
+      school: 'State University',
+      work: 'Community Organizer',
+      region: 'Bay Area',
+    })
+    expect(body.profile.hostedEvents).toHaveLength(1)
+    expect(body.profile.hostedEvents[0].eventID).toBe(eventId)
+    expect(body.profile.hostedEvents[0].title).toBe('Hosted Satsang')
+
+    expect(body.profile).not.toHaveProperty('username')
+    expect(body.profile).not.toHaveProperty('email')
+    expect(body.profile).not.toHaveProperty('phoneNumber')
+    expect(body.profile).not.toHaveProperty('dateOfBirth')
+    expect(body.profile).not.toHaveProperty('points')
+    expect(body.profile).not.toHaveProperty('lookingFor')
+    expect(body.profile).not.toHaveProperty('suspendedAt')
+    expect(body.profile).not.toHaveProperty('suspendedUntil')
+    expect(body.profile).not.toHaveProperty('suspendedReason')
+  })
+
+  it('returns 404 for an unknown member id', async () => {
+    const { token } = await registerAndLogin('profile-viewer@example.com', 'password123')
+    const { res, body } = await fetchJSON('/api/public-profiles/missing-user', {
+      headers: authHeader(token),
+    })
+    expect(res.status).toBe(404)
+    expect(body.message).toBe('User not found')
   })
 })
 

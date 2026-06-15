@@ -225,6 +225,24 @@ export interface UserApiResponse {
   updatedAt: string
 }
 
+export interface PublicProfileApiResponse {
+  id: string
+  firstName: string
+  lastName: string
+  profileImage: string | null
+  bio: string | null
+  centerID: string | null
+  centerName: string | null
+  verificationLevel: number
+  isVerified: boolean
+  interests: string[] | null
+  school: string | null
+  work: string | null
+  region: string | null
+  hostedEvents: EventApiResponse[]
+  createdAt: string
+}
+
 export interface CenterApiResponse {
   centerID: string
   name: string
@@ -351,6 +369,35 @@ export function userRowToApi(row: UserRow): UserApiResponse {
     suspendedReason: row.suspended_reason,
     createdAt: row.created_at,
     updatedAt: row.updated_at,
+  }
+}
+
+/**
+ * Safe public member profile. Deliberately omits username/email because this
+ * app's usernames are email addresses, plus phone, DOB, points, lookingFor, and
+ * suspension internals.
+ */
+export function userRowToPublicProfile(
+  row: UserRow,
+  centerName: string | null,
+  hostedEvents: EventApiResponse[],
+): PublicProfileApiResponse {
+  return {
+    id: row.id,
+    firstName: row.first_name,
+    lastName: row.last_name,
+    profileImage: row.profile_image,
+    bio: row.bio,
+    centerID: row.center_id,
+    centerName,
+    verificationLevel: row.verification_level,
+    isVerified: row.verification_level >= NORMAL_USER,
+    interests: safeParseJsonArray(row.interests),
+    school: row.school,
+    work: row.work,
+    region: row.region,
+    hostedEvents,
+    createdAt: row.created_at,
   }
 }
 
