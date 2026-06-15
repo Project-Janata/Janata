@@ -103,7 +103,7 @@ export function FeedEmptyState({
     )
   }
 
-  return (
+  return state === 'guest' ? setupRail : (
     <View style={{ gap: 16 }}>
       {setupRail}
       {ghost}

@@ -340,6 +340,7 @@ export default function FeedScreen() {
   // Guests, and signed-in members with nothing in the feed yet (and no active
   // search), get the state-aware ghost empty state instead of the post stream.
   const showEmptyState = !user || (filteredFeedPosts.length === 0 && !query.trim())
+  const hideMobileFeedHeader = !isDesktop && !user && showEmptyState
   const nativeTabBarStyle = {
     backgroundColor: colors.surface,
     borderTopColor: colors.border,
@@ -513,7 +514,7 @@ export default function FeedScreen() {
       >
         {/* Desktop moves search into the right context rail (Twitter-style),
             so only render the full-width search header on mobile/narrow web. */}
-        {!isDesktop ? (
+        {!isDesktop && !hideMobileFeedHeader ? (
           <FeedHeader
             query={query}
             colors={colors}

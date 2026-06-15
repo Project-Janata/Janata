@@ -25,10 +25,10 @@ if (typeof document !== 'undefined') {
     const style = document.createElement('style')
     style.id = id
     style.textContent = `
-      .auth-input::placeholder { color: #9CA3AF; }
+      .auth-input::placeholder { color: #78716C; }
       .auth-input:disabled { opacity: 0.6; cursor: not-allowed; }
       .auth-input { font-size: 16px !important; } /* Prevent iOS zoom on focus */
-      .auth-submit:hover:not(:disabled) { background-color: #B91C1C !important; }
+      .auth-submit:hover:not(:disabled) { background-color: #D97520 !important; }
       @supports (min-height: 100dvh) {
         .auth-root { min-height: 100dvh !important; }
       }
@@ -67,7 +67,6 @@ export default function AuthScreen() {
     changeConfirm,
     handleSubmit,
     handleBack,
-    createAccount,
   } = useAuthFlow()
 
   // Web-only presentation state.
@@ -94,13 +93,13 @@ export default function AuthScreen() {
     minHeight: 44,
     borderWidth: 1,
     borderStyle: 'solid',
-    borderColor: '#D6D3D1',
-    borderRadius: 8,
+    borderColor: '#E7E5E4',
+    borderRadius: 12,
     padding: '0 16px',
     fontSize: 16,
     fontFamily: 'Inclusive Sans, sans-serif',
     color: '#1C1917',
-    backgroundColor: '#FAFAF7',
+    backgroundColor: '#F0EDE8',
     outline: 'none',
     boxSizing: 'border-box' as const,
     WebkitAppearance: 'none' as const,
@@ -168,6 +167,7 @@ export default function AuthScreen() {
         >
           <button
             onClick={() => { track('auth_logo_pressed', { source: 'auth' }); router.push('/landing') }}
+            onDoubleClick={isDev ? () => setShowDevPanel(true) : undefined}
             aria-label="Go to Janata home"
             style={{
               background: 'none',
@@ -187,7 +187,7 @@ export default function AuthScreen() {
             style={{
               backgroundColor: '#FAFAF7',
               border: '1px solid #D6D3D1',
-              borderRadius: 8,
+              borderRadius: 12,
               cursor: 'pointer',
               padding: '0 16px',
               fontSize: 14,
@@ -209,8 +209,8 @@ export default function AuthScreen() {
             flex: 1,
             display: 'flex',
             alignItems: isMobile ? 'flex-start' : 'center',
-            justifyContent: 'center',
-            padding: isMobile ? '8px 16px 24px' : isNarrowWeb ? '0 20px 32px' : 0,
+            justifyContent: isMobile ? 'flex-start' : 'center',
+            padding: isMobile ? '72px 16px 24px' : isNarrowWeb ? '40px 20px 32px' : 0,
           }}
         >
         <div style={{ maxWidth: 400, width: '100%', padding: isNarrowWeb ? 0 : '0 48px' }}>
@@ -245,30 +245,13 @@ export default function AuthScreen() {
               fontSize: isMobile ? 28 : isNarrowWeb ? 32 : 36,
               fontWeight: '400',
               color: '#1C1917',
-              marginBottom: 8,
+              marginBottom: 10,
               marginTop: 0,
+              lineHeight: isMobile ? '34px' : isNarrowWeb ? '38px' : '43px',
             }}
           >
             {heading}
           </h1>
-
-          {/* What Janata is — only on the first step, so a new beta tester knows
-              what they're signing into before entering an email. On mobile the
-              brand carousel is hidden, making this the only context shown. */}
-          {authStep === 'initial' && !hasInvite && !isInviteWallEntry && (
-            <div style={{ marginTop: 4, marginBottom: 24 }}>
-              {[
-                'Discover satsangs, camps, and classes near you',
-                'RSVP in a tap and see who else is going',
-                'Send messages to members in centers and your events.',
-              ].map((line) => (
-                <div key={line} style={{ display: 'flex', gap: 10, alignItems: 'flex-start', marginBottom: 9 }}>
-                  <span style={{ color: '#E8862A', fontSize: 14, lineHeight: '22px' }}>✓</span>
-                  <span style={{ fontFamily: 'Inclusive Sans, sans-serif', fontSize: 14.5, lineHeight: '22px', color: '#57534E' }}>{line}</span>
-                </div>
-              ))}
-            </div>
-          )}
 
           {/* Subtitle */}
           <p
@@ -276,7 +259,7 @@ export default function AuthScreen() {
               fontFamily: 'Inclusive Sans, sans-serif',
               fontSize: 16,
               color: '#78716C',
-              marginBottom: 8,
+              marginBottom: 26,
               marginTop: 0,
               lineHeight: '24px',
             }}
@@ -416,7 +399,7 @@ export default function AuthScreen() {
                 backgroundColor: '#E8862A',
                 color: '#FFFFFF',
                 border: 'none',
-                borderRadius: 8,
+                borderRadius: 12,
                 fontSize: 16,
                 fontFamily: 'Inclusive Sans, sans-serif',
                 fontWeight: '500',
@@ -430,36 +413,6 @@ export default function AuthScreen() {
               {buttonText}
             </button>
           </form>
-
-          {/* Toggle links */}
-          {authStep === 'initial' && !hasInvite && !isInviteWallEntry && (
-            <p
-              style={{
-                fontSize: 14,
-                color: '#78716C',
-                textAlign: 'center',
-                marginTop: 16,
-                fontFamily: 'Inclusive Sans, sans-serif',
-              }}
-            >
-              Don't have an account?{' '}
-              <span
-                role="button"
-                tabIndex={0}
-                onClick={createAccount}
-                onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); createAccount() } }}
-                style={{
-                  color: '#E8862A',
-                  cursor: 'pointer',
-                  padding: '8px 4px',
-                  margin: '-8px -4px',
-                  display: 'inline-block',
-                }}
-              >
-                Create one
-              </span>
-            </p>
-          )}
 
           {/* Have an invite? — manual code entry now that the typed step is cut
               (form-03). Routes to the neutral paste screen (new-25). */}
@@ -518,35 +471,6 @@ export default function AuthScreen() {
                 Forgot password?
               </span>
             </p>
-          )}
-
-          {/* Discreet dev/demo tools — fixed bottom-left circle, dev/preview only */}
-          {isDev && (
-            <button
-              onClick={() => setShowDevPanel(true)}
-              aria-label="Developer tools"
-              style={{
-                position: 'fixed',
-                left: 20,
-                bottom: 24,
-                width: 44,
-                height: 44,
-                borderRadius: 9999,
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                backgroundColor: '#E7E5E4',
-                border: 'none',
-                cursor: 'pointer',
-                boxShadow: '0 2px 6px rgba(0,0,0,0.15)',
-                fontFamily: 'monospace',
-                fontSize: 16,
-                color: '#57534E',
-                zIndex: 50,
-              }}
-            >
-              &lt;/&gt;
-            </button>
           )}
 
           {/* DevPanel */}
