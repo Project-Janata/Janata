@@ -143,7 +143,20 @@ export default function AuthPromptModal({
     return () => window.removeEventListener('resize', onResize)
   }, [])
 
+  const isDesktopWeb = Platform.OS === 'web' && viewportWidth >= 820
+
+  useEffect(() => {
+    if (!visible || !isDesktopWeb) return
+    track('auth_prompt_desktop_redirected', { source: 'auth_modal' })
+    closePrompt()
+    const search = new URLSearchParams({ gated: '1' })
+    if (returnTo) search.set('returnTo', returnTo)
+    const destination = `/auth?${search.toString()}`
+    router.push(destination as never)
+  }, [closePrompt, isDesktopWeb, returnTo, router, track, visible])
+
   if (!visible) return null
+  if (isDesktopWeb) return null
 
   const wallTitle = title ?? 'Janata is invite-only'
   const wallCopy =
