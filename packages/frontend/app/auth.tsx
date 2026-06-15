@@ -42,6 +42,7 @@ export default function AuthScreen() {
     loading,
     inviterName,
     hasInvite,
+    isInviteWallEntry,
     emailEditable,
     isButtonDisabled,
     heading,
@@ -65,16 +66,16 @@ export default function AuthScreen() {
         className="flex-1 bg-[#FAFAF7] dark:bg-background-dark"
         keyboardShouldPersistTaps="handled"
       >
-        {/* Discover link, top-right, initial step only. Lets a logged-out
+        {/* Guest browse link, top-right, initial step only. Lets a logged-out
             user browse the app before signing up (mirrors the web version). */}
         {authStep === 'initial' && (
           <Pressable
-            onPress={() => { track('auth_discover_pressed', { source: 'auth' }); router.push('/(tabs)') }}
+            onPress={() => { track('auth_browse_as_guest_pressed', { source: 'auth' }); router.push('/(tabs)') }}
             className="absolute right-5"
             style={{ top: insets.top + 12, paddingHorizontal: 4, paddingVertical: 8 }}
           >
             <Text className="font-sans" style={{ fontSize: 14.5, fontWeight: '500', color: '#E8862A' }}>
-              Discover →
+              Browse as guest
             </Text>
           </Pressable>
         )}
@@ -115,7 +116,7 @@ export default function AuthScreen() {
 
               {/* What Janata is — first step only, so a new member knows what
                   they're signing into before entering an email. */}
-              {authStep === 'initial' && !hasInvite && (
+              {authStep === 'initial' && !hasInvite && !isInviteWallEntry && (
                 <View style={{ marginTop: 12, gap: 9 }}>
                   {[
                     'Discover satsangs, camps, and classes near you',
@@ -251,7 +252,7 @@ export default function AuthScreen() {
 
               {/* Have an invite? — manual code entry now that the typed step is
                   cut (form-03). Routes to the neutral paste screen (new-25). */}
-              {authStep === 'initial' && (
+              {authStep === 'initial' && !hasInvite && (
                 <Pressable
                   className="items-center mt-2"
                   onPress={() => { track('auth_have_invite_pressed', { source: 'auth' }); router.push('/join') }}

@@ -57,6 +57,7 @@ export default function AuthScreen() {
     loading,
     inviterName,
     hasInvite,
+    isInviteWallEntry,
     emailEditable,
     isButtonDisabled,
     heading,
@@ -254,7 +255,7 @@ export default function AuthScreen() {
           {/* What Janata is — only on the first step, so a new beta tester knows
               what they're signing into before entering an email. On mobile the
               brand carousel is hidden, making this the only context shown. */}
-          {authStep === 'initial' && !hasInvite && (
+          {authStep === 'initial' && !hasInvite && !isInviteWallEntry && (
             <div style={{ marginTop: 4, marginBottom: 24 }}>
               {[
                 'Discover satsangs, camps, and classes near you',
@@ -431,7 +432,7 @@ export default function AuthScreen() {
           </form>
 
           {/* Toggle links */}
-          {authStep === 'initial' && !hasInvite && (
+          {authStep === 'initial' && !hasInvite && !isInviteWallEntry && (
             <p
               style={{
                 fontSize: 14,

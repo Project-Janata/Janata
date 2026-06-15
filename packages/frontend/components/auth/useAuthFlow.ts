@@ -26,10 +26,12 @@ export function useAuthFlow() {
     inviteCode?: string
     email?: string
     inviter?: string
+    gated?: string
   }>()
   const urlInviteCode = typeof params.inviteCode === 'string' ? params.inviteCode : ''
   const urlEmail = typeof params.email === 'string' ? params.email : ''
   const returnTo = typeof params.returnTo === 'string' ? params.returnTo : null
+  const isInviteWallEntry = params.gated === '1'
   // Door 1 carries the resolved inviter name forward, so the applied bar shows
   // the vouch without a second lookup. Absent → nameless.
   const inviterName = typeof params.inviter === 'string' && params.inviter ? params.inviter : null
@@ -97,6 +99,11 @@ export function useAuthFlow() {
         track('auth_user_exists', { source: 'auth' })
         setAuthStep('login')
       } else {
+        if (isInviteWallEntry && !hasInvite) {
+          track('auth_invite_required', { source: 'auth' })
+          setErrors({ form: 'Janata is invite-only. Paste an invite to create an account.' })
+          return
+        }
         // form-03 cut (#403): the invite is the door, so a new email goes
         // straight to account creation. Manual codes enter via /join (new-25).
         track('auth_user_new', { source: 'auth' })
@@ -106,7 +113,7 @@ export function useAuthFlow() {
       track('auth_check_failed', { source: 'auth' })
       setErrors({ form: e.message || 'Failed to connect to server.' })
     }
-  }, [username, checkUserExists, track])
+  }, [username, checkUserExists, track, isInviteWallEntry, hasInvite])
 
   const handleLogin = useCallback(async () => {
     setErrors({})
@@ -224,6 +231,10 @@ export function useAuthFlow() {
       setErrors({ username: 'You must enter a valid email address.' })
       return
     }
+    if (isInviteWallEntry && !hasInvite) {
+      setErrors({ form: 'Janata is invite-only. Paste an invite to create an account.' })
+      return
+    }
     track('auth_create_account_pressed', { source: 'auth' })
     try {
       const exists = await checkUserExists(username)
@@ -236,7 +247,7 @@ export function useAuthFlow() {
     } catch (e: any) {
       setErrors({ form: e.message || 'Failed to connect to server.' })
     }
-  }, [username, checkUserExists, track])
+  }, [username, checkUserExists, track, isInviteWallEntry, hasInvite])
 
   const isButtonDisabled =
     loading ||
@@ -247,6 +258,7 @@ export function useAuthFlow() {
   const errorMessages = Object.values(errors).filter(Boolean)
 
   const inviteEmailStep = authStep === 'initial' && hasInvite
+  const inviteWallStep = authStep === 'initial' && isInviteWallEntry && !hasInvite
 
   const heading =
     authStep === 'login'
@@ -257,6 +269,8 @@ export function useAuthFlow() {
         ? 'Join the community.'
         : inviteEmailStep
           ? "You've been invited."
+          : inviteWallStep
+            ? 'Janata is invite-only'
           : 'Welcome.'
 
   const subtitle =
@@ -270,6 +284,8 @@ export function useAuthFlow() {
           : 'Create your account to get started'
         : inviteEmailStep
           ? 'Enter your email to accept this Janata invite.'
+          : inviteWallStep
+            ? "Log in with your member account, or paste an invite if you're new."
           : 'Enter your email to get started'
 
   return {
@@ -285,6 +301,7 @@ export function useAuthFlow() {
     // derived
     inviterName,
     hasInvite,
+    isInviteWallEntry,
     emailEditable,
     isButtonDisabled,
     heading,
