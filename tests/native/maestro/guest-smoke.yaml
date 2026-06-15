@@ -1,0 +1,25 @@
+appId: ${APP_ID}
+name: Native guest smoke
+---
+- launchApp:
+    clearState: true
+- openLink: janata://auth
+- extendedWaitUntil:
+    visible: "Welcome."
+    timeout: 15000
+- assertVisible: "Email"
+- assertVisible: "Browse as guest"
+- takeScreenshot: guest-auth
+
+- openLink: janata://explore
+- extendedWaitUntil:
+    visible: "Chinmaya"
+    timeout: 20000
+- takeScreenshot: guest-explore
+
+- openLink: janata://feed
+- extendedWaitUntil:
+    visible: "Log in"
+    timeout: 20000
+- assertVisible: "Your community feed"
+- takeScreenshot: guest-feed
