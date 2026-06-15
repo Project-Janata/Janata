@@ -74,6 +74,24 @@ export interface UserData {
   updatedAt?: string
 }
 
+export interface PublicProfileData {
+  id: string
+  firstName: string
+  lastName: string
+  profileImage: string | null
+  bio: string | null
+  centerID: string | null
+  centerName: string | null
+  verificationLevel: number
+  isVerified: boolean
+  interests: string[] | null
+  school: string | null
+  work: string | null
+  region: string | null
+  hostedEvents: EventData[]
+  createdAt: string
+}
+
 export interface MapPoint {
   id: string
   type: 'center' | 'event'
@@ -744,6 +762,18 @@ export async function fetchUserPosts(username: string): Promise<EventData[]> {
   } catch (err: any) {
     if (__DEV__) console.warn('[fetchUserPosts]', err?.message || err)
     return []
+  }
+}
+
+export async function fetchPublicProfile(userId: string): Promise<PublicProfileData | null> {
+  try {
+    const response = await authFetch(`/public-profiles/${encodeURIComponent(userId)}`)
+    if (!response.ok) return null
+    const data = await response.json()
+    return data.profile || null
+  } catch (err: any) {
+    if (__DEV__) console.warn('[fetchPublicProfile]', err?.message || err)
+    return null
   }
 }
 

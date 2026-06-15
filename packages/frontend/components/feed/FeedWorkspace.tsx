@@ -25,6 +25,7 @@ export function FeedWorkspace({
   mobilePostOpen,
   onOpenGroup,
   onSelectPost,
+  onAuthorPress,
   onChangeQuery,
   onBack,
   onPostChanged,
@@ -43,12 +44,15 @@ export function FeedWorkspace({
   mobilePostOpen: boolean
   onOpenGroup: (group: GroupBoard) => void
   onSelectPost: (id: string) => void
+  onAuthorPress?: (authorId: string) => void
   onChangeQuery?: (value: string) => void
   onBack?: () => void
   onPostChanged?: () => void
   onPostDeleted?: () => void
   onCompose?: () => void
 }) {
+  const { user } = useUser()
+
   // Guests and empty no-query states are handled upstream by FeedEmptyState, so
   // FeedWorkspace only renders for signed-in members with posts or a search.
   if (isDesktop) {
@@ -80,6 +84,7 @@ export function FeedWorkspace({
                 onCollapse={onBack}
                 onPostChanged={onPostChanged}
                 onPostDeleted={onPostDeleted}
+                onAuthorPress={onAuthorPress}
               />
             ) : (
               <BoardPostCard
@@ -89,6 +94,11 @@ export function FeedWorkspace({
                 asCard
                 showSource={multiSource}
                 onPress={() => onSelectPost(post.id)}
+                onAuthorPress={
+                  onAuthorPress && post.author.id !== user?.id
+                    ? () => onAuthorPress(post.author.id)
+                    : undefined
+                }
               />
             )
           )}
@@ -117,6 +127,7 @@ export function FeedWorkspace({
       <PostThread
         post={selectedPost}
         colors={colors}
+        onAuthorPress={onAuthorPress}
         onPostChanged={onPostChanged}
         onPostDeleted={onPostDeleted}
       />
@@ -130,8 +141,10 @@ export function FeedWorkspace({
       colors={threadColors}
       feedColors={colors}
       hasQuery={hasQuery}
+      currentUserId={user?.id}
       onOpenGroup={onOpenGroup}
       onSelectPost={onSelectPost}
+      onAuthorPress={onAuthorPress}
     />
   )
 }

@@ -26,16 +26,16 @@ export function authorFromUser(user: User | null): PersonSummary {
   if (!user) {
     return { id: 'me', name: 'You', initials: 'You' }
   }
-  const name = [user.firstName, user.lastName].filter(Boolean).join(' ').trim() || user.username
+  const name = [user.firstName, user.lastName].filter(Boolean).join(' ').trim() || 'You'
   const initials = user.firstName
     ? `${user.firstName[0] || ''}${user.lastName?.[0] || ''}`.toUpperCase()
-    : user.username.slice(0, 2).toUpperCase()
+    : 'You'
   return {
     id: user.id || 'me',
     name,
     initials,
     verification: verificationFor(user),
-    accentColor: colorFor(user.id || user.username),
+    accentColor: colorFor(user.id || 'me'),
   }
 }
 

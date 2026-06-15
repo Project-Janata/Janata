@@ -103,10 +103,10 @@ describe('authorFromUser', () => {
     expect(author.initials).toBe('RK')
   })
 
-  it('falls back to username when no name is set', () => {
+  it('does not fall back to username when no name is set', () => {
     const author = authorFromUser({ username: 'rkrishna' } as any)
-    expect(author.name).toBe('rkrishna')
-    expect(author.initials).toBe('RK')
+    expect(author.name).toBe('You')
+    expect(author.initials).toBe('You')
   })
 
   it('maps verification level to a badge tier', () => {

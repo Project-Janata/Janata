@@ -44,6 +44,7 @@ export function PostThread({
   bottomInset = 0,
   hideSourceChip = false,
   onCollapse,
+  onAuthorPress,
   onPostChanged,
   onPostDeleted,
 }: {
@@ -57,6 +58,7 @@ export function PostThread({
   // When set, the thread is an inline-expanded feed card: render a "Hide"
   // control so the user can collapse it back to a normal post card.
   onCollapse?: () => void
+  onAuthorPress?: (authorId: string) => void
   // Refresh the feed list after a pin/edit/reaction so it reflects the change.
   onPostChanged?: () => void
   // Close the detail surface after the post is deleted.
@@ -88,6 +90,10 @@ export function PostThread({
   const canPin = post.groupKind !== 'public' && canPinPosts(user)
   const isAuthor = canModifyPost(user, post.author.id)
   const hasMenu = canPin || isAuthor
+  const authorProfilePress =
+    onAuthorPress && post.author.id !== user?.id
+      ? () => onAuthorPress(post.author.id)
+      : undefined
 
   const handleTogglePin = async () => {
     if (actionBusy) return
@@ -261,6 +267,7 @@ export function PostThread({
           reactions={reactions}
           colors={colors}
           hasMenu={hasMenu}
+          onAuthorPress={authorProfilePress}
           onOpenMenu={() => { setMenuOpen(true); track('feed_post_menu_opened', { post_id: post.postId, source: 'post_thread' }) }}
           onReact={handleReact}
         />
@@ -322,7 +329,16 @@ export function PostThread({
       ) : (
         <View style={{ gap: 16 }}>
           {replies.map((reply) => (
-            <PostMessageBlock key={reply.id} message={reply} colors={colors} />
+            <PostMessageBlock
+              key={reply.id}
+              message={reply}
+              colors={colors}
+              onAuthorPress={
+                onAuthorPress && reply.author.id !== user?.id
+                  ? () => onAuthorPress(reply.author.id)
+                  : undefined
+              }
+            />
           ))}
         </View>
       )}
@@ -470,23 +486,39 @@ function PostMessageBlock({
   message,
   colors,
   original = false,
+  onAuthorPress,
 }: {
   message: BoardMessage
   colors: AppColors
   original?: boolean
+  onAuthorPress?: () => void
 }) {
   const reactions = message.reactions ?? []
 
   return (
     <View style={{ flexDirection: 'row', gap: original ? 12 : 10 }}>
-      <Avatar
-        name={message.author.name}
-        initials={message.author.initials}
-        size={original ? 42 : 34}
-        backgroundColor={message.author.accentColor}
-      />
+      <Pressable
+        disabled={!onAuthorPress}
+        onPress={onAuthorPress}
+        accessibilityRole={onAuthorPress ? 'button' : undefined}
+        accessibilityLabel={onAuthorPress ? `Open ${message.author.name}'s profile` : undefined}
+        hitSlop={6}
+      >
+        <Avatar
+          name={message.author.name}
+          initials={message.author.initials}
+          size={original ? 42 : 34}
+          backgroundColor={message.author.accentColor}
+        />
+      </Pressable>
       <View style={{ flex: 1, minWidth: 0 }}>
-        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 7, flexWrap: 'wrap' }}>
+        <Pressable
+          disabled={!onAuthorPress}
+          onPress={onAuthorPress}
+          accessibilityRole={onAuthorPress ? 'button' : undefined}
+          accessibilityLabel={onAuthorPress ? `Open ${message.author.name}'s profile` : undefined}
+          style={{ flexDirection: 'row', alignItems: 'center', gap: 7, flexWrap: 'wrap' }}
+        >
           <Text
             style={{
               fontFamily: 'Inclusive Sans',
@@ -514,7 +546,7 @@ function PostMessageBlock({
           <Text style={{ marginLeft: 'auto', fontSize: 12, color: colors.textFaint }}>
             {message.timestamp}
           </Text>
-        </View>
+        </Pressable>
 
         <Text
           style={{
@@ -597,6 +629,7 @@ function OriginalPost({
   reactions,
   colors,
   hasMenu,
+  onAuthorPress,
   onOpenMenu,
   onReact,
 }: {
@@ -606,6 +639,7 @@ function OriginalPost({
   reactions: Array<{ emoji: string; count: number }>
   colors: AppColors
   hasMenu: boolean
+  onAuthorPress?: () => void
   onOpenMenu: () => void
   onReact: (emoji: string) => void
 }) {
@@ -614,32 +648,48 @@ function OriginalPost({
   const [lightboxOpen, setLightboxOpen] = useState(false)
   return (
     <View style={{ flexDirection: 'row', gap: 12 }}>
-      <Avatar
-        name={post.author.name}
-        initials={post.author.initials}
-        size={42}
-        backgroundColor={post.author.accentColor}
-      />
+      <Pressable
+        disabled={!onAuthorPress}
+        onPress={onAuthorPress}
+        accessibilityRole={onAuthorPress ? 'button' : undefined}
+        accessibilityLabel={onAuthorPress ? `Open ${post.author.name}'s profile` : undefined}
+        hitSlop={6}
+      >
+        <Avatar
+          name={post.author.name}
+          initials={post.author.initials}
+          size={42}
+          backgroundColor={post.author.accentColor}
+        />
+      </Pressable>
       <View style={{ flex: 1, minWidth: 0 }}>
         <View style={{ flexDirection: 'row', alignItems: 'center', gap: 7, flexWrap: 'wrap' }}>
-          <Text style={{ fontFamily: 'Inclusive Sans', fontSize: 15, color: colors.text }}>
-            {post.author.name}
-          </Text>
-          {post.author.verification === 'sevak' ? (
-            <Text style={{ fontSize: 12, color: '#C2410C' }}>SEVAK</Text>
-          ) : null}
-          {pinned ? (
-            <View
-              style={{
-                borderRadius: 999,
-                backgroundColor: colors.panel,
-                paddingHorizontal: 8,
-                paddingVertical: 3,
-              }}
-            >
-              <Text style={{ fontSize: 11, color: colors.textMuted }}>Pinned</Text>
-            </View>
-          ) : null}
+          <Pressable
+            disabled={!onAuthorPress}
+            onPress={onAuthorPress}
+            accessibilityRole={onAuthorPress ? 'button' : undefined}
+            accessibilityLabel={onAuthorPress ? `Open ${post.author.name}'s profile` : undefined}
+            style={{ flexDirection: 'row', alignItems: 'center', gap: 7, flexWrap: 'wrap' }}
+          >
+            <Text style={{ fontFamily: 'Inclusive Sans', fontSize: 15, color: colors.text }}>
+              {post.author.name}
+            </Text>
+            {post.author.verification === 'sevak' ? (
+              <Text style={{ fontSize: 12, color: '#C2410C' }}>SEVAK</Text>
+            ) : null}
+            {pinned ? (
+              <View
+                style={{
+                  borderRadius: 999,
+                  backgroundColor: colors.panel,
+                  paddingHorizontal: 8,
+                  paddingVertical: 3,
+                }}
+              >
+                <Text style={{ fontSize: 11, color: colors.textMuted }}>Pinned</Text>
+              </View>
+            ) : null}
+          </Pressable>
           <Text style={{ marginLeft: 'auto', fontSize: 12, color: colors.textFaint }}>
             {post.timestamp}
           </Text>

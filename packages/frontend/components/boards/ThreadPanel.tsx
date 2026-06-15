@@ -38,6 +38,7 @@ export function ThreadPanel({
   bottomInset = 0,
   visibleLabel,
   onMessagePress,
+  onAuthorPress,
   onSubmitPost,
   showComposer = true,
   showSource = false,
@@ -58,6 +59,7 @@ export function ThreadPanel({
   bottomInset?: number
   visibleLabel?: string
   onMessagePress?: (message: BoardMessage) => void
+  onAuthorPress?: (authorId: string) => void
   onSubmitPost?: (body: string) => Promise<void> | void
   showComposer?: boolean
   showSource?: boolean
@@ -100,6 +102,9 @@ export function ThreadPanel({
               colors={colors}
               showSource={showSource}
               onPress={onMessagePress ? () => onMessagePress(message) : undefined}
+              onAuthorPress={
+                onAuthorPress && message.author.id ? () => onAuthorPress(message.author.id) : undefined
+              }
             />
           ))}
         </View>
@@ -303,12 +308,14 @@ export function BoardPostCard({
   message,
   colors,
   onPress,
+  onAuthorPress,
   showSource = false,
   asCard = false,
 }: {
   message: BoardMessage
   colors: ThreadPanelColors
   onPress?: () => void
+  onAuthorPress?: () => void
   showSource?: boolean
   // Render the white rounded card chrome without forcing the source line.
   // (showSource still controls the board/event label; asCard just gives the
@@ -386,12 +393,23 @@ export function BoardPostCard({
       ) : null}
 
       <View style={{ flexDirection: 'row', alignItems: 'flex-start', gap: 12 }}>
-        <Avatar
-          name={message.author.name}
-          initials={message.author.initials}
-          size={42}
-          backgroundColor={message.author.accentColor}
-        />
+        <Pressable
+          disabled={!onAuthorPress}
+          onPress={(event) => {
+            event.stopPropagation()
+            onAuthorPress?.()
+          }}
+          accessibilityRole={onAuthorPress ? 'button' : undefined}
+          accessibilityLabel={onAuthorPress ? `Open ${message.author.name}'s profile` : undefined}
+          hitSlop={6}
+        >
+          <Avatar
+            name={message.author.name}
+            initials={message.author.initials}
+            size={42}
+            backgroundColor={message.author.accentColor}
+          />
+        </Pressable>
 
         <View style={{ flex: 1, gap: 8 }}>
           <View
@@ -403,8 +421,15 @@ export function BoardPostCard({
             }}
           >
             <View style={{ flex: 1 }}>
-              <View
-                style={{ flexDirection: 'row', alignItems: 'center', gap: 7, flexWrap: 'wrap' }}
+              <Pressable
+                disabled={!onAuthorPress}
+                onPress={(event) => {
+                  event.stopPropagation()
+                  onAuthorPress?.()
+                }}
+                accessibilityRole={onAuthorPress ? 'button' : undefined}
+                accessibilityLabel={onAuthorPress ? `Open ${message.author.name}'s profile` : undefined}
+                style={{ alignSelf: 'flex-start', flexDirection: 'row', alignItems: 'center', gap: 7, flexWrap: 'wrap' }}
               >
                 <Text
                   style={{
@@ -432,7 +457,7 @@ export function BoardPostCard({
                   </Text>
                 ) : null}
                 {!isFeedCard && message.pinned ? <Pill label="Pinned" colors={colors} /> : null}
-              </View>
+              </Pressable>
               <Text
                 style={{
                   fontSize: 13,

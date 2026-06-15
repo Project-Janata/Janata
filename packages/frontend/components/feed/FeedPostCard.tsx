@@ -9,10 +9,12 @@ export function FeedPostCard({
   post,
   colors,
   onPress,
+  onAuthorPress,
 }: {
   post: FeedPost
   colors: AppColors
   onPress?: () => void
+  onAuthorPress?: (authorId: string) => void
 }) {
   const reactions = post.reactions ?? [{ emoji: '🙏', count: 2 }]
   const replies = post.replyCount ?? 2
@@ -55,14 +57,34 @@ export function FeedPostCard({
       </View>
 
       <View style={{ flexDirection: 'row', gap: 12 }}>
-        <Avatar
-          name={post.author.name}
-          initials={post.author.initials}
-          size={38}
-          backgroundColor={post.author.accentColor}
-        />
+        <Pressable
+          disabled={!onAuthorPress}
+          onPress={(event) => {
+            event.stopPropagation()
+            if (post.author.id) onAuthorPress?.(post.author.id)
+          }}
+          accessibilityRole={onAuthorPress ? 'button' : undefined}
+          accessibilityLabel={onAuthorPress ? `Open ${post.author.name}'s profile` : undefined}
+          hitSlop={6}
+        >
+          <Avatar
+            name={post.author.name}
+            initials={post.author.initials}
+            size={38}
+            backgroundColor={post.author.accentColor}
+          />
+        </Pressable>
         <View style={{ flex: 1, gap: 6 }}>
-          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+          <Pressable
+            disabled={!onAuthorPress}
+            onPress={(event) => {
+              event.stopPropagation()
+              if (post.author.id) onAuthorPress?.(post.author.id)
+            }}
+            accessibilityRole={onAuthorPress ? 'button' : undefined}
+            accessibilityLabel={onAuthorPress ? `Open ${post.author.name}'s profile` : undefined}
+            style={{ alignSelf: 'flex-start', flexDirection: 'row', alignItems: 'center', gap: 6, flexWrap: 'wrap' }}
+          >
             <Text style={{ fontSize: 14, color: colors.text }}>{post.author.name}</Text>
             {post.author.verification === 'sevak' ? (
               <View
@@ -76,7 +98,7 @@ export function FeedPostCard({
                 <Text style={{ fontSize: 10, color: colors.accent }}>SEVAK</Text>
               </View>
             ) : null}
-          </View>
+          </Pressable>
 
           <Text style={{ fontSize: 14, lineHeight: 20, color: colors.text }}>{post.body}</Text>
 

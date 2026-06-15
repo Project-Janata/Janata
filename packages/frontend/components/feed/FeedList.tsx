@@ -12,16 +12,20 @@ export function FeedList({
   colors,
   feedColors,
   hasQuery = false,
+  currentUserId,
   onOpenGroup,
   onSelectPost,
+  onAuthorPress,
 }: {
   posts: FeedPost[]
   groups: GroupBoard[]
   colors: ThreadPanelColors
   feedColors: AppColors
   hasQuery?: boolean
+  currentUserId?: string
   onOpenGroup: (group: GroupBoard) => void
   onSelectPost: (id: string) => void
+  onAuthorPress?: (authorId: string) => void
 }) {
   const [visibleCount, setVisibleCount] = useState(25)
   const visiblePosts = posts.slice(0, visibleCount)
@@ -84,6 +88,9 @@ export function FeedList({
           post={post}
           colors={feedColors}
           onPress={() => onSelectPost(post.id)}
+          onAuthorPress={
+            onAuthorPress && post.author.id !== currentUserId ? onAuthorPress : undefined
+          }
         />
       ))}
       {hasMore ? (
