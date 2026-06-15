@@ -28,6 +28,16 @@ export interface Env {
   RESEND_FROM_EMAIL?: string
   /** When "true", outbound email sends are skipped. Tests set this. */
   EMAIL_SEND_DISABLED?: string
+  /**
+   * Invite gate (#342 hard-gate follow-up). When "true", POST /auth/register
+   * refuses signups that don't carry a valid invite code — Janata becomes
+   * invite-only at the API, matching the invite-wall UI (#458). Developer
+   * emails still bypass. Off (any other value / unset) keeps the legacy soft
+   * path where a no-invite signup lands at UNVERIFIED_USER. Set in
+   * wrangler.toml [vars] so prod/staging/preview enforce it; left unset in the
+   * test config so the existing "no invite → unverified" test stays valid.
+   */
+  REQUIRE_INVITE_CODE?: string
 }
 
 // ── Database row types (mirrors D1 schema) ────────────────────────────

@@ -248,6 +248,46 @@ describe('POST /api/auth/register', () => {
     })
     expect(res.status).toBe(400)
   })
+
+  // Invite gate (#342): with REQUIRE_INVITE_CODE="true" the API is invite-only.
+  // The base env leaves the flag unset, so we override it per request here.
+  async function registerGated(data: Record<string, unknown>) {
+    const req = new Request('http://localhost/api/auth/register', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(data),
+    })
+    const ctx = createExecutionContext()
+    const res = await app.fetch(req, { ...env, REQUIRE_INVITE_CODE: 'true' }, ctx)
+    await waitOnExecutionContext(ctx)
+    const body: any = await res.json().catch(() => ({}))
+    return { res, body }
+  }
+
+  it('invite gate ON: refuses a no-invite signup (403)', async () => {
+    const { res, body } = await registerGated({ username: 'gated-noinvite', password: 'password123' })
+    expect(res.status).toBe(403)
+    expect(body.message).toContain('invite is required')
+  })
+
+  it('invite gate ON: allows a signup with a valid invite (201)', async () => {
+    const { res, body } = await registerGated({
+      username: 'gated-withinvite',
+      password: 'password123',
+      inviteCode: TEST_INVITE_CODE,
+    })
+    expect(res.status).toBe(201)
+    expect(body.message).toBe('User registered successfully')
+  })
+
+  it('invite gate ON: developer email bypasses without an invite (201)', async () => {
+    const { res, body } = await registerGated({
+      username: 'kishparikh18@gmail.com',
+      password: 'password123',
+    })
+    expect(res.status).toBe(201)
+    expect(body.message).toBe('User registered successfully')
+  })
 })
 
 // ═══════════════════════════════════════════════════════════════════════

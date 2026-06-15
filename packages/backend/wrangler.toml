@@ -30,3 +30,5 @@ bucket_name = "chinmaya-janata-avatars"
 # dev`, values come from .dev.vars (gitignored, see .dev.vars.example).
 [vars]
 RESEND_FROM_EMAIL = "noreply@chinmayajanata.org"
+# Invite gate ON (#342): refuse API signups without a valid invite code.
+REQUIRE_INVITE_CODE = "true"

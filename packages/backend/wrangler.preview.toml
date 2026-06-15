@@ -33,6 +33,9 @@ bucket_name = "chinmaya-janata-avatars"
 # can read the repo could otherwise mint valid preview tokens.
 [vars]
 RESEND_FROM_EMAIL = "noreply@chinmayajanata.org"
+# Invite gate ON (#342): preview exercises the real invite-only flow. The seed
+# script registers its role users with a valid code (see seed-preview-roles.sh).
+REQUIRE_INVITE_CODE = "true"
 
 # Secrets (set once per worker, NOT in this file):
 #   npx wrangler secret put JWT_SECRET         --config packages/backend/wrangler.preview.toml
