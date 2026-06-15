@@ -11,7 +11,7 @@ import { applyMigration, dropAllTables, TEST_INVITE_CODE } from './setup'
 import { app } from '../app'
 import { hashPassword } from '../auth'
 import { clearRateLimits } from '../middleware'
-import { ADMIN_EMAIL } from '../constants'
+import { ADMIN_EMAIL, NORMAL_USER } from '../constants'
 
 // ── Helpers ──────────────────────────────────────────────────────────
 
@@ -287,6 +287,131 @@ describe('POST /api/auth/register', () => {
     })
     expect(res.status).toBe(201)
     expect(body.message).toBe('User registered successfully')
+  })
+})
+
+// ═══════════════════════════════════════════════════════════════════════
+// INVITE GATE (#403): vouch name, verified-at-inception, attribution, guest RSVP
+// ═══════════════════════════════════════════════════════════════════════
+
+describe('invite gate (#403)', () => {
+  async function mintCodeAs(token: string): Promise<string> {
+    const { body } = await jsonPost('/api/auth/invite-codes', {}, authHeader(token))
+    return body.code
+  }
+
+  it('validate-invite-code returns the inviter first name for a member-minted code', async () => {
+    const { token } = await registerAndLogin('asha', 'password123')
+    await env.DB.prepare('UPDATE users SET first_name = ? WHERE username = ?').bind('Asha', 'asha').run()
+    const code = await mintCodeAs(token)
+    const { body } = await jsonPost('/api/auth/validate-invite-code', { code })
+    expect(body.valid).toBe(true)
+    expect(body.inviterFirstName).toBe('Asha')
+  })
+
+  it('validate-invite-code returns a null inviter name for an admin cohort code', async () => {
+    const { body } = await jsonPost('/api/auth/validate-invite-code', { code: TEST_INVITE_CODE })
+    expect(body.valid).toBe(true)
+    expect(body.inviterFirstName).toBeNull()
+  })
+
+  it('validate-invite-code rejects a bogus code', async () => {
+    const { body } = await jsonPost('/api/auth/validate-invite-code', { code: 'NOPE000NOPE0' })
+    expect(body.valid).toBe(false)
+  })
+
+  it('registering through a member invite verifies at inception and records attribution', async () => {
+    const { token } = await registerAndLogin('inviter', 'password123')
+    const code = await mintCodeAs(token)
+    const { res } = await jsonPost('/api/auth/register', {
+      username: 'invitee',
+      password: 'password123',
+      inviteCode: code,
+    })
+    expect(res.status).toBe(201)
+
+    const inviter = await env.DB.prepare('SELECT id FROM users WHERE username = ?')
+      .bind('inviter')
+      .first<{ id: string }>()
+    const invitee = await env.DB.prepare(
+      'SELECT verification_level, invited_by_user_id FROM users WHERE username = ?',
+    )
+      .bind('invitee')
+      .first<{ verification_level: number; invited_by_user_id: string | null }>()
+
+    expect(invitee?.verification_level).toBe(NORMAL_USER)
+    expect(invitee?.invited_by_user_id).toBe(inviter?.id)
+  })
+
+  describe('guest RSVP (new-11/11b)', () => {
+    let eventId: string
+
+    beforeEach(async () => {
+      const adminToken = await createAdmin()
+      const { token } = await registerAndLogin('host', 'password123')
+      const { body: center } = await jsonPost(
+        '/api/addCenter',
+        { centerName: 'Guest Center', latitude: 37.0, longitude: -121.0 },
+        authHeader(adminToken),
+      )
+      const { body: ev } = await jsonPost(
+        '/api/addEvent',
+        {
+          title: 'Open Event',
+          description: 'x',
+          date: '2030-06-01T10:00:00Z',
+          latitude: 37.0,
+          longitude: -121.0,
+          centerID: center.id,
+        },
+        authHeader(token),
+      )
+      eventId = ev.id
+    })
+
+    it('records a guest RSVP and dedupes the same email (new-11b)', async () => {
+      const first = await jsonPost('/api/attendEventGuest', {
+        eventID: eventId,
+        name: 'Guest One',
+        email: 'guest@example.com',
+      })
+      expect(first.res.status).toBe(200)
+      expect(first.body.alreadyRsvped).toBe(false)
+
+      const second = await jsonPost('/api/attendEventGuest', {
+        eventID: eventId,
+        name: 'Guest One',
+        email: 'guest@example.com',
+      })
+      expect(second.res.status).toBe(200)
+      expect(second.body.alreadyRsvped).toBe(true)
+
+      const row = await env.DB.prepare(
+        'SELECT COUNT(*) AS c FROM event_guest_rsvps WHERE event_id = ? AND email = ?',
+      )
+        .bind(eventId, 'guest@example.com')
+        .first<{ c: number }>()
+      expect(row?.c).toBe(1)
+    })
+
+    it('rejects a guest RSVP with an invalid email (400)', async () => {
+      const { res } = await jsonPost('/api/attendEventGuest', {
+        eventID: eventId,
+        name: 'No Email',
+        email: 'not-an-email',
+      })
+      expect(res.status).toBe(400)
+    })
+
+    it('blocks guest RSVP on a verified-only event (403)', async () => {
+      await env.DB.prepare('UPDATE events SET requires_verified = 1 WHERE id = ?').bind(eventId).run()
+      const { res } = await jsonPost('/api/attendEventGuest', {
+        eventID: eventId,
+        name: 'Gated Guest',
+        email: 'gated@example.com',
+      })
+      expect(res.status).toBe(403)
+    })
   })
 })
 
