@@ -119,7 +119,9 @@ export default function AuthScreen() {
     : authStep === 'login'
       ? 'Sign In'
       : authStep === 'signup'
-        ? 'Create Account'
+        ? hasInvite
+          ? 'Accept invite and create account'
+          : 'Create Account'
         : 'Continue'
   const isNarrowWeb = viewportWidth < 1024
   const isMobile = viewportWidth < 640
@@ -153,7 +155,7 @@ export default function AuthScreen() {
           flex: 1,
         }}
       >
-        {/* Top nav: back to landing (left) + Discover (right) */}
+        {/* Top nav: home mark (left) + guest browse (right) */}
         <nav
           style={{
             display: 'flex',
@@ -164,41 +166,40 @@ export default function AuthScreen() {
           }}
         >
           <button
-            onClick={() => { track('auth_back_to_home_pressed', { source: 'auth' }); router.push('/landing') }}
+            onClick={() => { track('auth_logo_pressed', { source: 'auth' }); router.push('/landing') }}
+            aria-label="Go to Janata home"
             style={{
               background: 'none',
               border: 'none',
               cursor: 'pointer',
-              padding: '8px 4px',
-              margin: '-8px -4px',
-              fontSize: 14,
-              fontFamily: 'Inclusive Sans, sans-serif',
-              color: '#78716C',
+              padding: 0,
+              margin: 0,
               minHeight: 44,
               display: 'flex',
               alignItems: 'center',
             }}
           >
-            &larr; Back to home
+            <Logo size={isMobile ? 28 : 32} />
           </button>
           <button
-            onClick={() => { track('auth_discover_pressed', { source: 'auth' }); router.push('/(tabs)') }}
+            onClick={() => { track('auth_browse_as_guest_pressed', { source: 'auth' }); router.push('/(tabs)') }}
             style={{
-              background: 'none',
-              border: 'none',
+              backgroundColor: '#FAFAF7',
+              border: '1px solid #D6D3D1',
+              borderRadius: 8,
               cursor: 'pointer',
-              padding: '8px 4px',
-              margin: '-8px -4px',
+              padding: '0 16px',
               fontSize: 14,
               fontFamily: 'Inclusive Sans, sans-serif',
               fontWeight: '500',
-              color: '#E8862A',
+              color: '#57534E',
+              height: 44,
               minHeight: 44,
               display: 'flex',
               alignItems: 'center',
             }}
           >
-            Discover &rarr;
+            Browse as guest
           </button>
         </nav>
 
@@ -236,15 +237,6 @@ export default function AuthScreen() {
             </button>
           )}
 
-          {/* Janata logo */}
-          <div
-            onClick={() => { track('auth_logo_pressed', { source: 'auth' }); router.push('/landing') }}
-            role="link"
-            style={{ marginBottom: isMobile ? 32 : 48, cursor: 'pointer' }}
-          >
-            <Logo size={isMobile ? 28 : 32} />
-          </div>
-
           {/* Heading */}
           <h1
             style={{
@@ -262,12 +254,12 @@ export default function AuthScreen() {
           {/* What Janata is — only on the first step, so a new beta tester knows
               what they're signing into before entering an email. On mobile the
               brand carousel is hidden, making this the only context shown. */}
-          {authStep === 'initial' && (
+          {authStep === 'initial' && !hasInvite && (
             <div style={{ marginTop: 4, marginBottom: 24 }}>
               {[
                 'Discover satsangs, camps, and classes near you',
                 'RSVP in a tap and see who else is going',
-                'Stay connected with your center and sangha',
+                'Send messages to members in centers and your events.',
               ].map((line) => (
                 <div key={line} style={{ display: 'flex', gap: 10, alignItems: 'flex-start', marginBottom: 9 }}>
                   <span style={{ color: '#E8862A', fontSize: 14, lineHeight: '22px' }}>✓</span>
@@ -283,8 +275,9 @@ export default function AuthScreen() {
               fontFamily: 'Inclusive Sans, sans-serif',
               fontSize: 16,
               color: '#78716C',
-              marginBottom: 32,
+              marginBottom: 8,
               marginTop: 0,
+              lineHeight: '24px',
             }}
           >
             {subtitle}
@@ -438,7 +431,7 @@ export default function AuthScreen() {
           </form>
 
           {/* Toggle links */}
-          {authStep === 'initial' && (
+          {authStep === 'initial' && !hasInvite && (
             <p
               style={{
                 fontSize: 14,
@@ -469,7 +462,7 @@ export default function AuthScreen() {
 
           {/* Have an invite? — manual code entry now that the typed step is cut
               (form-03). Routes to the neutral paste screen (new-25). */}
-          {authStep === 'initial' && (
+          {authStep === 'initial' && !hasInvite && (
             <p
               style={{
                 fontSize: 14,

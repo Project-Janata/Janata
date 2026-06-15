@@ -34,14 +34,12 @@ export function useAuthFlow() {
   // the vouch without a second lookup. Absent → nameless.
   const inviterName = typeof params.inviter === 'string' && params.inviter ? params.inviter : null
 
-  // mode=login needs a prefilled email. mode=signup works with only an invite
-  // code because the email field stays editable in that flow.
+  // mode=login needs a prefilled email. Invite links still start email-first so
+  // a new member only sees password fields after we know the email is new.
   const initialStep = (): AuthStep =>
     params.mode === 'login' && urlEmail
       ? 'login'
-      : params.mode === 'signup' && urlInviteCode
-        ? 'signup'
-        : 'initial'
+      : 'initial'
 
   const [authStep, setAuthStep] = useState<AuthStep>(initialStep)
   const [username, setUsername] = useState(urlEmail)
@@ -248,6 +246,8 @@ export function useAuthFlow() {
 
   const errorMessages = Object.values(errors).filter(Boolean)
 
+  const inviteEmailStep = authStep === 'initial' && hasInvite
+
   const heading =
     authStep === 'login'
       ? collisionFlip
@@ -255,7 +255,9 @@ export function useAuthFlow() {
         : 'Welcome back.'
       : authStep === 'signup'
         ? 'Join the community.'
-        : 'Welcome.'
+        : inviteEmailStep
+          ? "You've been invited."
+          : 'Welcome.'
 
   const subtitle =
     authStep === 'login'
@@ -263,8 +265,12 @@ export function useAuthFlow() {
         ? "Log in and we'll apply the invite to it."
         : 'Enter your password to continue'
       : authStep === 'signup'
-        ? 'Create your account to get started'
-        : 'Enter your email to get started'
+        ? hasInvite
+          ? 'Create your account to accept this invite'
+          : 'Create your account to get started'
+        : inviteEmailStep
+          ? 'Enter your email to accept this Janata invite.'
+          : 'Enter your email to get started'
 
   return {
     // state

@@ -115,12 +115,12 @@ export default function AuthScreen() {
 
               {/* What Janata is — first step only, so a new member knows what
                   they're signing into before entering an email. */}
-              {authStep === 'initial' && (
+              {authStep === 'initial' && !hasInvite && (
                 <View style={{ marginTop: 12, gap: 9 }}>
                   {[
                     'Discover satsangs, camps, and classes near you',
                     'RSVP in a tap and see who else is going',
-                    'Stay connected with your center and sangha',
+                    'Send messages to members in centers and your events.',
                   ].map((line) => (
                     <View key={line} style={{ flexDirection: 'row', gap: 10, alignItems: 'flex-start' }}>
                       <Text style={{ color: '#E8862A', fontSize: 14, lineHeight: 22 }}>✓</Text>
@@ -230,7 +230,13 @@ export default function AuthScreen() {
                 loading={loading}
                 style={{ marginTop: 8 }}
               >
-                {authStep === 'login' ? 'Log In' : authStep === 'signup' ? 'Sign Up' : 'Continue'}
+                {authStep === 'login'
+                  ? 'Log In'
+                  : authStep === 'signup'
+                    ? hasInvite
+                      ? 'Accept Invite'
+                      : 'Sign Up'
+                    : 'Continue'}
               </PrimaryButton>
 
               {/* Forgot Password (only on login) */}
