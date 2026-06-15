@@ -1,7 +1,6 @@
 // Profile tab — web (desktop two-column / mobile stacked). Direction B.
 // Display-only social profile: identity + interests on the left, engagement
-// (stats, upcoming events, centers) on the right. Editing lives on /edit-profile;
-// account management lives on /settings (reached via "Account & Settings").
+// (stats, upcoming events, centers) on the right. Editing lives on /edit-profile.
 import React, { useState, useCallback } from 'react'
 import { ScrollView, View, Pressable, Image, Share, Platform, useWindowDimensions } from 'react-native'
 import { useRouter, useFocusEffect } from 'expo-router'
@@ -69,7 +68,9 @@ export default function Profile() {
       : vl >= 45 ? 'Verified member'
       : null
   const homeCenter = allCenters.find((cc) => cc.centerID === user?.centerID)
+  const showHomeCenterInProfile = !!homeCenter && groups.length === 0
   const interests = user?.interests || []
+  const showActivityStats = createdCount > 0 || events.length > 0
 
   const today = new Date().toISOString().split('T')[0]
   const upcoming = [...events]
@@ -84,7 +85,6 @@ export default function Profile() {
       track('profile_shared', { source: 'profile_web', username: user?.username })
     } catch { /* dismissed */ }
   }
-  const onSettings = () => { track('nav_settings_opened', { source: 'profile_web', destination: 'preferences' }); router.push('/settings') }
   const onExplore = () => { track('profile_explore_cta', { source: 'profile_web' }); router.push('/explore') }
 
   // ── Reusable pieces ──────────────────────────────────────
@@ -101,14 +101,13 @@ export default function Profile() {
           </View>
         )}
         <Text style={{ fontSize: 21, fontWeight: '700', color: c.text, marginTop: 14, textAlign: 'center' }}>{displayName}</Text>
-        {user?.username ? <Text style={{ fontSize: 14, color: c.textMuted, marginTop: 1 }}>@{user.username}</Text> : null}
         {roleLabel ? (
           <View style={{ flexDirection: 'row', alignItems: 'center', gap: 5, marginTop: 10, backgroundColor: c.accentSoft, paddingHorizontal: 12, paddingVertical: 5, borderRadius: 999 }}>
             <BadgeCheck size={14} color="#C2410C" />
             <Text style={{ fontSize: 12.5, fontWeight: '600', color: '#C2410C' }}>{roleLabel}</Text>
           </View>
         ) : null}
-        {homeCenter ? (
+        {showHomeCenterInProfile ? (
           <View style={{ flexDirection: 'row', alignItems: 'center', gap: 5, marginTop: 10 }}>
             <MapPin size={13} color={c.textFaint} />
             <Text style={{ fontSize: 12.5, color: c.textMuted, textAlign: 'center' }}>{homeCenter.name}</Text>
@@ -118,11 +117,7 @@ export default function Profile() {
 
       {user?.bio ? (
         <Text style={{ fontSize: 14, lineHeight: 21, color: c.textSecondary, marginTop: 16 }}>{user.bio}</Text>
-      ) : (
-        <Text style={{ fontSize: 14, lineHeight: 21, color: c.textFaint, marginTop: 16 }}>
-          No bio yet — tap Edit to introduce yourself.
-        </Text>
-      )}
+      ) : null}
 
       <View style={{ flexDirection: 'row', gap: 10, marginTop: 18 }}>
         <Pressable onPress={onEdit} style={{ flex: 1, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 7, paddingVertical: 10, borderRadius: 12, backgroundColor: c.text }}>
@@ -145,13 +140,6 @@ export default function Profile() {
         </View>
       ) : null}
 
-      <Pressable
-        onPress={onSettings}
-        style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginTop: 18, paddingTop: 16, borderTopWidth: 1, borderTopColor: c.border }}
-      >
-        <Text style={{ fontSize: 14, color: c.textSecondary }}>Account &amp; Settings</Text>
-        <ChevronRight size={18} color={c.iconMuted} />
-      </Pressable>
     </View>
   )
 
@@ -169,11 +157,12 @@ export default function Profile() {
 
   const RightColumn = (
     <View>
-      <View style={{ flexDirection: 'row', gap: 14 }}>
-        <StatCard icon={<Megaphone size={16} color="#C2410C" />} value={createdCount} label="Posts" />
-        <StatCard icon={<CalendarDays size={16} color="#C2410C" />} value={events.length} label="Events" />
-        <StatCard icon={<Building2 size={16} color="#C2410C" />} value={groups.length} label="Centers" />
-      </View>
+      {showActivityStats ? (
+        <View style={{ flexDirection: 'row', gap: 14 }}>
+          <StatCard icon={<Megaphone size={16} color="#C2410C" />} value={createdCount} label="Posts" />
+          <StatCard icon={<CalendarDays size={16} color="#C2410C" />} value={events.length} label="Events" />
+        </View>
+      ) : null}
 
       <SectionLabel>Upcoming events</SectionLabel>
       {upcoming.length > 0 ? (

@@ -1,9 +1,8 @@
-import React, { useEffect, useRef, useState } from 'react'
-import { Animated, Text, Pressable, View, Image, Easing } from 'react-native'
+import React, { useEffect, useRef } from 'react'
+import { Animated, Text, Pressable, View } from 'react-native'
 import { useUser, useTheme } from '../contexts'
-import { Settings, LogOut, Sun, Moon, User, Monitor, Shield } from 'lucide-react-native'
+import { Settings, LogOut, User, Shield } from 'lucide-react-native'
 import { router, usePathname } from 'expo-router'
-import ThemeSelector from './ThemeSelector'
 import { Avatar } from '../ui'
 import { isSuperAdmin } from '../../utils/admin'
 import { useAnalytics } from '../../utils/analytics'
@@ -13,14 +12,9 @@ function SettingsPanel({ visible, onClose, onLogout }) {
   const opacityAnim = useRef(new Animated.Value(0)).current
   const translateYAnim = useRef(new Animated.Value(-20)).current
   const { user } = useUser()
-  const { preference: themePreference, setPreference: setThemePreference, isDark } = useTheme()
+  const { isDark } = useTheme()
   const { track } = useAnalytics()
   const pathname = usePathname()
-  const themeOptions = ['light', 'dark', 'system']
-  const optionWidth = 70
-  const indicatorPadding = 8
-  const [selectedIndex, setSelectedIndex] = useState(themeOptions.indexOf(themePreference))
-  const slideAnim = useRef(new Animated.Value(selectedIndex * optionWidth)).current
   const previousTheme = useRef(isDark)
   const isMountedRef = useRef(true)
 
@@ -32,9 +26,8 @@ function SettingsPanel({ visible, onClose, onLogout }) {
       // Stop all animations immediately on unmount
       opacityAnim.stopAnimation()
       translateYAnim.stopAnimation()
-      slideAnim.stopAnimation()
     }
-  }, [opacityAnim, translateYAnim, slideAnim])
+  }, [opacityAnim, translateYAnim])
 
   useEffect(() => {
     if (visible) {
@@ -67,17 +60,6 @@ function SettingsPanel({ visible, onClose, onLogout }) {
     }
   }, [visible])
 
-  useEffect(() => {
-    const idx = themeOptions.indexOf(themePreference)
-    setSelectedIndex(idx)
-    Animated.timing(slideAnim, {
-      toValue: idx * optionWidth,
-      duration: 100,
-      useNativeDriver: supportsNativeDriver,
-      easing: Easing.inOut(Easing.ease),
-    }).start()
-  }, [themePreference])
-
   // Stop animations when theme changes
   useEffect(() => {
     if (previousTheme.current !== isDark) {
@@ -98,6 +80,10 @@ function SettingsPanel({ visible, onClose, onLogout }) {
     user?.firstName && user?.lastName
       ? `${user.firstName} ${user.lastName}`
       : user?.username || 'User'
+  const accountIdentifier = user?.email || user?.username || null
+  const accountLabel = accountIdentifier
+    ? accountIdentifier.includes('@') ? accountIdentifier : `@${accountIdentifier}`
+    : null
 
   const profileImage = user?.profileImage
   const getInitials = () => {
@@ -182,7 +168,7 @@ function SettingsPanel({ visible, onClose, onLogout }) {
               numberOfLines={1}
               ellipsizeMode="tail"
             >
-              {user?.username}
+              {accountLabel}
             </Text>
           </View>
         </View>
@@ -190,10 +176,33 @@ function SettingsPanel({ visible, onClose, onLogout }) {
         {/* Separator Line */}
         <View className="h-[1px] bg-gray-200 dark:bg-neutral-800 mb-3" />
 
-        {/* Profile Button */}
+        {/* Account navigation */}
         <Pressable
           className={`flex-row items-center mb-2 p-2 rounded-lg ${
-            pathname === '/settings/profile'
+            pathname === '/settings'
+              ? 'bg-primary'
+              : 'hover:bg-gray-100 dark:hover:bg-neutral-800'
+          }`}
+          onPress={() => {
+            track('nav_settings_opened', { source: 'settings_panel', destination: 'account_settings' })
+            onClose()
+            router.push('/settings')
+          }}
+        >
+          <Settings size={16} color={pathname === '/settings' ? '#fff' : isDark ? '#fff' : '#374151'} className="mr-3" />
+          <Text
+            className={`font-sans ${
+              pathname === '/settings'
+                ? 'text-white font-sans'
+                : 'text-content dark:text-content-dark'
+            }`}
+          >
+            Settings
+          </Text>
+        </Pressable>
+        <Pressable
+          className={`flex-row items-center mb-2 p-2 rounded-lg ${
+            pathname === '/profile'
               ? 'bg-primary'
               : 'hover:bg-gray-100 dark:hover:bg-neutral-800'
           }`}
@@ -203,46 +212,15 @@ function SettingsPanel({ visible, onClose, onLogout }) {
             router.push('/profile')
           }}
         >
-          <User
-            size={16}
-            color={pathname === '/settings/profile' ? '#fff' : isDark ? '#fff' : '#374151'}
-            className="mr-3"
-          />
+          <User size={16} color={pathname === '/profile' ? '#fff' : isDark ? '#fff' : '#374151'} className="mr-3" />
           <Text
             className={`font-sans ${
-              pathname === '/settings/profile'
+              pathname === '/profile'
                 ? 'text-white font-sans'
                 : 'text-content dark:text-content-dark'
             }`}
           >
             Profile
-          </Text>
-        </Pressable>
-        <Pressable
-          className={`flex-row items-center mb-2 p-2 rounded-lg ${
-            pathname === '/settings'
-              ? 'bg-primary'
-              : 'hover:bg-gray-100 dark:hover:bg-neutral-800'
-          }`}
-          onPress={() => {
-            track('nav_settings_opened', { source: 'settings_panel', destination: 'preferences' })
-            onClose()
-            router.push('/settings')
-          }}
-        >
-          <Settings
-            size={16}
-            color={pathname === '/settings' ? '#fff' : isDark ? '#fff' : '#374151'}
-            className="mr-3"
-          />
-          <Text
-            className={`font-sans ${
-              pathname === '/settings'
-                ? 'text-white font-sans'
-                : 'text-content dark:text-content-dark'
-            }`}
-          >
-            Preferences
           </Text>
         </Pressable>
         {isSuperAdmin(user) && (
@@ -264,21 +242,10 @@ function SettingsPanel({ visible, onClose, onLogout }) {
           </>
         )}
 
-        {/* Appearance Slider */}
-        <View className="mb-3">
-          <Text className="text-sm font-sans text-content dark:text-content-dark mb-2">
-            Appearance
-          </Text>
-          <ThemeSelector
-            className="relative flex-row bg-gray-100 dark:bg-neutral-800 rounded-lg p-1"
-            style={{ width: 218 }}
-          />
-        </View>
-
         {user && (
           <>
             {/* Separator Line */}
-            <View className="h-[1px] bg-gray-200 dark:bg-neutral-800 mb-2 mt-2" />
+            <View className="h-[1px] bg-gray-200 dark:bg-neutral-800 mb-2" />
 
             {/* Log Out Button */}
             <Pressable
