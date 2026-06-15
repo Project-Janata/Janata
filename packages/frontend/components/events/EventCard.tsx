@@ -39,13 +39,7 @@ export function EventCard({ event, onPress, variant = 'compact' }: EventCardProp
             <Text className="text-content dark:text-content-dark font-sans text-xl font-bold leading-tight flex-shrink">
               {event.title}
             </Text>
-            {event.isOfficial && (
-              <BadgeCheck
-                size={18}
-                color="#C2410C"
-                accessibilityLabel="Official event"
-              />
-            )}
+            {event.isOfficial && <BadgeCheck size={18} color="#C2410C" />}
           </View>
           <Text className="text-content dark:text-content-dark text-base font-medium mt-2">
             {event.attendees} {event.attendees === 1 ? 'person' : 'people'} attending
@@ -81,13 +75,7 @@ export function EventCard({ event, onPress, variant = 'compact' }: EventCardProp
           <Text className="text-content dark:text-content-dark font-sans text-lg font-semibold leading-tight flex-shrink">
             {event.title}
           </Text>
-          {event.isOfficial && (
-            <BadgeCheck
-              size={15}
-              color="#C2410C"
-              accessibilityLabel="Official event"
-            />
-          )}
+          {event.isOfficial && <BadgeCheck size={15} color="#C2410C" />}
         </View>
         <Text className="text-content dark:text-content-dark text-sm mt-1">
           {event.attendees} {event.attendees === 1 ? 'person' : 'people'}

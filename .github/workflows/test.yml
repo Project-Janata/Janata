@@ -3,10 +3,11 @@ name: CI
 on:
   push:
     branches:
-      - '*'
+      - '**'
   pull_request:
     branches:
       - main
+      - v2
 
 jobs:
   check:
@@ -24,9 +25,8 @@ jobs:
       - name: Clean install
         run: npm ci
 
-      - name: TypeScript check (backend)
-        run: npx tsc --noEmit
-        working-directory: packages/backend
+      - name: TypeScript check
+        run: npm run typecheck
 
       - name: Run backend tests
         run: npm run test:backend

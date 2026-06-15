@@ -444,7 +444,7 @@ export default function DiscoverScreenWeb() {
   // map to that area); centers WITHOUT events are non-selectable and only offer
   // the "view page" chevron — they're grouped separately below.
   const renderCenterRowDesktop = (opt: FilterPickerOption<string>) => {
-    const selectable = opt.count > 0
+    const selectable = (opt.count ?? 0) > 0
     const openPage = () => {
       track('explore_center_page_opened', { centerId: opt.value })
       setCenterPickerOpenDesktop(false)
@@ -883,8 +883,8 @@ export default function DiscoverScreenWeb() {
                     const matches = q
                       ? centerOptionsDesktop.filter((o) => o.label.toLowerCase().includes(q) || (o.sublabel ?? '').toLowerCase().includes(q))
                       : centerOptionsDesktop
-                    const withEvents = matches.filter((o) => o.count > 0)
-                    const withoutEvents = matches.filter((o) => o.count === 0)
+                    const withEvents = matches.filter((o) => (o.count ?? 0) > 0)
+                    const withoutEvents = matches.filter((o) => (o.count ?? 0) === 0)
                     return (
                       <>
                         {withEvents.length > 0 && (

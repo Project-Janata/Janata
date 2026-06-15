@@ -230,7 +230,7 @@ export function MobileDiscoverFallback() {
   // One picker row (mobile-web). Centers WITH events scope the list + fly the
   // map; centers WITHOUT events only open the center page.
   const renderCenterRow = (opt: FilterPickerOption<string>) => {
-    const selectable = opt.count > 0
+    const selectable = (opt.count ?? 0) > 0
     const openPage = () => {
       track('explore_center_page_opened', { centerId: opt.value })
       setCenterPickerOpen(false)
@@ -597,8 +597,8 @@ export function MobileDiscoverFallback() {
                   const matches = q
                     ? centerOptions.filter((o) => o.label.toLowerCase().includes(q) || (o.sublabel ?? '').toLowerCase().includes(q))
                     : centerOptions
-                  const withEvents = matches.filter((o) => o.count > 0)
-                  const withoutEvents = matches.filter((o) => o.count === 0)
+                  const withEvents = matches.filter((o) => (o.count ?? 0) > 0)
+                  const withoutEvents = matches.filter((o) => (o.count ?? 0) === 0)
                   return (
                     <>
                       {withEvents.length > 0 && (

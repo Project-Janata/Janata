@@ -19,10 +19,11 @@ import { NotificationItem } from './NotificationItem'
 import { useColors } from '../../hooks/useColors'
 
 interface NotificationCenterProps {
+  showHeader?: boolean
   onNotificationPress?: (notification: Notification) => void
 }
 
-export const NotificationCenter: React.FC<NotificationCenterProps> = ({ onNotificationPress }) => {
+export const NotificationCenter: React.FC<NotificationCenterProps> = ({ showHeader = true, onNotificationPress }) => {
   const [notifications, setNotifications] = useState<Notification[]>([])
   const [loading, setLoading] = useState(true)
   const [hasMore, setHasMore] = useState(true)
@@ -126,15 +127,16 @@ export const NotificationCenter: React.FC<NotificationCenterProps> = ({ onNotifi
 
   return (
     <View style={{ flex: 1, backgroundColor: c.card }}>
-      {/* Header */}
-      <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingVertical: 16, paddingHorizontal: 16, borderBottomWidth: 1, borderBottomColor: c.border }}>
-        <Text style={{ fontSize: 20, fontWeight: 'bold', color: c.text }}>Notifications</Text>
-        {unreadCount > 0 && (
-          <View style={{ backgroundColor: c.accent, borderRadius: 12, width: 24, height: 24, justifyContent: 'center', alignItems: 'center' }}>
-            <Text style={{ color: '#fff', fontSize: 12, fontWeight: 'bold' }}>{unreadCount}</Text>
-          </View>
-        )}
-      </View>
+      {showHeader ? (
+        <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingVertical: 16, paddingHorizontal: 16, borderBottomWidth: 1, borderBottomColor: c.border }}>
+          <Text style={{ fontSize: 20, fontWeight: 'bold', color: c.text }}>Notifications</Text>
+          {unreadCount > 0 && (
+            <View style={{ backgroundColor: c.accent, borderRadius: 12, width: 24, height: 24, justifyContent: 'center', alignItems: 'center' }}>
+              <Text style={{ color: '#fff', fontSize: 12, fontWeight: 'bold' }}>{unreadCount}</Text>
+            </View>
+          )}
+        </View>
+      ) : null}
 
       {/* Filters */}
       <View style={{ flexDirection: 'row', paddingHorizontal: 16, paddingVertical: 8, gap: 8, borderBottomWidth: 1, borderBottomColor: c.border, alignItems: 'center' }}>

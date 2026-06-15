@@ -120,7 +120,7 @@ export default function OnboardingProvider({ children }: { children: React.React
         interests_count: interests.length,
         looking_for_count: 0,
       })
-      router.replace(returnTo || '/')
+      router.replace((returnTo || '/') as never)
     } catch (error: any) {
       posthog?.capture('onboarding_failed', { error: error.message, source: 'complete' })
       setSubmitError(error.message || 'Something went wrong. Please try again.')
@@ -166,7 +166,7 @@ export default function OnboardingProvider({ children }: { children: React.React
         interests_count: interests.length,
         looking_for_count: 0,
       })
-      router.replace(returnTo || '/')
+      router.replace((returnTo || '/') as never)
     } catch (error: any) {
       posthog?.capture('onboarding_failed', { error: error.message, source: 'skip' })
       setSubmitError(error.message || 'Something went wrong. Please try again.')
