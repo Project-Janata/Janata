@@ -1,13 +1,13 @@
 // Profile tab — native (iOS/Android). Direction B, stacked single column.
 // Mirrors the web Profile (app/(tabs)/profile.web.tsx): a display-only social
 // profile (identity + interests, then engagement: stats, upcoming events,
-// centers). Editing lives on /edit-profile; account management on /settings.
+// centers). Editing lives on /edit-profile.
 // The "You" header + settings gear are provided by the navigator (TabHeader).
 import React, { useState, useCallback } from 'react'
 import { ScrollView, View, Pressable, Image, Share } from 'react-native'
 import { useRouter, useFocusEffect } from 'expo-router'
 import {
-  Pencil, Share2, ChevronRight, BadgeCheck, MapPin, UserPlus,
+  Pencil, Share2, ChevronRight, BadgeCheck, MapPin,
   Megaphone, CalendarDays, Building2,
 } from 'lucide-react-native'
 import { useUser, useTheme } from '../../components/contexts'
@@ -69,7 +69,9 @@ export default function Profile() {
       : vl >= 45 ? 'Verified member'
       : null
   const homeCenter = allCenters.find((cc) => cc.centerID === user?.centerID)
+  const showHomeCenterInProfile = !!homeCenter && groups.length === 0
   const interests = user?.interests || []
+  const showActivityStats = createdCount > 0 || events.length > 0
 
   const today = new Date().toISOString().split('T')[0]
   const upcoming = [...events]
@@ -84,7 +86,6 @@ export default function Profile() {
       track('profile_shared', { source: 'profile', username: user?.username })
     } catch { /* dismissed */ }
   }
-  const onInvite = () => { track('settings_invite_pressed', { source: 'profile' }); router.push('/settings/invite') }
   const onExplore = () => { track('profile_explore_cta', { source: 'profile' }); router.push('/explore') }
 
   const card = { backgroundColor: c.card, borderWidth: 1, borderColor: c.border, borderRadius: 20 } as const
@@ -146,7 +147,7 @@ export default function Profile() {
               <Text style={{ fontSize: 12.5, fontWeight: '600', color: '#C2410C' }}>{roleLabel}</Text>
             </View>
           ) : null}
-          {homeCenter ? (
+          {showHomeCenterInProfile ? (
             <View style={{ flexDirection: 'row', alignItems: 'center', gap: 5, marginTop: 10 }}>
               <MapPin size={13} color={c.textFaint} />
               <Text style={{ fontSize: 12.5, color: c.textMuted, textAlign: 'center' }}>{homeCenter.name}</Text>
@@ -156,11 +157,7 @@ export default function Profile() {
 
         {user?.bio ? (
           <Text style={{ fontSize: 14, lineHeight: 21, color: c.textSecondary, marginTop: 16 }}>{user.bio}</Text>
-        ) : (
-          <Text style={{ fontSize: 14, lineHeight: 21, color: c.textFaint, marginTop: 16 }}>
-            No bio yet — tap Edit to introduce yourself.
-          </Text>
-        )}
+        ) : null}
 
         <View style={{ flexDirection: 'row', gap: 10, marginTop: 18 }}>
           <Pressable onPress={onEdit} style={{ flex: 1, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 7, paddingVertical: 11, borderRadius: 12, backgroundColor: c.text }}>
@@ -183,24 +180,15 @@ export default function Profile() {
           </View>
         ) : null}
 
-        <Pressable
-          onPress={onInvite}
-          style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginTop: 18, paddingTop: 16, borderTopWidth: 1, borderTopColor: c.border }}
-        >
-          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
-            <UserPlus size={16} color={c.textSecondary} />
-            <Text style={{ fontSize: 14, color: c.textSecondary }}>Invite Friends</Text>
-          </View>
-          <ChevronRight size={18} color={c.iconMuted} />
-        </Pressable>
       </View>
 
       {/* Stats */}
-      <View style={{ flexDirection: 'row', gap: 12, marginTop: 18 }}>
-        <StatCard icon={<Megaphone size={16} color="#C2410C" />} value={createdCount} label="Posts" />
-        <StatCard icon={<CalendarDays size={16} color="#C2410C" />} value={events.length} label="Events" />
-        <StatCard icon={<Building2 size={16} color="#C2410C" />} value={groups.length} label="Centers" />
-      </View>
+      {showActivityStats ? (
+        <View style={{ flexDirection: 'row', gap: 12, marginTop: 18 }}>
+          <StatCard icon={<Megaphone size={16} color="#C2410C" />} value={createdCount} label="Posts" />
+          <StatCard icon={<CalendarDays size={16} color="#C2410C" />} value={events.length} label="Events" />
+        </View>
+      ) : null}
 
       {/* Upcoming events */}
       <SectionLabel>Upcoming events</SectionLabel>
