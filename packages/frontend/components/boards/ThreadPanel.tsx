@@ -1,5 +1,5 @@
 import React, { useState } from 'react'
-import { Image, Pressable, ScrollView, Text, TextInput, View } from 'react-native'
+import { Image, Platform, Pressable, ScrollView, Text, TextInput, View } from 'react-native'
 import { Building2, CalendarDays, Globe2, Lock, MessageCircle, MoreHorizontal, Send } from 'lucide-react-native'
 import { Avatar, ImageLightbox } from '../ui'
 import { useUser } from '../contexts'
@@ -334,7 +334,7 @@ export function BoardPostCard({
     <Pressable
       disabled={!onPress}
       onPress={onPress}
-      accessibilityRole={onPress ? 'button' : undefined}
+      accessibilityRole={onPress && Platform.OS !== 'web' ? 'button' : undefined}
       accessibilityLabel={onPress ? `Open post by ${message.author.name}` : undefined}
       style={{
         marginHorizontal: isFeedCard ? 0 : 0,
