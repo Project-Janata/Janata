@@ -3,7 +3,10 @@ import { useCallback, useEffect, useRef, useState } from 'react'
 import { Animated, LogBox, Platform, Text, View, useWindowDimensions } from 'react-native'
 
 // Suppress non-fatal WorkletsTurboModule error in Expo Go (reanimated v4 compat)
-LogBox.ignoreLogs(['Exception in HostFunction: <unknown>'])
+LogBox.ignoreLogs([
+  'Exception in HostFunction: <unknown>',
+  'SafeAreaView has been deprecated',
+])
 import {
   InclusiveSans_300Light,
   InclusiveSans_400Regular,

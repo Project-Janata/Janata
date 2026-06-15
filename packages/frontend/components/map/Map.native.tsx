@@ -1,7 +1,8 @@
 import React, { useEffect, useState, useRef, useCallback, memo } from 'react'
-import { StyleSheet, View, Pressable, Platform } from 'react-native'
+import { StyleSheet, View, Pressable, Platform, Text } from 'react-native'
 import MapView, { Marker, Region, PROVIDER_GOOGLE } from 'react-native-maps'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
+import Constants from 'expo-constants'
 import { Plus, Minus, Navigation } from 'lucide-react-native'
 import { getCurrentPosition } from '../../utils'
 import { useTheme } from '../contexts'
@@ -53,6 +54,12 @@ const PIN_COLORS = {
   center: '#dc2626',
   event: '#2563eb',
 } as const
+
+const hasAndroidGoogleMapsApiKey = (): boolean => {
+  if (Platform.OS !== 'android') return true
+  const extra = Constants.expoConfig?.extra as { googleMapsAndroidApiKeyPresent?: boolean } | undefined
+  return Boolean(extra?.googleMapsAndroidApiKeyPresent || process.env.EXPO_PUBLIC_GOOGLE_MAPS_ANDROID_API_KEY)
+}
 
 function MapControls({
   top,
@@ -154,6 +161,7 @@ const Map = memo<MapProps>(function Map({
   const { isDark } = useTheme()
   const buttonBg = isDark ? '#171717' : '#ffffff'
   const iconColor = isDark ? '#fafafa' : '#1a1a1a'
+  const nativeGoogleMapsAvailable = hasAndroidGoogleMapsApiKey()
 
   // Track whether we've already moved away from the SF default. Once true,
   // neither the GPS nor the home-center effect fires again.
@@ -161,6 +169,7 @@ const Map = memo<MapProps>(function Map({
 
   // Async: try to get device location and fly to it
   useEffect(() => {
+    if (!nativeGoogleMapsAvailable) return
     let mounted = true
 
     getCurrentPosition()
@@ -180,7 +189,7 @@ const Map = memo<MapProps>(function Map({
     return () => {
       mounted = false
     }
-  }, [])
+  }, [nativeGoogleMapsAvailable])
 
   // Fallback when GPS hasn't fired (denied, slow, or logged-out). Priorities:
   //   1. user's home center if it's in `points`
@@ -188,6 +197,7 @@ const Map = memo<MapProps>(function Map({
   // Solves "always starts in SF" — the previous SF default only applied when
   // both GPS and home-center lookups failed at mount.
   useEffect(() => {
+    if (!nativeGoogleMapsAvailable) return
     if (animatedOnceRef.current) return
     if (points.length === 0) return
 
@@ -232,7 +242,7 @@ const Map = memo<MapProps>(function Map({
       },
       500
     )
-  }, [userCenterID, points])
+  }, [nativeGoogleMapsAvailable, userCenterID, points])
 
   const handleMarkerPress = useCallback(
     (point: MapPoint) => {
@@ -283,6 +293,7 @@ const Map = memo<MapProps>(function Map({
   // region delta (360 / 2^zoom ≈ the slippy-tile span); defaults to a ~city
   // view. Marks animatedOnceRef so the auto-fit effects don't fight it.
   useEffect(() => {
+    if (!nativeGoogleMapsAvailable) return
     if (!flyTo) return
     if (!isValidCoord(flyTo.latitude, flyTo.longitude)) return
     const delta = flyTo.zoom ? 360 / Math.pow(2, flyTo.zoom) : 0.35
@@ -297,7 +308,63 @@ const Map = memo<MapProps>(function Map({
       500
     )
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [flyTo?.key])
+  }, [nativeGoogleMapsAvailable, flyTo?.key])
+
+  if (!nativeGoogleMapsAvailable) {
+    const isDevBuild = typeof __DEV__ !== 'undefined' && __DEV__
+    const fallbackPoints = points.filter((p) => isValidCoord(p.latitude, p.longitude)).slice(0, 6)
+
+    return (
+      <View style={[styles.container, styles.fallback, { backgroundColor: isDark ? '#0F0F0F' : '#FAFAF7' }]}>
+        <View
+          style={[
+            styles.fallbackPanel,
+            {
+              backgroundColor: isDark ? '#171717' : '#FFFFFF',
+              borderColor: isDark ? '#2A2A2A' : '#E7E5E4',
+            },
+          ]}
+        >
+          <Text style={[styles.fallbackTitle, { color: isDark ? '#FAFAFA' : '#1C1917' }]}>
+            {isDevBuild ? 'Map unavailable in this Android build' : 'Map temporarily unavailable'}
+          </Text>
+          <Text style={[styles.fallbackBody, { color: isDark ? '#A8A29E' : '#57534E' }]}>
+            {isDevBuild
+              ? 'Add a Google Maps Android API key and rebuild to enable the live map.'
+              : 'Explore centers and events in the list below.'}
+          </Text>
+
+          {fallbackPoints.length > 0 && (
+            <View style={styles.fallbackList}>
+              {fallbackPoints.map((point) => (
+                <Pressable
+                  key={point.id}
+                  onPress={() => handleMarkerPress(point)}
+                  style={[
+                    styles.fallbackRow,
+                    {
+                      backgroundColor: isDark ? '#1F1F1F' : '#FAFAF7',
+                      borderColor: isDark ? '#333333' : '#E7E5E4',
+                    },
+                  ]}
+                >
+                  <View style={[styles.fallbackDot, { backgroundColor: getPinColor(point.type) }]} />
+                  <View style={{ flex: 1 }}>
+                    <Text numberOfLines={1} style={[styles.fallbackName, { color: isDark ? '#FAFAFA' : '#1C1917' }]}>
+                      {point.name}
+                    </Text>
+                    <Text style={[styles.fallbackType, { color: isDark ? '#A8A29E' : '#78716C' }]}>
+                      {point.type === 'center' ? 'Center' : 'Event'}
+                    </Text>
+                  </View>
+                </Pressable>
+              ))}
+            </View>
+          )}
+        </View>
+      </View>
+    )
+  }
 
   return (
     <View style={styles.container}>
@@ -422,5 +489,50 @@ const styles = StyleSheet.create({
     shadowRadius: 4,
     shadowOffset: { width: 0, height: 1 },
     elevation: 2,
+  },
+  fallback: {
+    justifyContent: 'center',
+    padding: 16,
+  },
+  fallbackPanel: {
+    borderWidth: 1,
+    borderRadius: 8,
+    padding: 16,
+    gap: 10,
+  },
+  fallbackTitle: {
+    fontSize: 16,
+    fontWeight: '600',
+  },
+  fallbackBody: {
+    fontSize: 13,
+    lineHeight: 19,
+  },
+  fallbackList: {
+    gap: 8,
+    marginTop: 4,
+  },
+  fallbackRow: {
+    minHeight: 48,
+    borderWidth: 1,
+    borderRadius: 8,
+    paddingHorizontal: 10,
+    paddingVertical: 8,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+  },
+  fallbackDot: {
+    width: 9,
+    height: 9,
+    borderRadius: 5,
+  },
+  fallbackName: {
+    fontSize: 14,
+    fontWeight: '600',
+  },
+  fallbackType: {
+    fontSize: 12,
+    marginTop: 2,
   },
 })
