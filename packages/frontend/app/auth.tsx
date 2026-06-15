@@ -70,7 +70,7 @@ export default function AuthScreen() {
             user browse the app before signing up (mirrors the web version). */}
         {authStep === 'initial' && (
           <Pressable
-            onPress={() => { track('auth_browse_as_guest_pressed', { source: 'auth' }); router.push('/(tabs)') }}
+            onPress={() => { track('auth_browse_as_guest_pressed', { source: 'auth' }); router.push('/explore') }}
             className="absolute right-5"
             style={{ top: insets.top + 12, paddingHorizontal: 4, paddingVertical: 8 }}
           >

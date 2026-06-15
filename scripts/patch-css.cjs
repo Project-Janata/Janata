@@ -47,3 +47,18 @@ for (const dir of dirs) {
 }
 
 console.log('Done patching box-shadow');
+
+// React Native 0.83.4's included Gradle build pins foojay-resolver-convention
+// 0.5.0, which references JvmVendorSpec.IBM_SEMERU. Gradle 9 removed that
+// symbol, so local Android builds fail unless the resolver is bumped.
+const rnGradleSettings = path.join(
+  rootDir,
+  'node_modules/@react-native/gradle-plugin/settings.gradle.kts'
+);
+patchFile(
+  rnGradleSettings,
+  'id("org.gradle.toolchains.foojay-resolver-convention").version("0.5.0")',
+  'id("org.gradle.toolchains.foojay-resolver-convention").version("1.0.0")'
+);
+
+console.log('Done patching React Native Gradle toolchain resolver');

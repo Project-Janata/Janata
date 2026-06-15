@@ -183,7 +183,7 @@ export default function AuthScreen() {
             <Logo size={isMobile ? 28 : 32} />
           </button>
           <button
-            onClick={() => { track('auth_browse_as_guest_pressed', { source: 'auth' }); router.push('/(tabs)') }}
+            onClick={() => { track('auth_browse_as_guest_pressed', { source: 'auth' }); router.push('/explore') }}
             style={{
               backgroundColor: '#FAFAF7',
               border: '1px solid #D6D3D1',
