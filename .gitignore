@@ -139,3 +139,5 @@ packages/backend/cors.json
 
 # Apple keys (never commit)
 *.p8
+
+tests/v2/.auth/
