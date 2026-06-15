@@ -80,7 +80,7 @@ jobs:
         # chinmayajanata.org CNAMEs to project-janatha.pages.dev.
         # The old `chinmaya-janata` Pages project is frozen; deploys here
         # would silently no-op due to API token scoping. See #165.
-        run: npx wrangler pages deploy dist --project-name project-janatha --branch __release
+        run: npx wrangler pages deploy dist --project-name chinmaya-janata --branch __release
         env:
           CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
 
