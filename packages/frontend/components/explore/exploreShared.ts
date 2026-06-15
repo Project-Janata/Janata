@@ -2,6 +2,11 @@ import type { DiscoverCenter, EventDisplay, MapPoint } from '../../utils/api'
 
 export type ExploreSelection = { type: 'event' | 'center'; id: string }
 
+export function isGoingFilterParam(value: string | string[] | undefined): boolean {
+  const normalized = Array.isArray(value) ? value[0] : value
+  return normalized === '1' || normalized === 'true' || normalized === 'going'
+}
+
 export function isToday(dateStr: string): boolean {
   const today = new Date()
   return dateStr === today.toISOString().split('T')[0]

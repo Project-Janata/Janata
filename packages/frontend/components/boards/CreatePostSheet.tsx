@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useMemo } from 'react'
-import { ActivityIndicator, Image, KeyboardAvoidingView, Modal, Platform, Pressable, ScrollView, Text, TextInput, View } from 'react-native'
+import { ActivityIndicator, Alert, Image, KeyboardAvoidingView, Modal, Platform, Pressable, ScrollView, Text, TextInput, View } from 'react-native'
 import { Building2, CalendarDays, ChevronDown, Globe2, ImagePlus, X } from 'lucide-react-native'
 import { Avatar } from '../ui'
 import { useUser } from '../contexts'
@@ -49,6 +49,7 @@ export function CreatePostSheet({
   const [groupId, setGroupId] = useState<string | undefined>()
   const [groupPickerOpen, setGroupPickerOpen] = useState(false)
   const [submitting, setSubmitting] = useState(false)
+  const [error, setError] = useState<string | null>(null)
   const [imageFile, setImageFile] = useState<File | { uri: string; name: string; type: string } | null>(null)
   const [imagePreview, setImagePreview] = useState<string | null>(null)
 
@@ -113,7 +114,7 @@ export function CreatePostSheet({
         : 'Center board'
 
   useEffect(() => {
-    if (!visible) { setBody(''); setGroupPickerOpen(false); clearImage(); return }
+    if (!visible) { setBody(''); setGroupPickerOpen(false); setError(null); clearImage(); return }
     if (!groupId && sortedGroups[0]) setGroupId(sortedGroups[0].id)
   }, [visible, groupId, sortedGroups])
 
@@ -122,6 +123,7 @@ export function CreatePostSheet({
   const handleSubmit = async () => {
     if (!canPost || !selectedGroup) return
     try {
+      setError(null)
       setSubmitting(true)
       let imageUrl: string | null = null
       if (imageFile) imageUrl = await uploadBoardImage(imageFile)
@@ -148,14 +150,18 @@ export function CreatePostSheet({
       clearImage()
       onClose()
     } catch (err: any) {
+      const message = err?.message || 'Could not create post.'
+      setError(message)
+      if (Platform.OS !== 'web') {
+        Alert.alert('Post failed', message)
+      }
       track('board_post_create_failed', {
         source: 'create_post_sheet',
         group_id: selectedGroup.id,
         group_kind: selectedGroup.kind,
         has_image: !!imageFile,
-        error: err?.message ?? 'unknown',
+        error: message,
       })
-      throw err
     } finally {
       setSubmitting(false)
     }
@@ -244,6 +250,14 @@ export function CreatePostSheet({
           </View>
 
           {/* Composer */}
+          {error ? (
+            <View style={{ marginBottom: 12, borderRadius: 12, borderWidth: 1, borderColor: '#FCA5A5', backgroundColor: '#FEF2F2', paddingHorizontal: 12, paddingVertical: 10 }}>
+              <Text style={{ color: '#B91C1C', fontSize: 13, lineHeight: 18 }}>
+                {error}
+              </Text>
+            </View>
+          ) : null}
+
           <View style={{ flexDirection: 'row', gap: 12, marginTop: 4 }}>
             <Avatar image={user?.profileImage || undefined} name={composerName} size={38} backgroundColor={colors.accent} />
             <TextInput

@@ -4,13 +4,13 @@ import {
   Text,
   Platform,
   ScrollView,
-  KeyboardAvoidingView,
   Pressable,
   TouchableOpacity,
+  ViewStyle,
 } from 'react-native'
 import { useRouter } from 'expo-router'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
-import { Code, ArrowLeft } from 'lucide-react-native'
+import { ArrowLeft } from 'lucide-react-native'
 import { useAnalytics } from '../utils/analytics'
 import { AuthInput, Logo, PrimaryButton } from '../components/ui'
 import { useTheme } from '../components/contexts'
@@ -30,6 +30,10 @@ export default function AuthScreen() {
   const insets = useSafeAreaInsets()
   const { isDark } = useTheme()
   const { track } = useAnalytics()
+  const pageBg = isDark ? '#171717' : '#FAFAF7'
+  const textColor = isDark ? '#FAFAFA' : '#1C1917'
+  const mutedColor = isDark ? '#A8A29E' : '#78716C'
+  const topPadding = Math.max(insets.top + 118, 132)
 
   // All auth state + handlers live in the shared hook (see auth.web.tsx — same
   // logic, different presentation). This file is RN markup only.
@@ -56,15 +60,21 @@ export default function AuthScreen() {
 
   const [showDevPanel, setShowDevPanel] = useState(false)
 
+  const rootStyle: ViewStyle = { flex: 1, backgroundColor: pageBg }
+
   return (
-    <KeyboardAvoidingView
-      behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
-      className="flex-1"
-    >
+    <View style={rootStyle}>
       <ScrollView
-        contentContainerStyle={{ flexGrow: 1 }}
-        className="flex-1 bg-[#FAFAF7] dark:bg-background-dark"
+        contentContainerStyle={{
+          flexGrow: 1,
+          paddingHorizontal: 24,
+          paddingTop: topPadding,
+          paddingBottom: 32,
+        }}
+        style={{ flex: 1, backgroundColor: pageBg }}
         keyboardShouldPersistTaps="handled"
+        keyboardDismissMode={Platform.OS === 'ios' ? 'interactive' : 'on-drag'}
+        automaticallyAdjustKeyboardInsets
       >
         {/* Guest browse link, top-right, initial step only. Lets a logged-out
             user browse the app before signing up (mirrors the web version). */}
@@ -81,10 +91,7 @@ export default function AuthScreen() {
         )}
 
         {/* Main content */}
-        <View
-          className="flex-1 justify-center items-center w-full px-6"
-          style={{ paddingTop: 60, paddingBottom: 48 }}
-        >
+        <View className="w-full items-center">
           {/* Container */}
           <View className="w-full" style={{ maxWidth: 400 }}>
             {/* Back Button */}
@@ -101,37 +108,22 @@ export default function AuthScreen() {
             )}
 
             {/* Janata Wordmark */}
-            <Pressable onPress={() => { track('auth_logo_pressed', { source: 'auth' }); router.push('/landing') }}>
-              <Logo size={32} style={{ marginBottom: 32 }} />
+            <Pressable
+              onPress={() => { track('auth_logo_pressed', { source: 'auth' }); router.push('/landing') }}
+              onLongPress={isDev ? () => setShowDevPanel(true) : undefined}
+            >
+              <Logo size={30} style={{ marginBottom: 42 }} />
             </Pressable>
 
             {/* Heading & Subtitle */}
-            <View className="mb-6">
+            <View style={{ marginBottom: 26 }}>
               <Text
-                style={{ fontFamily: '"Inclusive Sans"', fontSize: 36, fontWeight: '400' }}
-                className="text-content dark:text-content-dark"
+                style={{ fontFamily: '"Inclusive Sans"', fontSize: 36, lineHeight: 43, fontWeight: '400', color: textColor }}
               >
                 {heading}
               </Text>
 
-              {/* What Janata is — first step only, so a new member knows what
-                  they're signing into before entering an email. */}
-              {authStep === 'initial' && !hasInvite && !isInviteWallEntry && (
-                <View style={{ marginTop: 12, gap: 9 }}>
-                  {[
-                    'Discover satsangs, camps, and classes near you',
-                    'RSVP in a tap and see who else is going',
-                    'Send messages to members in centers and your events.',
-                  ].map((line) => (
-                    <View key={line} style={{ flexDirection: 'row', gap: 10, alignItems: 'flex-start' }}>
-                      <Text style={{ color: '#E8862A', fontSize: 14, lineHeight: 22 }}>✓</Text>
-                      <Text className="font-sans" style={{ flex: 1, fontSize: 14.5, lineHeight: 22, color: '#57534E' }}>{line}</Text>
-                    </View>
-                  ))}
-                </View>
-              )}
-
-              <Text className="text-base font-sans mt-2" style={{ color: '#78716C' }}>
+              <Text className="text-base font-sans" style={{ color: mutedColor, lineHeight: 24, marginTop: 10 }}>
                 {subtitle}
               </Text>
             </View>
@@ -257,7 +249,7 @@ export default function AuthScreen() {
                   className="items-center mt-2"
                   onPress={() => { track('auth_have_invite_pressed', { source: 'auth' }); router.push('/join') }}
                 >
-                  <Text className="font-sans" style={{ fontSize: 14, color: '#78716C' }}>
+                  <Text className="font-sans" style={{ fontSize: 14, color: mutedColor }}>
                     Have an invite? <Text style={{ color: '#E8862A', fontWeight: '600' }}>Paste it</Text>
                   </Text>
                 </Pressable>
@@ -265,7 +257,7 @@ export default function AuthScreen() {
             </View>
 
             {/* Footer Text */}
-            <Text className="text-content dark:text-content-dark opacity-50 text-sm font-sans mt-8 text-center px-4">
+            <Text className="text-sm font-sans mt-8 text-center px-4" style={{ color: mutedColor, opacity: 0.78, lineHeight: 20 }}>
               By continuing, you agree to our{' '}
               <Text
                 className="text-primary font-sans"
@@ -284,20 +276,9 @@ export default function AuthScreen() {
           </View>
         </View>
       </ScrollView>
-      {/* Discreet dev/demo tools — bottom-left circle, dev/preview only */}
-      {isDev && (
-        <Pressable
-          onPress={() => setShowDevPanel(true)}
-          accessibilityLabel="Developer tools"
-          className="absolute left-5 bottom-10 w-11 h-11 rounded-full items-center justify-center bg-stone-200/90 dark:bg-neutral-800/90 active:opacity-70"
-          style={{ shadowColor: '#000', shadowOpacity: 0.15, shadowRadius: 6, shadowOffset: { width: 0, height: 2 }, elevation: 3 }}
-        >
-          <Code size={18} className={isDark ? 'text-white' : 'text-black'} />
-        </Pressable>
-      )}
       {isDev && showDevPanel && (
         <DevPanel visible={showDevPanel} onClose={() => setShowDevPanel(false)} />
       )}
-    </KeyboardAvoidingView>
+    </View>
   )
 }

@@ -267,11 +267,7 @@ export function useAuthFlow() {
         : 'Welcome back.'
       : authStep === 'signup'
         ? 'Join the community.'
-        : inviteEmailStep
-          ? "You've been invited."
-          : inviteWallStep
-            ? 'Janata is invite-only'
-          : 'Welcome.'
+        : 'Welcome to Janata'
 
   const subtitle =
     authStep === 'login'

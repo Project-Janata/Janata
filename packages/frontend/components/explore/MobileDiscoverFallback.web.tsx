@@ -1,4 +1,4 @@
-import React, { lazy, Suspense, useCallback, useMemo, useRef, useState } from 'react'
+import React, { lazy, Suspense, useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import {
   ActivityIndicator,
   Pressable,
@@ -8,7 +8,7 @@ import {
   View,
 } from 'react-native'
 import { Building2, Check, ChevronDown, ChevronRight, Globe, Plus, Search } from 'lucide-react-native'
-import { useFocusEffect, useRouter } from 'expo-router'
+import { useFocusEffect, useLocalSearchParams, useRouter } from 'expo-router'
 import { EmptyState } from '../ui/EmptyState'
 import { DiscoverListSkeleton } from '../ui/Skeleton'
 import { FilterChip } from '../ui'
@@ -19,7 +19,7 @@ import { extractCityState } from '../../utils/addressParsing'
 import { useDiscoverData, type DiscoverFilter } from '../../hooks/useApiData'
 import type { EventDisplay, MapPoint } from '../../utils/api'
 import { ExploreEventItem } from './ExploreEventItem.web'
-import { milesBetween } from './exploreShared'
+import { isGoingFilterParam, milesBetween } from './exploreShared'
 
 const Map = lazy(() => import('../map/Map'))
 
@@ -27,6 +27,7 @@ type SheetSnap = 'peek' | 'collapsed' | 'mid' | 'expanded'
 
 export function MobileDiscoverFallback() {
   const router = useRouter()
+  const params = useLocalSearchParams<{ going?: string }>()
   const { isDark } = useTheme()
   const { track } = useAnalytics()
   // Events-first: the mobile-web sheet always shows the events list. (The old
@@ -51,6 +52,10 @@ export function MobileDiscoverFallback() {
     user?.centerID,
     { fetchAttendees: true }
   )
+
+  useEffect(() => {
+    setShowGoingOnly(isGoingFilterParam(params.going))
+  }, [params.going])
 
   // The member's home center - anchors the dropdown's default area.
   const userCenter = useMemo(

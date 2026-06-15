@@ -365,7 +365,7 @@ export default function HomeScreen() {
       faintColor={c.textFaint}
       onTrailingPress={() => {
         track('home_see_all_pressed', { section: signedUpEvents.length > 0 ? 'this_week' : 'coming_up' })
-        router.push((signedUpEvents.length > 0 ? '/events' : '/explore') as never)
+        router.push((signedUpEvents.length > 0 ? '/explore?going=1' : '/explore') as never)
       }}
     >
       {weekItems.length > 0 ? (

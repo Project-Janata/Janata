@@ -47,6 +47,7 @@ import { ExploreEventItem } from '../../components/explore/ExploreEventItem.web'
 import { MobileDiscoverFallback } from '../../components/explore/MobileDiscoverFallback.web'
 import {
   findCoordsForSelection,
+  isGoingFilterParam,
   milesBetween,
   type ExploreSelection,
 } from '../../components/explore/exploreShared'
@@ -315,7 +316,7 @@ export default function DiscoverScreenWeb() {
     }, [refresh])
   )
 
-  const params = useLocalSearchParams<{ detail?: string; id?: string; action?: string }>()
+  const params = useLocalSearchParams<{ detail?: string; id?: string; action?: string; going?: string }>()
 
   // Clear query string without navigation
   const clearParams = useCallback(() => {
@@ -330,6 +331,10 @@ export default function DiscoverScreenWeb() {
       setSelectedItem({ type: params.detail as 'event' | 'center', id: params.id })
     }
   }, [params.detail, params.id])
+
+  useEffect(() => {
+    setShowGoingOnly(isGoingFilterParam(params.going))
+  }, [params.going])
 
   // Pan/zoom the map when the user opens a center or event (list, map marker, popover, or URL).
   useEffect(() => {

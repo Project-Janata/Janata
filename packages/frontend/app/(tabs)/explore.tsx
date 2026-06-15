@@ -1,5 +1,5 @@
 // Discover tab — mobile / native layout
-import React, { useState, useRef, useCallback, useMemo } from 'react'
+import React, { useState, useRef, useCallback, useMemo, useEffect } from 'react'
 import { EmptyState } from '../../components/ui/EmptyState'
 import { DiscoverListSkeleton } from '../../components/ui/Skeleton'
 import {
@@ -24,7 +24,7 @@ import {
   Globe,
   Plus,
 } from 'lucide-react-native'
-import { useRouter, useFocusEffect, useNavigation } from 'expo-router'
+import { useRouter, useFocusEffect, useLocalSearchParams, useNavigation } from 'expo-router'
 import { useAnalytics } from '../../utils/analytics'
 import { useTheme } from '../../components/contexts'
 import { Badge, Avatar, FilterChip } from '../../components/ui'
@@ -33,6 +33,7 @@ import { useUser } from '../../components/contexts/UserContext'
 import { useDiscoverData, type DiscoverFilter } from '../../hooks/useApiData'
 import type { EventDisplay, DiscoverCenter, AttendeeInfo } from '../../utils/api'
 import { extractCityState } from '../../utils/addressParsing'
+import { isGoingFilterParam } from '../../components/explore/exploreShared'
 
 
 // Map.native.tsx is the only file that bundles for native, so the
@@ -253,6 +254,7 @@ function CenterItem({ center, onPress, isMyCenter }: { center: DiscoverCenter; o
 
 export default function DiscoverScreen() {
   const router = useRouter()
+  const params = useLocalSearchParams<{ going?: string }>()
   const { isDark } = useTheme()
   const { track } = useAnalytics()
   const [activeFilter, setActiveFilter] = useState<DiscoverFilter>('Events')
@@ -275,6 +277,10 @@ export default function DiscoverScreen() {
     allCenters,
     refresh,
   } = useDiscoverData(activeFilter, searchQuery, user?.id, showPastEvents, showGoingOnly, user?.interests ?? undefined, user?.centerID, { fetchAttendees: true })
+
+  useEffect(() => {
+    setShowGoingOnly(isGoingFilterParam(params.going))
+  }, [params.going])
 
   // The member's home center — pinned at the top of the sheet as their anchor.
   const userCenter = useMemo(

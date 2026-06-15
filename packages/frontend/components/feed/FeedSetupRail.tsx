@@ -1,10 +1,12 @@
 import React, { useState } from 'react'
-import { Pressable, Text, View } from 'react-native'
+import { Image, Pressable, Text, View } from 'react-native'
 import { Check } from 'lucide-react-native'
 import type { AppColors } from '../../tokens'
 import { CenterSearch } from '../center/CenterSearch'
 
 type StepState = 'done' | 'active' | 'todo'
+
+const diyaImage = require('../../assets/images/onboarding/diya.png')
 
 function StepDot({ index, state, colors }: { index: number; state: StepState; colors: AppColors }) {
   if (state === 'done') {
@@ -77,6 +79,69 @@ export function FeedSetupRail({
 
   const step1: StepState = isSignedIn ? 'done' : 'active'
   const step2: StepState = isSignedIn ? 'active' : 'todo'
+
+  if (!isSignedIn) {
+    return (
+      <View
+        style={{
+          borderWidth: 1,
+          borderColor: colors.border,
+          borderRadius: 18,
+          backgroundColor: colors.card,
+          paddingHorizontal: 20,
+          paddingTop: 24,
+          paddingBottom: 20,
+          gap: 20,
+        }}
+      >
+        <View style={{ alignItems: 'center', gap: 12 }}>
+          <Image
+            source={diyaImage}
+            accessibilityIgnoresInvertColors
+            style={{ width: 72, height: 72 }}
+            resizeMode="contain"
+          />
+          <Text style={{ fontFamily: 'Inclusive Sans', fontSize: 22, lineHeight: 28, color: colors.text, textAlign: 'center' }}>
+            Log in to see your feed.
+          </Text>
+          <Text style={{ fontSize: 14, lineHeight: 20, color: colors.textMuted, textAlign: 'center' }}>
+            Posts from your center and events will show up here.
+          </Text>
+        </View>
+
+        <View style={{ gap: 10 }}>
+          <Pressable
+            onPress={onSignIn}
+            accessibilityRole="button"
+            style={({ pressed }) => ({
+              minHeight: 48,
+              borderRadius: 12,
+              backgroundColor: pressed ? colors.accentPress : colors.accent,
+              paddingHorizontal: 16,
+              alignItems: 'center',
+              justifyContent: 'center',
+            })}
+          >
+            <Text style={{ fontFamily: 'Inclusive Sans', fontSize: 15, fontWeight: '600', color: colors.textInverse }}>
+              Log in
+            </Text>
+          </Pressable>
+
+          {onPasteInvite ? (
+            <Pressable
+              onPress={onPasteInvite}
+              accessibilityRole="button"
+              style={{ minHeight: 44, alignItems: 'center', justifyContent: 'center' }}
+            >
+              <Text style={{ fontSize: 14, color: colors.textMuted }}>
+                Have an invite? <Text style={{ color: colors.accent, fontWeight: '600' }}>Paste it</Text>
+              </Text>
+            </Pressable>
+          ) : null}
+        </View>
+      </View>
+    )
+  }
 
   return (
     <View
