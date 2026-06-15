@@ -367,10 +367,18 @@ app.post('/auth/register', rateLimit(5, 60_000), async (c) => {
   // created through a valid invite link is VERIFIED at inception (Bluesky/
   // Clubhouse), so we promote to NORMAL_USER immediately at register rather
   // than deferring the bump to email-verify. Developer emails bypass to
-  // BRAHMACHARI. (Hard-gate enforcement — rejecting signups with no invite —
-  // is a follow-up; it must grandfather existing open-signup accounts and the
-  // local seed script. See #342.)
+  // BRAHMACHARI.
+  //
+  // Hard gate (#342 follow-up): when REQUIRE_INVITE_CODE is "true" Janata is
+  // invite-only at the API — a non-developer signup with no valid invite is
+  // refused (403), matching the invite-wall UI (#458). Existing accounts are
+  // grandfathered automatically (the gate only guards new registrations); the
+  // seed script and developers pass by presenting a code / bypassing. When the
+  // flag is off, the legacy soft path stands: no invite → UNVERIFIED_USER.
   const isDeveloper = DEVELOPER_EMAILS.includes(normalizedUsername.toLowerCase())
+  const requireInvite = c.env.REQUIRE_INVITE_CODE === 'true'
+  const hasInviteCode =
+    typeof body.inviteCode === 'string' && body.inviteCode.trim().length > 0
 
   let verificationLevel = UNVERIFIED_USER
   let inviteCodeUsed: string | null = null
@@ -378,8 +386,8 @@ app.post('/auth/register', rateLimit(5, 60_000), async (c) => {
 
   if (isDeveloper) {
     verificationLevel = BRAHMACHARI
-  } else if (body.inviteCode && typeof body.inviteCode === 'string' && body.inviteCode.trim().length > 0) {
-    const inviteCodeData = await inviteCodes.validateInviteCode(c.env, body.inviteCode)
+  } else if (hasInviteCode) {
+    const inviteCodeData = await inviteCodes.validateInviteCode(c.env, body.inviteCode!)
     if (!inviteCodeData) {
       return c.json({ message: 'Invalid or inactive invite code' }, 401)
     }
@@ -395,6 +403,12 @@ app.post('/auth/register', rateLimit(5, 60_000), async (c) => {
     // Invited = verified at inception. Email confirmation stays quiet and
     // non-blocking (used only for password recovery).
     verificationLevel = NORMAL_USER
+  } else if (requireInvite) {
+    // Invite-only: no developer bypass, no code → no account.
+    return c.json(
+      { message: 'An invite is required to join Janata. Ask a member for an invite link.' },
+      403,
+    )
   }
 
   const hashedPassword = await hashPassword(validPassword)

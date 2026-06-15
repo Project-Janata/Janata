@@ -20,6 +20,8 @@ bucket_name = "chinmaya-janata-avatars"
 # Non-secret vars only. Secrets come from `wrangler secret put`.
 [vars]
 RESEND_FROM_EMAIL = "noreply@chinmayajanata.org"
+# Invite gate ON (#342): refuse API signups without a valid invite code.
+REQUIRE_INVITE_CODE = "true"
 
 # Secrets set via:
 #   npx wrangler secret put JWT_SECRET         --config wrangler.staging.toml
