@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useCallback } from 'react'
-import { View, Text, Pressable, ActivityIndicator, TextInput, ScrollView } from 'react-native'
+import { View, Text, Pressable, ActivityIndicator, TextInput, ScrollView, useWindowDimensions } from 'react-native'
 import { Bell, Send, Trash2, ChevronDown } from 'lucide-react-native'
 import AdminTable, { type Column } from './AdminTable'
 import AdminSearchInput from './AdminSearchInput'
@@ -29,7 +29,9 @@ const NOTIFICATION_TYPE_NAMES: Record<number, string> = {
 export default function NotificationsTab() {
   const colors = useDetailColors()
   const { isDark } = useTheme()
+  const { width } = useWindowDimensions()
   const { track } = useAnalytics()
+  const isCompact = width < 640
   const [notifications, setNotifications] = useState<AdminNotification[]>([])
   const [stats, setStats] = useState<AdminNotificationStats | null>(null)
   const [total, setTotal] = useState(0)
@@ -225,10 +227,10 @@ export default function NotificationsTab() {
 
   return (
     <View style={{ flex: 1, flexDirection: 'row' }}>
-      <View style={{ flex: 1, padding: 20 }}>
+      <View style={{ flex: 1, padding: isCompact ? 14 : 20 }}>
         {/* Stats bar */}
         {stats && (
-          <View style={{ flexDirection: 'row', gap: 16, marginBottom: 16 }}>
+          <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: isCompact ? 8 : 16, marginBottom: 16 }}>
             {[
               { label: 'Total', value: stats.total },
               { label: 'Unread', value: stats.unread },
@@ -257,14 +259,22 @@ export default function NotificationsTab() {
         )}
 
         {/* Header row */}
-        <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
-          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12 }}>
+        <View
+          style={{
+            flexDirection: isCompact ? 'column' : 'row',
+            justifyContent: 'space-between',
+            alignItems: isCompact ? 'stretch' : 'center',
+            gap: 10,
+            marginBottom: 16,
+          }}
+        >
+          <View style={{ flexDirection: 'row', alignItems: 'center', flexWrap: 'wrap', gap: 12 }}>
             <Text style={{ fontFamily: 'Inclusive Sans', fontSize: 18, color: colors.text }}>
               Notifications ({total})
             </Text>
 
             {/* Type filter */}
-            <View style={{ flexDirection: 'row', gap: 4 }}>
+            <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 4 }}>
               <Pressable
                 onPress={() => setFilterType(undefined)}
                 style={{
@@ -315,6 +325,7 @@ export default function NotificationsTab() {
               paddingHorizontal: 14,
               paddingVertical: 8,
               borderRadius: 8,
+              alignSelf: isCompact ? 'flex-start' : 'auto',
             }}
           >
             <Send size={14} color="#fff" />
@@ -336,7 +347,7 @@ export default function NotificationsTab() {
               Send Notification
             </Text>
 
-            <View style={{ flexDirection: 'row', gap: 12, marginBottom: 10 }}>
+            <View style={{ flexDirection: isCompact ? 'column' : 'row', gap: 12, marginBottom: 10 }}>
               <View style={{ flex: 1 }}>
                 <Text style={{ fontFamily: 'Inclusive Sans', fontSize: 11, color: colors.textMuted, marginBottom: 4 }}>Title</Text>
                 <TextInput
@@ -357,7 +368,7 @@ export default function NotificationsTab() {
                   }}
                 />
               </View>
-              <View style={{ width: 160 }}>
+              <View style={{ width: isCompact ? '100%' : 160 }}>
                 <Text style={{ fontFamily: 'Inclusive Sans', fontSize: 11, color: colors.textMuted, marginBottom: 4 }}>Type</Text>
                 <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 4 }}>
                   {[7, 6].map((tid) => (
@@ -408,7 +419,7 @@ export default function NotificationsTab() {
               />
             </View>
 
-            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12, marginBottom: 12 }}>
+            <View style={{ flexDirection: 'row', alignItems: 'center', flexWrap: 'wrap', gap: 12, marginBottom: 12 }}>
               <Pressable
                 onPress={() => setSendBroadcast(true)}
                 style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}
@@ -461,7 +472,7 @@ export default function NotificationsTab() {
                     borderRadius: 6,
                     paddingHorizontal: 10,
                     paddingVertical: 6,
-                    width: 200,
+                    width: isCompact ? '100%' : 200,
                   }}
                 />
               )}
@@ -528,10 +539,20 @@ export default function NotificationsTab() {
       {/* Detail panel */}
       {selected && (
         <View style={{
-          width: 320,
-          borderLeftWidth: 1,
+          width: isCompact ? '100%' : 320,
+          borderLeftWidth: isCompact ? 0 : 1,
           borderLeftColor: colors.border,
           backgroundColor: colors.panelBg,
+          ...(isCompact
+            ? {
+                position: 'absolute' as const,
+                top: 0,
+                right: 0,
+                bottom: 0,
+                left: 0,
+                zIndex: 20,
+              }
+            : null),
         }}>
           <View style={{
             flexDirection: 'row',

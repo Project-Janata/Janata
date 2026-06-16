@@ -1,5 +1,5 @@
 import React, { useMemo, useState, useEffect, useCallback } from 'react'
-import { View, Text, Pressable, StyleSheet, ActivityIndicator } from 'react-native'
+import { View, Text, Pressable, StyleSheet, ActivityIndicator, useWindowDimensions } from 'react-native'
 import { Building2, Calendar, Shield } from 'lucide-react-native'
 import AdminTable, { type Column } from './AdminTable'
 import AdminDetailPanel from './AdminDetailPanel'
@@ -48,7 +48,9 @@ function formatJoinDate(iso?: string): string {
 export default function UsersTab() {
   const colors = useDetailColors()
   const { isDark } = useTheme()
+  const { width } = useWindowDimensions()
   const { track } = useAnalytics()
+  const isCompact = width < 640
 
   const [search, setSearch] = useState('')
   const [users, setUsers] = useState<UserData[]>([])
@@ -281,9 +283,9 @@ export default function UsersTab() {
   return (
     <View style={styles.container}>
       <View style={styles.tablePanel}>
-        <View style={styles.header}>
+        <View style={[styles.header, isCompact && styles.compactHeader]}>
           <Text style={[styles.title, { color: colors.text }]}>Users ({total})</Text>
-          <View style={styles.searchWrap}>
+          <View style={isCompact ? styles.compactSearchWrap : styles.searchWrap}>
             <AdminSearchInput value={search} onChangeText={setSearch} placeholder="Search users..." />
           </View>
         </View>
@@ -331,8 +333,14 @@ const styles = StyleSheet.create({
     paddingHorizontal: 16,
     paddingVertical: 12,
   },
+  compactHeader: {
+    flexDirection: 'column',
+    alignItems: 'stretch',
+    gap: 10,
+  },
   title: { fontFamily: 'Inclusive Sans', fontSize: 16 },
   searchWrap: { width: 240 },
+  compactSearchWrap: { width: '100%' },
 })
 
 const detailStyles = StyleSheet.create({

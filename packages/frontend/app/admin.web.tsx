@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react'
-import { View, Text } from 'react-native'
+import { View, Text, useWindowDimensions } from 'react-native'
 import { useUser, useTheme } from '../components/contexts'
 import { router } from 'expo-router'
 import AdminSidebar, { type AdminTab } from '../components/admin/AdminSidebar'
@@ -15,6 +15,7 @@ import { useAnalytics } from '../utils/analytics'
 export default function AdminPage() {
   const { user, loading } = useUser()
   const { isDark } = useTheme()
+  const { width } = useWindowDimensions()
   const { track } = useAnalytics()
   // canEnter: sevak+ may open the app (Moderation). isAdmin: full admin (all
   // tabs). Admin-only endpoints 403 for a sevak token, so we gate by isAdmin —
@@ -55,10 +56,16 @@ export default function AdminPage() {
   }
 
   const pageBg = isDark ? '#0d0d0d' : '#FAFAF9'
+  const isCompact = width < 768
 
   return (
-    <View style={{ flex: 1, flexDirection: 'row', backgroundColor: pageBg }}>
-      <AdminSidebar activeTab={activeTab} onTabChange={handleTabChange} isAdmin={isAdmin} />
+    <View style={{ flex: 1, flexDirection: isCompact ? 'column' : 'row', backgroundColor: pageBg }}>
+      <AdminSidebar
+        activeTab={activeTab}
+        onTabChange={handleTabChange}
+        isAdmin={isAdmin}
+        compact={isCompact}
+      />
       {/* Admin-only tabs are gated by isAdmin so a sevak never mounts a tab
           whose endpoint 403s. Moderation is available to sevak+. */}
       {isAdmin && activeTab === 'Centers' && <CentersTab />}

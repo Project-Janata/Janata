@@ -1,5 +1,5 @@
 import React, { useMemo, useState, useEffect, useCallback } from 'react'
-import { View, Text, Pressable, StyleSheet, ActivityIndicator } from 'react-native'
+import { View, Text, Pressable, StyleSheet, ActivityIndicator, useWindowDimensions } from 'react-native'
 import { Trash2, UserX, Flag, ScrollText, ArrowLeft } from 'lucide-react-native'
 import AdminTable, { type Column } from './AdminTable'
 import AdminDetailPanel from './AdminDetailPanel'
@@ -33,7 +33,9 @@ type PendingAction =
 
 export default function ModerationTab() {
   const colors = useDetailColors()
+  const { width } = useWindowDimensions()
   const { track } = useAnalytics()
+  const isCompact = width < 640
 
   const [items, setItems] = useState<ModerationQueueItem[]>([])
   const [loading, setLoading] = useState(true)
@@ -349,13 +351,13 @@ export default function ModerationTab() {
   }
 
   return (
-    <View style={styles.container}>
-      <View style={styles.tablePanel}>
-        <View style={styles.header}>
-          <Text style={[styles.title, { color: colors.text }]}>
-            Moderation queue ({items.length})
-          </Text>
-          <View style={{ flexDirection: 'row', gap: 8 }}>
+      <View style={styles.container}>
+        <View style={styles.tablePanel}>
+          <View style={[styles.header, isCompact && styles.compactHeader]}>
+            <Text style={[styles.title, { color: colors.text }]}>
+              Moderation queue ({items.length})
+            </Text>
+          <View style={[styles.headerActions, isCompact && styles.compactHeaderActions]}>
             <Pressable
               onPress={() => setIncludeResolved((v) => !v)}
               style={[styles.pill, includeResolved && styles.pillActive]}
@@ -418,6 +420,13 @@ const styles = StyleSheet.create({
     paddingHorizontal: 16,
     paddingVertical: 12,
   },
+  compactHeader: {
+    flexDirection: 'column',
+    alignItems: 'stretch',
+    gap: 10,
+  },
+  headerActions: { flexDirection: 'row', gap: 8 },
+  compactHeaderActions: { flexWrap: 'wrap' },
   title: { fontFamily: 'Inclusive Sans', fontSize: 16 },
   pill: {
     paddingHorizontal: 12,
