@@ -505,6 +505,7 @@ function PostMessageBlock({
         hitSlop={6}
       >
         <Avatar
+          image={message.author.image}
           name={message.author.name}
           initials={message.author.initials}
           size={original ? 42 : 34}
@@ -656,6 +657,7 @@ function OriginalPost({
         hitSlop={6}
       >
         <Avatar
+          image={post.author.image}
           name={post.author.name}
           initials={post.author.initials}
           size={42}
