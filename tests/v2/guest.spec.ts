@@ -16,12 +16,13 @@ test.describe('v2 guest', () => {
     await shot(page, testInfo, 'intro')
   })
 
-  test('auth screen shows the value proposition', async ({ page }, testInfo) => {
+  test('auth screen shows the welcome heading + invite affordance', async ({ page }, testInfo) => {
     await gotoApp(page, '/auth')
     await expect(page.getByRole('heading', { name: /Welcome/i })).toBeVisible()
-    // The value list that gives new users insight before signing in (#373).
-    await expect(vtext(page, /RSVP in a tap/i)).toBeVisible()
-    await shot(page, testInfo, 'auth-value-prop')
+    // The value-prop bullet list was removed (#488); the invite-only entry now
+    // leads with the email field + a "Have an invite? Paste it" affordance (#491).
+    await expect(vtext(page, /Have an invite/i)).toBeVisible()
+    await shot(page, testInfo, 'auth-welcome')
   })
 
   test('auth screen has the email entry', async ({ page }, testInfo) => {
