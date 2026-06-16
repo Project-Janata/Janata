@@ -13,6 +13,7 @@ import { cors } from 'hono/cors'
 import type { Env, UserRow, EventRow, CenterRow, BoardPostApiResponse, BoardType } from './types'
 import {
   userRowToApi,
+  userRowToAttendee,
   userRowToPublicProfile,
   centerRowToApi,
   eventRowToApi,
@@ -2192,9 +2193,11 @@ app.post('/getEventUsers', async (c) => {
   }
 
   const attendees = await db.getEventAttendees(c.env.DB, id)
+  // Public endpoint — return display-only fields, never PII. (Coordinators get
+  // emails + guests via the gated GET /events/:id/roster.)
   return c.json({
     message: 'Success',
-    users: attendees.map((u) => userRowToApi(u)),
+    users: attendees.map((u) => userRowToAttendee(u)),
   })
 })
 
