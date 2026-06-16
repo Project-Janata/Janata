@@ -10,7 +10,7 @@
     "splash": {
       "image": "./assets/images/logo_with_text.png",
       "resizeMode": "contain",
-      "backgroundColor": "#ffffff"
+      "backgroundColor": "#FAFAF7"
     },
     "android": {
       "adaptiveIcon": {
@@ -157,7 +157,7 @@
     "ios": {
       "icon": "./assets/images/logo.png",
       "supportsTablet": true,
-      "buildNumber": "29",
+      "buildNumber": "30",
       "infoPlist": {
         "NSLocationWhenInUseUsageDescription": "Chinmaya Janata uses your location to show nearby centers and events on the map.",
         "NSPhotoLibraryUsageDescription": "Chinmaya Janata needs access to your photo library to set your profile picture.",
@@ -184,10 +184,11 @@
         {
           "image": "./assets/images/logo_with_text.png",
           "resizeMode": "contain",
-          "backgroundColor": "#ffffff",
+          "backgroundColor": "#FAFAF7",
+          "imageWidth": 280,
           "dark": {
             "image": "./assets/images/logo_with_text.png",
-            "backgroundColor": "#121212"
+            "backgroundColor": "#0F0F0F"
           }
         }
       ],
