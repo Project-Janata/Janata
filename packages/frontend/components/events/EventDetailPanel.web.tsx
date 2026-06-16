@@ -14,6 +14,7 @@ import { ThreadPanel, boardPostToMessage, type BoardMessage } from '../boards'
 import { PostThread, type FeedPost } from '../feed'
 import { buildFeedPostFromMessage } from '../feed/feedData'
 import { useUser } from '../contexts'
+import EventAttendeeRoster from './EventAttendeeRoster'
 
 // ---------------------------------------------------------------------------
 // Date helpers
@@ -115,6 +116,9 @@ type EventDetailPanelProps = {
   attendees: Attendee[]
   isPast?: boolean
   isAdmin?: boolean
+  // Creator-or-admin: shows the coordinator attendee roster (emails + guests +
+  // CSV export). Distinct from isAdmin (which is global-admin only).
+  canManage?: boolean
   onClose: () => void
   onToggleRegistration: () => void
   isToggling: boolean
@@ -620,11 +624,13 @@ function DefaultContent({
   event,
   attendees,
   isPast,
+  canManage,
   colors,
 }: {
   event: EventDetailPanelProps['event']
   attendees: Attendee[]
   isPast?: boolean
+  canManage?: boolean
   colors: DetailColors
 }) {
   return (
@@ -659,6 +665,9 @@ function DefaultContent({
       {event.description && (
         <AboutSection description={event.description} colors={colors} />
       )}
+
+      {/* Coordinator roster — creator/admin only */}
+      {canManage && <EventAttendeeRoster eventId={event.id} eventTitle={event.title} />}
     </ScrollView>
   )
 }
@@ -671,6 +680,7 @@ function RegisteredContent({
   event,
   attendees,
   colors,
+  canManage,
   canPostToThread,
   boardMessages,
   onSubmitPost,
@@ -679,6 +689,7 @@ function RegisteredContent({
   event: EventDetailPanelProps['event']
   attendees: Attendee[]
   colors: DetailColors
+  canManage?: boolean
   canPostToThread: boolean
   boardMessages: BoardMessage[]
   onSubmitPost: (body: string) => Promise<void>
@@ -716,6 +727,13 @@ function RegisteredContent({
         <DetailSection title="People" count={attendees.length} contentStyle={{ paddingHorizontal: 0 }}>
           <PeopleTab attendees={attendees} colors={colors} />
         </DetailSection>
+
+        {/* Coordinator roster — creator/admin only */}
+        {canManage && (
+          <View style={{ paddingHorizontal: 24 }}>
+            <EventAttendeeRoster eventId={event.id} eventTitle={event.title} />
+          </View>
+        )}
 
         {/* ── DISCUSSION ────────────────────────────────────────── */}
         <DetailSection title="Discussion" count={boardMessages.length} contentStyle={{ paddingHorizontal: 0 }}>
@@ -1001,6 +1019,7 @@ export default function EventDetailPanel({
   attendees,
   isPast,
   isAdmin,
+  canManage,
   onClose,
   onToggleRegistration,
   isToggling,
@@ -1101,6 +1120,7 @@ export default function EventDetailPanel({
           event={event}
           attendees={attendees}
           colors={colors}
+          canManage={canManage}
           canPostToThread={canPostToThread}
           boardMessages={boardMessages}
           onSubmitPost={handleCreateThreadPost}
@@ -1111,6 +1131,7 @@ export default function EventDetailPanel({
           event={event}
           attendees={attendees}
           isPast={isPast}
+          canManage={canManage}
           colors={colors}
         />
       )}

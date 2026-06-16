@@ -12,6 +12,7 @@ import Badge from '../../components/ui/Badge'
 import PrimaryButton from '../../components/ui/buttons/PrimaryButton'
 import DestructiveButton from '../../components/ui/buttons/DestructiveButton'
 import GuestRsvpSheet from '../../components/events/GuestRsvpSheet'
+import EventAttendeeRoster from '../../components/events/EventAttendeeRoster'
 import { DetailSection } from '../../components/ui'
 import { useDetailColors, type DetailColors } from '../../hooks/useDetailColors'
 import { useColors } from '../../hooks/useColors'
@@ -318,6 +319,13 @@ function MobileEventDetail({ eventId }: { eventId: string }) {
               </View>
             )}
           </DetailSection>
+        )}
+
+        {/* COORDINATOR ROSTER — creator/admin only: full list w/ emails + guests + CSV export */}
+        {canEdit && (
+          <View style={{ paddingHorizontal: 20 }}>
+            <EventAttendeeRoster eventId={event.id} eventTitle={event.title} />
+          </View>
         )}
 
         {/* COMMENTS */}

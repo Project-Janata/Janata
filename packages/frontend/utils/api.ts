@@ -434,6 +434,42 @@ export async function fetchEventUsers(eventID: string): Promise<UserData[]> {
   }
 }
 
+// Coordinator-only attendee roster (creator or admin). Returns emails + guest
+// RSVPs for the "manage attendees / export" panel on the event page.
+export interface EventRosterEntry {
+  id?: string
+  name: string
+  email: string | null
+  image?: string | null
+  joinedAt?: string
+  rsvpedAt?: string
+}
+
+export interface EventRoster {
+  registered: EventRosterEntry[]
+  guests: EventRosterEntry[]
+  counts: { registered: number; guests: number; total: number }
+}
+
+export async function getEventRoster(eventID: string): Promise<EventRoster> {
+  const response = await authFetch(`/events/${encodeURIComponent(eventID)}/roster`, {
+    method: 'GET',
+  })
+  if (!response.ok) {
+    const err: any = new Error('Failed to load attendee roster')
+    err.status = response.status
+    throw err
+  }
+  const data = await response.json()
+  const normalize = (e: EventRosterEntry): EventRosterEntry =>
+    e.image && e.image.startsWith('/') ? { ...e, image: `${API_BASE_URL}${e.image}` } : e
+  return {
+    registered: (data.registered || []).map(normalize),
+    guests: data.guests || [],
+    counts: data.counts || { registered: 0, guests: 0, total: 0 },
+  }
+}
+
 /**
  * Account-less RSVP (new-11): name + email, no auth. Returns `alreadyRsvped`
  * so the sheet can show the dedupe state (new-11b). Throws with `.status` set

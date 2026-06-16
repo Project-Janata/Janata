@@ -2206,6 +2206,45 @@ app.post('/getEventUsers', async (c) => {
   })
 })
 
+// Coordinator-only attendee roster. Unlike /getEventUsers (public, avatar-only
+// display), this returns emails + account-less guest RSVPs and is gated to the
+// event's creator or an admin — the "replaces the Google Form / spreadsheet"
+// view that lives on the event page.
+app.get('/events/:id/roster', authMiddleware, async (c) => {
+  const user = c.get('user')
+  const id = c.req.param('id')
+
+  const event = await db.getEventById(c.env.DB, id)
+  if (!event) {
+    return c.json({ message: 'Event not found' }, 404)
+  }
+
+  const canManage = isAdmin(user) || (!!event.created_by && event.created_by === user.id)
+  if (!canManage) {
+    return c.json(
+      { message: 'Only the event creator or an admin can view the attendee roster' },
+      403,
+    )
+  }
+
+  const { registered, guests } = await db.getEventRoster(c.env.DB, id)
+  return c.json({
+    registered: registered.map((r) => ({
+      id: r.id,
+      name: [r.first_name, r.last_name].filter(Boolean).join(' ').trim() || r.username,
+      email: r.email,
+      image: r.profile_image,
+      joinedAt: r.joined_at,
+    })),
+    guests: guests.map((g) => ({ name: g.name, email: g.email, rsvpedAt: g.rsvped_at })),
+    counts: {
+      registered: registered.length,
+      guests: guests.length,
+      total: registered.length + guests.length,
+    },
+  })
+})
+
 app.post('/attendEvent', authMiddleware, async (c) => {
   const user = c.get('user')
   const { eventID } = await c.req.json<{ eventID: string }>()
