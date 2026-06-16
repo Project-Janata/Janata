@@ -8,7 +8,7 @@ import {
   TouchableOpacity,
   ViewStyle,
 } from 'react-native'
-import { useRouter } from 'expo-router'
+import { useRouter, useLocalSearchParams } from 'expo-router'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
 import { ArrowLeft } from 'lucide-react-native'
 import { useAnalytics } from '../utils/analytics'
@@ -61,7 +61,10 @@ export default function AuthScreen() {
   } = useAuthFlow()
 
   const [showDevPanel, setShowDevPanel] = useState(false)
-  const [showInviteField, setShowInviteField] = useState(false)
+  // `?invite=1` opens this screen straight to the paste-invite field, so the
+  // invite flow lives inside /auth instead of a separate /join page.
+  const { invite: inviteParam } = useLocalSearchParams<{ invite?: string }>()
+  const [showInviteField, setShowInviteField] = useState(inviteParam === '1')
   const [inviteValue, setInviteValue] = useState('')
   const [inviteError, setInviteError] = useState('')
 

@@ -169,7 +169,7 @@ export default function GuestRsvpSheet({ visible, onClose, eventId, eventTitle }
                 Members join Janata by invite. Have one? Paste it to get in.
               </Text>
               <PrimaryButton
-                onPress={() => { close(); router.push('/join') }}
+                onPress={() => { close(); router.push('/auth?invite=1') }}
                 style={{ alignSelf: 'stretch' }}
               >
                 Have an invite? Paste it
