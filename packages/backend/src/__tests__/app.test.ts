@@ -2167,6 +2167,67 @@ describe('event routes', () => {
     })
   })
 
+  describe('GET /api/events/:id/roster', () => {
+    async function createEvent() {
+      const { body } = await jsonPost(
+        '/api/addEvent',
+        {
+          title: 'Roster Event',
+          date: '2030-06-01T10:00:00Z',
+          latitude: 37.0,
+          longitude: -121.0,
+          centerID: centerId,
+        },
+        authHeader(userToken),
+      )
+      return body.id as string
+    }
+
+    it('returns registered members (with email) + guests to the creator', async () => {
+      const eventId = await createEvent()
+      await jsonPost('/api/attendEvent', { eventID: eventId }, authHeader(userToken))
+      await jsonPost('/api/attendEventGuest', {
+        eventID: eventId,
+        name: 'Guest Person',
+        email: 'guest@example.com',
+      })
+
+      const { res, body } = await fetchJSON(`/api/events/${eventId}/roster`, {
+        headers: authHeader(userToken),
+      })
+      expect(res.status).toBe(200)
+      expect(body.counts).toEqual({ registered: 1, guests: 1, total: 2 })
+      expect(body.registered[0].email).toBe('eventuser')
+      expect(body.guests[0].email).toBe('guest@example.com')
+      expect(body.guests[0].name).toBe('Guest Person')
+    })
+
+    it('rejects a non-creator, non-admin viewer with 403', async () => {
+      const eventId = await createEvent()
+      const { token: stranger } = await registerAndLogin('roster-stranger', 'password123')
+      const { res } = await fetchJSON(`/api/events/${eventId}/roster`, {
+        headers: authHeader(stranger),
+      })
+      expect(res.status).toBe(403)
+    })
+
+    it('lets an admin view any event roster', async () => {
+      const eventId = await createEvent()
+      const { res, body } = await fetchJSON(`/api/events/${eventId}/roster`, {
+        headers: authHeader(adminToken),
+      })
+      expect(res.status).toBe(200)
+      expect(body.counts.total).toBe(0)
+    })
+
+    it('returns 404 for an unknown event', async () => {
+      const { res } = await fetchJSON('/api/events/does-not-exist/roster', {
+        headers: authHeader(adminToken),
+      })
+      expect(res.status).toBe(404)
+    })
+  })
+
   describe('POST /api/removeEvent', () => {
     it('admin can remove an event', async () => {
       const { body: addBody } = await jsonPost(

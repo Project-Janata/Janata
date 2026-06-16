@@ -174,6 +174,7 @@ function EventPanelInner({
         attendees={attendees}
         isPast={isPast}
         isAdmin={isAdmin}
+        canManage={canEdit}
         onClose={onClose}
         onToggleRegistration={handleToggleRegistration}
         isToggling={isToggling}
