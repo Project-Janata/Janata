@@ -39,9 +39,12 @@ test.describe('v2 guest', () => {
 
   test('guest Home hides personalized event lists (#399)', async ({ page }) => {
     await gotoApp(page, '/')
-    // Personalized lists must NOT show for a logged-out visitor.
-    await expect(page.getByText(/UP NEXT FOR YOU/i)).toHaveCount(0)
-    await expect(page.getByText(/COMING UP/i)).toHaveCount(0)
+    // Personalized section headers must NOT be VISIBLE to a logged-out visitor.
+    // RN-web leaves hidden duplicate text nodes (responsive variants + the
+    // off-screen AuthPromptModal copy "…see what is coming up"), so filter to
+    // visible — a plain getByText would count those hidden copies.
+    await expect(page.getByText(/UP NEXT FOR YOU/i).filter({ visible: true })).toHaveCount(0)
+    await expect(page.getByText(/COMING UP/i).filter({ visible: true })).toHaveCount(0)
   })
 
   test('guest Feed shows the setup rail', async ({ page }, testInfo) => {
@@ -53,7 +56,9 @@ test.describe('v2 guest', () => {
 
   test('guest Feed keeps the preview quiet', async ({ page }, testInfo) => {
     await gotoApp(page, '/feed')
-    await expect(page.getByText(/Your community feed/i)).toHaveCount(0)
+    // The welcome ghost card is hidden for desktop guests; assert no VISIBLE
+    // copy (RN-web keeps the hidden mobile-variant node in the DOM).
+    await expect(page.getByText(/Your community feed/i).filter({ visible: true })).toHaveCount(0)
     await shot(page, testInfo, 'feed-ghost-card')
   })
 
