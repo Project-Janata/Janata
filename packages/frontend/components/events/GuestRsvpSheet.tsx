@@ -142,7 +142,7 @@ export default function GuestRsvpSheet({ visible, onClose, eventId, eventTitle }
                 You're going{forEvent}
               </Text>
               <Text style={{ fontSize: 14, fontFamily: 'Inclusive Sans', color: colors.textSecondary, textAlign: 'center', lineHeight: 21 }}>
-                Want the full app? Members join Janata by invite. Ask a member to send you one.
+                You're on the list — we'll send the details to your email. No account needed.
               </Text>
               <PrimaryButton onPress={close} style={{ alignSelf: 'stretch' }}>Done</PrimaryButton>
             </View>
