@@ -14,6 +14,7 @@ import { DiscoverListSkeleton } from '../ui/Skeleton'
 import { FilterChip } from '../ui'
 import type { FilterPickerOption } from '../ui/FilterPickerModal'
 import { useTheme, useUser } from '../contexts'
+import { isSevakOrAdmin } from '../../utils/admin'
 import { useAnalytics } from '../../utils/analytics'
 import { extractCityState } from '../../utils/addressParsing'
 import { useDiscoverData, type DiscoverFilter } from '../../hooks/useApiData'
@@ -520,7 +521,7 @@ export function MobileDiscoverFallback() {
                     />
                   )}
                 </View>
-                {user && (
+                {isSevakOrAdmin(user) && (
                   <Pressable
                     accessibilityRole="button"
                     accessibilityLabel="Create event"

@@ -30,6 +30,7 @@ import { useTheme } from '../../components/contexts'
 import { Badge, Avatar, FilterChip } from '../../components/ui'
 import { type FilterPickerOption } from '../../components/ui/FilterPickerModal'
 import { useUser } from '../../components/contexts/UserContext'
+import { isSevakOrAdmin } from '../../utils/admin'
 import { useDiscoverData, type DiscoverFilter } from '../../hooks/useApiData'
 import type { EventDisplay, DiscoverCenter, AttendeeInfo } from '../../utils/api'
 import { extractCityState } from '../../utils/addressParsing'
@@ -764,7 +765,7 @@ export default function DiscoverScreen() {
                     />
                   )}
                 </View>
-                {user && (
+                {isSevakOrAdmin(user) && (
                   <Pressable
                     accessibilityRole="button"
                     accessibilityLabel="Create event"

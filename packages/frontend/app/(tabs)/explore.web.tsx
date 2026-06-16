@@ -40,7 +40,7 @@ import type { MapPoint, EventDisplay, AttendeeInfo } from '../../utils/api'
 import { removeEvent } from '../../utils/api'
 import { extractCityState } from '../../utils/addressParsing'
 import { WeekCalendar } from '../../components'
-import { ADMIN_EMAIL, isLocal } from '../../utils/admin'
+import { ADMIN_EMAIL, isLocal, isSevakOrAdmin } from '../../utils/admin'
 import { EmptyState } from '../../components/ui/EmptyState'
 import { DiscoverListSkeleton } from '../../components/ui/Skeleton'
 import { ExploreEventItem } from '../../components/explore/ExploreEventItem.web'
@@ -256,9 +256,9 @@ export default function DiscoverScreenWeb() {
   const { user } = useUser()
   const { track } = useAnalytics()
   const isAdmin = user?.email === ADMIN_EMAIL || (user?.verificationLevel !== undefined && user.verificationLevel >= 107)
-  // Beta: any signed-in user can create events. Backend enforces auth-only;
-  // post-beta this becomes a coordinator-tier gate (see issue tracker).
-  const canCreate = !!user
+  // Event creation is coordinator-gated: only sevak-and-above (or admins) see
+  // the create entry point. Mirrors the backend /addEvent gate.
+  const canCreate = isSevakOrAdmin(user)
   // Events-first: the desktop sidebar always shows the events list (the old
   // Events/Centers tab model was dropped to match native explore.tsx and the
   // mobile-web fallback).

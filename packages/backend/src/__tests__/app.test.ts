@@ -397,6 +397,10 @@ describe('invite gate (#403)', () => {
     beforeEach(async () => {
       const adminToken = await createAdmin()
       const { token } = await registerAndLogin('host', 'password123')
+      // Event creation is coordinator-gated (sevak+); the host is a coordinator.
+      await env.DB.prepare('UPDATE users SET verification_level = 54 WHERE username = ?')
+        .bind('host')
+        .run()
       const { body: center } = await jsonPost(
         '/api/addCenter',
         { centerName: 'Guest Center', latitude: 37.0, longitude: -121.0 },
@@ -1915,6 +1919,11 @@ describe('event routes', () => {
     adminToken = await createAdmin()
     const { token } = await registerAndLogin('eventuser', 'password123')
     userToken = token
+    // Event creation is coordinator-gated (sevak+). The fixture creator is a
+    // pilot coordinator, so promote it to SEVAK.
+    await env.DB.prepare('UPDATE users SET verification_level = 54 WHERE username = ?')
+      .bind('eventuser')
+      .run()
 
     // Create a center for events (requires auth now)
     const { body } = await jsonPost(
@@ -1946,6 +1955,22 @@ describe('event routes', () => {
       expect(res.status).toBe(200)
       expect(body.id).toBeDefined()
       expect(typeof body.tier).toBe('number')
+    })
+
+    it('rejects a non-coordinator (normal member) with 403', async () => {
+      const { token: memberToken } = await registerAndLogin('plainmember-evt', 'password123')
+      const { res } = await jsonPost(
+        '/api/addEvent',
+        {
+          title: 'Unauthorized Event',
+          date: '2025-06-01T10:00:00Z',
+          latitude: 37.0,
+          longitude: -121.0,
+          centerID: centerId,
+        },
+        authHeader(memberToken)
+      )
+      expect(res.status).toBe(403)
     })
 
     it('rejects missing centerID (400)', async () => {

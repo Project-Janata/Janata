@@ -1904,6 +1904,14 @@ app.post('/boards/posts/:postId/report', authMiddleware, rateLimit(10, 60_000), 
 
 app.post('/addEvent', authMiddleware, async (c) => {
   const user = c.get('user')
+
+  // Event creation is coordinator-gated: only sevak-and-above (or a global
+  // admin) can create events. Beta coordinators (e.g. SJ/Dallas pilots) are
+  // provisioned at SEVAK; they invite normal members to their center.
+  if (!isAdmin(user) && (user.verification_level ?? 0) < SEVAK) {
+    return c.json({ message: 'Only coordinators can create events' }, 403)
+  }
+
   const data = await c.req.json<{
     title?: string
     description?: string
