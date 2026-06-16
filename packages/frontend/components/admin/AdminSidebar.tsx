@@ -1,5 +1,5 @@
 import React from 'react'
-import { View, Text, Pressable, StyleSheet } from 'react-native'
+import { View, Text, Pressable, ScrollView, StyleSheet } from 'react-native'
 import { Bell, Building2, CalendarDays, Users, Ticket, ShieldAlert } from 'lucide-react-native'
 import { useTheme } from '../contexts'
 
@@ -16,6 +16,7 @@ type AdminSidebarProps = {
   onTabChange: (tab: AdminTab) => void
   // Full admins see every tab; sevaks (moderation-only) see just Moderation.
   isAdmin: boolean
+  compact?: boolean
 }
 
 const tabs: { key: AdminTab; label: string; Icon: typeof Building2 }[] = [
@@ -27,7 +28,7 @@ const tabs: { key: AdminTab; label: string; Icon: typeof Building2 }[] = [
   { key: 'Notifications', label: 'Notifications', Icon: Bell },
 ]
 
-export default function AdminSidebar({ activeTab, onTabChange, isAdmin }: AdminSidebarProps) {
+export default function AdminSidebar({ activeTab, onTabChange, isAdmin, compact = false }: AdminSidebarProps) {
   const { isDark } = useTheme()
 
   const inactiveColor = isDark ? '#A8A29E' : '#78716C'
@@ -36,33 +37,42 @@ export default function AdminSidebar({ activeTab, onTabChange, isAdmin }: AdminS
   return (
     <View
       style={[
-        styles.container,
+        compact ? styles.compactContainer : styles.container,
         {
           backgroundColor: isDark ? '#1a1a1a' : '#F5F5F4',
-          borderRightColor: isDark ? '#262626' : '#E7E5E4',
+          borderRightColor: compact ? 'transparent' : isDark ? '#262626' : '#E7E5E4',
+          borderBottomColor: compact ? isDark ? '#262626' : '#E7E5E4' : 'transparent',
         },
       ]}
     >
-      <Text style={styles.header}>Admin</Text>
+      <Text style={compact ? styles.compactHeader : styles.header}>Admin</Text>
 
-      {visibleTabs.map(({ key, label, Icon }) => {
-        const isActive = activeTab === key
-        const color = isActive ? '#E8862A' : inactiveColor
+      <ScrollView
+        horizontal={compact}
+        showsHorizontalScrollIndicator={false}
+        contentContainerStyle={compact ? styles.compactTabs : undefined}
+      >
+        {visibleTabs.map(({ key, label, Icon }) => {
+          const isActive = activeTab === key
+          const color = isActive ? '#E8862A' : inactiveColor
 
-        return (
-          <Pressable
-            key={key}
-            onPress={() => onTabChange(key)}
-            style={[
-              styles.tab,
-              isActive && styles.tabActive,
-            ]}
-          >
-            <Icon size={18} color={color} />
-            <Text style={[styles.tabLabel, { color }]}>{label}</Text>
-          </Pressable>
-        )
-      })}
+          return (
+            <Pressable
+              key={key}
+              onPress={() => onTabChange(key)}
+              style={[
+                compact ? styles.compactTab : styles.tab,
+                isActive && styles.tabActive,
+              ]}
+            >
+              <Icon size={18} color={color} />
+              <Text style={[styles.tabLabel, compact && styles.compactTabLabel, { color }]} numberOfLines={1}>
+                {label}
+              </Text>
+            </Pressable>
+          )
+        })}
+      </ScrollView>
     </View>
   )
 }
@@ -74,12 +84,28 @@ const styles = StyleSheet.create({
     paddingTop: 20,
     paddingHorizontal: 12,
   },
+  compactContainer: {
+    borderBottomWidth: 1,
+    paddingTop: 10,
+    paddingBottom: 8,
+  },
   header: {
     fontFamily: 'Inclusive Sans',
     fontSize: 15,
     color: '#E8862A',
     marginBottom: 20,
     paddingHorizontal: 8,
+  },
+  compactHeader: {
+    fontFamily: 'Inclusive Sans',
+    fontSize: 14,
+    color: '#E8862A',
+    marginBottom: 8,
+    paddingHorizontal: 16,
+  },
+  compactTabs: {
+    gap: 6,
+    paddingHorizontal: 12,
   },
   tab: {
     flexDirection: 'row',
@@ -89,6 +115,14 @@ const styles = StyleSheet.create({
     borderRadius: 8,
     marginBottom: 4,
   },
+  compactTab: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    minHeight: 38,
+    paddingVertical: 8,
+    paddingHorizontal: 10,
+    borderRadius: 8,
+  },
   tabActive: {
     backgroundColor: 'rgba(232,134,42,0.12)',
   },
@@ -96,5 +130,9 @@ const styles = StyleSheet.create({
     fontFamily: 'Inclusive Sans',
     fontSize: 14,
     marginLeft: 10,
+  },
+  compactTabLabel: {
+    fontSize: 13,
+    marginLeft: 7,
   },
 })

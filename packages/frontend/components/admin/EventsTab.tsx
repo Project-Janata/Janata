@@ -1,5 +1,5 @@
 import React, { useState, useMemo, useEffect, useCallback } from 'react'
-import { View, Text, Pressable, ActivityIndicator } from 'react-native'
+import { View, Text, Pressable, ActivityIndicator, useWindowDimensions } from 'react-native'
 import { MapPin, Clock, Users, FileText } from 'lucide-react-native'
 import AdminTable, { type Column } from './AdminTable'
 import AdminDetailPanel from './AdminDetailPanel'
@@ -28,7 +28,9 @@ const formatTime = (dateStr: string) => {
 export default function EventsTab() {
   const colors = useDetailColors()
   const { isDark } = useTheme()
+  const { width } = useWindowDimensions()
   const { track } = useAnalytics()
+  const isCompact = width < 640
   const [search, setSearch] = useState('')
   const [events, setEvents] = useState<EventData[]>([])
   const [total, setTotal] = useState(0)
@@ -138,12 +140,20 @@ export default function EventsTab() {
 
   return (
     <View style={{ flex: 1, flexDirection: 'row' }}>
-      <View style={{ flex: 1, padding: 20 }}>
-        <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
+      <View style={{ flex: 1, padding: isCompact ? 14 : 20 }}>
+        <View
+          style={{
+            flexDirection: isCompact ? 'column' : 'row',
+            justifyContent: 'space-between',
+            alignItems: isCompact ? 'stretch' : 'center',
+            gap: 10,
+            marginBottom: 16,
+          }}
+        >
           <Text style={{ fontFamily: 'Inclusive Sans', fontSize: 18, color: colors.text }}>
             Events ({total})
           </Text>
-          <View style={{ width: 240 }}>
+          <View style={{ width: isCompact ? '100%' : 240 }}>
             <AdminSearchInput value={search} onChangeText={setSearch} placeholder="Search events..." />
           </View>
         </View>
