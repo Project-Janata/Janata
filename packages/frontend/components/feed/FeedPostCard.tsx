@@ -68,6 +68,7 @@ export function FeedPostCard({
           hitSlop={6}
         >
           <Avatar
+            image={post.author.image}
             name={post.author.name}
             initials={post.author.initials}
             size={38}

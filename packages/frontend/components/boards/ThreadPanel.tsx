@@ -404,6 +404,7 @@ export function BoardPostCard({
           hitSlop={6}
         >
           <Avatar
+            image={message.author.image}
             name={message.author.name}
             initials={message.author.initials}
             size={42}

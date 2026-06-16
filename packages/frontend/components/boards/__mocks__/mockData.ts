@@ -7,6 +7,8 @@ export interface PersonSummary {
   subtitle?: string
   verification?: VerificationKind
   accentColor?: string
+  /** Absolute profile image URL; falls back to initials when absent. */
+  image?: string
 }
 
 export interface BoardMessage {
