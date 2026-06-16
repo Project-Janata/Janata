@@ -1,5 +1,5 @@
 import React, { useCallback, useMemo, useState } from 'react'
-import { ActivityIndicator, Platform, Pressable, ScrollView, Text, View, useWindowDimensions } from 'react-native'
+import { ActivityIndicator, Linking, Platform, Pressable, ScrollView, Text, View, useWindowDimensions } from 'react-native'
 import { ChevronRight, Compass, MapPin, Shield } from 'lucide-react-native'
 import { useFocusEffect, useRouter } from 'expo-router'
 import { useAnalytics } from '../../utils/analytics'
@@ -204,7 +204,7 @@ export default function HomeScreen() {
       }}
       onPasteInvite={() => {
         track('home_paste_invite_pressed', { source: 'home_setup_card' })
-        router.push('/join' as never)
+        router.push('/auth?invite=1' as never)
       }}
       artworkSource={compassImage}
       signedOutTitle="Log in to make Janata yours."
@@ -231,8 +231,16 @@ export default function HomeScreen() {
   const adminShortcut = isSuperAdmin(user) ? (
     <Pressable
       onPress={() => {
-        track('home_admin_pressed', { source: 'home' })
-        router.push('/admin' as never)
+        track('home_admin_pressed', { source: 'home', platform: Platform.OS })
+        // The admin dashboard is web-only (app/admin.web.tsx); the native route
+        // is just a redirect. On native, open the live web dashboard in the
+        // system browser so admins/sevaks can manage from iOS instead of
+        // hitting a dead-end. Web keeps the in-app route.
+        if (Platform.OS === 'web') {
+          router.push('/admin' as never)
+        } else {
+          Linking.openURL('https://chinmayajanata.org/admin').catch(() => {})
+        }
       }}
       accessibilityRole="button"
       style={{ flexDirection: 'row', alignItems: 'center', gap: 12, borderRadius: 16, borderWidth: 1, borderColor: c.border, backgroundColor: c.card, padding: 14 }}

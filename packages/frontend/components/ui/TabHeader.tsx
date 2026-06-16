@@ -115,7 +115,7 @@ export default function TabHeader({
         ) : null}
       </View>
 
-      <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+      <View style={{ flexDirection: 'row', alignItems: 'center', gap: 14 }}>
         {rightContent}
         {action && (
           <Pressable

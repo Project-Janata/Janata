@@ -1,5 +1,5 @@
 import React, { useCallback, useState, useEffect } from 'react'
-import { useRouter } from 'expo-router'
+import { useRouter, useLocalSearchParams } from 'expo-router'
 import { useAnalytics } from '../utils/analytics'
 import PasswordStrength from '../components/auth/PasswordStrength'
 import { ImageCarousel } from '../components/auth/ImageCarousel'
@@ -76,7 +76,9 @@ export default function AuthScreen() {
   const [emailFocused, setEmailFocused] = useState(false)
   const [passwordFocused, setPasswordFocused] = useState(false)
   const [confirmPasswordFocused, setConfirmPasswordFocused] = useState(false)
-  const [showInviteField, setShowInviteField] = useState(false)
+  // `?invite=1` opens straight to the paste-invite field (shared with native).
+  const { invite: inviteParam } = useLocalSearchParams<{ invite?: string }>()
+  const [showInviteField, setShowInviteField] = useState(inviteParam === '1')
   const [inviteValue, setInviteValue] = useState('')
   const [inviteError, setInviteError] = useState('')
   const [viewportWidth, setViewportWidth] = useState(() =>
