@@ -188,6 +188,8 @@ function RootLayoutNav({ onAuthReady }: { onAuthReady: () => void }) {
     width < 768 &&
     !pathname.startsWith('/auth') &&
     !pathname.startsWith('/onboarding') &&
+    pathname !== '/join' &&
+    !pathname.startsWith('/i/') &&
     pathname !== '/landing' &&
     pathname !== '/intro'
 
