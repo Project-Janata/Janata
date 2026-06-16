@@ -120,14 +120,17 @@ export function FeedSetupRail({
           <Pressable
             onPress={onSignIn}
             accessibilityRole="button"
-            style={({ pressed }) => ({
+            style={{
+              width: '100%',
               minHeight: 48,
               borderRadius: 12,
-              backgroundColor: pressed ? colors.accentPress : colors.accent,
+              borderWidth: 1,
+              borderColor: colors.accent,
+              backgroundColor: colors.accent,
               paddingHorizontal: 16,
               alignItems: 'center',
               justifyContent: 'center',
-            })}
+            }}
           >
             <Text style={{ fontFamily: 'Inclusive Sans', fontSize: 15, fontWeight: '600', color: colors.textInverse }}>
               Log in

@@ -213,12 +213,10 @@ function RootLayoutNav({ onAuthReady }: { onAuthReady: () => void }) {
     const inIntroPage = pathname === '/intro'
 
     if (!isAuthenticated) {
-      // First-run-only: an unauthenticated first-timer is shown /intro ONLY when
-      // they hit the natural entry surface (root or landing). Public deep links
-      // (/events/:id, /center/:id, /feed, /explore, SEO pages) are NOT
-      // intercepted, so shared/indexed links open directly. Skip → /auth always
-      // works (it sets intro-shown), so the user is never trapped.
-      const isEntrySurface = pathname === '/' || inLandingPage
+      // First-run-only: an unauthenticated first-timer is shown /intro only from
+      // the landing surface. The tabbed Home route stays public so tapping Home
+      // in the native shell shows the logged-out Home instead of restarting intro.
+      const isEntrySurface = inLandingPage
       // Native-only first-run: the /intro explainer is for first-time iOS app
       // users. On web, visitors land on the marketing site (/landing) — don't
       // bounce them into /intro (which also broke "Back to home" from /auth).

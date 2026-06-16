@@ -12,7 +12,7 @@ import type { DiscoverCenter, EventDisplay } from '../../utils/api'
 import { extractCityState } from '../../utils/addressParsing'
 import { FeaturedEventCard, type FeaturedSource } from '../../components/home/FeaturedEventCard'
 import { MiniEventRow, type WeekItem } from '../../components/home/MiniEventRow'
-import { BoardPostCard, SignInCallout, boardPostToMessage, type BoardMessage } from '../../components/boards'
+import { BoardPostCard, boardPostToMessage, type BoardMessage } from '../../components/boards'
 import { FeedSetupRail } from '../../components/feed'
 import { DesktopColumns, desktopScrollContent, useDesktopLayout } from '../../components/layout/DesktopColumns'
 import AuthPromptModal from '../../components/ui/AuthPromptModal'
@@ -98,7 +98,7 @@ export default function HomeScreen() {
   )
 
   // Desktop two-column composition is web-only and gated on a wide breakpoint.
-  // Mobile web and native always render the original single centered column.
+  // Mobile web and native use a single centered column.
   const isWideDesktop = useDesktopLayout(width)
   const isDesktop = width >= 860
 
@@ -160,12 +160,13 @@ export default function HomeScreen() {
   // still renders below, so Home leads with useful content rather than a
   // redundant feature tour. Self-resolves once they RSVP.
   const isNewUser = !!user && signedUpEvents.length === 0
-  // A signed-in, verified member (vl >= 45). Guests and unverified users get the
-  // stripped home: Explore + sign-in nudge, no personalized event/board lists.
+  // A signed-in, verified member (vl >= 45). Guests get the logged-out setup card;
+  // unverified signed-in users get the stripped member home.
   const isVerifiedMember = !!user && vl >= 45
-  const isLoggedOutWeb = Platform.OS === 'web' && !user
+  const isLoggedOut = !user
+  const isLoggedOutWeb = Platform.OS === 'web' && isLoggedOut
 
-  const shouldWaitForHomeData = user ? (discoverLoading || myEventsLoading) : (!isLoggedOutWeb && discoverLoading)
+  const shouldWaitForHomeData = user ? (discoverLoading || myEventsLoading) : false
   if (shouldWaitForHomeData) {
     return (
       <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center', backgroundColor: c.bg }}>
@@ -188,36 +189,21 @@ export default function HomeScreen() {
     </View>
   )
 
-  // Login-state personalization: guests get a sign-in nudge that explains what
-  // signing in unlocks; signed-in members don't.
-  const guestNudge = !user ? (
-    <SignInCallout
-      title="Make Janata yours"
-      subtitle="Log in or paste an invite to RSVP and join boards."
-      ctaLabel="Log in"
-      colors={c}
-      onPress={() => {
-        track('home_signin_pressed', { source: 'home_nudge' })
-        setShowAuthPrompt(true)
-      }}
-    />
-  ) : null
-
   const guestSetupRail = !user ? (
     <FeedSetupRail
       colors={c}
       isSignedIn={false}
       onSignIn={() => {
-        track('home_signin_pressed', { source: 'home_desktop_rail' })
+        track('home_signin_pressed', { source: 'home_setup_card' })
         setShowAuthPrompt(true)
       }}
       onJoinCenter={() => undefined}
       onBrowseEvents={() => {
-        track('home_guest_browse_events_pressed', { source: 'home_desktop_rail' })
+        track('home_guest_browse_events_pressed', { source: 'home_setup_card' })
         router.push('/explore' as never)
       }}
       onPasteInvite={() => {
-        track('home_paste_invite_pressed', { source: 'home_desktop_rail' })
+        track('home_paste_invite_pressed', { source: 'home_setup_card' })
         router.push('/join' as never)
       }}
       artworkSource={compassImage}
@@ -262,8 +248,7 @@ export default function HomeScreen() {
     </Pressable>
   ) : null
 
-  // Guests don't get the banner anymore — their Home leads with live events
-  // (new-30); the compact guestNudge below the content is the only callout.
+  // Logged-out guests render the setup card before reaching this path.
   const welcomeBanner = (!!user && !isVerifiedMember) || isNewUser ? (
     <WelcomeBanner
       c={c}
@@ -469,15 +454,15 @@ export default function HomeScreen() {
     )
   }
 
-  if (isLoggedOutWeb) {
+  if (isLoggedOut) {
     return (
       <>
         <ScrollView
           style={{ flex: 1, backgroundColor: c.bg }}
           contentContainerStyle={{
             paddingHorizontal: 16,
-            paddingTop: 20,
-            paddingBottom: 40,
+            paddingTop: Platform.OS === 'web' ? 20 : 8,
+            paddingBottom: Platform.OS === 'web' ? 40 : 112,
           }}
           showsVerticalScrollIndicator={false}
         >
@@ -513,9 +498,6 @@ export default function HomeScreen() {
           {weekSection}
           {firstRunOverview}
           {boardsSection}
-          {/* Guest callout sits below the live content (new-30): events sell
-              the app, the callout just names the next step. */}
-          {guestNudge}
         </View>
       </ScrollView>
       {authPrompt}
