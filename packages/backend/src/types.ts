@@ -401,6 +401,26 @@ export function userRowToPublicProfile(
   }
 }
 
+// Minimal, display-only shape for a public attendee list. Deliberately omits
+// ALL PII — no email, phone, date_of_birth, suspension fields, AND no username
+// (in this app `username` currently holds the login email, so exposing it would
+// leak the email). Use this for any UNAUTHENTICATED list of other users.
+export interface AttendeeApiResponse {
+  id: string
+  firstName: string | null
+  lastName: string | null
+  profileImage: string | null
+}
+
+export function userRowToAttendee(row: UserRow): AttendeeApiResponse {
+  return {
+    id: row.id,
+    firstName: row.first_name,
+    lastName: row.last_name,
+    profileImage: row.profile_image,
+  }
+}
+
 export function centerRowToApi(row: CenterRow): CenterApiResponse {
   return {
     centerID: row.id,

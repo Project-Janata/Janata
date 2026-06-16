@@ -2188,7 +2188,32 @@ describe('event routes', () => {
       const { res, body } = await jsonPost('/api/getEventUsers', { id: addBody.id })
       expect(res.status).toBe(200)
       expect(body.users).toHaveLength(1)
-      expect(body.users[0].username).toBe('eventuser')
+      expect(body.users[0].id).toBeDefined()
+    })
+
+    it('does NOT leak PII — no email/username/phone/DOB in the public list', async () => {
+      const { body: addBody } = await jsonPost(
+        '/api/addEvent',
+        {
+          title: 'PII Event',
+          date: '2025-06-01T10:00:00Z',
+          latitude: 37.0,
+          longitude: -121.0,
+          centerID: centerId,
+        },
+        authHeader(userToken),
+      )
+      await jsonPost('/api/attendEvent', { eventID: addBody.id }, authHeader(userToken))
+
+      const { body } = await jsonPost('/api/getEventUsers', { id: addBody.id })
+      const attendee = body.users[0]
+      expect(attendee).not.toHaveProperty('email')
+      expect(attendee).not.toHaveProperty('username')
+      expect(attendee).not.toHaveProperty('phoneNumber')
+      expect(attendee).not.toHaveProperty('dateOfBirth')
+      // Display-only fields remain.
+      expect(attendee).toHaveProperty('id')
+      expect(attendee).toHaveProperty('profileImage')
     })
   })
 
