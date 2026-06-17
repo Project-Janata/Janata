@@ -133,6 +133,10 @@ function EventPanelInner({
     }
   }, [event?.isRegistered, event?.attendees, attendees, onStatusChange])
   const [showGuestRsvp, setShowGuestRsvp] = useState(false)
+  // Guest RSVPed this session — lock the attend CTA so they don't re-submit.
+  // Reset when the selected event changes (this panel is reused across events).
+  const [guestRsvped, setGuestRsvped] = useState(false)
+  useEffect(() => { setGuestRsvped(false) }, [event?.id])
 
   const handleToggleRegistration = async () => {
     if (!user) {
@@ -178,6 +182,7 @@ function EventPanelInner({
         onClose={onClose}
         onToggleRegistration={handleToggleRegistration}
         isToggling={isToggling}
+        guestRsvped={guestRsvped}
         onEdit={canEdit && !isPast ? onEdit : undefined}
         onDelete={
           canEdit
@@ -199,6 +204,7 @@ function EventPanelInner({
         onClose={() => setShowGuestRsvp(false)}
         eventId={eventId}
         eventTitle={event.title}
+        onRsvped={() => setGuestRsvped(true)}
       />
     </>
   )

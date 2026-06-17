@@ -86,6 +86,9 @@ function MobileEventDetail({ eventId }: { eventId: string }) {
   const colors = useDetailColors()
   const appColors = useColors()
   const [showGuestRsvp, setShowGuestRsvp] = useState(false)
+  // Guests have no account state, so we lock the RSVP CTA for this session once
+  // they're on the list — prevents a confusing re-submit + confirms it landed.
+  const [guestRsvped, setGuestRsvped] = useState(false)
   const [isDeleting, setIsDeleting] = useState(false)
   const [threadDetailPost, setThreadDetailPost] = useState<FeedPost | null>(null)
   const hasTrackedView = useRef(false)
@@ -372,6 +375,10 @@ function MobileEventDetail({ eventId }: { eventId: string }) {
                 >
                   Cancel Registration
                 </DestructiveButton>
+              ) : !user && guestRsvped ? (
+                <View style={{ minHeight: 48, borderRadius: 12, borderWidth: 1, borderColor: colors.border, alignItems: 'center', justifyContent: 'center' }}>
+                  <Text style={{ fontFamily: 'Inclusive Sans', fontSize: 15, fontWeight: '600', color: colors.text }}>✓ You're going</Text>
+                </View>
               ) : (
                 <PrimaryButton
                   onPress={() => {
@@ -427,6 +434,10 @@ function MobileEventDetail({ eventId }: { eventId: string }) {
             >
               Cancel Registration
             </DestructiveButton>
+          ) : !user && guestRsvped ? (
+            <View style={{ minHeight: 48, borderRadius: 12, borderWidth: 1, borderColor: colors.border, alignItems: 'center', justifyContent: 'center' }}>
+              <Text style={{ fontFamily: 'Inclusive Sans', fontSize: 15, fontWeight: '600', color: colors.text }}>✓ You're going</Text>
+            </View>
           ) : (
             <PrimaryButton
               onPress={() => {
@@ -452,6 +463,7 @@ function MobileEventDetail({ eventId }: { eventId: string }) {
         onClose={() => setShowGuestRsvp(false)}
         eventId={eventId}
         eventTitle={event?.title}
+        onRsvped={() => setGuestRsvped(true)}
       />
     </View>
   )

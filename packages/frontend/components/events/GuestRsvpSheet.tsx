@@ -12,6 +12,9 @@ interface GuestRsvpSheetProps {
   onClose: () => void
   eventId: string
   eventTitle?: string
+  // Fired once the guest is on the list (fresh RSVP or already-RSVPed) so the
+  // opener can lock its CTA for the session — no double submissions.
+  onRsvped?: () => void
 }
 
 type Status = 'form' | 'submitting' | 'success' | 'already' | 'requiresVerified' | 'error'
@@ -21,7 +24,7 @@ type Status = 'form' | 'submitting' | 'success' | 'already' | 'requiresVerified'
  * name + email, no account. Backed by POST /attendEventGuest. Same component on
  * web and native (RN Modal). Cancel-via-email is a follow-up (needs prod Resend).
  */
-export default function GuestRsvpSheet({ visible, onClose, eventId, eventTitle }: GuestRsvpSheetProps) {
+export default function GuestRsvpSheet({ visible, onClose, eventId, eventTitle, onRsvped }: GuestRsvpSheetProps) {
   const colors = useDetailColors()
   const router = useRouter()
   const { track } = useAnalytics()
@@ -64,6 +67,7 @@ export default function GuestRsvpSheet({ visible, onClose, eventId, eventTitle }
       const res = await attendEventGuest(eventId, trimmedName, trimmedEmail)
       track('guest_rsvp_submit', { eventId, alreadyRsvped: res.alreadyRsvped })
       setStatus(res.alreadyRsvped ? 'already' : 'success')
+      onRsvped?.()
     } catch (e: any) {
       if (e?.status === 403) {
         setStatus('requiresVerified')
@@ -72,7 +76,7 @@ export default function GuestRsvpSheet({ visible, onClose, eventId, eventTitle }
         setStatus('error')
       }
     }
-  }, [name, email, eventId, track])
+  }, [name, email, eventId, track, onRsvped])
 
   if (!visible) return null
 
