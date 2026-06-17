@@ -6,7 +6,7 @@ import { useAnalytics } from '../../utils/analytics'
 import { useUser } from '../../components/contexts'
 import { useColors } from '../../hooks/useColors'
 import { useDetailColors } from '../../hooks/useDetailColors'
-import { useDiscoverData, useMyEvents, useBoard } from '../../hooks/useApiData'
+import { useDiscoverData, useMyEvents, useAggregatedFeed } from '../../hooks/useApiData'
 import type { EventDisplay } from '../../utils/api'
 import { extractCityState } from '../../utils/addressParsing'
 import { FeaturedEventCard, type FeaturedSource } from '../../components/home/FeaturedEventCard'
@@ -82,9 +82,11 @@ export default function HomeScreen() {
     'Events', '', user?.id, false, false, false, user?.interests ?? undefined, user?.centerID
   )
 
-  // Boards peek (#199): surface the 1-2 latest posts from the user's center
-  // board so Home reflects real activity instead of a permanent empty state.
-  const { posts: centerBoardPosts } = useBoard('center', user?.centerID ?? undefined, !!user?.centerID)
+  // Boards peek (#199): surface the 1-2 latest posts from the user's ACTUAL
+  // activity — the aggregated feed (public + their center board + boards for
+  // events they've joined), not just the center board. Matches the "your
+  // center and events you've joined" promise in the slot copy.
+  const { posts: feedPosts, refetch: refetchFeed } = useAggregatedFeed(!!user)
   const userCenter = useMemo(
     () => allCenters.find((item) => item.id === user?.centerID),
     [allCenters, user?.centerID]
@@ -92,29 +94,30 @@ export default function HomeScreen() {
   const centerName = userCenter?.name
   const boardPeek = useMemo(
     () =>
-      centerBoardPosts.slice(0, 2).map((post) => ({
+      feedPosts.slice(0, 2).map((post) => ({
         ...boardPostToMessage(post),
-        sourceKind: 'center' as const,
-        sourceLabel: centerName ?? 'Your center',
+        sourceKind: post.sourceKind ?? 'center',
+        sourceLabel: post.sourceLabel ?? centerName ?? 'Your center',
       })),
-    [centerBoardPosts, centerName]
+    [feedPosts, centerName]
   )
 
   useFocusEffect(
     useCallback(() => {
       refetchMyEvents()
       refreshDiscover()
-    }, [refetchMyEvents, refreshDiscover])
+      refetchFeed()
+    }, [refetchMyEvents, refreshDiscover, refetchFeed])
   )
 
   const handleRefresh = useCallback(async () => {
     setRefreshing(true)
     try {
-      await Promise.all([refetchMyEvents(), refreshDiscover({ force: true })])
+      await Promise.all([refetchMyEvents(), refreshDiscover({ force: true }), refetchFeed()])
     } finally {
       setRefreshing(false)
     }
-  }, [refetchMyEvents, refreshDiscover])
+  }, [refetchMyEvents, refreshDiscover, refetchFeed])
 
   // Desktop two-column composition is web-only and gated on a wide breakpoint.
   // Mobile web and native use a single centered column.

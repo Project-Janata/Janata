@@ -8,6 +8,7 @@ import {
   fetchAllEvents,
   fetchEventUsers,
   fetchBoard,
+  fetchAggregatedFeed,
   attendEvent,
   unattendEvent,
   getUserEvents,
@@ -632,6 +633,36 @@ export function useBoard(type: BoardType, parentId: string | undefined, enabled 
   }, [load])
 
   return { posts, loading, error, refetch: load }
+}
+
+// Aggregated cross-board feed (#205 / GET /feed): public + the user's center
+// board + boards for events they've joined, reverse-chronological. Used by the
+// Home "Latest on your board" peek so it reflects real activity, not just the
+// center board. Each post carries sourceKind/sourceLabel for display.
+export function useAggregatedFeed(enabled = true, limit = 20) {
+  const [posts, setPosts] = useState<BoardPostData[]>([])
+  const [loading, setLoading] = useState(enabled)
+
+  const load = useCallback(async () => {
+    if (!enabled) {
+      setPosts([])
+      setLoading(false)
+      return
+    }
+    try {
+      setLoading(true)
+      const data = await fetchAggregatedFeed({ limit })
+      setPosts(data)
+    } finally {
+      setLoading(false)
+    }
+  }, [enabled, limit])
+
+  useEffect(() => {
+    load()
+  }, [load])
+
+  return { posts, loading, refetch: load }
 }
 
 // ── Discover hooks ──────────────────────────────────────────────────

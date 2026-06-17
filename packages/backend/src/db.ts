@@ -1348,7 +1348,13 @@ export async function listAggregatedFeed(
   //   event board the user has an event_attendees row for
   const result = await db
     .prepare(
-      `SELECT bp.*
+      `SELECT bp.*,
+         CASE WHEN bp.visibility = 'public_signed_in' THEN 'public' ELSE b.type END AS source_kind,
+         CASE
+           WHEN bp.visibility = 'public_signed_in' THEN 'Public'
+           WHEN b.type = 'center' THEN (SELECT name FROM centers WHERE id = b.parent_id)
+           WHEN b.type = 'event'  THEN (SELECT title FROM events WHERE id = b.parent_id)
+         END AS source_label
        FROM board_posts bp
        LEFT JOIN boards b ON b.id = bp.board_id
        WHERE bp.deleted_at IS NULL
