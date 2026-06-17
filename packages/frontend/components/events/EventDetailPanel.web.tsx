@@ -545,7 +545,7 @@ function AttendedBanner({ count, colors }: { count: number; colors: DetailColors
 // People tab content
 // ---------------------------------------------------------------------------
 
-function PeopleTab({ attendees, colors }: { attendees: Attendee[]; colors: DetailColors }) {
+function PeopleTab({ attendees, count, colors }: { attendees: Attendee[]; count: number; colors: DetailColors }) {
   return (
     <View style={{ paddingHorizontal: 24, paddingTop: 16 }}>
       <Text
@@ -556,10 +556,12 @@ function PeopleTab({ attendees, colors }: { attendees: Attendee[]; colors: Detai
           marginBottom: 12,
         }}
       >
-        {attendees.length} {attendees.length === 1 ? 'person' : 'people'} on Janata
+        {count} {count === 1 ? 'person' : 'people'} on Janata
       </Text>
 
-      {attendees.length === 0 ? (
+      {/* The names list is gated to attendees/coordinators; non-roster viewers
+          still see the live count above. "No attendees yet" only when truly 0. */}
+      {attendees.length === 0 && count === 0 ? (
         <View style={{ alignItems: 'center', paddingTop: 32, gap: 8 }}>
           <Users size={32} color={colors.textMuted} />
           <Text
@@ -721,8 +723,8 @@ function RegisteredContent({
         </DetailSection>
 
         {/* ── PEOPLE ────────────────────────────────────────────── */}
-        <DetailSection title="People" count={attendees.length} contentStyle={{ paddingHorizontal: 0 }}>
-          <PeopleTab attendees={attendees} colors={colors} />
+        <DetailSection title="People" count={event.attendees} contentStyle={{ paddingHorizontal: 0 }}>
+          <PeopleTab attendees={attendees} count={event.attendees} colors={colors} />
         </DetailSection>
 
         {/* ── DISCUSSION ────────────────────────────────────────── */}
