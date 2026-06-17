@@ -15,6 +15,8 @@ import { useUser, useTheme } from '../../components/contexts'
 import { Avatar, Text, Section, StackHeader } from '../../components/ui'
 import ThemeSelector from '../../components/settings/ThemeSelector'
 import { useAnalytics } from '../../utils/analytics'
+import { isSuperAdmin } from '../../utils/admin'
+import { Linking } from 'react-native'
 import Constants from 'expo-constants'
 
 const APP_VERSION = Constants.expoConfig?.version || '0.2.0'
@@ -217,6 +219,38 @@ export default function PreferencesNative() {
             </MenuRow>
           </View>
         </Section>
+
+        {/* Admin — only for super admins. Routes to the dashboard (web-only
+            in-app; native opens the live web dashboard in the browser). */}
+        {isSuperAdmin(user) ? (
+          <Section title="ADMIN" titleColor={faintColor}>
+            <View
+              style={{
+                borderTopWidth: 1,
+                borderBottomWidth: 1,
+                borderColor,
+                marginHorizontal: -16,
+              }}
+            >
+              <MenuRow
+                onPress={() => {
+                  track('home_admin_pressed', { source: 'settings', platform: Platform.OS })
+                  if (Platform.OS === 'web') {
+                    router.push('/admin')
+                  } else {
+                    Linking.openURL('https://chinmayajanata.org/admin').catch(() => {})
+                  }
+                }}
+              >
+                <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12 }}>
+                  <Shield size={20} color={textColor} />
+                  <Text style={{ fontSize: 15, color: textColor }}>Admin dashboard</Text>
+                </View>
+              </MenuRow>
+            </View>
+          </Section>
+        ) : null}
+
         {/* Regulatory */}
         <Section title="REGULATORY" titleColor={faintColor}>
           <View
