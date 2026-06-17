@@ -6,7 +6,7 @@ import { ScrollView, View, Pressable, Image, Share, Platform, useWindowDimension
 import { useRouter, useFocusEffect } from 'expo-router'
 import {
   Pencil, Share2, ChevronRight, BadgeCheck,
-  Megaphone, CalendarDays, Building2,
+  Megaphone, CalendarDays, Building2, UserPlus,
 } from 'lucide-react-native'
 import { useUser, useTheme } from '../../components/contexts'
 import { Text } from '../../components/ui'
@@ -114,6 +114,24 @@ export default function Profile() {
 
   // ── Reusable pieces ──────────────────────────────────────
   const card = { backgroundColor: c.card, borderWidth: 1, borderColor: c.border, borderRadius: 20 } as const
+
+  const InviteCard = (
+    <Pressable
+      onPress={() => { track('settings_invite_pressed', { source: 'profile_web' }); router.push('/settings/invite') }}
+      accessibilityRole="button"
+      accessibilityLabel="Invite friends"
+      style={[card, { flexDirection: 'row', alignItems: 'center', gap: 13, padding: 16, marginTop: 14 }]}
+    >
+      <View style={{ width: 40, height: 40, borderRadius: 11, backgroundColor: c.accentSoft, alignItems: 'center', justifyContent: 'center' }}>
+        <UserPlus size={18} color="#C2410C" />
+      </View>
+      <View style={{ flex: 1, minWidth: 0 }}>
+        <Text style={{ fontSize: 14.5, fontWeight: '600', color: c.text }}>Invite friends</Text>
+        <Text style={{ fontSize: 12.5, color: c.textMuted, marginTop: 2 }}>Share Janata with your community</Text>
+      </View>
+      <ChevronRight size={16} color={c.iconMuted} />
+    </Pressable>
+  )
 
   const ProfileCard = (
     <View style={[card, { padding: 16, ...(isDesktop ? { position: 'sticky' as 'absolute', top: 80 } : {}) }]}>
@@ -312,7 +330,10 @@ export default function Profile() {
             : { flexDirection: 'column', gap: 18 }),
         }}
       >
-        <View style={isDesktop ? { width: 330 } : { width: '100%' }}>{ProfileCard}</View>
+        <View style={isDesktop ? { width: 330 } : { width: '100%' }}>
+          {ProfileCard}
+          {InviteCard}
+        </View>
         <View style={{ flex: 1, width: '100%' }}>{RightColumn}</View>
       </View>
     </ScrollView>

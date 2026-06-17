@@ -8,7 +8,7 @@ import { ScrollView, View, Pressable, Image, Share } from 'react-native'
 import { useRouter, useFocusEffect, useNavigation } from 'expo-router'
 import {
   Pencil, Share2, ChevronRight, BadgeCheck,
-  Megaphone, CalendarDays, Building2,
+  Megaphone, CalendarDays, Building2, UserPlus,
 } from 'lucide-react-native'
 import { useUser, useTheme } from '../../components/contexts'
 import { Text } from '../../components/ui'
@@ -259,6 +259,24 @@ export default function Profile() {
           <StatCard icon={<CalendarDays size={16} color="#C2410C" />} value={events.length} label="Events" />
         </View>
       ) : null}
+
+      {/* Invite friends */}
+      <Pressable
+        onPress={() => { track('settings_invite_pressed', { source: 'profile' }); router.push('/settings/invite') }}
+        accessibilityRole="button"
+        accessibilityLabel="Invite friends"
+        android_ripple={{ color: c.cardActive }}
+        style={[card, { flexDirection: 'row', alignItems: 'center', gap: 13, padding: 16, marginTop: 18 }]}
+      >
+        <View style={{ width: 40, height: 40, borderRadius: 11, backgroundColor: c.accentSoft, alignItems: 'center', justifyContent: 'center' }}>
+          <UserPlus size={18} color="#C2410C" />
+        </View>
+        <View style={{ flex: 1, minWidth: 0 }}>
+          <Text style={{ fontSize: 14.5, fontWeight: '600', color: c.text }}>Invite friends</Text>
+          <Text style={{ fontSize: 12.5, color: c.textMuted, marginTop: 2 }}>Share Janata with your community</Text>
+        </View>
+        <ChevronRight size={16} color={c.iconMuted} />
+      </Pressable>
 
       {/* Your centers */}
       <SectionLabel>Your centers</SectionLabel>
