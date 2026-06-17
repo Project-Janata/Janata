@@ -117,50 +117,10 @@ export default function Profile() {
           title="You"
           action="settings"
           showProfile={false}
-          rightContent={
-            user ? (
-              <>
-                <Pressable
-                  onPress={onShare}
-                  accessibilityRole="button"
-                  accessibilityLabel="Share profile"
-                  hitSlop={8}
-                  style={({ pressed }) => ({
-                    width: 36,
-                    height: 36,
-                    borderRadius: 18,
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                    backgroundColor: c.surface,
-                    opacity: pressed ? 0.6 : 1,
-                  })}
-                >
-                  <Share2 size={18} color={c.icon} />
-                </Pressable>
-                <Pressable
-                  onPress={onEdit}
-                  accessibilityRole="button"
-                  accessibilityLabel="Edit profile"
-                  hitSlop={8}
-                  style={({ pressed }) => ({
-                    width: 36,
-                    height: 36,
-                    borderRadius: 18,
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                    backgroundColor: c.surface,
-                    opacity: pressed ? 0.6 : 1,
-                  })}
-                >
-                  <Pencil size={18} color={c.icon} />
-                </Pressable>
-              </>
-            ) : null
-          }
         />
       ),
     })
-  }, [navigation, user, c, onShare, onEdit])
+  }, [navigation])
 
   const card = { backgroundColor: c.card, borderWidth: 1, borderColor: c.border, borderRadius: 20 } as const
 
@@ -206,7 +166,7 @@ export default function Profile() {
     >
       {/* Profile card */}
       <View style={[card, { padding: 16 }]}>
-        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 14 }}>
+        <View style={{ flexDirection: 'row', alignItems: 'flex-start', gap: 14 }}>
           {user?.profileImage ? (
             <Image source={{ uri: user.profileImage }} style={{ width: 66, height: 66, borderRadius: 33, borderWidth: 3, borderColor: c.card, backgroundColor: c.surface }} />
           ) : (
@@ -222,6 +182,42 @@ export default function Profile() {
                 <Text style={{ fontSize: 12, fontWeight: '600', color: '#C2410C' }}>{roleLabel}</Text>
               </View>
             ) : null}
+          </View>
+          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, flexShrink: 0 }}>
+            <Pressable
+              onPress={onShare}
+              accessibilityRole="button"
+              accessibilityLabel="Share profile"
+              hitSlop={8}
+              style={({ pressed }) => ({
+                width: 36,
+                height: 36,
+                borderRadius: 18,
+                alignItems: 'center',
+                justifyContent: 'center',
+                backgroundColor: c.surface,
+                opacity: pressed ? 0.6 : 1,
+              })}
+            >
+              <Share2 size={18} color={c.icon} />
+            </Pressable>
+            <Pressable
+              onPress={onEdit}
+              accessibilityRole="button"
+              accessibilityLabel="Edit profile"
+              hitSlop={8}
+              style={({ pressed }) => ({
+                width: 36,
+                height: 36,
+                borderRadius: 18,
+                alignItems: 'center',
+                justifyContent: 'center',
+                backgroundColor: c.surface,
+                opacity: pressed ? 0.6 : 1,
+              })}
+            >
+              <Pencil size={18} color={c.icon} />
+            </Pressable>
           </View>
         </View>
 
