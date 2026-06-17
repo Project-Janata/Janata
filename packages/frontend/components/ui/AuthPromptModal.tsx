@@ -5,6 +5,7 @@ import { useUser } from '../contexts'
 import { useAnalytics } from '../../utils/analytics'
 import { validateEmail } from '../../utils'
 import { extractInviteCode } from '../../utils/validation'
+import { useColors } from '../../hooks/useColors'
 import { useDetailColors } from '../../hooks/useDetailColors'
 import { InviteCodeInput } from '../invite/InviteCodeField'
 import PrimaryButton from './buttons/PrimaryButton'
@@ -52,6 +53,7 @@ export default function AuthPromptModal({
   const router = useRouter()
   const { login, loading } = useUser()
   const { track } = useAnalytics()
+  const appColors = useColors()
   const colors = useDetailColors()
   const [viewportWidth, setViewportWidth] = useState(() =>
     Platform.OS === 'web' && typeof window !== 'undefined' ? window.innerWidth : 1024,
@@ -296,11 +298,11 @@ export default function AuthPromptModal({
               borderRadius: 18,
               alignItems: 'center',
               justifyContent: 'center',
-              backgroundColor: pressed ? 'rgba(28,25,23,0.10)' : isDesktop ? 'rgba(255,255,255,0.86)' : 'transparent',
+              backgroundColor: pressed ? colors.surface : isDesktop ? colors.cardBg : 'transparent',
               zIndex: 2,
             })}
           >
-            <Text style={{ fontSize: 24, lineHeight: 26, fontFamily: 'Inclusive Sans', color: '#1C1917' }}>
+            <Text style={{ fontSize: 24, lineHeight: 26, fontFamily: 'Inclusive Sans', color: colors.text }}>
               {'×'}
             </Text>
           </Pressable>
@@ -308,7 +310,7 @@ export default function AuthPromptModal({
           <View
             style={{
               flex: 1,
-              backgroundColor: '#FAFAF7',
+              backgroundColor: colors.panelBg,
               paddingHorizontal: isDesktop ? 48 : 28,
               paddingTop: isDesktop ? 64 : 58,
               paddingBottom: isDesktop ? 44 : 28,
@@ -323,12 +325,12 @@ export default function AuthPromptModal({
                     lineHeight: isDesktop ? 42 : 30,
                     fontFamily: 'Inclusive Sans',
                     fontWeight: '400',
-                    color: '#1C1917',
+                    color: colors.text,
                   }}
                 >
                   {stepTitle}
                 </Text>
-                <Text style={{ fontSize: 16, fontFamily: 'Inclusive Sans', color: '#78716C', lineHeight: 24 }}>
+                <Text style={{ fontSize: 16, fontFamily: 'Inclusive Sans', color: colors.textSecondary, lineHeight: 24 }}>
                   {stepCopy}
                 </Text>
               </View>
@@ -337,8 +339,8 @@ export default function AuthPromptModal({
                 <View style={{ gap: 9 }}>
                   {wallBullets.map((line) => (
                     <View key={line} style={{ flexDirection: 'row', gap: 10, alignItems: 'flex-start' }}>
-                      <Text style={{ color: '#E8862A', fontSize: 15, lineHeight: 22 }}>{'✓'}</Text>
-                      <Text style={{ flex: 1, fontFamily: 'Inclusive Sans', fontSize: 14.5, lineHeight: 22, color: '#57534E' }}>
+                      <Text style={{ color: appColors.accent, fontSize: 15, lineHeight: 22 }}>{'✓'}</Text>
+                      <Text style={{ flex: 1, fontFamily: 'Inclusive Sans', fontSize: 14.5, lineHeight: 22, color: colors.textSecondary }}>
                         {line}
                       </Text>
                     </View>
@@ -349,7 +351,7 @@ export default function AuthPromptModal({
               <View style={{ gap: showInviteField ? 8 : 12, marginTop: 4 }}>
                 {authStep === 'login' && (
                   <Pressable onPress={handleBack} style={{ alignSelf: 'flex-start', paddingVertical: 2 }}>
-                    <Text style={{ fontFamily: 'Inclusive Sans', fontSize: 14, color: '#E8862A' }}>Back</Text>
+                    <Text style={{ fontFamily: 'Inclusive Sans', fontSize: 14, color: appColors.accent }}>Back</Text>
                   </Pressable>
                 )}
                 <TextInput
@@ -363,21 +365,21 @@ export default function AuthPromptModal({
                   autoCapitalize="none"
                   autoCorrect={false}
                   editable={authStep === 'initial'}
-                  placeholderTextColor="#9CA3AF"
+                  placeholderTextColor={colors.textMuted}
                   style={{
                     width: '100%',
                     height: 48,
                     borderWidth: 1,
-                    borderColor: '#D6D3D1',
+                    borderColor: colors.border,
                     borderRadius: 8,
                     paddingHorizontal: 16,
                     fontSize: 16,
                     fontFamily: 'Inclusive Sans',
-                    color: authStep === 'initial' ? '#1C1917' : '#57534E',
-                    backgroundColor: '#FFFFFF',
+                    color: authStep === 'initial' ? colors.text : colors.textSecondary,
+                    backgroundColor: colors.cardBg,
                   }}
                 />
-                {errors.email ? <Text style={{ fontFamily: 'Inclusive Sans', fontSize: 13, color: '#B91C1C' }}>{errors.email}</Text> : null}
+                {errors.email ? <Text style={{ fontFamily: 'Inclusive Sans', fontSize: 13, color: appColors.error }}>{errors.email}</Text> : null}
 
                 {authStep === 'initial' && showInviteField && (
                   <InviteCodeInput
@@ -402,25 +404,25 @@ export default function AuthPromptModal({
                       }}
                       placeholder="Password"
                       secureTextEntry
-                      placeholderTextColor="#9CA3AF"
+                      placeholderTextColor={colors.textMuted}
                       style={{
                         width: '100%',
                         height: 48,
                         borderWidth: 1,
-                        borderColor: '#D6D3D1',
+                        borderColor: colors.border,
                         borderRadius: 8,
                         paddingHorizontal: 16,
                         fontSize: 16,
                         fontFamily: 'Inclusive Sans',
-                        color: '#1C1917',
-                        backgroundColor: '#FFFFFF',
+                        color: colors.text,
+                        backgroundColor: colors.cardBg,
                       }}
                     />
-                    {errors.password ? <Text style={{ fontFamily: 'Inclusive Sans', fontSize: 13, color: '#B91C1C' }}>{errors.password}</Text> : null}
+                    {errors.password ? <Text style={{ fontFamily: 'Inclusive Sans', fontSize: 13, color: appColors.error }}>{errors.password}</Text> : null}
                   </>
                 )}
 
-                {errors.form ? <Text style={{ fontFamily: 'Inclusive Sans', fontSize: 13, color: '#B91C1C', lineHeight: 18 }}>{errors.form}</Text> : null}
+                {errors.form ? <Text style={{ fontFamily: 'Inclusive Sans', fontSize: 13, color: appColors.error, lineHeight: 18 }}>{errors.form}</Text> : null}
 
                 {authStep === 'initial' ? (
                   <>
@@ -429,13 +431,13 @@ export default function AuthPromptModal({
                     </PrimaryButton>
                     {showInviteField && (
                       <Pressable onPress={handleHideInvite} style={{ alignItems: 'center', paddingTop: 2 }}>
-                        <Text style={{ fontFamily: 'Inclusive Sans', fontSize: 14, color: '#78716C' }}>
-                          No invite? <Text style={{ color: '#E8862A', fontWeight: '600' }}>Use email instead</Text>
+                        <Text style={{ fontFamily: 'Inclusive Sans', fontSize: 14, color: colors.textSecondary }}>
+                          No invite? <Text style={{ color: appColors.accent, fontWeight: '600' }}>Use email instead</Text>
                         </Text>
                       </Pressable>
                     )}
                     {!showInviteField && (
-                      <SecondaryButton onPress={handlePasteInvite} style={{ borderRadius: 8, backgroundColor: '#FFFFFF' }}>
+                      <SecondaryButton onPress={handlePasteInvite} style={{ borderRadius: 8, backgroundColor: colors.cardBg }}>
                         Have an invite? Paste it
                       </SecondaryButton>
                     )}
