@@ -337,7 +337,7 @@ export default function HomeScreen() {
       {featured ? (
         <FeaturedEventCard
           featured={featured}
-          isHosting={!!user && featured.event.createdBy === user?.id}
+          isHosting={!!user && featured.kind === 'live' && featured.event.createdBy === user?.id}
           onPress={() => {
             track('home_featured_event_pressed', { eventId: featured.event.id })
             router.push(`/events/${featured.event.id}`)
@@ -427,12 +427,23 @@ export default function HomeScreen() {
           {weekItems.map((item) => <MiniEventRow key={item.id} item={item} />)}
         </View>
       ) : (
-        <View style={{ borderRadius: 16, borderWidth: 1, borderColor: c.border, backgroundColor: c.card, padding: 16, gap: 4 }}>
-          <Text style={{ fontFamily: 'Inclusive Sans', fontSize: 16, color: c.text }}>No events yet</Text>
-          <Text style={{ fontSize: 14, lineHeight: 20, color: c.textMuted }}>
-            Upcoming events from Explore will appear here as they are added.
-          </Text>
-        </View>
+        <Pressable
+          onPress={() => {
+            track('home_explore_fallback_pressed', { source: 'this_week_empty' })
+            router.push('/explore' as never)
+          }}
+          style={{ borderRadius: 16, borderWidth: 1, borderColor: c.border, backgroundColor: c.card, padding: 16, gap: 10 }}
+        >
+          <View style={{ gap: 4 }}>
+            <Text style={{ fontFamily: 'Inclusive Sans', fontSize: 16, color: c.text }}>Find events near you</Text>
+            <Text style={{ fontSize: 14, lineHeight: 20, color: c.textMuted }}>
+              Browse satsangs, camps, and classes across CHYK centers.
+            </Text>
+          </View>
+          <View style={{ alignSelf: 'flex-start', paddingVertical: 8, paddingHorizontal: 12, borderRadius: 999, backgroundColor: c.accentSoft }}>
+            <Text style={{ fontFamily: 'Inclusive Sans', fontSize: 13, color: c.accent }}>Explore events</Text>
+          </View>
+        </Pressable>
       )}
     </SectionHeader>
   ) : null
@@ -502,7 +513,7 @@ export default function HomeScreen() {
           style={{ flex: 1, backgroundColor: c.bg }}
           contentContainerStyle={{
             paddingHorizontal: 16,
-            paddingTop: Platform.OS === 'web' ? 20 : 8,
+            paddingTop: Platform.OS === 'web' ? 20 : 24,
             paddingBottom: Platform.OS === 'web' ? 40 : 112,
           }}
           showsVerticalScrollIndicator={false}
@@ -523,7 +534,7 @@ export default function HomeScreen() {
         style={{ flex: 1, backgroundColor: c.bg }}
         contentContainerStyle={{
           paddingHorizontal: isDesktop ? 24 : 16,
-          paddingTop: Platform.OS === 'web' ? 20 : 8,
+          paddingTop: Platform.OS === 'web' ? 20 : 24,
           paddingBottom: Platform.OS === 'web' ? 40 : 112,
         }}
         showsVerticalScrollIndicator={false}
