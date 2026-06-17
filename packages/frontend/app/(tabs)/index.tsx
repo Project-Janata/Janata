@@ -5,13 +5,13 @@ import { useFocusEffect, useRouter } from 'expo-router'
 import { useAnalytics } from '../../utils/analytics'
 import { useUser } from '../../components/contexts'
 import { useColors } from '../../hooks/useColors'
-import { useDetailColors } from '../../hooks/useDetailColors'
 import { useDiscoverData, useMyEvents, useAggregatedFeed } from '../../hooks/useApiData'
 import type { EventDisplay } from '../../utils/api'
 import { extractCityState } from '../../utils/addressParsing'
 import { FeaturedEventCard, type FeaturedSource } from '../../components/home/FeaturedEventCard'
 import { MiniEventRow, type WeekItem } from '../../components/home/MiniEventRow'
-import { BoardPostCard, boardPostToMessage } from '../../components/boards'
+import { boardPostToMessage } from '../../components/boards'
+import { FeedPostCard, type FeedPost } from '../../components/feed'
 import { DesktopColumns, desktopScrollContent, useDesktopLayout } from '../../components/layout/DesktopColumns'
 import AuthPromptModal from '../../components/ui/AuthPromptModal'
 import type { AppColors } from '../../tokens'
@@ -76,7 +76,6 @@ export default function HomeScreen() {
   const [showAuthPrompt, setShowAuthPrompt] = useState(false)
   const [refreshing, setRefreshing] = useState(false)
   const c = useColors()
-  const detailColors = useDetailColors()
   const { events: myEvents, loading: myEventsLoading, refetch: refetchMyEvents } = useMyEvents(user?.username)
   const { allEvents, allCenters, loading: discoverLoading, refresh: refreshDiscover } = useDiscoverData(
     'Events', '', user?.id, false, false, false, user?.interests ?? undefined, user?.centerID
@@ -92,13 +91,24 @@ export default function HomeScreen() {
     [allCenters, user?.centerID]
   )
   const centerName = userCenter?.name
-  const boardPeek = useMemo(
+  const boardPeek = useMemo<FeedPost[]>(
     () =>
-      feedPosts.slice(0, 2).map((post) => ({
-        ...boardPostToMessage(post),
-        sourceKind: post.sourceKind ?? 'center',
-        sourceLabel: post.sourceLabel ?? centerName ?? 'Your center',
-      })),
+      feedPosts.slice(0, 3).map((post) => {
+        const message = boardPostToMessage(post)
+        const kind = post.sourceKind ?? 'center'
+        const label = post.sourceLabel ?? centerName ?? 'Your center'
+        return {
+          ...message,
+          sourceKind: kind,
+          sourceLabel: label,
+          sourceTitle: label,
+          sourceSubtitle: '',
+          groupKind: kind,
+          groupId: post.id,
+          groupParentId: post.boardId ?? '',
+          postId: post.id,
+        }
+      }),
     [feedPosts, centerName]
   )
 
@@ -372,17 +382,17 @@ export default function HomeScreen() {
           </Text>
         </Pressable>
       ) : boardPeek.length > 0 ? (
-        <View>
-          {boardPeek.map((message) => (
-            <BoardPostCard
-              key={message.id}
-              message={message}
-              colors={detailColors}
-              showSource
+        <View style={{ borderRadius: 16, borderWidth: 1, borderColor: c.border, backgroundColor: c.card, paddingHorizontal: 16 }}>
+          {boardPeek.map((post) => (
+            <FeedPostCard
+              key={post.id}
+              post={post}
+              colors={c}
               onPress={() => {
-                track('home_board_peek_pressed', { postId: message.id, source: 'community_slot' })
-                router.push(`/feed?post=${encodeURIComponent(message.id)}` as never)
+                track('home_board_peek_pressed', { postId: post.postId, source: 'community_slot' })
+                router.push(`/feed?post=${encodeURIComponent(post.postId)}` as never)
               }}
+              onAuthorPress={(authorId) => router.push(`/members/${authorId}` as never)}
             />
           ))}
         </View>
