@@ -14,7 +14,7 @@ const MONO_FONT = Platform.select({
   default: 'monospace',
 })
 
-const linkForCode = (code: string) => `https://chinmayajanata.org/i/${code}`
+const linkForCode = (code: string) => `https://janata.app/i/${code}`
 
 // Role → verification level the link grants (#451). Mirrors the backend
 // INVITE_ROLE_LEVELS; used to reuse an existing link of the same role.
@@ -254,7 +254,7 @@ export default function InviteScreen() {
                     ellipsizeMode="tail"
                     style={{ flex: 1, fontFamily: MONO_FONT, fontSize: 13, color: c.text }}
                   >
-                    chinmayajanata.org/i/{code}
+                    janata.app/i/{code}
                   </Text>
                 </View>
 

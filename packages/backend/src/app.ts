@@ -712,7 +712,7 @@ app.post('/auth/password-reset/verify', rateLimit(10, 60_000), async (c) => {
 // post-signup via /auth/redeem-invite. See
 // docs/plans/2026-05-05-v2-roles-invites-messaging.md §5.A.
 
-const INVITE_SHARE_URL_BASE = 'https://chinmayajanata.org/i'
+const INVITE_SHARE_URL_BASE = 'https://janata.app/i'
 
 app.post('/auth/invite-codes', authMiddleware, async (c) => {
   const user = c.get('user')
