@@ -446,6 +446,7 @@ function ActionBar({
   signupUrl,
   allowJanataSignup,
   onExternalSignup,
+  guestRsvped,
   colors,
 }: {
   isRegistered?: boolean
@@ -455,8 +456,15 @@ function ActionBar({
   signupUrl?: string | null
   allowJanataSignup?: boolean
   onExternalSignup?: () => void
+  // Guest RSVPed this session — lock the attend CTA to a confirmed state.
+  guestRsvped?: boolean
   colors: DetailColors
 }) {
+  const guestGoing = (
+    <View style={{ minHeight: 48, borderRadius: 12, borderWidth: 1, borderColor: colors.border, alignItems: 'center', justifyContent: 'center' }}>
+      <Text style={{ fontFamily: 'Inclusive Sans', fontSize: 15, fontWeight: '500', color: colors.text }}>✓ You're going</Text>
+    </View>
+  )
   if (isPast) return null
 
   const wrapperStyle = {
@@ -475,6 +483,8 @@ function ActionBar({
           <DestructiveButton onPress={onToggle} disabled={isToggling} loading={isToggling}>
             Cancel Registration
           </DestructiveButton>
+        ) : guestRsvped ? (
+          guestGoing
         ) : (
           <PrimaryButton onPress={onToggle} disabled={isToggling} loading={isToggling}>
             Attend on Janata
@@ -529,9 +539,11 @@ function ActionBar({
 
   return (
     <View style={wrapperStyle}>
-      <PrimaryButton onPress={onToggle} disabled={isToggling} loading={isToggling}>
-        Attend Event
-      </PrimaryButton>
+      {guestRsvped ? guestGoing : (
+        <PrimaryButton onPress={onToggle} disabled={isToggling} loading={isToggling}>
+          Attend Event
+        </PrimaryButton>
+      )}
       <Text
         style={{
           fontFamily: 'Inclusive Sans',
@@ -590,6 +602,8 @@ export default function EventDetailPage() {
   const hasTrackedView = useRef(false)
   const [threadDetailPost, setThreadDetailPost] = useState<FeedPost | null>(null)
   const [showGuestRsvp, setShowGuestRsvp] = useState(false)
+  // Guest RSVPed this session — lock the attend CTA so they don't re-submit.
+  const [guestRsvped, setGuestRsvped] = useState(false)
 
   const isAdmin = user?.email === ADMIN_EMAIL || (user?.verificationLevel !== undefined && user.verificationLevel >= 107)
   const canEdit = isAdmin || isCreator
@@ -814,15 +828,22 @@ export default function EventDetailPage() {
             count={event.attendees}
             contentStyle={{ gap: 8 }}
           >
-            {attendees.length > 0 ? (
+            {event.attendees > 0 ? (
               <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10, marginBottom: 4 }}>
-                <AvatarStack attendees={attendees} colors={colors} />
+                {attendees.length > 0 ? <AvatarStack attendees={attendees} colors={colors} /> : null}
                 <Text style={{ fontFamily: 'Inclusive Sans', fontSize: 13, color: colors.textSecondary }}>
                   {event.attendees} {event.attendees === 1 ? 'person' : 'people'} on Janata
                 </Text>
               </View>
-            ) : null}
-            <AttendeesContent attendees={attendees} colors={colors} />
+            ) : (
+              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10, paddingVertical: 4 }}>
+                <Users size={18} color={colors.textMuted} />
+                <Text style={{ fontFamily: 'Inclusive Sans', fontSize: 14, color: colors.textSecondary }}>
+                  No attendees yet — be the first to RSVP.
+                </Text>
+              </View>
+            )}
+            {attendees.length > 0 ? <AttendeesContent attendees={attendees} colors={colors} /> : null}
           </DetailSection>
         )}
 
@@ -856,6 +877,7 @@ export default function EventDetailPage() {
         signupUrl={event.signupUrl}
         allowJanataSignup={event.allowJanataSignup}
         onExternalSignup={() => track('event_external_signup_pressed', { eventId: id, signupUrl: event.signupUrl, source: 'event_detail' })}
+        guestRsvped={guestRsvped}
         colors={colors}
       />
 
@@ -864,6 +886,7 @@ export default function EventDetailPage() {
         onClose={() => setShowGuestRsvp(false)}
         eventId={id as string}
         eventTitle={event?.title}
+        onRsvped={() => setGuestRsvped(true)}
       />
     </SafeAreaView>
   )

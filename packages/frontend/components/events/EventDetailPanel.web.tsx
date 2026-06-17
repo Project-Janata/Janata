@@ -121,6 +121,8 @@ type EventDetailPanelProps = {
   onClose: () => void
   onToggleRegistration: () => void
   isToggling: boolean
+  // Guest RSVPed this session — lock the attend CTA to a confirmed state.
+  guestRsvped?: boolean
   onEdit?: (eventId: string) => void
   onDelete?: (eventId: string) => void
 }
@@ -545,7 +547,7 @@ function AttendedBanner({ count, colors }: { count: number; colors: DetailColors
 // People tab content
 // ---------------------------------------------------------------------------
 
-function PeopleTab({ attendees, colors }: { attendees: Attendee[]; colors: DetailColors }) {
+function PeopleTab({ attendees, count, colors }: { attendees: Attendee[]; count: number; colors: DetailColors }) {
   return (
     <View style={{ paddingHorizontal: 24, paddingTop: 16 }}>
       <Text
@@ -556,10 +558,12 @@ function PeopleTab({ attendees, colors }: { attendees: Attendee[]; colors: Detai
           marginBottom: 12,
         }}
       >
-        {attendees.length} {attendees.length === 1 ? 'person' : 'people'} on Janata
+        {count} {count === 1 ? 'person' : 'people'} on Janata
       </Text>
 
-      {attendees.length === 0 ? (
+      {/* The names list is gated to attendees/coordinators; non-roster viewers
+          still see the live count above. "No attendees yet" only when truly 0. */}
+      {attendees.length === 0 && count === 0 ? (
         <View style={{ alignItems: 'center', paddingTop: 32, gap: 8 }}>
           <Users size={32} color={colors.textMuted} />
           <Text
@@ -721,8 +725,8 @@ function RegisteredContent({
         </DetailSection>
 
         {/* ── PEOPLE ────────────────────────────────────────────── */}
-        <DetailSection title="People" count={attendees.length} contentStyle={{ paddingHorizontal: 0 }}>
-          <PeopleTab attendees={attendees} colors={colors} />
+        <DetailSection title="People" count={event.attendees} contentStyle={{ paddingHorizontal: 0 }}>
+          <PeopleTab attendees={attendees} count={event.attendees} colors={colors} />
         </DetailSection>
 
         {/* ── DISCUSSION ────────────────────────────────────────── */}
@@ -856,6 +860,7 @@ function ActionBar({
   isToggling,
   signupUrl,
   allowJanataSignup,
+  guestRsvped,
   colors,
 }: {
   isRegistered?: boolean
@@ -864,9 +869,17 @@ function ActionBar({
   isToggling: boolean
   signupUrl?: string | null
   allowJanataSignup?: boolean
+  // Guest RSVPed this session — lock the attend CTA to a confirmed state.
+  guestRsvped?: boolean
   colors: DetailColors
 }) {
   if (isPast) return null
+
+  const guestGoing = (
+    <View style={{ minHeight: 48, borderRadius: 12, borderWidth: 1, borderColor: colors.border, alignItems: 'center', justifyContent: 'center' }}>
+      <Text style={{ fontFamily: 'Inclusive Sans', fontSize: 15, fontWeight: '500', color: colors.text }}>✓ You're going</Text>
+    </View>
+  )
 
   // External signup is set + admin opted into letting users RSVP on Janata
   // too. Janata is primary, external is the alternate.
@@ -888,6 +901,8 @@ function ActionBar({
             loading={isToggling}
             colors={colors}
           />
+        ) : guestRsvped ? (
+          guestGoing
         ) : (
           <PrimaryButton
             onPress={onToggleRegistration}
@@ -978,13 +993,15 @@ function ActionBar({
         backgroundColor: colors.panelBg,
       }}
     >
-      <PrimaryButton
-        onPress={onToggleRegistration}
-        disabled={isToggling}
-        loading={isToggling}
-      >
-        Attend Event
-      </PrimaryButton>
+      {guestRsvped ? guestGoing : (
+        <PrimaryButton
+          onPress={onToggleRegistration}
+          disabled={isToggling}
+          loading={isToggling}
+        >
+          Attend Event
+        </PrimaryButton>
+      )}
       <Text
         style={{
           fontFamily: 'Inclusive Sans',
@@ -1013,6 +1030,7 @@ export default function EventDetailPanel({
   onClose,
   onToggleRegistration,
   isToggling,
+  guestRsvped,
   onEdit,
   onDelete,
 }: EventDetailPanelProps) {
@@ -1134,6 +1152,7 @@ export default function EventDetailPanel({
         isToggling={isToggling}
         signupUrl={event.signupUrl}
         allowJanataSignup={event.allowJanataSignup}
+        guestRsvped={guestRsvped}
         colors={colors}
       />
     </View>

@@ -414,7 +414,9 @@ export async function fetchEventsPage(
 
 export async function fetchEventUsers(eventID: string): Promise<UserData[]> {
   try {
-    const response = await apiFetch('/getEventUsers', {
+    // Must be authed — /getEventUsers is gated (attendee/creator/admin). apiFetch
+    // sends no token, so it 401'd and the attendee names list never loaded.
+    const response = await authFetch('/getEventUsers', {
       method: 'POST',
       body: JSON.stringify({ id: eventID }),
     })
@@ -434,6 +436,40 @@ export async function fetchEventUsers(eventID: string): Promise<UserData[]> {
     })
   } catch (err: any) {
     if (__DEV__) console.warn('[fetchEventUsers]', err?.message || err)
+    return []
+  }
+}
+
+/**
+ * Authed per-user registration state + live (guest-inclusive) attendee count
+ * for an event (GET /events/:id/registration). Reliable source of truth for the
+ * RSVP CTA + count — unlike the public/cached /fetchEvent or the gated roster.
+ */
+export async function fetchEventRegistration(
+  eventID: string
+): Promise<{ isRegistered: boolean; attendeeCount: number } | null> {
+  try {
+    const response = await authFetch(`/events/${eventID}/registration`)
+    if (!response.ok) return null
+    return await response.json()
+  } catch (err: any) {
+    if (__DEV__) console.warn('[fetchEventRegistration]', err?.message || err)
+    return null
+  }
+}
+
+/**
+ * Event IDs the authed user is registered for (GET /events/registered). Lets
+ * event LISTS mark "Going" reliably without a per-event roster fetch.
+ */
+export async function fetchMyRegisteredEventIds(): Promise<string[]> {
+  try {
+    const response = await authFetch('/events/registered')
+    if (!response.ok) return []
+    const data = await response.json()
+    return data.eventIds ?? []
+  } catch (err: any) {
+    if (__DEV__) console.warn('[fetchMyRegisteredEventIds]', err?.message || err)
     return []
   }
 }
