@@ -289,11 +289,14 @@ export default function HomeScreen() {
     />
   )
 
-  // ── Slot 3: Your events ("UP NEXT FOR YOU") ─────────────────────────────
-  const yourEventsSlot = (
+  // ── Slot 3: Your events ("UP NEXT FOR YOU") — only when there's an actual
+  // upcoming personal event. For a brand-new member the "nothing yet" nudge
+  // already lives in the AnchorCard, so we don't repeat an empty card (and a
+  // second Explore button) here.
+  const yourEventsSlot = featured ? (
     <SectionHeader
       eyebrow="UP NEXT FOR YOU"
-      trailing={featured ? 'See all' : undefined}
+      trailing="See all"
       accentColor={c.accent}
       faintColor={c.textFaint}
       onTrailingPress={() => {
@@ -301,50 +304,22 @@ export default function HomeScreen() {
         router.push('/explore?going=1' as never)
       }}
     >
-      {featured ? (
-        <FeaturedEventCard
-          featured={featured}
-          isHosting={!!user && featured.kind === 'live' && featured.event.createdBy === user?.id}
-          onPress={() => {
-            track('home_featured_event_pressed', { eventId: featured.event.id })
-            router.push(`/events/${featured.event.id}`)
-          }}
-        />
-      ) : (
-        <View style={{ borderRadius: 18, borderWidth: 1, borderColor: c.border, backgroundColor: c.card, padding: 16, gap: 10 }}>
-          <View style={{ gap: 4 }}>
-            <Text style={{ fontFamily: 'Inclusive Sans', fontSize: 17, color: c.text }}>
-              {homeState === 'guest' ? 'Sign in to track events you’re going to' : 'Nothing on your calendar yet'}
-            </Text>
-            <Text style={{ fontSize: 14, lineHeight: 20, color: c.textMuted }}>
-              {homeState === 'guest'
-                ? 'RSVP to events and they’ll show up here so you never miss one.'
-                : 'RSVP to your first event and it’ll show up here.'}
-            </Text>
-          </View>
-          <Pressable
-            onPress={() => {
-              if (homeState === 'guest') {
-                track('home_signin_pressed', { source: 'up_next_empty' })
-                setShowAuthPrompt(true)
-              } else {
-                track('home_explore_fallback_pressed', { source: 'up_next_empty' })
-                router.push('/explore' as never)
-              }
-            }}
-            style={{ alignSelf: 'flex-start', paddingVertical: 8, paddingHorizontal: 12, borderRadius: 999, backgroundColor: c.accentSoft }}
-          >
-            <Text style={{ fontFamily: 'Inclusive Sans', fontSize: 13, color: c.accent }}>
-              {homeState === 'guest' ? 'Sign in' : 'Explore events'}
-            </Text>
-          </Pressable>
-        </View>
-      )}
+      <FeaturedEventCard
+        featured={featured}
+        isHosting={!!user && featured.kind === 'live' && featured.event.createdBy === user?.id}
+        onPress={() => {
+          track('home_featured_event_pressed', { eventId: featured.event.id })
+          router.push(`/events/${featured.event.id}`)
+        }}
+      />
     </SectionHeader>
-  )
+  ) : null
 
-  // ── Slot 4: Events near you ─────────────────────────────────────────────
-  const eventsNearYouSlot = (
+  // ── Slot 4: Events near you — only when there are upcoming events to list.
+  // With nothing nearby, the AnchorCard's "Explore events" already carries the
+  // call to action, so we skip an empty "find events" card (and its redundant
+  // Explore button) entirely.
+  const eventsNearYouSlot = weekItems.length > 0 ? (
     <SectionHeader
       eyebrow={homeState === 'guest' ? 'EXPLORE EVENTS' : 'COMING UP'}
       trailing="See all"
@@ -355,31 +330,11 @@ export default function HomeScreen() {
         router.push('/explore' as never)
       }}
     >
-      {weekItems.length > 0 ? (
-        <View style={{ gap: 8 }}>
-          {weekItems.map((item) => <MiniEventRow key={item.id} item={item} />)}
-        </View>
-      ) : (
-        <Pressable
-          onPress={() => {
-            track('home_explore_fallback_pressed', { source: 'coming_up_empty' })
-            router.push('/explore' as never)
-          }}
-          style={{ borderRadius: 16, borderWidth: 1, borderColor: c.border, backgroundColor: c.card, padding: 16, gap: 10 }}
-        >
-          <View style={{ gap: 4 }}>
-            <Text style={{ fontFamily: 'Inclusive Sans', fontSize: 16, color: c.text }}>Find events near you</Text>
-            <Text style={{ fontSize: 14, lineHeight: 20, color: c.textMuted }}>
-              Browse satsangs, camps, and classes across CHYK centers.
-            </Text>
-          </View>
-          <View style={{ alignSelf: 'flex-start', paddingVertical: 8, paddingHorizontal: 12, borderRadius: 999, backgroundColor: c.accentSoft }}>
-            <Text style={{ fontFamily: 'Inclusive Sans', fontSize: 13, color: c.accent }}>Explore events</Text>
-          </View>
-        </Pressable>
-      )}
+      <View style={{ gap: 8 }}>
+        {weekItems.map((item) => <MiniEventRow key={item.id} item={item} />)}
+      </View>
     </SectionHeader>
-  )
+  ) : null
 
   // ── Slot 5: Your community ("LATEST ON YOUR BOARD") ─────────────────────
   const gated = homeState === 'guest' || homeState === 'unverified'
@@ -447,11 +402,17 @@ export default function HomeScreen() {
   // personalized "Up next" and "Your community" slots are members-only.
   const isGuest = homeState === 'guest'
 
+  // The two-column desktop layout only earns its keep when the primary column
+  // has something to show. A brand-new member with no events would leave it
+  // empty, so we fall back to the centered single column (greeting + AnchorCard
+  // + board) instead of a lopsided blank-left layout.
+  const hasMainContent = (!isGuest && !!yourEventsSlot) || !!eventsNearYouSlot
+
   // ── Wide desktop: two-column composition reusing the SAME slots ──────────
   // Greeting anchors the full-width header; the AnchorCard sits at the TOP of
   // the right rail (so it's a focused card, not a wide banner); Your events +
   // Events near you fill the primary column.
-  if (isWideDesktop) {
+  if (isWideDesktop && hasMainContent) {
     return (
       <>
         <ScrollView
