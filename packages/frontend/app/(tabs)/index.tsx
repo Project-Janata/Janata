@@ -402,17 +402,12 @@ export default function HomeScreen() {
   // personalized "Up next" and "Your community" slots are members-only.
   const isGuest = homeState === 'guest'
 
-  // The two-column desktop layout only earns its keep when the primary column
-  // has something to show. A brand-new member with no events would leave it
-  // empty, so we fall back to the centered single column (greeting + AnchorCard
-  // + board) instead of a lopsided blank-left layout.
-  const hasMainContent = (!isGuest && !!yourEventsSlot) || !!eventsNearYouSlot
-
   // ── Wide desktop: two-column composition reusing the SAME slots ──────────
-  // Greeting anchors the full-width header; the AnchorCard sits at the TOP of
-  // the right rail (so it's a focused card, not a wide banner); Your events +
-  // Events near you fill the primary column.
-  if (isWideDesktop && hasMainContent) {
+  // Greeting anchors the full-width header; the AnchorCard (the "Your Center"
+  // CTA card with its icon) sits at the TOP of the right rail; Your events +
+  // Events near you fill the primary column. With no events those two slots
+  // simply render nothing — the left column stays sparse rather than redundant.
+  if (isWideDesktop) {
     return (
       <>
         <ScrollView
