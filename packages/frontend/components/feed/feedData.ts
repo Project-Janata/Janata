@@ -51,6 +51,16 @@ export function canModifyPost(user: User | null, authorId: string): boolean {
 }
 
 /**
+ * Report is the member-side moderation entry (#209): any verified member may
+ * report a post that isn't their own. Own posts already have edit/delete, so we
+ * hide Report there to keep the menu focused.
+ */
+export function canReportPost(user: User | null, authorId: string): boolean {
+  if (!user?.id || user.id === authorId) return false
+  return !!user.isVerified || (user.verificationLevel ?? 0) > 0
+}
+
+/**
  * Optimistically bump the tapped emoji's count (adds a chip if absent). The
  * server's authoritative reaction list replaces this on response; reverted on
  * failure. Does not mutate the input.
