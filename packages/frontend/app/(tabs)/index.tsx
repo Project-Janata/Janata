@@ -112,6 +112,7 @@ export default function HomeScreen() {
   // days so an organizer still sees a just-passed event). Deduped, soonest
   // first.
   const signedUpEvents = useMemo(() => {
+    if (!user) return [] // guests have no personal events (avoids createdBy===undefined matches)
     const todayStr = new Date().toISOString().split('T')[0]
     const recentCutoff = new Date()
     recentCutoff.setDate(recentCutoff.getDate() - 3)
@@ -141,18 +142,19 @@ export default function HomeScreen() {
   // "Coming up" — stays center-scoped: upcoming events at the member's OWN
   // center that they aren't already part of (not RSVP'd, not theirs). Members
   // with no home center yet (and guests) see the full upcoming list.
-  const upcomingExploreEvents = useMemo(
-    () =>
-      sortUpcomingEvents(
-        allEvents.filter(
-          (e) =>
-            !e.isRegistered &&
-            e.createdBy !== user?.id &&
-            (!user?.centerID || e.centerId === user?.centerID)
-        )
-      ),
-    [allEvents, user?.id, user?.centerID]
-  )
+  const upcomingExploreEvents = useMemo(() => {
+    // Guests: every upcoming event (nothing to scope by). Members: their center's
+    // upcoming events they aren't already part of.
+    if (!user) return sortUpcomingEvents(allEvents)
+    return sortUpcomingEvents(
+      allEvents.filter(
+        (e) =>
+          !e.isRegistered &&
+          e.createdBy !== user.id &&
+          (!user.centerID || e.centerId === user.centerID)
+      )
+    )
+  }, [allEvents, user?.id, user?.centerID])
 
   const vl = user?.verificationLevel ?? 0
   const roleLabel =
@@ -330,7 +332,7 @@ export default function HomeScreen() {
   // ── Slot 4: Events near you ─────────────────────────────────────────────
   const eventsNearYouSlot = (
     <SectionHeader
-      eyebrow={homeState === 'guest' ? 'HAPPENING NEAR YOU' : 'COMING UP'}
+      eyebrow={homeState === 'guest' ? 'EXPLORE EVENTS' : 'COMING UP'}
       trailing="See all"
       accentColor={c.accent}
       faintColor={c.textFaint}
@@ -426,10 +428,15 @@ export default function HomeScreen() {
     </SectionHeader>
   )
 
+  // Guests have nothing personal to show: the home collapses to the focused
+  // AnchorCard (log in / paste invite) + a plain Explore-events list. The
+  // personalized "Up next" and "Your community" slots are members-only.
+  const isGuest = homeState === 'guest'
+
   // ── Wide desktop: two-column composition reusing the SAME slots ──────────
-  // Greeting + AnchorCard live in the full-width header; Your events + Events
-  // near you fill the primary column; Your community sits in the right rail —
-  // so the unified slot set is preserved, just rearranged for width.
+  // Greeting anchors the full-width header; the AnchorCard sits at the TOP of
+  // the right rail (so it's a focused card, not a wide banner); Your events +
+  // Events near you fill the primary column.
   if (isWideDesktop) {
     return (
       <>
@@ -439,19 +446,19 @@ export default function HomeScreen() {
           showsVerticalScrollIndicator={false}
         >
           <DesktopColumns
-            header={
-              <>
-                {greeting}
-                {anchorCard}
-              </>
-            }
+            header={greeting}
             main={
               <>
-                {yourEventsSlot}
+                {!isGuest && yourEventsSlot}
                 {eventsNearYouSlot}
               </>
             }
-            rail={<View style={{ gap: 22 }}>{yourCommunitySlot}</View>}
+            rail={
+              <View style={{ gap: 22 }}>
+                {anchorCard}
+                {!isGuest && yourCommunitySlot}
+              </View>
+            }
           />
         </ScrollView>
         {authPrompt}
@@ -474,9 +481,9 @@ export default function HomeScreen() {
         <View style={{ width: '100%', maxWidth: 640, alignSelf: 'center', gap: 22 }}>
           {greeting}
           {anchorCard}
-          {yourEventsSlot}
+          {!isGuest && yourEventsSlot}
           {eventsNearYouSlot}
-          {yourCommunitySlot}
+          {!isGuest && yourCommunitySlot}
         </View>
       </ScrollView>
       {authPrompt}
@@ -522,9 +529,9 @@ function AnchorCard({
             <Compass size={21} color={c.accent} />
           </View>
           <View style={{ flex: 1, gap: 2 }}>
-            <Text style={{ fontFamily: 'Inclusive Sans', fontSize: 17, color: c.text }}>Welcome to Janata</Text>
+            <Text style={{ fontFamily: 'Inclusive Sans', fontSize: 17, color: c.text }}>Make Janata yours</Text>
             <Text style={{ fontSize: 13.5, lineHeight: 19, color: c.textMuted }}>
-              Your center, events, and community updates will show up here.
+              Janata is invite-only. Log in, or paste an invite to get in.
             </Text>
           </View>
         </View>
