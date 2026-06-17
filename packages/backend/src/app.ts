@@ -1882,7 +1882,13 @@ app.get('/feed', authMiddleware, async (c) => {
   )
 
   return c.json({
-    posts: posts.map(boardPostToApi),
+    // Each feed post carries its board source (kind + display label) so clients
+    // can show "Public" / center name / event title without a second lookup.
+    posts: posts.map((p) => ({
+      ...boardPostToApi(p),
+      sourceKind: (p as unknown as { source_kind?: string }).source_kind,
+      sourceLabel: (p as unknown as { source_label?: string | null }).source_label,
+    })),
   })
 })
 

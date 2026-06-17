@@ -125,6 +125,10 @@ export interface BoardPostData {
   // #205 boards enhancements — present once the post has been pinned (#249).
   pinnedAt?: string | null
   pinnedBy?: string | null
+  // Only on the aggregated /feed response: the post's board source so the
+  // Home peek can label it ("Public" / center name / event title).
+  sourceKind?: 'public' | 'center' | 'event'
+  sourceLabel?: string | null
 }
 
 // ── Discover-specific types ─────────────────────────────────────────────
