@@ -540,6 +540,15 @@ app.post('/auth/refresh', async (c) => {
       return c.json({ message: 'User not found' }, 401)
     }
 
+    // Match authMiddleware: refresh tokens minted after the tv rollout should
+    // die after a password reset, while legacy no-tv tokens remain valid.
+    if (typeof decoded.tv === 'string') {
+      const expected = await passwordFingerprint(user.password)
+      if (decoded.tv !== expected) {
+        return c.json({ message: 'Session expired, please sign in again' }, 401)
+      }
+    }
+
     const newAccessToken = await generateToken(user, c.env.JWT_SECRET)
     const newRefreshToken = await generateRefreshToken(user, refreshSecret)
 

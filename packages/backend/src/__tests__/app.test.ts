@@ -517,6 +517,67 @@ describe('POST /api/auth/authenticate', () => {
 })
 
 // ═══════════════════════════════════════════════════════════════════════
+// AUTH: REFRESH
+// ═══════════════════════════════════════════════════════════════════════
+
+describe('POST /api/auth/refresh', () => {
+  it('rejects refresh tokens after password rotation (401, tv mismatch)', async () => {
+    await jsonPost('/api/auth/register', {
+      username: 'refreshrotate',
+      password: 'password123',
+      inviteCode: TEST_INVITE_CODE,
+    })
+    const login = await jsonPost('/api/auth/authenticate', {
+      username: 'refreshrotate',
+      password: 'password123',
+    })
+    expect(login.res.status).toBe(200)
+    expect(login.body.refreshToken).toBeDefined()
+
+    const newHash = await hashPassword('different-password')
+    await env.DB.prepare('UPDATE users SET password = ? WHERE username = ?')
+      .bind(newHash, 'refreshrotate')
+      .run()
+
+    const { res, body } = await jsonPost('/api/auth/refresh', {
+      refreshToken: login.body.refreshToken,
+    })
+    expect(res.status).toBe(401)
+    expect(body.message).toMatch(/sign in again/i)
+    expect(body.token).toBeUndefined()
+    expect(body.refreshToken).toBeUndefined()
+  })
+
+  it('accepts legacy refresh tokens that pre-date the tv claim', async () => {
+    await jsonPost('/api/auth/register', {
+      username: 'legacyrefresh',
+      password: 'password123',
+      inviteCode: TEST_INVITE_CODE,
+    })
+    const user = await env.DB.prepare('SELECT id, username FROM users WHERE username = ?')
+      .bind('legacyrefresh')
+      .first<{ id: string; username: string }>()
+    expect(user).not.toBeNull()
+
+    const refreshSecret = env.JWT_REFRESH_SECRET || env.JWT_SECRET
+    const legacy = await new SignJWT({
+      id: user!.id,
+      username: user!.username,
+      type: 'refresh',
+    })
+      .setProtectedHeader({ alg: 'HS256' })
+      .setIssuedAt()
+      .setExpirationTime('90d')
+      .sign(new TextEncoder().encode(refreshSecret))
+
+    const { res, body } = await jsonPost('/api/auth/refresh', { refreshToken: legacy })
+    expect(res.status).toBe(200)
+    expect(body.token).toBeDefined()
+    expect(body.refreshToken).toBeDefined()
+  })
+})
+
+// ═══════════════════════════════════════════════════════════════════════
 // AUTH: VERIFY
 // ═══════════════════════════════════════════════════════════════════════
 
