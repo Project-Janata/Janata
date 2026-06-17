@@ -153,21 +153,20 @@ export default function HomeScreen() {
     })
   }, [allEvents, myEvents, user?.id])
 
-  // "Coming up" — stays center-scoped: upcoming events at the member's OWN
-  // center that they aren't already part of (not RSVP'd, not theirs). Members
-  // with no home center yet (and guests) see the full upcoming list.
+  // "Coming up" — center-scoped for members (upcoming events at their OWN center
+  // they aren't already part of), but falling back to ALL upcoming events when
+  // their center has none. That keeps the column populated like the logged-out
+  // Explore list instead of going blank for a member at a quiet center.
   const upcomingExploreEvents = useMemo(() => {
-    // Guests: every upcoming event (nothing to scope by). Members: their center's
-    // upcoming events they aren't already part of.
+    // Guests: every upcoming event (nothing to scope by).
     if (!user) return sortUpcomingEvents(allEvents)
-    return sortUpcomingEvents(
-      allEvents.filter(
-        (e) =>
-          !e.isRegistered &&
-          e.createdBy !== user.id &&
-          (!user.centerID || e.centerId === user.centerID)
-      )
+    const notMine = (e: EventDisplay) => !e.isRegistered && e.createdBy !== user.id
+    const centerScoped = sortUpcomingEvents(
+      allEvents.filter((e) => notMine(e) && (!user.centerID || e.centerId === user.centerID))
     )
+    if (centerScoped.length > 0) return centerScoped
+    // No events at the member's center → show the broader upcoming list.
+    return sortUpcomingEvents(allEvents.filter(notMine))
   }, [allEvents, user?.id, user?.centerID])
 
   const vl = user?.verificationLevel ?? 0
