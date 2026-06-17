@@ -9,6 +9,14 @@ interface DestructiveButtonProps {
   style?: object
 }
 
+// NativeWind 4's CssInterop silently drops the function-style
+// `style={({ pressed }) => ...}` callback on Pressable, so this button's red
+// background/padding/radius never applied — leaving white text on a
+// transparent background (invisible in light mode; see the event "Cancel
+// Registration" button). Fix: drive styling via className (which IS
+// interop-processed) with `active:` for press feedback — same pattern as
+// PrimaryButton.native. Arbitrary hex keeps the exact red regardless of the
+// Tailwind theme config.
 export default function DestructiveButton({ children, onPress, disabled, loading, style }: DestructiveButtonProps) {
   const isDisabled = disabled || loading
 
@@ -16,23 +24,18 @@ export default function DestructiveButton({ children, onPress, disabled, loading
     <Pressable
       onPress={!isDisabled ? onPress : undefined}
       disabled={isDisabled}
-      style={({ pressed }) => [
-        {
-          backgroundColor: pressed ? '#B91C1C' : '#DC2626',
-          paddingHorizontal: 16,
-          paddingVertical: 14,
-          borderRadius: 999,
-          alignItems: 'center',
-          justifyContent: 'center',
-          opacity: isDisabled ? 0.5 : 1,
-        },
-        style,
-      ]}
+      className={[
+        'bg-[#DC2626] active:bg-[#B91C1C]',
+        'px-4 py-3.5 rounded-full',
+        'items-center justify-center',
+        isDisabled ? 'opacity-50' : '',
+      ].join(' ')}
+      style={style}
     >
       {loading ? (
         <ActivityIndicator size="small" color="#FFFFFF" />
       ) : (
-        <Text style={{ fontWeight: '500', fontSize: 15, lineHeight: 20, color: '#FFFFFF', textAlign: 'center' }}>
+        <Text className="text-white font-medium text-[15px] leading-5">
           {children}
         </Text>
       )}

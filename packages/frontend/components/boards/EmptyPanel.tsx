@@ -1,4 +1,4 @@
-import React from 'react'
+import React, { useState } from 'react'
 import { View, Text, Pressable } from 'react-native'
 import type { AppColors } from '../../tokens'
 
@@ -15,6 +15,10 @@ export function EmptyPanel({
   actionLabel?: string
   onAction?: () => void
 }) {
+  // NativeWind 4's CssInterop drops the function-style `style={({ pressed }) =>}`
+  // callback on Pressable, which stripped the accent background and left the
+  // white (textInverse) label invisible. Use a static style + state-driven press.
+  const [pressed, setPressed] = useState(false)
   return (
     <View style={{ paddingVertical: 18, paddingHorizontal: 4, gap: 5 }}>
       <Text style={{ fontFamily: 'Inclusive Sans', fontSize: 17, color: colors.text }}>{title}</Text>
@@ -24,7 +28,9 @@ export function EmptyPanel({
           accessibilityRole="button"
           accessibilityLabel={actionLabel}
           onPress={onAction}
-          style={({ pressed }) => ({
+          onPressIn={() => setPressed(true)}
+          onPressOut={() => setPressed(false)}
+          style={{
             alignSelf: 'flex-start',
             marginTop: 10,
             paddingHorizontal: 16,
@@ -32,7 +38,7 @@ export function EmptyPanel({
             borderRadius: 999,
             backgroundColor: colors.accent,
             opacity: pressed ? 0.85 : 1,
-          })}
+          }}
         >
           <Text style={{ fontFamily: 'Inclusive Sans', fontSize: 14, color: colors.textInverse }}>
             {actionLabel}

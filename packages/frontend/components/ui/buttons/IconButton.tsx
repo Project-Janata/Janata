@@ -1,4 +1,4 @@
-import React from 'react'
+import React, { useState } from 'react'
 import { Pressable } from 'react-native'
 import { useColors } from '../../../hooks/useColors'
 
@@ -11,14 +11,20 @@ interface IconButtonProps {
   style?: object
 }
 
+// NativeWind 4's CssInterop drops the function-style `style={({ pressed }) =>}`
+// callback on Pressable, which stripped the icon button's background/border.
+// Use an array style with state-driven press feedback. See PrimaryButton.native.
 export default function IconButton({ children, variant = 'solid', onPress, disabled, size = 36, style }: IconButtonProps) {
   const c = useColors()
+  const [pressed, setPressed] = useState(false)
 
   return (
     <Pressable
       onPress={!disabled ? onPress : undefined}
+      onPressIn={() => setPressed(true)}
+      onPressOut={() => setPressed(false)}
       disabled={disabled}
-      style={({ pressed }) => [
+      style={[
         {
           width: size,
           height: size,
