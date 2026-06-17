@@ -102,10 +102,16 @@ export default function Profile() {
   }, [router, track])
   const onShare = useCallback(async () => {
     try {
-      await Share.share({ message: `Check out ${displayName} on Janata!`, title: displayName })
-      track('profile_shared', { source: 'profile', username: user?.username })
+      // Share a real link to the public member profile.
+      const profileUrl = user?.id ? `https://chinmayajanata.org/members/${user.id}` : undefined
+      await Share.share({
+        message: `Check out ${displayName} on Janata!${profileUrl ? ` ${profileUrl}` : ''}`,
+        url: profileUrl,
+        title: displayName,
+      })
+      track('profile_shared', { source: 'profile' })
     } catch { /* dismissed */ }
-  }, [displayName, track, user?.username])
+  }, [displayName, track, user?.id])
   const onExplore = useCallback(() => {
     track('profile_explore_cta', { source: 'profile' })
     router.push('/explore')
@@ -118,50 +124,10 @@ export default function Profile() {
           title="You"
           action="settings"
           showProfile={false}
-          rightContent={
-            user ? (
-              <>
-                <Pressable
-                  onPress={onShare}
-                  accessibilityRole="button"
-                  accessibilityLabel="Share profile"
-                  hitSlop={8}
-                  style={({ pressed }) => ({
-                    width: 36,
-                    height: 36,
-                    borderRadius: 18,
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                    backgroundColor: c.surface,
-                    opacity: pressed ? 0.6 : 1,
-                  })}
-                >
-                  <Share2 size={18} color={c.icon} />
-                </Pressable>
-                <Pressable
-                  onPress={onEdit}
-                  accessibilityRole="button"
-                  accessibilityLabel="Edit profile"
-                  hitSlop={8}
-                  style={({ pressed }) => ({
-                    width: 36,
-                    height: 36,
-                    borderRadius: 18,
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                    backgroundColor: c.surface,
-                    opacity: pressed ? 0.6 : 1,
-                  })}
-                >
-                  <Pencil size={18} color={c.icon} />
-                </Pressable>
-              </>
-            ) : null
-          }
         />
       ),
     })
-  }, [navigation, user, c, onShare, onEdit])
+  }, [navigation])
 
   const card = { backgroundColor: c.card, borderWidth: 1, borderColor: c.border, borderRadius: 20 } as const
 
@@ -224,6 +190,48 @@ export default function Profile() {
               </View>
             ) : null}
           </View>
+        </View>
+
+        {/* Share + Edit — full-width labeled buttons on their own line (matches web) */}
+        <View style={{ flexDirection: 'row', gap: 10, marginTop: 14 }}>
+          <Pressable
+            onPress={onShare}
+            accessibilityRole="button"
+            accessibilityLabel="Share profile"
+            style={({ pressed }) => ({
+              flex: 1,
+              flexDirection: 'row',
+              alignItems: 'center',
+              justifyContent: 'center',
+              gap: 8,
+              height: 40,
+              borderRadius: 12,
+              borderWidth: 1,
+              borderColor: c.border,
+              backgroundColor: pressed ? c.cardActive : c.card,
+            })}
+          >
+            <Share2 size={16} color={c.text} />
+            <Text style={{ fontSize: 14, fontWeight: '600', color: c.text }}>Share</Text>
+          </Pressable>
+          <Pressable
+            onPress={onEdit}
+            accessibilityRole="button"
+            accessibilityLabel="Edit profile"
+            style={({ pressed }) => ({
+              flex: 1,
+              flexDirection: 'row',
+              alignItems: 'center',
+              justifyContent: 'center',
+              gap: 8,
+              height: 40,
+              borderRadius: 12,
+              backgroundColor: pressed ? c.cardActive : c.text,
+            })}
+          >
+            <Pencil size={16} color={c.textInverse} />
+            <Text style={{ fontSize: 14, fontWeight: '600', color: c.textInverse }}>Edit profile</Text>
+          </Pressable>
         </View>
 
         {user?.bio ? (
