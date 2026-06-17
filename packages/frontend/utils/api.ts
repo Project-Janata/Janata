@@ -43,6 +43,8 @@ export interface EventData {
   externalUrl?: string | null
   signupUrl?: string | null
   allowJanataSignup?: boolean
+  accountAttendeeCount?: number
+  guestRsvpCount?: number
   // #192 — true when creator was at SEVAK level or higher at create time.
   isOfficial?: boolean
   createdAt?: string
@@ -70,8 +72,16 @@ export interface UserData {
   work?: string | null
   region?: string | null
   lookingFor?: string[] | null
+  attendeeType?: 'account' | 'guest'
   createdAt?: string
   updatedAt?: string
+}
+
+export interface GuestRsvpData {
+  eventID: string
+  name: string
+  email: string
+  createdAt: string
 }
 
 export interface PublicProfileData {
@@ -133,6 +143,7 @@ export interface AttendeeInfo {
   name: string
   image?: string
   initials?: string
+  attendeeType?: 'account' | 'guest'
 }
 
 export interface EventDisplay {
@@ -410,7 +421,7 @@ export async function fetchEventsPage(
 
 export async function fetchEventUsers(eventID: string): Promise<UserData[]> {
   try {
-    const response = await apiFetch('/getEventUsers', {
+    const response = await authFetch('/getEventUsers', {
       method: 'POST',
       body: JSON.stringify({ id: eventID }),
     })
@@ -987,6 +998,13 @@ export async function fetchAdminEvents(params?: {
   const response = await authFetch(`/admin/events${qs ? `?${qs}` : ''}`)
   if (!response.ok) throw new Error('Failed to fetch admin events')
   return response.json()
+}
+
+export async function fetchAdminEventGuestRsvps(eventId: string): Promise<GuestRsvpData[]> {
+  const response = await authFetch(`/admin/events/${eventId}/guest-rsvps`)
+  if (!response.ok) throw new Error('Failed to fetch guest RSVPs')
+  const data = await response.json()
+  return data.data || []
 }
 
 export async function fetchAdminCenterMembers(centerId: string): Promise<UserData[]> {

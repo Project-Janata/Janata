@@ -11,6 +11,7 @@ import type {
   UserRow,
   CenterRow,
   EventRow,
+  EventGuestRsvpRow,
   EventAttendeeRow,
   EventEndorserRow,
   BoardRow,
@@ -518,6 +519,35 @@ export async function createGuestRsvp(
   } catch (err: any) {
     return { success: false, error: err?.message ?? 'Unknown error' }
   }
+}
+
+export async function getEventGuestRsvps(
+  db: D1Database,
+  eventId: string,
+): Promise<EventGuestRsvpRow[]> {
+  const result = await db
+    .prepare(
+      `SELECT * FROM event_guest_rsvps
+       WHERE event_id = ?1 AND upgraded_user_id IS NULL
+       ORDER BY created_at DESC`,
+    )
+    .bind(eventId)
+    .all<EventGuestRsvpRow>()
+  return result.results ?? []
+}
+
+export async function countEventGuestRsvps(
+  db: D1Database,
+  eventId: string,
+): Promise<number> {
+  const result = await db
+    .prepare(
+      `SELECT COUNT(*) AS count FROM event_guest_rsvps
+       WHERE event_id = ?1 AND upgraded_user_id IS NULL`,
+    )
+    .bind(eventId)
+    .first<{ count: number }>()
+  return result?.count ?? 0
 }
 
 /**

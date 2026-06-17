@@ -2180,7 +2180,8 @@ app.post('/updateEvent', authMiddleware, async (c) => {
   return c.json({ message: 'Update failed' }, 400)
 })
 
-app.post('/getEventUsers', async (c) => {
+app.post('/getEventUsers', authMiddleware, async (c) => {
+  const user = c.get('user')
   const { id } = await c.req.json<{ id: string }>()
   if (!id) {
     return c.json({ message: 'Bad request - missing id' }, 400)
@@ -2191,10 +2192,46 @@ app.post('/getEventUsers', async (c) => {
     return c.json({ message: 'Event not found' }, 404)
   }
 
+  const userIsAdmin = isAdmin(user)
+  const userIsCreator = event.created_by === user.id
+  const userIsAttending = await db.isUserAttending(c.env.DB, id, user.id)
+  if (!userIsAdmin && !userIsCreator && !userIsAttending) {
+    return c.json({ message: 'You must be registered for this event to see attendees' }, 403)
+  }
+
   const attendees = await db.getEventAttendees(c.env.DB, id)
+  const guestRsvps = await db.getEventGuestRsvps(c.env.DB, id)
+  const accountUsers = attendees.map((u) => ({
+    ...userRowToApi(u),
+    attendeeType: 'account',
+  }))
+  const guestUsers = guestRsvps.map((guest, index) => ({
+    id: `guest-${index + 1}`,
+    username: guest.name,
+    email: null,
+    firstName: guest.name,
+    lastName: '',
+    dateOfBirth: null,
+    phoneNumber: null,
+    profileImage: null,
+    centerID: null,
+    points: 0,
+    isVerified: false,
+    verificationLevel: 0,
+    isActive: true,
+    profileComplete: false,
+    interests: null,
+    createdAt: guest.created_at,
+    updatedAt: guest.created_at,
+    attendeeType: 'guest',
+  }))
+
   return c.json({
     message: 'Success',
-    users: attendees.map((u) => userRowToApi(u)),
+    users: [...accountUsers, ...guestUsers],
+    accountAttendeeCount: attendees.length,
+    guestRsvpCount: guestRsvps.length,
+    totalAttendeeCount: attendees.length + guestRsvps.length,
   })
 })
 
@@ -2543,7 +2580,36 @@ app.get('/admin/events', adminMiddleware, async (c) => {
   const limit = Math.min(Math.max(parseInt(url.searchParams.get('limit') ?? '50', 10) || 50, 1), 100)
   const offset = Math.max(parseInt(url.searchParams.get('offset') ?? '0', 10) || 0, 0)
   const { data, total } = await db.listEvents(c.env.DB, { q, limit, offset })
-  return c.json({ data: data.map(eventRowToApi), total, limit, offset })
+  const events = await Promise.all(
+    data.map(async (event) => {
+      const guestRsvpCount = await db.countEventGuestRsvps(c.env.DB, event.id)
+      return {
+        ...eventRowToApi(event),
+        accountAttendeeCount: event.people_attending,
+        guestRsvpCount,
+        peopleAttending: event.people_attending + guestRsvpCount,
+      }
+    }),
+  )
+  return c.json({ data: events, total, limit, offset })
+})
+
+app.get('/admin/events/:id/guest-rsvps', adminMiddleware, async (c) => {
+  const eventId = c.req.param('id')
+  const event = await db.getEventById(c.env.DB, eventId)
+  if (!event) {
+    return c.json({ message: 'Event not found' }, 404)
+  }
+  const guestRsvps = await db.getEventGuestRsvps(c.env.DB, eventId)
+  return c.json({
+    data: guestRsvps.map((guest) => ({
+      eventID: guest.event_id,
+      name: guest.name,
+      email: guest.email,
+      createdAt: guest.created_at,
+    })),
+    total: guestRsvps.length,
+  })
 })
 
 // ── Admin center actions ──────────────────────────────────────────────

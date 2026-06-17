@@ -93,6 +93,7 @@ type Attendee = {
   subtitle: string
   image?: string
   initials?: string
+  attendeeType?: 'account' | 'guest'
 }
 
 type EventDetailPanelProps = {
@@ -593,15 +594,17 @@ function PeopleTab({ attendees, colors }: { attendees: Attendee[]; colors: Detai
                 >
                   {a.name}
                 </Text>
-                <Text
-                  style={{
-                    fontFamily: 'Inclusive Sans',
-                    fontSize: 12,
-                    color: colors.textSecondary,
-                  }}
-                >
-                  {a.subtitle}
-                </Text>
+                {a.subtitle ? (
+                  <Text
+                    style={{
+                      fontFamily: 'Inclusive Sans',
+                      fontSize: 12,
+                      color: colors.textSecondary,
+                    }}
+                  >
+                    {a.subtitle}
+                  </Text>
+                ) : null}
               </View>
             </View>
           ))}

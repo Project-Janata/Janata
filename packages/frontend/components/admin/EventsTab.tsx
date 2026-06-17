@@ -1,6 +1,6 @@
 import React, { useState, useMemo, useEffect, useCallback } from 'react'
 import { View, Text, Pressable, ActivityIndicator, useWindowDimensions } from 'react-native'
-import { MapPin, Clock, Users, FileText } from 'lucide-react-native'
+import { MapPin, Clock, Users, FileText, Mail } from 'lucide-react-native'
 import AdminTable, { type Column } from './AdminTable'
 import AdminDetailPanel from './AdminDetailPanel'
 import AdminSearchInput from './AdminSearchInput'
@@ -8,8 +8,10 @@ import AdminInfoRow from './AdminInfoRow'
 import ConfirmDialog from './ConfirmDialog'
 import {
   fetchAdminEvents,
+  fetchAdminEventGuestRsvps,
   adminDeleteEvent,
   type EventData,
+  type GuestRsvpData,
 } from '../../utils/api'
 import { useDetailColors } from '../../hooks/useDetailColors'
 import { useTheme } from '../contexts'
@@ -37,6 +39,8 @@ export default function EventsTab() {
   const [loading, setLoading] = useState(true)
   const [selectedId, setSelectedId] = useState<string | null>(null)
   const [deleteTarget, setDeleteTarget] = useState<EventData | null>(null)
+  const [guestRsvps, setGuestRsvps] = useState<GuestRsvpData[]>([])
+  const [guestRsvpsLoading, setGuestRsvpsLoading] = useState(false)
 
   const [error, setError] = useState<string | null>(null)
 
@@ -70,6 +74,30 @@ export default function EventsTab() {
     () => events.find((e) => e.eventID === selectedId) ?? null,
     [selectedId, events]
   )
+
+  useEffect(() => {
+    let mounted = true
+    if (!selectedId) {
+      setGuestRsvps([])
+      return
+    }
+    setGuestRsvpsLoading(true)
+    setGuestRsvps([])
+    fetchAdminEventGuestRsvps(selectedId)
+      .then((rows) => {
+        if (mounted) setGuestRsvps(rows)
+      })
+      .catch((err) => {
+        if (__DEV__) console.error('Failed to load guest RSVPs:', err)
+        if (mounted) setGuestRsvps([])
+      })
+      .finally(() => {
+        if (mounted) setGuestRsvpsLoading(false)
+      })
+    return () => {
+      mounted = false
+    }
+  }, [selectedId])
 
   const handleDelete = async () => {
     if (!deleteTarget) return
@@ -180,11 +208,50 @@ export default function EventsTab() {
             )}
             <AdminInfoRow
               icon={<Users size={14} color={colors.textMuted} />}
-              text={`${selected.peopleAttending} attendees`}
+              text={`${selected.peopleAttending} attendees (${selected.accountAttendeeCount ?? selected.peopleAttending} accounts, ${selected.guestRsvpCount ?? 0} guests)`}
               colors={colors}
             />
             {selected.description && (
               <AdminInfoRow icon={<FileText size={14} color={colors.textMuted} />} text={selected.description} colors={colors} />
+            )}
+          </View>
+
+          <View style={{ marginTop: 18, gap: 10 }}>
+            <Text style={{ fontFamily: 'Inclusive Sans', fontSize: 13, color: colors.text }}>
+              Guest RSVPs
+            </Text>
+            {guestRsvpsLoading ? (
+              <ActivityIndicator color="#E8862A" style={{ alignSelf: 'flex-start' }} />
+            ) : guestRsvps.length > 0 ? (
+              <View style={{ gap: 10 }}>
+                {guestRsvps.map((guest) => (
+                  <View
+                    key={`${guest.email}-${guest.createdAt}`}
+                    style={{
+                      borderTopWidth: 1,
+                      borderTopColor: colors.border,
+                      paddingTop: 10,
+                      gap: 4,
+                    }}
+                  >
+                    <Text style={{ fontFamily: 'Inclusive Sans', fontSize: 13, color: colors.text }}>
+                      {guest.name}
+                    </Text>
+                    <AdminInfoRow
+                      icon={<Mail size={14} color={colors.textMuted} />}
+                      text={guest.email}
+                      colors={colors}
+                    />
+                    <Text style={{ fontFamily: 'Inclusive Sans', fontSize: 11, color: colors.textMuted }}>
+                      No account · RSVPed {formatDate(guest.createdAt)} at {formatTime(guest.createdAt)}
+                    </Text>
+                  </View>
+                ))}
+              </View>
+            ) : (
+              <Text style={{ fontFamily: 'Inclusive Sans', fontSize: 12, color: colors.textSecondary }}>
+                No account-less RSVPs yet.
+              </Text>
             )}
           </View>
 

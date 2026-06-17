@@ -440,6 +440,13 @@ describe('invite gate (#403)', () => {
         .bind(eventId, 'guest@example.com')
         .first<{ c: number }>()
       expect(row?.c).toBe(1)
+
+      const publicEvent = await jsonPost('/api/fetchEvent', { id: eventId })
+      expect(publicEvent.body.event.peopleAttending).toBe(0)
+
+      const publicEvents = await fetchJSON('/api/fetchAllEvents')
+      const event = publicEvents.body.events.find((e: any) => e.eventID === eventId)
+      expect(event.peopleAttending).toBe(0)
     })
 
     it('rejects a guest RSVP with an invalid email (400)', async () => {
@@ -2160,10 +2167,64 @@ describe('event routes', () => {
 
       await jsonPost('/api/attendEvent', { eventID: addBody.id }, authHeader(userToken))
 
-      const { res, body } = await jsonPost('/api/getEventUsers', { id: addBody.id })
+      const { res, body } = await jsonPost('/api/getEventUsers', { id: addBody.id }, authHeader(userToken))
       expect(res.status).toBe(200)
       expect(body.users).toHaveLength(1)
       expect(body.users[0].username).toBe('eventuser')
+      expect(body.users[0].attendeeType).toBe('account')
+      expect(body.totalAttendeeCount).toBe(1)
+    })
+
+    it('requires an account RSVP before viewing attendees', async () => {
+      const { token: strangerToken } = await registerAndLogin('stranger', 'password123')
+      const { body: addBody } = await jsonPost(
+        '/api/addEvent',
+        {
+          title: 'Private Attendee List Event',
+          date: '2025-06-01T10:00:00Z',
+          latitude: 37.0,
+          longitude: -121.0,
+          centerID: centerId,
+        },
+        authHeader(userToken)
+      )
+
+      const guest = await jsonPost('/api/getEventUsers', { id: addBody.id })
+      expect(guest.res.status).toBe(401)
+
+      const stranger = await jsonPost('/api/getEventUsers', { id: addBody.id }, authHeader(strangerToken))
+      expect(stranger.res.status).toBe(403)
+    })
+
+    it('includes account-less guest RSVPs for allowed viewers without exposing guest email', async () => {
+      const { body: addBody } = await jsonPost(
+        '/api/addEvent',
+        {
+          title: 'Guest Visible Event',
+          date: '2025-06-01T10:00:00Z',
+          latitude: 37.0,
+          longitude: -121.0,
+          centerID: centerId,
+        },
+        authHeader(userToken)
+      )
+
+      await jsonPost('/api/attendEvent', { eventID: addBody.id }, authHeader(userToken))
+      await jsonPost('/api/attendEventGuest', {
+        eventID: addBody.id,
+        name: 'Guest One',
+        email: 'guest-one@example.com',
+      })
+
+      const { res, body } = await jsonPost('/api/getEventUsers', { id: addBody.id }, authHeader(userToken))
+      expect(res.status).toBe(200)
+      expect(body.users).toHaveLength(2)
+      expect(body.accountAttendeeCount).toBe(1)
+      expect(body.guestRsvpCount).toBe(1)
+      expect(body.totalAttendeeCount).toBe(2)
+      const guest = body.users.find((u: any) => u.attendeeType === 'guest')
+      expect(guest.firstName).toBe('Guest One')
+      expect(guest.email).toBeNull()
     })
   })
 
@@ -2613,6 +2674,34 @@ describe('GET /api/admin/events', () => {
     expect(body.data).toHaveLength(2)
     expect(body.data[0].eventID).toBeDefined()
     expect(body.data[0].title).toBeDefined()
+  })
+
+  it('includes guest RSVP counts and admin guest review rows', async () => {
+    const adminToken = await createAdmin()
+    const { body: centerBody } = await jsonPost('/api/addCenter', { centerName: 'CM San Jose', latitude: 37.3, longitude: -121.9 }, authHeader(adminToken))
+    const { body: eventBody } = await jsonPost(
+      '/api/addEvent',
+      { title: 'Guest Review', date: '2026-04-05T10:00:00Z', latitude: 37.3, longitude: -121.9, centerID: centerBody.id },
+      authHeader(adminToken),
+    )
+    await jsonPost('/api/attendEventGuest', {
+      eventID: eventBody.id,
+      name: 'Guest Reviewer',
+      email: 'guest-reviewer@example.com',
+    })
+
+    const { body } = await fetchJSON('/api/admin/events?limit=10&offset=0', { headers: authHeader(adminToken) })
+    const event = body.data.find((e: any) => e.eventID === eventBody.id)
+    expect(event.peopleAttending).toBe(1)
+    expect(event.accountAttendeeCount).toBe(0)
+    expect(event.guestRsvpCount).toBe(1)
+
+    const review = await fetchJSON(`/api/admin/events/${eventBody.id}/guest-rsvps`, {
+      headers: authHeader(adminToken),
+    })
+    expect(review.res.status).toBe(200)
+    expect(review.body.data).toHaveLength(1)
+    expect(review.body.data[0].email).toBe('guest-reviewer@example.com')
   })
 
   it('searches by title, address, or description', async () => {

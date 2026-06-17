@@ -26,6 +26,7 @@ import {
   DISCOVER_SAMPLE_EVENTS,
   DISCOVER_SAMPLE_CENTERS,
   AttendeeInfo,
+  UserData,
 } from '../utils/api'
 import { extractCountryAndState } from '../utils/addressParsing'
 
@@ -238,10 +239,42 @@ export function useEventList() {
   return { events, loading, isLive, error }
 }
 
+function apiUserToDisplayName(user: UserData): string {
+  return user.firstName ? `${user.firstName} ${user.lastName || ''}`.trim() : user.username
+}
+
+function apiUserToInitials(user: UserData): string {
+  const name = apiUserToDisplayName(user)
+  if (user.firstName) {
+    return `${user.firstName[0]}${user.lastName?.[0] || ''}`.toUpperCase()
+  }
+  return name.slice(0, 2).toUpperCase()
+}
+
+function apiUserToAttendee(user: UserData) {
+  const isGuest = user.attendeeType === 'guest'
+  return {
+    name: apiUserToDisplayName(user),
+    subtitle: isGuest ? 'Guest RSVP · no account' : '',
+    image: user.profileImage ?? undefined,
+    initials: apiUserToInitials(user),
+    attendeeType: user.attendeeType,
+  }
+}
+
+function apiUserToAttendeeInfo(user: UserData): AttendeeInfo {
+  return {
+    name: apiUserToDisplayName(user),
+    image: user.profileImage || undefined,
+    initials: apiUserToInitials(user),
+    attendeeType: user.attendeeType,
+  }
+}
+
 export function useEventDetail(eventId: string, username?: string, userId?: string) {
   const [event, setEvent] = useState<EventDisplay | null>(null)
   const [attendees, setAttendees] = useState<
-    { name: string; subtitle: string; image?: string; initials: string }[]
+    { name: string; subtitle: string; image?: string; initials: string; attendeeType?: 'account' | 'guest' }[]
   >([])
   const [messages, setMessages] = useState<
     { author: string; timestamp: string; text: string; image: string }[]
@@ -274,20 +307,21 @@ export function useEventDetail(eventId: string, username?: string, userId?: stri
           // Fetch attendees and check if current user is registered
           const users = await fetchEventUsers(eventId)
           if (mounted) {
-            setAttendees(
-              users.map((u) => ({
-                name: u.firstName ? `${u.firstName} ${u.lastName || ''}`.trim() : u.username,
-                subtitle: '',
-                image: u.profileImage ?? undefined,
-                initials: u.firstName
-                  ? `${u.firstName[0]}${u.lastName?.[0] || ''}`.toUpperCase()
-                  : u.username.slice(0, 2).toUpperCase(),
-              }))
-            )
+            const canSeeAttendees = users.length > 0 || display.attendees === 0
+            setAttendees(canSeeAttendees ? users.map(apiUserToAttendee) : [])
             // Check if current user is in attendees list
-            const userIsRegistered = userId ? users.some((u) => u.id === userId) : false
+            const userIsRegistered = userId ? users.some((u) => u.id === userId && u.attendeeType !== 'guest') : false
             setIsRegistered(userIsRegistered)
-            setEvent((prev) => (prev ? { ...prev, isRegistered: userIsRegistered } : null))
+            setEvent((prev) =>
+              prev
+                ? {
+                    ...prev,
+                    attendees: canSeeAttendees ? users.length : prev.attendees,
+                    attendeesList: canSeeAttendees ? users.map(apiUserToAttendeeInfo).slice(0, 4) : prev.attendeesList,
+                    isRegistered: userIsRegistered,
+                  }
+                : null
+            )
           }
         }
       } catch (err: any) {
@@ -315,55 +349,35 @@ export function useEventDetail(eventId: string, username?: string, userId?: stri
       try {
         // Check current registration status directly from API
         const users = await fetchEventUsers(eventId)
-        const currentUserInAttendees = users.some((u) => u.id === userId)
+        const currentUserInAttendees = users.some((u) => u.id === userId && u.attendeeType !== 'guest')
 
         if (currentUserInAttendees) {
           // Already registered - unattend
-          await unattendEvent(eventId)
+          const result = await unattendEvent(eventId)
           setIsRegistered(false)
           // Re-fetch attendees after unregistering
           const updatedUsers = await fetchEventUsers(eventId)
-          const newAttendeesList = updatedUsers.map((u) => ({
-            name: u.firstName ? `${u.firstName} ${u.lastName || ''}`.trim() : u.username,
-            image: u.profileImage || undefined,
-            initials: u.firstName
-              ? `${u.firstName[0]}${u.lastName?.[0] || ''}`.toUpperCase()
-              : u.username.slice(0, 2).toUpperCase(),
-          }))
+          const canStillSeeAttendees = updatedUsers.length > 0 || result.peopleAttending === 0
+          const newAttendeesList = updatedUsers.map(apiUserToAttendeeInfo)
           setEvent((prev) =>
             prev
               ? {
                   ...prev,
                   isRegistered: false,
-                  attendees: updatedUsers.length,
+                  attendees: canStillSeeAttendees ? updatedUsers.length : result.peopleAttending,
                   attendeesList: newAttendeesList.slice(0, 4),
                 }
               : null
           )
           // Also update attendees state
-          setAttendees(
-            updatedUsers.map((u) => ({
-              name: u.firstName ? `${u.firstName} ${u.lastName || ''}`.trim() : u.username,
-              subtitle: '',
-              image: u.profileImage ?? undefined,
-              initials: u.firstName
-                ? `${u.firstName[0]}${u.lastName?.[0] || ''}`.toUpperCase()
-                : u.username.slice(0, 2).toUpperCase(),
-            }))
-          )
+          setAttendees(canStillSeeAttendees ? updatedUsers.map(apiUserToAttendee) : [])
         } else {
           // Not registered - attend
           await attendEvent(eventId)
           setIsRegistered(true)
           // Re-fetch attendees after registering
           const updatedUsers = await fetchEventUsers(eventId)
-          const newAttendeesList = updatedUsers.map((u) => ({
-            name: u.firstName ? `${u.firstName} ${u.lastName || ''}`.trim() : u.username,
-            image: u.profileImage || undefined,
-            initials: u.firstName
-              ? `${u.firstName[0]}${u.lastName?.[0] || ''}`.toUpperCase()
-              : u.username.slice(0, 2).toUpperCase(),
-          }))
+          const newAttendeesList = updatedUsers.map(apiUserToAttendeeInfo)
           setEvent((prev) =>
             prev
               ? {
@@ -375,16 +389,7 @@ export function useEventDetail(eventId: string, username?: string, userId?: stri
               : null
           )
           // Also update attendees state
-          setAttendees(
-            updatedUsers.map((u) => ({
-              name: u.firstName ? `${u.firstName} ${u.lastName || ''}`.trim() : u.username,
-              subtitle: '',
-              image: u.profileImage ?? undefined,
-              initials: u.firstName
-                ? `${u.firstName[0]}${u.lastName?.[0] || ''}`.toUpperCase()
-                : u.username.slice(0, 2).toUpperCase(),
-            }))
-          )
+          setAttendees(updatedUsers.map(apiUserToAttendee))
         }
       } catch (error: any) {
         // If error says already registered, update UI
@@ -749,19 +754,19 @@ export function useDiscoverData(
         const eventsWithAttendees = await Promise.all(
           allApiEvents.map(async (e) => {
             const users = await fetchEventUsers(e.eventID)
-            const attendeesList = users.map((u) => ({
+            const accountUsers = users.filter((u) => u.attendeeType !== 'guest')
+            const attendeesList = accountUsers.map((u) => ({
               name: u.firstName ? `${u.firstName} ${u.lastName || ''}`.trim() : u.username,
               image: u.profileImage || undefined,
               initials: u.firstName
                 ? `${u.firstName[0]}${u.lastName?.[0] || ''}`.toUpperCase()
                 : u.username.slice(0, 2).toUpperCase(),
             }))
-            const userIsRegistered = userId ? users.some((u) => u.id === userId) : false
+            const userIsRegistered = userId ? accountUsers.some((u) => u.id === userId) : false
             return {
               ...e,
               attendeesList: attendeesList.slice(0, 4),
               isRegistered: userIsRegistered,
-              peopleAttending: users.length,
             }
           })
         )
@@ -770,7 +775,6 @@ export function useDiscoverData(
           const display = apiEventToDisplay(e)
           display.attendeesList = e.attendeesList
           display.isRegistered = e.isRegistered
-          display.attendees = e.peopleAttending
           return display
         })
       } else {
