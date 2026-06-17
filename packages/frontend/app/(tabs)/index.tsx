@@ -414,7 +414,7 @@ export default function HomeScreen() {
               showSource
               onPress={() => {
                 track('home_board_peek_pressed', { postId: message.id, source: 'community_slot' })
-                router.push('/feed' as never)
+                router.push(`/feed?post=${encodeURIComponent(message.id)}` as never)
               }}
             />
           ))}
