@@ -49,7 +49,7 @@ const LOOKING_FOR_OPTIONS = [
 
 export default function EditProfileScreen() {
   const router = useRouter()
-  const { user, updateProfile, setUser } = useUser()
+  const { user, updateProfile } = useUser()
   const { isDark } = useTheme()
   const { track } = useAnalytics()
 
@@ -180,9 +180,6 @@ export default function EditProfileScreen() {
       }
 
       track('profile_updated', { source: 'edit_profile', image_changed: imageChanged })
-      if (user && imageChanged && profileImage) {
-        setUser({ ...user, originalImage: profileImage })
-      }
       router.back()
     } catch {
       setErrors({ form: 'Failed to save profile. Please try again.' })
