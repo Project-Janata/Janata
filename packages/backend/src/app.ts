@@ -2189,7 +2189,8 @@ app.post('/updateEvent', authMiddleware, async (c) => {
   return c.json({ message: 'Update failed' }, 400)
 })
 
-app.post('/getEventUsers', async (c) => {
+app.post('/getEventUsers', authMiddleware, async (c) => {
+  const user = c.get('user')
   const { id } = await c.req.json<{ id: string }>()
   if (!id) {
     return c.json({ message: 'Bad request - missing id' }, 400)
@@ -2201,8 +2202,15 @@ app.post('/getEventUsers', async (c) => {
   }
 
   const attendees = await db.getEventAttendees(c.env.DB, id)
-  // Public endpoint — return display-only fields, never PII. (Coordinators get
-  // emails + guests via the gated GET /events/:id/roster.)
+  // Gated: only an attendee, the event creator, or an admin may see WHO is going.
+  // The public guest-inclusive COUNT lives on the event object instead.
+  const isAttendee = attendees.some((a) => a.id === user.id)
+  if (!isAttendee && event.created_by !== user.id && !isAdmin(user)) {
+    return c.json({ message: 'Only attendees can view who is going' }, 403)
+  }
+
+  // Display-only fields, never PII. (Coordinators get emails + guests via the
+  // gated GET /events/:id/roster.)
   return c.json({
     message: 'Success',
     users: attendees.map((u) => userRowToAttendee(u)),

@@ -275,23 +275,37 @@ export function useEventDetail(eventId: string, username?: string, userId?: stri
           setIsCreator(userIsCreator)
           setIsLive(true)
 
-          // Fetch attendees and check if current user is registered
-          const users = await fetchEventUsers(eventId)
-          if (mounted) {
-            setAttendees(
-              users.map((u) => ({
-                name: u.firstName ? `${u.firstName} ${u.lastName || ''}`.trim() : (u.username ?? 'Member'),
-                subtitle: '',
-                image: u.profileImage ?? undefined,
-                initials: u.firstName
-                  ? `${u.firstName[0]}${u.lastName?.[0] || ''}`.toUpperCase()
-                  : (u.username?.slice(0, 2).toUpperCase() ?? 'M'),
-              }))
-            )
-            // Check if current user is in attendees list
-            const userIsRegistered = userId ? users.some((u) => u.id === userId) : false
-            setIsRegistered(userIsRegistered)
-            setEvent((prev) => (prev ? { ...prev, isRegistered: userIsRegistered } : null))
+          // Fetch the attendee LIST separately — it is gated (401/403 for
+          // non-attendees). A gated/failed list must NOT error the screen; the
+          // event + its guest-inclusive count still render. The public count
+          // comes from the event object (display.attendees = peopleAttending),
+          // never from the list length.
+          try {
+            const users = await fetchEventUsers(eventId)
+            if (mounted) {
+              setAttendees(
+                users.map((u) => ({
+                  name: u.firstName ? `${u.firstName} ${u.lastName || ''}`.trim() : (u.username ?? 'Member'),
+                  subtitle: '',
+                  image: u.profileImage ?? undefined,
+                  initials: u.firstName
+                    ? `${u.firstName[0]}${u.lastName?.[0] || ''}`.toUpperCase()
+                    : (u.username?.slice(0, 2).toUpperCase() ?? 'M'),
+                }))
+              )
+              // Check if current user is in attendees list
+              const userIsRegistered = userId ? users.some((u) => u.id === userId) : false
+              setIsRegistered(userIsRegistered)
+              setEvent((prev) => (prev ? { ...prev, isRegistered: userIsRegistered } : null))
+            }
+          } catch (listErr: any) {
+            // Gated list (not an attendee yet) — degrade gracefully.
+            if (mounted) {
+              setAttendees([])
+              setIsRegistered(false)
+              setEvent((prev) => (prev ? { ...prev, isRegistered: false } : null))
+            }
+            if (__DEV__) console.warn('[useEventDetail] attendee list gated/unavailable', listErr?.message)
           }
         }
       } catch (err: any) {
@@ -317,78 +331,93 @@ export function useEventDetail(eventId: string, username?: string, userId?: stri
       setIsToggling(true)
 
       try {
-        // Check current registration status directly from API
-        const users = await fetchEventUsers(eventId)
-        const currentUserInAttendees = users.some((u) => u.id === userId)
+        // Use the current registration state (the attendee LIST is gated, so a
+        // non-attendee can't fetch it to decide). The public count comes from
+        // the event object and is updated OPTIMISTICALLY (+1 attend / -1
+        // unattend), never derived from the account-list length.
+        const currentlyRegistered = isRegistered
 
-        if (currentUserInAttendees) {
+        if (currentlyRegistered) {
           // Already registered - unattend
           await unattendEvent(eventId)
           setIsRegistered(false)
-          // Re-fetch attendees after unregistering
-          const updatedUsers = await fetchEventUsers(eventId)
-          const newAttendeesList = updatedUsers.map((u) => ({
-            name: u.firstName ? `${u.firstName} ${u.lastName || ''}`.trim() : (u.username ?? 'Member'),
-            image: u.profileImage || undefined,
-            initials: u.firstName
-              ? `${u.firstName[0]}${u.lastName?.[0] || ''}`.toUpperCase()
-              : (u.username?.slice(0, 2).toUpperCase() ?? 'M'),
-          }))
           setEvent((prev) =>
             prev
               ? {
                   ...prev,
                   isRegistered: false,
-                  attendees: updatedUsers.length,
-                  attendeesList: newAttendeesList.slice(0, 4),
+                  attendees: Math.max(0, (prev.attendees ?? 0) - 1),
                 }
               : null
           )
-          // Also update attendees state
-          setAttendees(
-            updatedUsers.map((u) => ({
+          // Refresh the list, but a hiccup/gating must not break the toggle.
+          try {
+            const updatedUsers = await fetchEventUsers(eventId)
+            const newAttendeesList = updatedUsers.map((u) => ({
               name: u.firstName ? `${u.firstName} ${u.lastName || ''}`.trim() : (u.username ?? 'Member'),
-              subtitle: '',
-              image: u.profileImage ?? undefined,
+              image: u.profileImage || undefined,
               initials: u.firstName
                 ? `${u.firstName[0]}${u.lastName?.[0] || ''}`.toUpperCase()
                 : (u.username?.slice(0, 2).toUpperCase() ?? 'M'),
             }))
-          )
+            setEvent((prev) =>
+              prev ? { ...prev, attendeesList: newAttendeesList.slice(0, 4) } : null
+            )
+            setAttendees(
+              updatedUsers.map((u) => ({
+                name: u.firstName ? `${u.firstName} ${u.lastName || ''}`.trim() : (u.username ?? 'Member'),
+                subtitle: '',
+                image: u.profileImage ?? undefined,
+                initials: u.firstName
+                  ? `${u.firstName[0]}${u.lastName?.[0] || ''}`.toUpperCase()
+                  : (u.username?.slice(0, 2).toUpperCase() ?? 'M'),
+              }))
+            )
+          } catch {
+            // No longer an attendee → list is gated. Clear it.
+            setAttendees([])
+            setEvent((prev) => (prev ? { ...prev, attendeesList: [] } : null))
+          }
         } else {
           // Not registered - attend
           await attendEvent(eventId)
           setIsRegistered(true)
-          // Re-fetch attendees after registering
-          const updatedUsers = await fetchEventUsers(eventId)
-          const newAttendeesList = updatedUsers.map((u) => ({
-            name: u.firstName ? `${u.firstName} ${u.lastName || ''}`.trim() : (u.username ?? 'Member'),
-            image: u.profileImage || undefined,
-            initials: u.firstName
-              ? `${u.firstName[0]}${u.lastName?.[0] || ''}`.toUpperCase()
-              : (u.username?.slice(0, 2).toUpperCase() ?? 'M'),
-          }))
           setEvent((prev) =>
             prev
               ? {
                   ...prev,
                   isRegistered: true,
-                  attendees: updatedUsers.length,
-                  attendeesList: newAttendeesList.slice(0, 4),
+                  attendees: Math.max(0, (prev.attendees ?? 0) + 1),
                 }
               : null
           )
-          // Also update attendees state
-          setAttendees(
-            updatedUsers.map((u) => ({
+          // The user is now an attendee, so the gated list fetch works. Wrap it
+          // anyway so a hiccup doesn't break the toggle.
+          try {
+            const updatedUsers = await fetchEventUsers(eventId)
+            const newAttendeesList = updatedUsers.map((u) => ({
               name: u.firstName ? `${u.firstName} ${u.lastName || ''}`.trim() : (u.username ?? 'Member'),
-              subtitle: '',
-              image: u.profileImage ?? undefined,
+              image: u.profileImage || undefined,
               initials: u.firstName
                 ? `${u.firstName[0]}${u.lastName?.[0] || ''}`.toUpperCase()
                 : (u.username?.slice(0, 2).toUpperCase() ?? 'M'),
             }))
-          )
+            setEvent((prev) =>
+              prev ? { ...prev, attendeesList: newAttendeesList.slice(0, 4) } : null
+            )
+            setAttendees(
+              updatedUsers.map((u) => ({
+                name: u.firstName ? `${u.firstName} ${u.lastName || ''}`.trim() : (u.username ?? 'Member'),
+                subtitle: '',
+                image: u.profileImage ?? undefined,
+                initials: u.firstName
+                  ? `${u.firstName[0]}${u.lastName?.[0] || ''}`.toUpperCase()
+                  : (u.username?.slice(0, 2).toUpperCase() ?? 'M'),
+              }))
+            )
+          } catch {
+            // Ignore — the optimistic count + isRegistered already reflect the toggle.
+          }
         }
       } catch (error: any) {
         // If error says already registered, update UI
@@ -401,7 +430,7 @@ export function useEventDetail(eventId: string, username?: string, userId?: stri
         setIsToggling(false)
       }
     },
-    [event, eventId, userId]
+    [event, eventId, userId, isRegistered]
   )
 
   return {

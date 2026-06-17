@@ -2170,42 +2170,67 @@ describe('event routes', () => {
   })
 
   describe('POST /api/getEventUsers', () => {
-    it('returns attendees for an event', async () => {
+    async function createUsersEvent(title = 'Users Event') {
       const { body: addBody } = await jsonPost(
         '/api/addEvent',
         {
-          title: 'Users Event',
-          date: '2025-06-01T10:00:00Z',
-          latitude: 37.0,
-          longitude: -121.0,
-          centerID: centerId,
-        },
-        authHeader(userToken)
-      )
-
-      await jsonPost('/api/attendEvent', { eventID: addBody.id }, authHeader(userToken))
-
-      const { res, body } = await jsonPost('/api/getEventUsers', { id: addBody.id })
-      expect(res.status).toBe(200)
-      expect(body.users).toHaveLength(1)
-      expect(body.users[0].id).toBeDefined()
-    })
-
-    it('does NOT leak PII — no email/username/phone/DOB in the public list', async () => {
-      const { body: addBody } = await jsonPost(
-        '/api/addEvent',
-        {
-          title: 'PII Event',
-          date: '2025-06-01T10:00:00Z',
+          title,
+          date: '2030-06-01T10:00:00Z',
           latitude: 37.0,
           longitude: -121.0,
           centerID: centerId,
         },
         authHeader(userToken),
       )
-      await jsonPost('/api/attendEvent', { eventID: addBody.id }, authHeader(userToken))
+      return addBody.id as string
+    }
 
-      const { body } = await jsonPost('/api/getEventUsers', { id: addBody.id })
+    it('returns attendees for an event (to an attendee)', async () => {
+      const eventId = await createUsersEvent()
+      await jsonPost('/api/attendEvent', { eventID: eventId }, authHeader(userToken))
+
+      const { res, body } = await jsonPost(
+        '/api/getEventUsers',
+        { id: eventId },
+        authHeader(userToken),
+      )
+      expect(res.status).toBe(200)
+      expect(body.users).toHaveLength(1)
+      expect(body.users[0].id).toBeDefined()
+    })
+
+    it('rejects an unauthenticated request with 401', async () => {
+      const eventId = await createUsersEvent('Gated Event')
+      await jsonPost('/api/attendEvent', { eventID: eventId }, authHeader(userToken))
+
+      const { res } = await jsonPost('/api/getEventUsers', { id: eventId })
+      expect(res.status).toBe(401)
+    })
+
+    it('rejects a logged-in non-attendee stranger with 403', async () => {
+      const eventId = await createUsersEvent('Stranger Event')
+      await jsonPost('/api/attendEvent', { eventID: eventId }, authHeader(userToken))
+
+      // A different logged-in user who is NOT the creator/attendee/admin.
+      const { token: stranger } = await registerAndLogin('getusers-stranger', 'password123')
+      const { res } = await jsonPost(
+        '/api/getEventUsers',
+        { id: eventId },
+        authHeader(stranger),
+      )
+      expect(res.status).toBe(403)
+    })
+
+    it('does NOT leak PII — no email/username/phone/DOB in the gated list', async () => {
+      const eventId = await createUsersEvent('PII Event')
+      // Authenticate as an attendee (RSVP first) so the gated list is visible.
+      await jsonPost('/api/attendEvent', { eventID: eventId }, authHeader(userToken))
+
+      const { body } = await jsonPost(
+        '/api/getEventUsers',
+        { id: eventId },
+        authHeader(userToken),
+      )
       const attendee = body.users[0]
       expect(attendee).not.toHaveProperty('email')
       expect(attendee).not.toHaveProperty('username')
@@ -2214,6 +2239,33 @@ describe('event routes', () => {
       // Display-only fields remain.
       expect(attendee).toHaveProperty('id')
       expect(attendee).toHaveProperty('profileImage')
+    })
+
+    it('public count is guest-inclusive while the gated list is account-only', async () => {
+      const eventId = await createUsersEvent('Guest Count Event')
+      // One account RSVP + one (non-upgraded) guest RSVP.
+      await jsonPost('/api/attendEvent', { eventID: eventId }, authHeader(userToken))
+      await jsonPost('/api/attendEventGuest', {
+        eventID: eventId,
+        name: 'Count Guest',
+        email: 'count-guest@example.com',
+      })
+
+      // Public count (no PII, no auth) includes the guest → 2.
+      const { res: fetchRes, body: fetchBody } = await jsonPost('/api/fetchEvent', {
+        id: eventId,
+      })
+      expect(fetchRes.status).toBe(200)
+      expect(fetchBody.event.peopleAttending).toBe(2)
+
+      // Gated list (as the attendee) only contains the account attendee → 1.
+      const { res: usersRes, body: usersBody } = await jsonPost(
+        '/api/getEventUsers',
+        { id: eventId },
+        authHeader(userToken),
+      )
+      expect(usersRes.status).toBe(200)
+      expect(usersBody.users).toHaveLength(1)
     })
   })
 

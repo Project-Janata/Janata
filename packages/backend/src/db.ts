@@ -492,6 +492,24 @@ export async function listEvents(
 // ═══════════════════════════════════════════════════════════════════════
 
 /**
+ * Recompute the public people_attending count for an event.
+ *
+ * The public count is guest-inclusive: account attendees plus non-upgraded
+ * guest RSVPs (upgraded guests are already counted as account attendees).
+ * It is just a number (no PII), so it can stay accurate while the attendee
+ * LIST stays gated.
+ */
+export async function recomputeAttendeeCount(db: D1Database, eventId: string): Promise<void> {
+  const now = new Date().toISOString()
+  await db.prepare(
+    `UPDATE events SET people_attending = (
+      (SELECT COUNT(*) FROM event_attendees WHERE event_id = ?1)
+      + (SELECT COUNT(*) FROM event_guest_rsvps WHERE event_id = ?1 AND upgraded_user_id IS NULL)
+    ), updated_at = ?2 WHERE id = ?1`
+  ).bind(eventId, now).run()
+}
+
+/**
  * Create a guest RSVP (no account required) — #191.
  *
  * PRIMARY KEY (event_id, email) means re-RSVPing with the same email is
@@ -511,9 +529,14 @@ export async function createGuestRsvp(
       )
       .bind(eventId, email.trim().toLowerCase(), name.trim())
       .run()
+    const alreadyRsvped = (result.meta?.changes ?? 0) === 0
+    // A new guest RSVP bumps the guest-inclusive public count.
+    if (!alreadyRsvped) {
+      await recomputeAttendeeCount(db, eventId)
+    }
     return {
       success: true,
-      alreadyRsvped: (result.meta?.changes ?? 0) === 0,
+      alreadyRsvped,
     }
   } catch (err: any) {
     return { success: false, error: err?.message ?? 'Unknown error' }
@@ -562,14 +585,7 @@ export async function upgradeGuestRsvpsForUser(
         )
         .bind(userId, eventId, normalized)
         .run()
-      await db
-        .prepare(
-          `UPDATE events SET people_attending = (
-            SELECT COUNT(*) FROM event_attendees WHERE event_id = ?1
-          ), updated_at = ?2 WHERE id = ?1`,
-        )
-        .bind(eventId, now)
-        .run()
+      await recomputeAttendeeCount(db, eventId)
     }
     return { success: true, upgraded: eventIds.length }
   } catch (err: any) {
@@ -592,18 +608,8 @@ export async function addEventAttendee(
       .bind(eventId, userId, now)
       .run()
 
-    // Then update the count from the actual table
-    await db
-      .prepare(
-        `UPDATE events SET people_attending = (
-          SELECT COUNT(*) FROM event_attendees WHERE event_id = ?1
-        ), updated_at = ?2 WHERE id = ?1`,
-      )
-      .bind(eventId, now)
-      .run()
-
-    // Wait briefly to ensure D1 consistency (optional, but safer in some environments)
-    // Actually, in D1, consecutive await run() calls are sequential.
+    // Then recompute the guest-inclusive public count
+    await recomputeAttendeeCount(db, eventId)
 
     return { success: true }
   } catch (err: any) {
@@ -617,22 +623,14 @@ export async function removeEventAttendee(
   userId: string,
 ): Promise<{ success: boolean; error?: string }> {
   try {
-    const now = new Date().toISOString()
     // First remove the record
     await db
       .prepare('DELETE FROM event_attendees WHERE event_id = ?1 AND user_id = ?2')
       .bind(eventId, userId)
       .run()
 
-    // Then update the count from the actual table
-    await db
-      .prepare(
-        `UPDATE events SET people_attending = (
-          SELECT COUNT(*) FROM event_attendees WHERE event_id = ?1
-        ), updated_at = ?2 WHERE id = ?1`,
-      )
-      .bind(eventId, now)
-      .run()
+    // Then recompute the guest-inclusive public count
+    await recomputeAttendeeCount(db, eventId)
 
     return { success: true }
   } catch (err: any) {
