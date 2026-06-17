@@ -2247,6 +2247,15 @@ app.post('/getEventUsers', authMiddleware, async (c) => {
   })
 })
 
+// The set of event IDs the authed user is registered for. Lets event LISTS
+// (Explore, Home) mark "Going" reliably without the fragile per-event roster
+// fetch. Authed + uncached. (Two segments — distinct from /events/:id/...)
+app.get('/events/registered', authMiddleware, async (c) => {
+  const user = c.get('user')
+  const eventIds = await db.getRegisteredEventIds(c.env.DB, user.id)
+  return c.json({ eventIds })
+})
+
 // Per-user registration state + live attendee count for an event. The public
 // /fetchEvent is cached and has no user context, so clients must NOT infer
 // "am I registered" from the gated roster (a normal attendee can't read it).

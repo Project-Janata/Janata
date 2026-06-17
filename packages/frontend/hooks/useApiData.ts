@@ -8,6 +8,7 @@ import {
   fetchAllEvents,
   fetchEventUsers,
   fetchEventRegistration,
+  fetchMyRegisteredEventIds,
   fetchBoard,
   fetchAggregatedFeed,
   attendEvent,
@@ -831,7 +832,9 @@ export function useDiscoverData(
               ...e,
               attendeesList: attendeesList.slice(0, 4),
               isRegistered: userIsRegistered,
-              peopleAttending: users.length,
+              // Keep the event's real (guest-inclusive) count — the gated roster
+              // length is 0 for events you can't read, which zeroed the card.
+              peopleAttending: e.peopleAttending,
             }
           })
         )
@@ -845,6 +848,15 @@ export function useDiscoverData(
         })
       } else {
         fetchedEvents = allApiEvents.map((e) => apiEventToDisplay(e))
+      }
+
+      // Reliable "Going" on list cards: mark events the user has an account RSVP
+      // for, from the authed registered-IDs set. The public events list can't
+      // carry per-user state, and the gated roster can't be read for events the
+      // user isn't in — so neither could drive the badge before.
+      if (userId) {
+        const registeredSet = new Set(await fetchMyRegisteredEventIds())
+        fetchedEvents = fetchedEvents.map((e) => ({ ...e, isRegistered: registeredSet.has(e.id) }))
       }
 
       const todayStr = new Date().toISOString().split('T')[0]

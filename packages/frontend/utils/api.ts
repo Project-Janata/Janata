@@ -456,6 +456,22 @@ export async function fetchEventRegistration(
   }
 }
 
+/**
+ * Event IDs the authed user is registered for (GET /events/registered). Lets
+ * event LISTS mark "Going" reliably without a per-event roster fetch.
+ */
+export async function fetchMyRegisteredEventIds(): Promise<string[]> {
+  try {
+    const response = await authFetch('/events/registered')
+    if (!response.ok) return []
+    const data = await response.json()
+    return data.eventIds ?? []
+  } catch (err: any) {
+    if (__DEV__) console.warn('[fetchMyRegisteredEventIds]', err?.message || err)
+    return []
+  }
+}
+
 // Coordinator-only attendee roster (creator or admin). Returns emails + guest
 // RSVPs for the "manage attendees / export" panel on the event page.
 export interface EventRosterEntry {
