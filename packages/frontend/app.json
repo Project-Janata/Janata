@@ -82,6 +82,11 @@
               "scheme": "https",
               "host": "www.chinmayajanata.org",
               "pathPrefix": "/auth"
+            },
+            {
+              "scheme": "https",
+              "host": "janata.app",
+              "pathPrefix": "/i"
             }
           ],
           "category": [
@@ -142,6 +147,11 @@
               "scheme": "https",
               "host": "www.chinmayajanata.org",
               "pathPrefix": "/auth"
+            },
+            {
+              "scheme": "https",
+              "host": "janata.app",
+              "pathPrefix": "/i"
             }
           ],
           "category": [
@@ -167,7 +177,8 @@
       "bundleIdentifier": "org.chinmayamission.janata",
       "associatedDomains": [
         "applinks:chinmayajanata.org",
-        "applinks:www.chinmayajanata.org"
+        "applinks:www.chinmayajanata.org",
+        "applinks:janata.app"
       ]
     },
     "web": {
