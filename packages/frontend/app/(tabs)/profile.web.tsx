@@ -40,6 +40,7 @@ export default function Profile() {
   const [createdCount, setCreatedCount] = useState(0)
   const [events, setEvents] = useState<EventData[]>([])
   const [groups, setGroups] = useState<CenterData[]>([])
+  const [shareCopied, setShareCopied] = useState(false)
 
   useFocusEffect(
     useCallback(() => {
@@ -93,10 +94,19 @@ export default function Profile() {
     .slice(0, 4)
 
   const onEdit = () => { track('nav_edit_profile', { source: 'profile_web' }); router.push('/edit-profile') }
+  // Real, shareable link to the public member profile (chinmayajanata.org/members/<id>).
+  const profileUrl = user?.id ? `https://chinmayajanata.org/members/${user.id}` : null
   const onShare = async () => {
+    if (!profileUrl) return
     try {
-      await Share.share({ message: `Check out ${displayName} on Janata!`, title: displayName })
-      track('profile_shared', { source: 'profile_web', username: user?.username })
+      if (Platform.OS === 'web' && typeof navigator !== 'undefined' && navigator.clipboard) {
+        await navigator.clipboard.writeText(profileUrl)
+        setShareCopied(true)
+        setTimeout(() => setShareCopied(false), 2000)
+      } else {
+        await Share.share({ message: `Check out ${displayName} on Janata! ${profileUrl}`, url: profileUrl, title: displayName })
+      }
+      track('profile_shared', { source: 'profile_web' })
     } catch { /* dismissed */ }
   }
   const onSettings = () => { track('nav_settings_opened', { source: 'profile_web', destination: 'preferences' }); router.push('/settings') }
@@ -117,7 +127,6 @@ export default function Profile() {
         )}
         <View style={{ flex: 1, minWidth: 0 }}>
           <Text style={{ fontSize: 20, fontWeight: '700', color: c.text }} numberOfLines={1}>{displayName}</Text>
-          {user?.username ? <Text style={{ fontSize: 13.5, color: c.textMuted, marginTop: 1 }} numberOfLines={1}>@{user.username}</Text> : null}
           {roleLabel ? (
             <View style={{ flexDirection: 'row', alignItems: 'center', gap: 5, marginTop: 7, alignSelf: 'flex-start', backgroundColor: c.accentSoft, paddingHorizontal: 10, paddingVertical: 4, borderRadius: 999 }}>
               <BadgeCheck size={13} color="#C2410C" />
@@ -125,40 +134,48 @@ export default function Profile() {
             </View>
           ) : null}
         </View>
-        <View style={{ flexDirection: 'row', gap: 8 }}>
-          <Pressable
-            onPress={onShare}
-            accessibilityRole="button"
-            accessibilityLabel="Share profile"
-            style={({ pressed }) => ({
-              width: 36,
-              height: 36,
-              borderRadius: 18,
-              borderWidth: 1,
-              borderColor: c.border,
-              backgroundColor: pressed ? c.cardActive : c.card,
-              alignItems: 'center',
-              justifyContent: 'center',
-            })}
-          >
-            <Share2 size={17} color={c.text} />
-          </Pressable>
-          <Pressable
-            onPress={onEdit}
-            accessibilityRole="button"
-            accessibilityLabel="Edit profile"
-            style={({ pressed }) => ({
-              width: 36,
-              height: 36,
-              borderRadius: 18,
-              backgroundColor: pressed ? c.cardActive : c.text,
-              alignItems: 'center',
-              justifyContent: 'center',
-            })}
-          >
-            <Pencil size={17} color={c.textInverse} />
-          </Pressable>
-        </View>
+      </View>
+
+      {/* Share + Edit — full-width labeled buttons on their own line */}
+      <View style={{ flexDirection: 'row', gap: 10, marginTop: 14 }}>
+        <Pressable
+          onPress={onShare}
+          accessibilityRole="button"
+          accessibilityLabel="Share profile"
+          style={({ pressed }) => ({
+            flex: 1,
+            flexDirection: 'row',
+            alignItems: 'center',
+            justifyContent: 'center',
+            gap: 8,
+            height: 40,
+            borderRadius: 12,
+            borderWidth: 1,
+            borderColor: c.border,
+            backgroundColor: pressed ? c.cardActive : c.card,
+          })}
+        >
+          <Share2 size={16} color={c.text} />
+          <Text style={{ fontSize: 14, fontWeight: '600', color: c.text }}>{shareCopied ? 'Copied!' : 'Share'}</Text>
+        </Pressable>
+        <Pressable
+          onPress={onEdit}
+          accessibilityRole="button"
+          accessibilityLabel="Edit profile"
+          style={({ pressed }) => ({
+            flex: 1,
+            flexDirection: 'row',
+            alignItems: 'center',
+            justifyContent: 'center',
+            gap: 8,
+            height: 40,
+            borderRadius: 12,
+            backgroundColor: pressed ? c.cardActive : c.text,
+          })}
+        >
+          <Pencil size={16} color={c.textInverse} />
+          <Text style={{ fontSize: 14, fontWeight: '600', color: c.textInverse }}>Edit profile</Text>
+        </Pressable>
       </View>
 
       {user?.bio ? (
