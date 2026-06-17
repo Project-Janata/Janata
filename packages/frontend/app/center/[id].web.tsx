@@ -204,6 +204,7 @@ function MobileCenterDetail({ centerId }: { centerId: string }) {
         <View style={{ flex: 1 }}>
           <PostThread
             post={threadDetailPost}
+            fullScreen
             colors={appColors}
             onPostChanged={refetchBoard}
             onPostDeleted={() => {
