@@ -2247,6 +2247,20 @@ app.post('/getEventUsers', authMiddleware, async (c) => {
   })
 })
 
+// Per-user registration state + live attendee count for an event. The public
+// /fetchEvent is cached and has no user context, so clients must NOT infer
+// "am I registered" from the gated roster (a normal attendee can't read it).
+// This authed endpoint answers both reliably and is never cached.
+app.get('/events/:id/registration', authMiddleware, async (c) => {
+  const user = c.get('user')
+  const id = c.req.param('id')
+  const [isRegistered, attendeeCount] = await Promise.all([
+    db.isUserAttending(c.env.DB, id, user.id),
+    db.getLiveAttendeeCount(c.env.DB, id),
+  ])
+  return c.json({ isRegistered, attendeeCount })
+})
+
 // Coordinator-only attendee roster. Unlike /getEventUsers (public, avatar-only
 // display), this returns emails + account-less guest RSVPs and is gated to the
 // event's creator or an admin — the "replaces the Google Form / spreadsheet"

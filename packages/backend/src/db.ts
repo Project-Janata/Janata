@@ -652,6 +652,25 @@ export async function isUserAttending(
   return result !== null
 }
 
+/**
+ * Live, guest-inclusive attendee count (account attendees + non-upgraded guest
+ * RSVPs) — the same formula recomputeAttendeeCount writes to people_attending,
+ * but read directly so callers don't depend on that denormalized field being
+ * fresh. Read-only (safe in GET handlers).
+ */
+export async function getLiveAttendeeCount(db: D1Database, eventId: string): Promise<number> {
+  const row = await db
+    .prepare(
+      `SELECT (
+        (SELECT COUNT(*) FROM event_attendees WHERE event_id = ?1)
+        + (SELECT COUNT(*) FROM event_guest_rsvps WHERE event_id = ?1 AND upgraded_user_id IS NULL)
+      ) AS count`,
+    )
+    .bind(eventId)
+    .first<{ count: number }>()
+  return row?.count ?? 0
+}
+
 export async function getEventAttendees(
   db: D1Database,
   eventId: string,

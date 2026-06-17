@@ -814,15 +814,22 @@ export default function EventDetailPage() {
             count={event.attendees}
             contentStyle={{ gap: 8 }}
           >
-            {attendees.length > 0 ? (
+            {event.attendees > 0 ? (
               <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10, marginBottom: 4 }}>
-                <AvatarStack attendees={attendees} colors={colors} />
+                {attendees.length > 0 ? <AvatarStack attendees={attendees} colors={colors} /> : null}
                 <Text style={{ fontFamily: 'Inclusive Sans', fontSize: 13, color: colors.textSecondary }}>
                   {event.attendees} {event.attendees === 1 ? 'person' : 'people'} on Janata
                 </Text>
               </View>
-            ) : null}
-            <AttendeesContent attendees={attendees} colors={colors} />
+            ) : (
+              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10, paddingVertical: 4 }}>
+                <Users size={18} color={colors.textMuted} />
+                <Text style={{ fontFamily: 'Inclusive Sans', fontSize: 14, color: colors.textSecondary }}>
+                  No attendees yet — be the first to RSVP.
+                </Text>
+              </View>
+            )}
+            {attendees.length > 0 ? <AttendeesContent attendees={attendees} colors={colors} /> : null}
           </DetailSection>
         )}
 

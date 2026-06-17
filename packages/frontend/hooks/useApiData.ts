@@ -7,6 +7,7 @@ import {
   fetchEventsByCenter,
   fetchAllEvents,
   fetchEventUsers,
+  fetchEventRegistration,
   fetchBoard,
   fetchAggregatedFeed,
   attendEvent,
@@ -276,11 +277,24 @@ export function useEventDetail(eventId: string, username?: string, userId?: stri
           setIsCreator(userIsCreator)
           setIsLive(true)
 
-          // Fetch the attendee LIST separately — it is gated (401/403 for
-          // non-attendees). A gated/failed list must NOT error the screen; the
-          // event + its guest-inclusive count still render. The public count
-          // comes from the event object (display.attendees = peopleAttending),
-          // never from the list length.
+          // Source of truth for the RSVP CTA + count: the authed registration
+          // endpoint (the public /fetchEvent is cached + user-agnostic, and the
+          // roster is gated, so neither can answer reliably). Derived isRegistered
+          // from the gated roster used to leave registered users on "Attend" and
+          // show a 0 count.
+          if (userId) {
+            const reg = await fetchEventRegistration(eventId)
+            if (mounted && reg) {
+              setIsRegistered(reg.isRegistered)
+              setEvent((prev) =>
+                prev ? { ...prev, isRegistered: reg.isRegistered, attendees: reg.attendeeCount } : null
+              )
+            }
+          }
+
+          // Attendee LIST (names/avatars) is gated to coordinators — used ONLY
+          // for the roster display, never to decide isRegistered. A gated/failed
+          // list must not error the screen or zero out the count.
           try {
             const users = await fetchEventUsers(eventId)
             if (mounted) {
@@ -294,18 +308,9 @@ export function useEventDetail(eventId: string, username?: string, userId?: stri
                     : (u.username?.slice(0, 2).toUpperCase() ?? 'M'),
                 }))
               )
-              // Check if current user is in attendees list
-              const userIsRegistered = userId ? users.some((u) => u.id === userId) : false
-              setIsRegistered(userIsRegistered)
-              setEvent((prev) => (prev ? { ...prev, isRegistered: userIsRegistered } : null))
             }
           } catch (listErr: any) {
-            // Gated list (not an attendee yet) — degrade gracefully.
-            if (mounted) {
-              setAttendees([])
-              setIsRegistered(false)
-              setEvent((prev) => (prev ? { ...prev, isRegistered: false } : null))
-            }
+            if (mounted) setAttendees([])
             if (__DEV__) console.warn('[useEventDetail] attendee list gated/unavailable', listErr?.message)
           }
         }

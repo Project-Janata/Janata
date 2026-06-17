@@ -438,6 +438,24 @@ export async function fetchEventUsers(eventID: string): Promise<UserData[]> {
   }
 }
 
+/**
+ * Authed per-user registration state + live (guest-inclusive) attendee count
+ * for an event (GET /events/:id/registration). Reliable source of truth for the
+ * RSVP CTA + count — unlike the public/cached /fetchEvent or the gated roster.
+ */
+export async function fetchEventRegistration(
+  eventID: string
+): Promise<{ isRegistered: boolean; attendeeCount: number } | null> {
+  try {
+    const response = await authFetch(`/events/${eventID}/registration`)
+    if (!response.ok) return null
+    return await response.json()
+  } catch (err: any) {
+    if (__DEV__) console.warn('[fetchEventRegistration]', err?.message || err)
+    return null
+  }
+}
+
 // Coordinator-only attendee roster (creator or admin). Returns emails + guest
 // RSVPs for the "manage attendees / export" panel on the event page.
 export interface EventRosterEntry {

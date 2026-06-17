@@ -312,6 +312,15 @@ function MobileEventDetail({ eventId }: { eventId: string }) {
                   <Text style={{ color: colors.text, fontSize: 15, flex: 1 }}>{a.name}</Text>
                 </View>
               ))
+            ) : event.attendees > 0 ? (
+              // Registered, but the full roster is gated to coordinators — show
+              // the guest-inclusive count rather than a misleading "0".
+              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10, paddingVertical: 4 }}>
+                <Users size={18} color={colors.textMuted} />
+                <Text style={{ color: colors.textSecondary, fontSize: 14 }}>
+                  {event.attendees} {event.attendees === 1 ? 'person' : 'people'} on Janata
+                </Text>
+              </View>
             ) : (
               <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10, paddingVertical: 4 }}>
                 <Users size={18} color={colors.textMuted} />
