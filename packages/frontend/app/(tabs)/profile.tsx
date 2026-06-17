@@ -4,7 +4,7 @@
 // centers). Editing lives on /edit-profile.
 // The "You" header + settings gear are provided by the navigator (TabHeader).
 import React, { useState, useCallback, useEffect } from 'react'
-import { ScrollView, View, Pressable, Image, Share } from 'react-native'
+import { ScrollView, View, Pressable, Image, Share, RefreshControl } from 'react-native'
 import { useRouter, useFocusEffect, useNavigation } from 'expo-router'
 import {
   Pencil, Share2, ChevronRight, BadgeCheck,
@@ -43,18 +43,36 @@ export default function Profile() {
   const [createdCount, setCreatedCount] = useState(0)
   const [events, setEvents] = useState<EventData[]>([])
   const [groups, setGroups] = useState<CenterData[]>([])
+  const [refreshing, setRefreshing] = useState(false)
+
+  const loadProfileData = useCallback(async () => {
+    await Promise.all([
+      Promise.resolve(refreshUser()),
+      fetchCenters().then(setAllCenters).catch(() => {}),
+      ...(user?.username
+        ? [
+            fetchUserPosts(user.username).then((p) => setCreatedCount(p.length)).catch(() => {}),
+            fetchUserEvents(user.username).then(setEvents).catch(() => {}),
+            fetchUserGroups(user.username).then(setGroups).catch(() => {}),
+          ]
+        : []),
+    ])
+  }, [user?.username, refreshUser])
 
   useFocusEffect(
     useCallback(() => {
-      void refreshUser()
-      fetchCenters().then(setAllCenters).catch(() => {})
-      if (user?.username) {
-        fetchUserPosts(user.username).then((p) => setCreatedCount(p.length)).catch(() => {})
-        fetchUserEvents(user.username).then(setEvents).catch(() => {})
-        fetchUserGroups(user.username).then(setGroups).catch(() => {})
-      }
-    }, [user?.username, refreshUser])
+      void loadProfileData()
+    }, [loadProfileData])
   )
+
+  const handleRefresh = useCallback(async () => {
+    setRefreshing(true)
+    try {
+      await loadProfileData()
+    } finally {
+      setRefreshing(false)
+    }
+  }, [loadProfileData])
 
   const displayName =
     user?.firstName && user?.lastName ? `${user.firstName} ${user.lastName}`
@@ -170,6 +188,14 @@ export default function Profile() {
     <ScrollView
       style={{ flex: 1, backgroundColor: c.bg }}
       contentContainerStyle={{ paddingHorizontal: 16, paddingTop: 18, paddingBottom: 48 }}
+      refreshControl={
+        <RefreshControl
+          refreshing={refreshing}
+          onRefresh={handleRefresh}
+          tintColor={c.accent}
+          colors={[c.accent]}
+        />
+      }
     >
       {/* Profile card */}
       <View style={[card, { padding: 16 }]}>

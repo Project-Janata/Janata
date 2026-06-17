@@ -55,8 +55,12 @@ function cacheSet<T>(key: string, data: T) {
   cache.set(key, { data, ts: Date.now() })
 }
 
-async function cachedFetch<T>(key: string, fetcher: () => Promise<T>): Promise<T> {
-  const cached = cacheGet<T>(key)
+async function cachedFetch<T>(
+  key: string,
+  fetcher: () => Promise<T>,
+  options?: { force?: boolean }
+): Promise<T> {
+  const cached = options?.force ? null : cacheGet<T>(key)
   if (cached !== null) return cached
 
   const existing = inflight.get(key) as Promise<T> | undefined
@@ -609,10 +613,10 @@ export function useCenterList() {
   const [isLive, setIsLive] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
-  const load = useCallback(async () => {
+  const load = useCallback(async (options?: { force?: boolean }) => {
     try {
       setError(null)
-      const apiCenters = await cachedFetch('centers', fetchCenters)
+      const apiCenters = await cachedFetch('centers', fetchCenters, options)
       const discoverCenters = centersToDiscoverCenters(apiCenters)
       if (discoverCenters.length > 0) {
         setCenters(discoverCenters)
@@ -733,16 +737,16 @@ export function useDiscoverData(
   const [isLive, setIsLive] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
-  const refresh = useCallback(async () => {
+  const refresh = useCallback(async (options?: { force?: boolean }) => {
     // Note: We don't set loading(true) here to avoid jarring UI flickers on focus
     try {
-      const apiCenters = await cachedFetch('centers', fetchCenters)
+      const apiCenters = await cachedFetch('centers', fetchCenters, options)
       const discoverCenters = centersToDiscoverCenters(apiCenters)
       if (discoverCenters.length > 0) {
         setAllCenters(discoverCenters)
       }
 
-      const allApiEvents = await cachedFetch('allEvents', fetchAllEvents)
+      const allApiEvents = await cachedFetch('allEvents', fetchAllEvents, options)
 
       let fetchedEvents: EventDisplay[]
 

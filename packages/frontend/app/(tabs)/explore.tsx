@@ -13,6 +13,7 @@ import {
   StyleSheet,
   Image,
   Keyboard,
+  RefreshControl,
 } from 'react-native'
 import {
   MapPin,
@@ -90,6 +91,8 @@ function isToday(dateStr: string): boolean {
 }
 
 // ── Placeholder avatar dots for attendee count ──────────
+
+const ACCENT = '#E8862A'
 
 const AVATAR_COLORS = ['#E8862A', '#78716C', '#A8A29E', '#D6D3D1']
 
@@ -268,6 +271,7 @@ export default function DiscoverScreen() {
   const [selectedCenter, setSelectedCenter] = useState<string | null>(null)
   // The center dropdown opens an in-sheet list (not a modal) — view, pick one, or close.
   const [centerPickerOpen, setCenterPickerOpen] = useState(false)
+  const [refreshing, setRefreshing] = useState(false)
   // Imperative map pan target — bumped when a center is picked so the map flies
   // to focus on it (parity with web Discover). zoom 10 ≈ the ~100mi area view.
   const [mapFlyTo, setMapFlyTo] = useState<{ latitude: number; longitude: number; key: number; zoom?: number } | null>(null)
@@ -318,6 +322,15 @@ export default function DiscoverScreen() {
       refresh()
     }, [refresh])
   )
+
+  const handleRefresh = useCallback(async () => {
+    setRefreshing(true)
+    try {
+      await refresh({ force: true })
+    } finally {
+      setRefreshing(false)
+    }
+  }, [refresh])
 
   // ── Sheet snap points ──────────────────────────────────
   // Four positions (as translateY values from the expanded state):
@@ -853,6 +866,14 @@ export default function DiscoverScreen() {
             showsVerticalScrollIndicator={false}
             scrollEnabled={true}
             stickyHeaderIndices={centerPickerOpen ? undefined : stickyHeaderIndices}
+            refreshControl={
+              <RefreshControl
+                refreshing={refreshing}
+                onRefresh={handleRefresh}
+                tintColor={ACCENT}
+                colors={[ACCENT]}
+              />
+            }
           >
             {centerPickerOpen && (
               <>

@@ -1,5 +1,5 @@
 import React, { useCallback, useMemo, useState } from 'react'
-import { ActivityIndicator, Image, Platform, Pressable, ScrollView, Text, View, useWindowDimensions } from 'react-native'
+import { ActivityIndicator, Image, Platform, Pressable, RefreshControl, ScrollView, Text, View, useWindowDimensions } from 'react-native'
 import { ChevronRight, MapPin } from 'lucide-react-native'
 import { useFocusEffect, useRouter } from 'expo-router'
 import { useAnalytics } from '../../utils/analytics'
@@ -74,6 +74,7 @@ export default function HomeScreen() {
   const { track } = useAnalytics()
   const { user } = useUser()
   const [showAuthPrompt, setShowAuthPrompt] = useState(false)
+  const [refreshing, setRefreshing] = useState(false)
   const c = useColors()
   const detailColors = useDetailColors()
   const { events: myEvents, loading: myEventsLoading, refetch: refetchMyEvents } = useMyEvents(user?.username)
@@ -105,6 +106,15 @@ export default function HomeScreen() {
       refreshDiscover()
     }, [refetchMyEvents, refreshDiscover])
   )
+
+  const handleRefresh = useCallback(async () => {
+    setRefreshing(true)
+    try {
+      await Promise.all([refetchMyEvents(), refreshDiscover({ force: true })])
+    } finally {
+      setRefreshing(false)
+    }
+  }, [refetchMyEvents, refreshDiscover])
 
   // Desktop two-column composition is web-only and gated on a wide breakpoint.
   // Mobile web and native use a single centered column.
@@ -481,6 +491,14 @@ export default function HomeScreen() {
           paddingBottom: Platform.OS === 'web' ? 40 : 112,
         }}
         showsVerticalScrollIndicator={false}
+        refreshControl={
+          <RefreshControl
+            refreshing={refreshing}
+            onRefresh={handleRefresh}
+            tintColor={c.accent}
+            colors={[c.accent]}
+          />
+        }
       >
         <View style={{ width: '100%', maxWidth: 640, alignSelf: 'center', gap: 22 }}>
           {greeting}
