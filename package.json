@@ -84,7 +84,7 @@
     "expo-contacts": "^55.0.14",
     "expo-image-picker": "^55.0.18",
     "expo-splash-screen": "^55.0.20",
-    "hono": "^4.7.0",
+    "hono": "^4.12.25",
     "jose": "^6.0.0",
     "nativewind": "4.2.2",
     "node-addon-api": "^8.0.0",

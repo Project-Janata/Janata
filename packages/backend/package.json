@@ -15,7 +15,7 @@
     "seed:dev-users": "node src/seed/dev-users.mjs"
   },
   "dependencies": {
-    "hono": "^4.7.0",
+    "hono": "^4.12.25",
     "jose": "^6.0.0"
   },
   "devDependencies": {
