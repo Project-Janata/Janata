@@ -4,7 +4,7 @@
 // centers). Editing lives on /edit-profile.
 // The "You" header + settings gear are provided by the navigator (TabHeader).
 import React, { useState, useCallback, useEffect } from 'react'
-import { ScrollView, View, Pressable, Image, Share } from 'react-native'
+import { RefreshControl, ScrollView, View, Pressable, Image, Share } from 'react-native'
 import { useRouter, useFocusEffect, useNavigation } from 'expo-router'
 import {
   Pencil, Share2, ChevronRight, BadgeCheck,
@@ -34,7 +34,7 @@ function datePill(dateStr?: string | null): { m: string; d: string } {
 export default function Profile() {
   const router = useRouter()
   const navigation = useNavigation()
-  const { user, loading } = useUser()
+  const { user, loading, refreshUser } = useUser()
   const { isDark } = useTheme()
   const c = isDark ? DARK : LIGHT
   const { track } = useAnalytics()
@@ -43,16 +43,51 @@ export default function Profile() {
   const [createdCount, setCreatedCount] = useState(0)
   const [events, setEvents] = useState<EventData[]>([])
   const [groups, setGroups] = useState<CenterData[]>([])
+  const [refreshing, setRefreshing] = useState(false)
+
+  const loadProfile = useCallback(async () => {
+    const requests: Promise<unknown>[] = [
+      fetchCenters().then(setAllCenters).catch(() => {}),
+    ]
+
+    if (user?.username) {
+      requests.push(
+        refreshUser().catch(() => {}),
+        fetchUserPosts(user.username).then((p) => setCreatedCount(p.length)).catch(() => {}),
+        fetchUserEvents(user.username).then(setEvents).catch(() => {}),
+        fetchUserGroups(user.username).then(setGroups).catch(() => {})
+      )
+    } else {
+      setCreatedCount(0)
+      setEvents([])
+      setGroups([])
+    }
+
+    await Promise.all(requests)
+  }, [refreshUser, user?.username])
 
   useFocusEffect(
     useCallback(() => {
-      fetchCenters().then(setAllCenters).catch(() => {})
-      if (user?.username) {
-        fetchUserPosts(user.username).then((p) => setCreatedCount(p.length)).catch(() => {})
-        fetchUserEvents(user.username).then(setEvents).catch(() => {})
-        fetchUserGroups(user.username).then(setGroups).catch(() => {})
-      }
-    }, [user?.username])
+      loadProfile()
+    }, [loadProfile])
+  )
+
+  const handleRefresh = useCallback(async () => {
+    setRefreshing(true)
+    try {
+      await loadProfile()
+    } finally {
+      setRefreshing(false)
+    }
+  }, [loadProfile])
+
+  const refreshControl = (
+    <RefreshControl
+      refreshing={refreshing}
+      onRefresh={handleRefresh}
+      tintColor="#C2410C"
+      colors={['#C2410C']}
+    />
   )
 
   const displayName =
@@ -184,6 +219,7 @@ export default function Profile() {
       <ScrollView
         style={{ flex: 1, backgroundColor: c.bg }}
         contentContainerStyle={{ paddingHorizontal: 16, paddingTop: 18, paddingBottom: 48 }}
+        refreshControl={refreshControl}
       >
         <SignInCallout
           title="Sign in to Janata"
@@ -203,6 +239,7 @@ export default function Profile() {
     <ScrollView
       style={{ flex: 1, backgroundColor: c.bg }}
       contentContainerStyle={{ paddingHorizontal: 16, paddingTop: 18, paddingBottom: 48 }}
+      refreshControl={refreshControl}
     >
       {/* Profile card */}
       <View style={[card, { padding: 16 }]}>

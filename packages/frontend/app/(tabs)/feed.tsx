@@ -4,6 +4,7 @@ import {
   Easing,
   KeyboardAvoidingView,
   Platform,
+  RefreshControl,
   ScrollView,
   Text,
   View,
@@ -194,6 +195,7 @@ export default function FeedScreen() {
   const [authPromptOpen, setAuthPromptOpen] = useState(false)
   const [boardMessagesByGroup, setBoardMessagesByGroup] = useState<Record<string, BoardMessage[]>>({})
   const [boardsLoading, setBoardsLoading] = useState(false)
+  const [refreshing, setRefreshing] = useState(false)
   const { setCreateHandler } = useHeaderAction()
 
   useFocusEffect(
@@ -301,6 +303,19 @@ export default function FeedScreen() {
   useEffect(() => {
     loadBoards()
   }, [loadBoards])
+
+  const handleRefresh = useCallback(async () => {
+    setRefreshing(true)
+    try {
+      await Promise.all([
+        refetchMyEvents(),
+        refetchCenters({ force: true }),
+        loadBoards(),
+      ])
+    } finally {
+      setRefreshing(false)
+    }
+  }, [refetchMyEvents, refetchCenters, loadBoards])
 
   const groupsWithMessages = useMemo<GroupBoard[]>(
     () => {
@@ -512,6 +527,14 @@ export default function FeedScreen() {
           paddingBottom: isDesktop ? DESKTOP_PAGE_BOTTOM : Platform.OS === 'web' ? 40 : 112,
         }}
         showsVerticalScrollIndicator={false}
+        refreshControl={
+          <RefreshControl
+            refreshing={refreshing}
+            onRefresh={handleRefresh}
+            tintColor={colors.accent}
+            colors={[colors.accent]}
+          />
+        }
       >
         {/* Desktop moves search into the right context rail (Twitter-style),
             so only render the full-width search header on mobile/narrow web. */}

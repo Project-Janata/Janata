@@ -1,5 +1,5 @@
 import React, { useCallback, useMemo, useState } from 'react'
-import { ActivityIndicator, Linking, Platform, Pressable, ScrollView, Text, View, useWindowDimensions } from 'react-native'
+import { ActivityIndicator, Linking, Platform, Pressable, RefreshControl, ScrollView, Text, View, useWindowDimensions } from 'react-native'
 import { ChevronRight, Compass, MapPin, Shield } from 'lucide-react-native'
 import { useFocusEffect, useRouter } from 'expo-router'
 import { useAnalytics } from '../../utils/analytics'
@@ -74,7 +74,8 @@ export default function HomeScreen() {
 
   // Boards peek (#199): surface the 1-2 latest posts from the user's center
   // board so Home reflects real activity instead of a permanent empty state.
-  const { posts: centerBoardPosts } = useBoard('center', user?.centerID ?? undefined, !!user?.centerID)
+  const { posts: centerBoardPosts, refetch: refetchCenterBoard } = useBoard('center', user?.centerID ?? undefined, !!user?.centerID)
+  const [refreshing, setRefreshing] = useState(false)
   const userCenter = useMemo(
     () => allCenters.find((item) => item.id === user?.centerID),
     [allCenters, user?.centerID]
@@ -95,6 +96,28 @@ export default function HomeScreen() {
       refetchMyEvents()
       refreshDiscover()
     }, [refetchMyEvents, refreshDiscover])
+  )
+
+  const handleRefresh = useCallback(async () => {
+    setRefreshing(true)
+    try {
+      await Promise.all([
+        refetchMyEvents(),
+        refreshDiscover({ force: true }),
+        refetchCenterBoard(),
+      ])
+    } finally {
+      setRefreshing(false)
+    }
+  }, [refetchMyEvents, refreshDiscover, refetchCenterBoard])
+
+  const refreshControl = (
+    <RefreshControl
+      refreshing={refreshing}
+      onRefresh={handleRefresh}
+      tintColor={c.accent}
+      colors={[c.accent]}
+    />
   )
 
   // Desktop two-column composition is web-only and gated on a wide breakpoint.
@@ -418,6 +441,7 @@ export default function HomeScreen() {
             style={{ flex: 1, backgroundColor: c.bg }}
             contentContainerStyle={desktopScrollContent}
             showsVerticalScrollIndicator={false}
+            refreshControl={refreshControl}
           >
             <DesktopColumns
               main={<HomeGhostPreview c={c} />}
@@ -439,6 +463,7 @@ export default function HomeScreen() {
           style={{ flex: 1, backgroundColor: c.bg }}
           contentContainerStyle={desktopScrollContent}
           showsVerticalScrollIndicator={false}
+          refreshControl={refreshControl}
         >
           <DesktopColumns
             header={
@@ -473,6 +498,7 @@ export default function HomeScreen() {
             paddingBottom: Platform.OS === 'web' ? 40 : 112,
           }}
           showsVerticalScrollIndicator={false}
+          refreshControl={refreshControl}
         >
           <View style={{ width: '100%', maxWidth: 640, alignSelf: 'center' }}>
             {guestSetupRail}
@@ -494,6 +520,7 @@ export default function HomeScreen() {
           paddingBottom: Platform.OS === 'web' ? 40 : 112,
         }}
         showsVerticalScrollIndicator={false}
+        refreshControl={refreshControl}
       >
         {/* Mobile single column: lead with the schedule (the desktop "main"
             column — Up Next + Coming Up), then wrap the center/boards content

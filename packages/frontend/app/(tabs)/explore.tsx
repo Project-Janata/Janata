@@ -7,6 +7,7 @@ import {
   Text,
   ScrollView,
   Pressable,
+  RefreshControl,
   TextInput,
   Animated,
   PanResponder,
@@ -262,6 +263,7 @@ export default function DiscoverScreen() {
   const [selectedDate, setSelectedDate] = useState<string | null>(null)
   const [showGoingOnly, setShowGoingOnly] = useState(false)
   const [showPastEvents, setShowPastEvents] = useState(false)
+  const [refreshing, setRefreshing] = useState(false)
   const [selectedCenter, setSelectedCenter] = useState<string | null>(null)
   // The center dropdown opens an in-sheet list (not a modal) — view, pick one, or close.
   const [centerPickerOpen, setCenterPickerOpen] = useState(false)
@@ -310,6 +312,15 @@ export default function DiscoverScreen() {
       refresh()
     }, [refresh])
   )
+
+  const handleRefresh = useCallback(async () => {
+    setRefreshing(true)
+    try {
+      await refresh({ force: true })
+    } finally {
+      setRefreshing(false)
+    }
+  }, [refresh])
 
   // ── Sheet snap points ──────────────────────────────────
   // Four positions (as translateY values from the expanded state):
@@ -808,6 +819,14 @@ export default function DiscoverScreen() {
             showsVerticalScrollIndicator={false}
             scrollEnabled={true}
             stickyHeaderIndices={centerPickerOpen ? undefined : stickyHeaderIndices}
+            refreshControl={
+              <RefreshControl
+                refreshing={refreshing}
+                onRefresh={handleRefresh}
+                tintColor="#E8862A"
+                colors={['#E8862A']}
+              />
+            }
           >
             {centerPickerOpen && (
               <>
