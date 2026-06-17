@@ -13,7 +13,7 @@
  *   rendered once inside the PostHogProvider in app/_layout.tsx.
  */
 
-import { useEffect, useRef } from 'react'
+import { useCallback, useEffect, useRef } from 'react'
 import { usePathname } from 'expo-router'
 import { usePostHog } from 'posthog-react-native'
 import { resolveFirstSession, buildSuperProperties, readWebAcquisition } from './analyticsEnv'
@@ -256,12 +256,19 @@ export function useAnalytics(): {
   track: (event: AnalyticsEvent, props?: Record<string, unknown>) => void
 } {
   const posthog = usePostHog()
-  const track = (event: AnalyticsEvent, props?: Record<string, unknown>) => {
-    // The public `props` type is intentionally loose (Record<string, unknown>)
-    // so callers don't fight the SDK's JsonType; PostHog serialises values to
-    // JSON at send time, so a cast here is safe.
-    posthog?.capture(event, props as Record<string, unknown> as never)
-  }
+  // Memoized so `track` keeps a stable identity across renders. Without this,
+  // any useEffect/useCallback that lists `track` in its deps re-runs every
+  // render — e.g. the public-profile screen re-fetched in an infinite loop
+  // (and "flashed") because its fetch effect depended on `track`.
+  const track = useCallback(
+    (event: AnalyticsEvent, props?: Record<string, unknown>) => {
+      // The public `props` type is intentionally loose (Record<string, unknown>)
+      // so callers don't fight the SDK's JsonType; PostHog serialises values to
+      // JSON at send time, so a cast here is safe.
+      posthog?.capture(event, props as Record<string, unknown> as never)
+    },
+    [posthog],
+  )
   return { track }
 }
 

@@ -191,6 +191,7 @@ function MobileEventDetail({ eventId }: { eventId: string }) {
         <View style={{ flex: 1 }}>
           <PostThread
             post={threadDetailPost}
+            fullScreen
             colors={appColors}
             onPostChanged={refetchBoard}
             onPostDeleted={() => {

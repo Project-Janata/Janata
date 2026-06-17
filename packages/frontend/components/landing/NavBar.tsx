@@ -94,7 +94,28 @@ export function NavBar() {
             >
               <Avatar image={user.profileImage || undefined} name={displayName} size={36} />
             </Pressable>
-          ) : null}
+          ) : (
+            <Pressable
+              accessibilityRole="button"
+              accessibilityLabel="Log in"
+              onPress={() => {
+                posthog?.capture('landing_login_pressed', { source: 'navbar' })
+                router.push('/auth')
+              }}
+              style={{
+                paddingVertical: 9,
+                paddingHorizontal: 18,
+                borderRadius: 999,
+                borderWidth: 1,
+                borderColor: '#E7E5E4',
+                backgroundColor: '#FFFFFF',
+              }}
+            >
+              <Text style={{ fontFamily: '"Inclusive Sans", sans-serif', fontWeight: '600', fontSize: 15, color: '#1C1917' }}>
+                Log in
+              </Text>
+            </Pressable>
+          )}
 
         </View>
       </View>

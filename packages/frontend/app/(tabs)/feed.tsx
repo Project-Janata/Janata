@@ -2,14 +2,13 @@ import React, { useEffect, useMemo, useRef, useState, useCallback } from 'react'
 import {
   Animated,
   Easing,
-  KeyboardAvoidingView,
   Platform,
   ScrollView,
   Text,
   View,
   useWindowDimensions,
 } from 'react-native'
-import { useFocusEffect, useNavigation, useRouter } from 'expo-router'
+import { useFocusEffect, useLocalSearchParams, useNavigation, useRouter } from 'expo-router'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
 import { useAnalytics } from '../../utils/analytics'
 import { supportsNativeDriver } from '../../utils/animation'
@@ -331,8 +330,22 @@ export default function FeedScreen() {
   // explicitly opens a post (in-place swap to the thread). Only resolve a
   // selected post when there is a real selection.
   const selectedPost = selectedPostId
-    ? feedPosts.find((post) => post.id === selectedPostId)
+    ? feedPosts.find((post) => post.id === selectedPostId || post.postId === selectedPostId)
     : undefined
+
+  // Deep-link: open a specific post when navigated with ?post=<id|postId>
+  // (e.g. from the Home board peek). Consume the param after opening so closing
+  // the detail doesn't immediately reopen it.
+  const routeParams = useLocalSearchParams<{ post?: string }>()
+  const requestedPostId = typeof routeParams.post === 'string' ? routeParams.post : ''
+  useEffect(() => {
+    if (!requestedPostId) return
+    const match = feedPosts.find((p) => p.id === requestedPostId || p.postId === requestedPostId)
+    if (match) {
+      setSelectedPostId(match.id)
+      router.setParams({ post: '' })
+    }
+  }, [requestedPostId, feedPosts, router])
   const mobilePostOpen = !isDesktop && !!selectedPostId
   const nativeDetailOpen = Platform.OS !== 'web' && mobilePostOpen
   const listTopPadding = Platform.OS === 'web' ? 20 : 8
@@ -607,10 +620,7 @@ export default function FeedScreen() {
               transform: [{ translateX: detailTranslateX }],
             }}
           >
-            <KeyboardAvoidingView
-              behavior={Platform.OS === 'ios' ? 'padding' : undefined}
-              style={{ flex: 1, backgroundColor: colors.surface }}
-            >
+            <View style={{ flex: 1, backgroundColor: colors.surface }}>
               <NativeChatHeader
                 colors={colors}
                 insetsTop={insets.top}
@@ -634,7 +644,7 @@ export default function FeedScreen() {
                   />
                 ) : null}
               </View>
-            </KeyboardAvoidingView>
+            </View>
           </Animated.View>
         </>
       ) : null}

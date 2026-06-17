@@ -1,5 +1,6 @@
 import React, { useCallback, useEffect, useMemo, useState } from 'react'
 import { ActivityIndicator, Pressable, ScrollView, Text, View } from 'react-native'
+import { SafeAreaView } from 'react-native-safe-area-context'
 import { useLocalSearchParams, useRouter } from 'expo-router'
 import { ArrowLeft, CalendarDays, MapPin } from 'lucide-react-native'
 import { Avatar } from '../../components/ui'
@@ -87,7 +88,7 @@ export default function PublicMemberProfileScreen() {
   )
 
   return (
-    <View style={{ flex: 1, backgroundColor: colors.bg }}>
+    <SafeAreaView style={{ flex: 1, backgroundColor: colors.bg }} edges={['top']}>
       <View
         style={{
           flexDirection: 'row',
@@ -283,7 +284,7 @@ export default function PublicMemberProfileScreen() {
           ) : null}
         </ScrollView>
       )}
-    </View>
+    </SafeAreaView>
   )
 }
 
