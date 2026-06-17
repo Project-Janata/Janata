@@ -1,4 +1,4 @@
-import React from 'react'
+import React, { useState } from 'react'
 import { Pressable, Text } from 'react-native'
 import { useColors } from '../../../hooks/useColors'
 
@@ -9,14 +9,20 @@ interface GhostButtonProps {
   style?: object
 }
 
+// NativeWind 4's CssInterop drops the function-style `style={({ pressed }) =>}`
+// callback on Pressable. Use an array style with state-driven press feedback so
+// the padding/press background keep applying. See PrimaryButton.native.
 export default function GhostButton({ children, onPress, disabled, style }: GhostButtonProps) {
   const c = useColors()
+  const [pressed, setPressed] = useState(false)
 
   return (
     <Pressable
       onPress={!disabled ? onPress : undefined}
+      onPressIn={() => setPressed(true)}
+      onPressOut={() => setPressed(false)}
       disabled={disabled}
-      style={({ pressed }) => [
+      style={[
         {
           backgroundColor: pressed ? c.surface : 'transparent',
           paddingHorizontal: 16,
