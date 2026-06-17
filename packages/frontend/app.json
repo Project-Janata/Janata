@@ -164,11 +164,7 @@
         "NSCameraUsageDescription": "Chinmaya Janata needs access to your camera to take a profile picture.",
         "ITSAppUsesNonExemptEncryption": false
       },
-      "bundleIdentifier": "org.chinmayamission.janata",
-      "associatedDomains": [
-        "applinks:chinmayajanata.org",
-        "applinks:www.chinmayajanata.org"
-      ]
+      "bundleIdentifier": "org.chinmayamission.janata"
     },
     "web": {
       "bundler": "metro",

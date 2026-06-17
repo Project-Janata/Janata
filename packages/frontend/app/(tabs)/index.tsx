@@ -102,19 +102,50 @@ export default function HomeScreen() {
   const isWideDesktop = useDesktopLayout(width)
   const isDesktop = width >= 860
 
+  // "Up next for you" — the personal slate: events you're going to (RSVP'd,
+  // upcoming) PLUS events you created (upcoming, or ended within the last 3
+  // days so an organizer still sees a just-passed event). Deduped, soonest
+  // first. No generic fallback — if you have nothing personal, Home leads with
+  // the welcome/nudge card instead of pretending a random event is "for you".
   const signedUpEvents = useMemo(() => {
-    const fromDiscover = sortUpcomingEvents(allEvents.filter((e) => e.isRegistered))
-    if (fromDiscover.length > 0) return fromDiscover
-    return sortUpcomingEvents(myEvents.map((e) => ({ ...e, isRegistered: true })))
-  }, [allEvents, myEvents])
+    const todayStr = new Date().toISOString().split('T')[0]
+    const recentCutoff = new Date()
+    recentCutoff.setDate(recentCutoff.getDate() - 3)
+    const recentStr = recentCutoff.toISOString().split('T')[0]
 
+    const byId = new Map<string, EventDisplay>()
+    // Going to (upcoming only)
+    allEvents
+      .filter((e) => e.isRegistered && (!e.date || e.date >= todayStr))
+      .forEach((e) => byId.set(e.id, e))
+    // Created by me — from the discover window and the authoritative my-events
+    // list; keep upcoming or up to 3 days past.
+    ;[...allEvents.filter((e) => e.createdBy === user?.id), ...myEvents]
+      .filter((e) => !e.date || e.date >= recentStr)
+      .forEach((e) => {
+        if (!byId.has(e.id)) byId.set(e.id, e)
+      })
+
+    return [...byId.values()].sort((a, b) => {
+      if (!a.date && !b.date) return 0
+      if (!a.date) return 1
+      if (!b.date) return -1
+      return a.date.localeCompare(b.date)
+    })
+  }, [allEvents, myEvents, user?.id])
+
+  // "Coming up" — discovery: upcoming events you're NOT already part of (not
+  // RSVP'd, not yours), so the personal slate and the discovery slate don't
+  // duplicate.
   const upcomingExploreEvents = useMemo(
-    () => sortUpcomingEvents(allEvents.filter((e) => !e.isRegistered)),
-    [allEvents]
+    () => sortUpcomingEvents(allEvents.filter((e) => !e.isRegistered && e.createdBy !== user?.id)),
+    [allEvents, user?.id]
   )
 
   const featured = useMemo<FeaturedSource | null>(() => {
-    const source = signedUpEvents[0] || upcomingExploreEvents[0]
+    // Members see only their personal slate here; guests see the nearest
+    // general event ("Happening near you").
+    const source = user ? signedUpEvents[0] : upcomingExploreEvents[0]
     if (source) {
       const centerName = allCenters.find((item) => item.id === source.centerId)?.name
       return { kind: 'live', event: source, centerName }
