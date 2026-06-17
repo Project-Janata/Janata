@@ -33,7 +33,7 @@ export function BoardPeekRow({
         borderBottomColor: c.divider,
       }}
     >
-      <Avatar name={post.author.name} initials={post.author.initials} size={32} backgroundColor={post.author.accentColor} />
+      <Avatar name={post.author.name} initials={post.author.initials} image={post.author.image} size={32} backgroundColor={post.author.accentColor} />
       <View style={{ flex: 1, minWidth: 0, gap: 4 }}>
         <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
           <View style={{ flex: 1, flexDirection: 'row', alignItems: 'center', gap: 6, overflow: 'hidden' }}>

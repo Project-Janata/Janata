@@ -177,7 +177,7 @@ function ComposePrompt({
         padding: 14,
       }}
     >
-      <Avatar name={author.name} initials={author.initials} size={38} backgroundColor={author.accentColor} />
+      <Avatar name={author.name} initials={author.initials} image={author.image} size={38} backgroundColor={author.accentColor} />
       <View
         style={{
           flex: 1,

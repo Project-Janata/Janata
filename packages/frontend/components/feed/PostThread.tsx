@@ -361,6 +361,7 @@ export function PostThread({
       authorInitials={author.initials}
       authorName={author.name}
       authorColor={author.accentColor}
+      authorImage={author.image}
     />
   )
 
@@ -1092,6 +1093,7 @@ function ThreadReplyComposer({
   authorInitials,
   authorName,
   authorColor,
+  authorImage,
 }: {
   colors: AppColors
   bottomInset: number
@@ -1104,6 +1106,7 @@ function ThreadReplyComposer({
   authorInitials: string
   authorName: string
   authorColor?: string
+  authorImage?: string
 }) {
   const canSend = value.trim().length > 0 && !sending
   // Auto-grow: the input starts as a single line and grows with content up to
@@ -1134,7 +1137,7 @@ function ThreadReplyComposer({
           to center. */}
       <View style={{ flexDirection: 'row', alignItems: 'flex-end', gap: 8 }}>
         <View style={{ alignSelf: 'flex-start' }}>
-          <Avatar name={authorName} initials={authorInitials} size={30} backgroundColor={authorColor} />
+          <Avatar name={authorName} initials={authorInitials} image={authorImage} size={30} backgroundColor={authorColor} />
         </View>
         <View
           style={{

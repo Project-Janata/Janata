@@ -216,6 +216,7 @@ export default function FeedPostDetail() {
             <Avatar
               name={post.author.name}
               initials={post.author.initials}
+              image={post.author.image}
               size={42}
               backgroundColor={post.author.accentColor}
             />
@@ -310,6 +311,7 @@ export default function FeedPostDetail() {
                 <Avatar
                   name={reply.author.name}
                   initials={reply.author.initials}
+                  image={reply.author.image}
                   size={36}
                   backgroundColor={reply.author.accentColor}
                 />
