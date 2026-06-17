@@ -1,5 +1,5 @@
 import React, { useEffect, useRef, useState } from 'react'
-import { ActivityIndicator, Image, Modal, Platform, Pressable, ScrollView, Text, TextInput, View } from 'react-native'
+import { ActivityIndicator, Animated, Image, Keyboard, Modal, Platform, Pressable, ScrollView, Text, TextInput, View } from 'react-native'
 import {
   Building2,
   CalendarDays,
@@ -72,6 +72,27 @@ export function PostThread({
   const [repliesLoaded, setRepliesLoaded] = useState(false)
   const [repliesError, setRepliesError] = useState<string | null>(null)
   const [draft, setDraft] = useState('')
+
+  // Smooth keyboard avoidance for the bottom-docked composer in fullScreen mode.
+  // Listens to keyboardWillShow (iOS fires it with the keyboard's own animation
+  // duration), so the composer rises in sync with the keyboard instead of
+  // lagging behind it like KeyboardAvoidingView does.
+  const kbOffset = useRef(new Animated.Value(0)).current
+  useEffect(() => {
+    if (!fullScreen || Platform.OS === 'web') return
+    const animate = (toValue: number, duration: number) =>
+      Animated.timing(kbOffset, { toValue, duration: duration || 220, useNativeDriver: false }).start()
+    const showEvt = Platform.OS === 'ios' ? 'keyboardWillShow' : 'keyboardDidShow'
+    const hideEvt = Platform.OS === 'ios' ? 'keyboardWillHide' : 'keyboardDidHide'
+    const showSub = Keyboard.addListener(showEvt, (e) =>
+      animate(Math.max(0, e.endCoordinates.height - bottomInset), e.duration ?? 0),
+    )
+    const hideSub = Keyboard.addListener(hideEvt, (e) => animate(0, e.duration ?? 0))
+    return () => {
+      showSub.remove()
+      hideSub.remove()
+    }
+  }, [fullScreen, bottomInset, kbOffset])
   const [sending, setSending] = useState(false)
   const [sendError, setSendError] = useState<string | null>(null)
   const reloadKey = useRef(0)
@@ -372,7 +393,7 @@ export function PostThread({
           row + board chip above this. (Removed the old literal "Post" title and
           the malformed sourceSubtitle that read "Boston, MA - Nearby away".) */}
       {fullScreen ? (
-        <>
+        <Animated.View style={{ flex: 1, paddingBottom: kbOffset }}>
           <ScrollView
             style={{ flex: 1 }}
             contentContainerStyle={{ paddingBottom: 16 }}
@@ -382,7 +403,7 @@ export function PostThread({
             {content}
           </ScrollView>
           {composer}
-        </>
+        </Animated.View>
       ) : (
         <View
           style={{
