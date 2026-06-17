@@ -26,7 +26,6 @@ import { ThreadPanel, boardPostToMessage, type BoardMessage } from '../../compon
 import { PostThread, type FeedPost } from '../../components/feed'
 import { buildFeedPostFromMessage } from '../../components/feed/feedData'
 import GuestRsvpSheet from '../../components/events/GuestRsvpSheet'
-import EventAttendeeRoster from '../../components/events/EventAttendeeRoster'
 
 const ADMIN_EMAIL = 'chinmayajanata@gmail.com'
 
@@ -825,13 +824,6 @@ export default function EventDetailPage() {
             ) : null}
             <AttendeesContent attendees={attendees} colors={colors} />
           </DetailSection>
-        )}
-
-        {/* COORDINATOR ROSTER — creator/admin only: full list w/ emails + guests + CSV export */}
-        {canEdit && (
-          <View style={{ paddingHorizontal: 20 }}>
-            <EventAttendeeRoster eventId={event.id} eventTitle={event.title} />
-          </View>
         )}
 
         {/* COMMENTS — board posts, feed-style. Composer sits at the top of the

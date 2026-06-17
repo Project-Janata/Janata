@@ -14,7 +14,6 @@ import { ThreadPanel, boardPostToMessage, type BoardMessage } from '../boards'
 import { PostThread, type FeedPost } from '../feed'
 import { buildFeedPostFromMessage } from '../feed/feedData'
 import { useUser } from '../contexts'
-import EventAttendeeRoster from './EventAttendeeRoster'
 
 // ---------------------------------------------------------------------------
 // Date helpers
@@ -666,8 +665,6 @@ function DefaultContent({
         <AboutSection description={event.description} colors={colors} />
       )}
 
-      {/* Coordinator roster — creator/admin only */}
-      {canManage && <EventAttendeeRoster eventId={event.id} eventTitle={event.title} />}
     </ScrollView>
   )
 }
@@ -727,13 +724,6 @@ function RegisteredContent({
         <DetailSection title="People" count={attendees.length} contentStyle={{ paddingHorizontal: 0 }}>
           <PeopleTab attendees={attendees} colors={colors} />
         </DetailSection>
-
-        {/* Coordinator roster — creator/admin only */}
-        {canManage && (
-          <View style={{ paddingHorizontal: 24 }}>
-            <EventAttendeeRoster eventId={event.id} eventTitle={event.title} />
-          </View>
-        )}
 
         {/* ── DISCUSSION ────────────────────────────────────────── */}
         <DetailSection title="Discussion" count={boardMessages.length} contentStyle={{ paddingHorizontal: 0 }}>

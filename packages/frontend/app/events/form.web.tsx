@@ -16,6 +16,7 @@ import { useAnalytics } from '../../utils/analytics'
 import { useTheme } from '../../components/contexts'
 import { useDetailColors, type DetailColors } from '../../hooks/useDetailColors'
 import { PrimaryButton, SecondaryButton } from '../../components/ui'
+import EventAttendeeRoster from '../../components/events/EventAttendeeRoster'
 import {
   fetchEvent,
   fetchCenters,
@@ -697,6 +698,14 @@ export default function EventFormPage() {
             </>
           )}
         </View>
+
+        {/* Manage attendees — edit only; the detail view already shows the
+            public attendee list, so the full roster + CSV export lives here. */}
+        {isEdit && eventId && (
+          <View style={{ paddingHorizontal: 20, marginTop: 8, marginBottom: 24 }}>
+            <EventAttendeeRoster eventId={eventId} eventTitle={title} />
+          </View>
+        )}
       </ScrollView>
 
       {/* Sticky action bar */}
