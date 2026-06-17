@@ -5,6 +5,7 @@ import { useDetailColors, type DetailColors } from '../../hooks/useDetailColors'
 import { useTheme } from '../contexts'
 import PrimaryButton from '../ui/buttons/PrimaryButton'
 import SecondaryButton from '../ui/buttons/SecondaryButton'
+import EventAttendeeRoster from './EventAttendeeRoster'
 import {
   fetchEvent,
   fetchCenters,
@@ -775,6 +776,14 @@ export default function EventFormPanel({ eventId, onClose, onSaved }: EventFormP
             })}
           </View>
         </View>
+
+        {/* Manage attendees — edit only; the detail view already shows the
+            public attendee list, so the full roster + CSV export lives here. */}
+        {isEdit && eventId && (
+          <View style={{ paddingHorizontal: 20, marginTop: 8, marginBottom: 24 }}>
+            <EventAttendeeRoster eventId={eventId} eventTitle={title} />
+          </View>
+        )}
       </ScrollView>
 
       {/* Sticky action bar */}

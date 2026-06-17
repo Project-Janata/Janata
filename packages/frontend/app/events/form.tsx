@@ -17,6 +17,7 @@ import DateTimePicker from '@react-native-community/datetimepicker'
 import { useAnalytics } from '../../utils/analytics'
 import { useUser } from '../../components/contexts'
 import { PrimaryButton } from '../../components/ui'
+import EventAttendeeRoster from '../../components/events/EventAttendeeRoster'
 import { useDetailColors, type DetailColors } from '../../hooks/useDetailColors'
 import {
   fetchEvent,
@@ -834,6 +835,14 @@ export default function EventFormPage() {
             </View>
           )}
         </View>
+
+        {/* Manage attendees — edit only; the detail view already shows the
+            public attendee list, so the full roster + CSV export lives here. */}
+        {isEdit && eventId && (
+          <View style={{ paddingHorizontal: 20, marginTop: 8, marginBottom: 24 }}>
+            <EventAttendeeRoster eventId={eventId} eventTitle={title} />
+          </View>
+        )}
       </ScrollView>
 
       {/* Sticky action bar */}
