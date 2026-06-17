@@ -12,6 +12,7 @@ import {
   PanResponder,
   StyleSheet,
   Image,
+  Keyboard,
 } from 'react-native'
 import {
   MapPin,
@@ -364,12 +365,22 @@ export default function DiscoverScreen() {
     }
   }, [containerHeight, sheetY])
 
+  const keyboardDismissedRef = useRef(false)
+
   const panResponder = useRef(
     PanResponder.create({
       onStartShouldSetPanResponder: () => false,
       onMoveShouldSetPanResponder: (_, gs) => Math.abs(gs.dy) > 8,
-      onPanResponderGrant: () => {},
+      onPanResponderGrant: () => {
+        keyboardDismissedRef.current = false
+      },
       onPanResponderMove: (_, gs) => {
+        // Dragging the sheet DOWN also dismisses the keyboard (e.g. from the
+        // search-focused mid stop), so one gesture closes both.
+        if (!keyboardDismissedRef.current && gs.dy > 6) {
+          Keyboard.dismiss()
+          keyboardDismissedRef.current = true
+        }
         const max = snapsRef.current.peek
         const next = Math.max(0, Math.min(max, offsetRef.current + gs.dy))
         sheetY.setValue(next)
