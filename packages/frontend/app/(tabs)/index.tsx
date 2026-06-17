@@ -135,12 +135,20 @@ export default function HomeScreen() {
     })
   }, [allEvents, myEvents, user?.id])
 
-  // "Coming up" — discovery: upcoming events you're NOT already part of (not
-  // RSVP'd, not yours), so the personal slate and the discovery slate don't
-  // duplicate.
+  // "Coming up" — stays personal: upcoming events at the member's OWN center
+  // that they aren't already part of (not RSVP'd, not theirs). Members with no
+  // home center yet see the full upcoming list so the section isn't empty.
   const upcomingExploreEvents = useMemo(
-    () => sortUpcomingEvents(allEvents.filter((e) => !e.isRegistered && e.createdBy !== user?.id)),
-    [allEvents, user?.id]
+    () =>
+      sortUpcomingEvents(
+        allEvents.filter(
+          (e) =>
+            !e.isRegistered &&
+            e.createdBy !== user?.id &&
+            (!user?.centerID || e.centerId === user?.centerID)
+        )
+      ),
+    [allEvents, user?.id, user?.centerID]
   )
 
   const featured = useMemo<FeaturedSource | null>(() => {
@@ -293,6 +301,15 @@ export default function HomeScreen() {
     <WelcomeBanner
       c={c}
       centerName={centerName || undefined}
+      centerMeta={(userCenter?.address ? extractCityState(userCenter.address) : undefined) || undefined}
+      onOpenCenter={
+        userCenter
+          ? () => {
+              track('home_first_run_center_opened', { centerId: userCenter.id })
+              router.push(`/center/${userCenter.id}`)
+            }
+          : undefined
+      }
       onExplore={() => {
         track('home_first_run_explore_pressed')
         router.push('/explore' as never)
@@ -308,6 +325,7 @@ export default function HomeScreen() {
       detailColors={detailColors}
       center={userCenter}
       peek={boardPeek}
+      showCenter={!centerName}
       onFeed={() => {
         track('home_first_run_feed_pressed')
         router.push('/feed' as never)
@@ -561,27 +579,71 @@ export default function HomeScreen() {
 // the real content (Your Center, Up Next, Coming Up) already shows what the app
 // does, so a single orienting sentence + Explore CTA is enough. Rendered as a
 // full-width top row on desktop and inline at the top of the column on mobile.
-function WelcomeBanner({ c, onExplore, centerName }: { c: AppColors; onExplore: () => void; centerName?: string }) {
+function WelcomeBanner({
+  c,
+  onExplore,
+  centerName,
+  centerMeta,
+  onOpenCenter,
+}: {
+  c: AppColors
+  onExplore: () => void
+  centerName?: string
+  centerMeta?: string
+  onOpenCenter?: () => void
+}) {
   const cardBase = { borderRadius: 18, borderWidth: 1, borderColor: c.border, backgroundColor: c.card } as const
-  // Login/role-state personalization: a member who's already joined a center
-  // isn't "new" — greet them by their center and nudge toward RSVPing, rather
-  // than the generic "Welcome to Janata" shown to first-touch/no-center users.
-  const title = centerName ? `You're in at ${centerName}` : 'Welcome to Janata'
-  const subtitle = centerName
-    ? 'RSVP to your first event, then say hello on your center board.'
-    : 'Find satsangs, camps, and classes near you.'
+
+  // Member with a home center: ONE combined block — their center (tap to open)
+  // plus the first-event nudge and an Explore action. This replaces the
+  // separate welcome banner + "Your center" section so Home leads with a single
+  // personal card.
+  if (centerName) {
+    return (
+      <View style={[cardBase, { padding: 16, gap: 14 }]}>
+        <Pressable
+          onPress={onOpenCenter}
+          disabled={!onOpenCenter}
+          accessibilityRole={onOpenCenter ? 'button' : undefined}
+          accessibilityLabel={onOpenCenter ? `Open ${centerName}` : undefined}
+          style={{ flexDirection: 'row', alignItems: 'center', gap: 14 }}
+        >
+          <View style={{ width: 44, height: 44, borderRadius: 13, backgroundColor: c.accentSoft, alignItems: 'center', justifyContent: 'center' }}>
+            <MapPin size={21} color={c.accent} />
+          </View>
+          <View style={{ flex: 1, gap: 2 }}>
+            <Text style={{ fontSize: 11, letterSpacing: 0.9, color: c.textFaint }}>YOUR CENTER</Text>
+            <Text style={{ fontFamily: 'Inclusive Sans', fontSize: 17, color: c.text }} numberOfLines={1}>{centerName}</Text>
+            {centerMeta ? (
+              <Text style={{ fontSize: 13, color: c.textMuted }} numberOfLines={1}>{centerMeta}</Text>
+            ) : null}
+          </View>
+          {onOpenCenter ? <ChevronRight size={18} color={c.textFaint} /> : null}
+        </Pressable>
+        <Text style={{ fontSize: 13.5, lineHeight: 19, color: c.textMuted }}>
+          RSVP to your first event, then say hello on your center board.
+        </Text>
+        <Pressable
+          onPress={onExplore}
+          accessibilityRole="button"
+          accessibilityLabel="Explore events"
+          style={{ paddingVertical: 11, borderRadius: 12, backgroundColor: c.accent, alignItems: 'center' }}
+        >
+          <Text style={{ fontFamily: 'Inclusive Sans', fontSize: 14, color: c.textInverse }}>Explore events</Text>
+        </Pressable>
+      </View>
+    )
+  }
+
+  // No center yet: generic welcome with an Explore action.
   return (
     <View style={[cardBase, { flexDirection: 'row', alignItems: 'center', gap: 14, padding: 16 }]}>
       <View style={{ width: 44, height: 44, borderRadius: 13, backgroundColor: c.accentSoft, alignItems: 'center', justifyContent: 'center' }}>
         <Compass size={21} color={c.accent} />
       </View>
       <View style={{ flex: 1, gap: 2 }}>
-        <Text style={{ fontFamily: 'Inclusive Sans', fontSize: 16, color: c.text }}>
-          {title}
-        </Text>
-        <Text style={{ fontSize: 13.5, lineHeight: 19, color: c.textMuted }}>
-          {subtitle}
-        </Text>
+        <Text style={{ fontFamily: 'Inclusive Sans', fontSize: 16, color: c.text }}>Welcome to Janata</Text>
+        <Text style={{ fontSize: 13.5, lineHeight: 19, color: c.textMuted }}>Find satsangs, camps, and classes near you.</Text>
       </View>
       <Pressable
         onPress={onExplore}
@@ -711,6 +773,7 @@ function FirstRunOverview({
   detailColors,
   center,
   peek,
+  showCenter = true,
   onFeed,
   onChooseCenter,
   onOpenCenter,
@@ -720,6 +783,7 @@ function FirstRunOverview({
   detailColors: ReturnType<typeof useDetailColors>
   center?: DiscoverCenter
   peek: BoardMessage[]
+  showCenter?: boolean
   onFeed: () => void
   onChooseCenter: () => void
   onOpenCenter: (id: string) => void
@@ -732,6 +796,7 @@ function FirstRunOverview({
 
   return (
     <View style={{ gap: 22 }}>
+      {showCenter && (
       <View style={{ gap: 10 }}>
         <Text style={eyebrow}>{center ? 'YOUR CENTER' : 'GET CONNECTED'}</Text>
         {center ? (
@@ -771,6 +836,7 @@ function FirstRunOverview({
           </Pressable>
         )}
       </View>
+      )}
 
       {peek.length > 0 ? (
         <View style={{ gap: 10 }}>
