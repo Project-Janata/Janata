@@ -12,6 +12,8 @@ const swamiChinmayanandaAlt = require('../assets/images/landing/Swami Chinmayana
 const swamiChinmayanandaOption2 = require('../assets/images/landing/Swami Chinmayananda Option 2.jpeg')
 import DevPanel from '../components/DevPanel'
 import Logo from '../components/ui/Logo'
+import { useColors } from '../hooks/useColors'
+import { useTheme } from '../components/contexts'
 
 // __DEV__ is a React Native/Expo global — always false in production builds.
 // EXPO_PUBLIC_SHOW_DEV_TOOLS=1 also enables the dev/demo tools (set on the
@@ -27,10 +29,10 @@ if (typeof document !== 'undefined') {
     const style = document.createElement('style')
     style.id = id
     style.textContent = `
-      .auth-input::placeholder { color: #78716C; }
+      .auth-input::placeholder { color: var(--auth-placeholder, #78716C); }
       .auth-input:disabled { opacity: 0.6; cursor: not-allowed; }
       .auth-input { font-size: 16px !important; } /* Prevent iOS zoom on focus */
-      .auth-submit:hover:not(:disabled) { background-color: #D97520 !important; }
+      .auth-submit:hover:not(:disabled) { background-color: var(--auth-submit-hover, #D97520) !important; }
       @supports (min-height: 100dvh) {
         .auth-root { min-height: 100dvh !important; }
       }
@@ -48,6 +50,8 @@ const AUTH_CAROUSEL_IMAGES = [
 export default function AuthScreen() {
   const router = useRouter()
   const { track } = useAnalytics()
+  const c = useColors()
+  const { isDark } = useTheme()
 
   // Shared auth state machine (see auth.tsx — same logic, RN presentation).
   const {
@@ -100,21 +104,22 @@ export default function AuthScreen() {
     minHeight: 44,
     borderWidth: 1,
     borderStyle: 'solid',
-    borderColor: '#E7E5E4',
+    borderColor: c.border,
     borderRadius: 12,
     padding: '0 16px',
     fontSize: 16,
     fontFamily: 'Inclusive Sans, sans-serif',
-    color: '#1C1917',
-    backgroundColor: '#F0EDE8',
+    color: c.text,
+    backgroundColor: c.surface,
     outline: 'none',
     boxSizing: 'border-box' as const,
     WebkitAppearance: 'none' as const,
+    colorScheme: isDark ? 'dark' : 'light',
   }
   const focusInputStyle: React.CSSProperties = {
-    borderColor: '#E8862A',
+    borderColor: c.accent,
     boxShadow: '0 0 0 3px rgba(194,65,12,0.1)',
-    backgroundColor: '#FFFFFF',
+    backgroundColor: c.card,
   }
   const getInputStyle = (focused: boolean): React.CSSProperties => ({
     ...baseInputStyle,
@@ -174,7 +179,9 @@ export default function AuthScreen() {
         display: 'flex',
         flexDirection: isNarrowWeb ? 'column' : 'row',
         minHeight: '100vh',
-        backgroundColor: '#FAFAF7',
+        backgroundColor: c.bg,
+        ['--auth-placeholder' as any]: c.textFaint,
+        ['--auth-submit-hover' as any]: c.accentPress,
       }}
     >
       {/* Left: Image Carousel */}
@@ -188,7 +195,7 @@ export default function AuthScreen() {
       <div
         style={{
           width: isNarrowWeb ? '100%' : '50%',
-          backgroundColor: '#FAFAF7',
+          backgroundColor: c.bg,
           display: 'flex',
           flexDirection: 'column',
           overflow: 'auto',
@@ -226,15 +233,15 @@ export default function AuthScreen() {
           <button
             onClick={() => { track('auth_browse_as_guest_pressed', { source: 'auth' }); router.push('/explore') }}
             style={{
-              backgroundColor: '#FAFAF7',
-              border: '1px solid #D6D3D1',
+              backgroundColor: c.card,
+              border: `1px solid ${c.borderStrong}`,
               borderRadius: 12,
               cursor: 'pointer',
               padding: '0 16px',
               fontSize: 14,
               fontFamily: 'Inclusive Sans, sans-serif',
               fontWeight: '500',
-              color: '#57534E',
+              color: c.textSecondary,
               height: 44,
               minHeight: 44,
               display: 'flex',
@@ -251,7 +258,7 @@ export default function AuthScreen() {
             display: 'flex',
             alignItems: isMobile ? 'flex-start' : 'center',
             justifyContent: isMobile ? 'flex-start' : 'center',
-            padding: isMobile ? '72px 16px 24px' : isNarrowWeb ? '40px 20px 32px' : 0,
+            padding: isMobile ? '44px 24px 28px' : isNarrowWeb ? '40px 20px 32px' : 0,
           }}
         >
         <div style={{ maxWidth: 400, width: '100%', padding: isNarrowWeb ? 0 : '0 48px' }}>
@@ -260,7 +267,7 @@ export default function AuthScreen() {
             <button
               onClick={handleBack}
               style={{
-                color: '#78716C',
+                color: c.textMuted,
                 fontSize: 14,
                 fontFamily: 'Inclusive Sans, sans-serif',
                 cursor: 'pointer',
@@ -285,7 +292,7 @@ export default function AuthScreen() {
               fontFamily: '"Inclusive Sans", sans-serif',
               fontSize: isMobile ? 28 : isNarrowWeb ? 32 : 36,
               fontWeight: '400',
-              color: '#1C1917',
+              color: c.text,
               marginBottom: 10,
               marginTop: 0,
               lineHeight: isMobile ? '34px' : isNarrowWeb ? '38px' : '43px',
@@ -299,7 +306,7 @@ export default function AuthScreen() {
             style={{
               fontFamily: 'Inclusive Sans, sans-serif',
               fontSize: 16,
-              color: '#78716C',
+              color: c.textMuted,
               marginBottom: 26,
               marginTop: 0,
               lineHeight: '24px',
@@ -316,7 +323,7 @@ export default function AuthScreen() {
                 display: 'flex',
                 alignItems: 'center',
                 gap: 8,
-                backgroundColor: 'rgba(232,134,42,0.1)',
+                backgroundColor: c.accentSoft,
                 borderRadius: 12,
                 padding: '12px 14px',
                 marginBottom: 16,
@@ -328,10 +335,10 @@ export default function AuthScreen() {
                   fontFamily: 'Inclusive Sans, sans-serif',
                   fontSize: 14,
                   lineHeight: '20px',
-                  color: '#B05A12',
+                  color: c.textSecondary,
                 }}
               >
-                <span style={{ fontWeight: 700, color: '#E8862A' }}>
+                <span style={{ fontWeight: 700, color: c.accent }}>
                   {inviterName ? `${inviterName}'s invite applied.` : 'Invite applied.'}
                 </span>
                 {authStep === 'signup'
@@ -345,7 +352,7 @@ export default function AuthScreen() {
           {errorMessages.length > 0 && (
             <div
               style={{
-                backgroundColor: '#FEF2F2',
+                backgroundColor: c.errorSoft,
                 borderRadius: 12,
                 padding: '12px 16px',
                 marginBottom: 16,
@@ -355,7 +362,7 @@ export default function AuthScreen() {
                 <p
                   key={idx}
                   style={{
-                    color: '#EF4444',
+                    color: c.error,
                     fontSize: 14,
                     fontFamily: 'Inclusive Sans, sans-serif',
                     margin: 0,
@@ -453,8 +460,8 @@ export default function AuthScreen() {
                 width: '100%',
                 height: 48,
                 minHeight: 44,
-                backgroundColor: '#E8862A',
-                color: '#FFFFFF',
+                backgroundColor: c.accent,
+                color: c.textInverse,
                 border: 'none',
                 borderRadius: 12,
                 fontSize: 16,
@@ -475,7 +482,7 @@ export default function AuthScreen() {
             <p
               style={{
                 fontSize: 14,
-                color: '#78716C',
+                color: c.textMuted,
                 textAlign: 'center',
                 marginTop: 12,
                 fontFamily: 'Inclusive Sans, sans-serif',
@@ -487,7 +494,7 @@ export default function AuthScreen() {
                 tabIndex={0}
                 onClick={hideInviteField}
                 onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); hideInviteField() } }}
-                style={{ color: '#E8862A', cursor: 'pointer', fontWeight: 600, padding: '8px 4px', margin: '-8px -4px', display: 'inline-block' }}
+                style={{ color: c.accent, cursor: 'pointer', fontWeight: 600, padding: '8px 4px', margin: '-8px -4px', display: 'inline-block' }}
               >
                 Use email instead
               </span>
@@ -500,7 +507,7 @@ export default function AuthScreen() {
               <p
                 style={{
                   fontSize: 14,
-                  color: '#78716C',
+                  color: c.textMuted,
                   textAlign: 'center',
                   marginTop: 16,
                   fontFamily: 'Inclusive Sans, sans-serif',
@@ -512,7 +519,7 @@ export default function AuthScreen() {
                   tabIndex={0}
                   onClick={revealInviteField}
                   onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); revealInviteField() } }}
-                  style={{ color: '#E8862A', cursor: 'pointer', fontWeight: 600, padding: '8px 4px', margin: '-8px -4px', display: 'inline-block' }}
+                  style={{ color: c.accent, cursor: 'pointer', fontWeight: 600, padding: '8px 4px', margin: '-8px -4px', display: 'inline-block' }}
                 >
                   Paste it
                 </span>
@@ -524,7 +531,7 @@ export default function AuthScreen() {
             <p
               style={{
                 fontSize: 14,
-                color: '#78716C',
+                color: c.textMuted,
                 textAlign: 'center',
                 marginTop: 16,
                 fontFamily: 'Inclusive Sans, sans-serif',
@@ -542,7 +549,7 @@ export default function AuthScreen() {
                   }
                 }}
                 style={{
-                  color: '#E8862A',
+                  color: c.accent,
                   cursor: 'pointer',
                   padding: '8px 4px',
                   margin: '-8px -4px',
@@ -563,7 +570,7 @@ export default function AuthScreen() {
           <p
             style={{
               fontSize: 13,
-              color: '#A8A29E',
+              color: c.textFaint,
               textAlign: 'center',
               marginTop: isMobile ? 24 : 32,
               fontFamily: 'Inclusive Sans, sans-serif',
@@ -576,7 +583,7 @@ export default function AuthScreen() {
               tabIndex={0}
               onClick={() => { track('terms_viewed', { source: 'auth' }); router.push('/terms') }}
               onKeyDown={(e) => { if (e.key === 'Enter') { track('terms_viewed', { source: 'auth' }); router.push('/terms') } }}
-              style={{ color: '#E8862A', cursor: 'pointer' }}
+              style={{ color: c.accent, cursor: 'pointer' }}
             >
               Terms of Service
             </span>
@@ -586,7 +593,7 @@ export default function AuthScreen() {
               tabIndex={0}
               onClick={() => { track('privacy_policy_viewed', { source: 'auth' }); router.push('/privacy') }}
               onKeyDown={(e) => { if (e.key === 'Enter') { track('privacy_policy_viewed', { source: 'auth' }); router.push('/privacy') } }}
-              style={{ color: '#E8862A', cursor: 'pointer' }}
+              style={{ color: c.accent, cursor: 'pointer' }}
             >
               Privacy Policy
             </span>
