@@ -414,7 +414,9 @@ export async function fetchEventsPage(
 
 export async function fetchEventUsers(eventID: string): Promise<UserData[]> {
   try {
-    const response = await apiFetch('/getEventUsers', {
+    // Must be authed — /getEventUsers is gated (attendee/creator/admin). apiFetch
+    // sends no token, so it 401'd and the attendee names list never loaded.
+    const response = await authFetch('/getEventUsers', {
       method: 'POST',
       body: JSON.stringify({ id: eventID }),
     })
