@@ -242,7 +242,9 @@ function RootLayoutNav({ onAuthReady }: { onAuthReady: () => void }) {
         pathname === '/join' ||
         pathname.startsWith('/privacy') ||
         pathname.startsWith('/terms') ||
-        pathname.startsWith('/cookies')
+        pathname.startsWith('/cookies') ||
+        // Email verification links are opened from an inbox — usually logged out.
+        pathname.startsWith('/verify-email')
 
       if (!isPublicPage) {
         router.replace('/landing')
