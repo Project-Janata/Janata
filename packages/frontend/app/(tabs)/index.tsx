@@ -45,7 +45,7 @@ function sortUpcomingEvents(events: EventDisplay[]) {
     })
 }
 
-function liveEventToWeekItem(event: EventDisplay, onPress: () => void): WeekItem {
+function liveEventToWeekItem(event: EventDisplay, onPress: () => void, isHosting = false): WeekItem {
   const { month, day } = event.date ? formatDatePill(event.date) : { month: '', day: '' }
   const today = event.date ? isToday(event.date) : false
   return {
@@ -55,6 +55,7 @@ function liveEventToWeekItem(event: EventDisplay, onPress: () => void): WeekItem
     title: event.title,
     subtitle: [today ? 'Today' : event.time || 'TBD', event.location || event.address].filter(Boolean).join(' · '),
     highlight: today,
+    hosting: isHosting,
     onPress,
   }
 }
@@ -163,9 +164,9 @@ export default function HomeScreen() {
       liveEventToWeekItem(event, () => {
         track('home_event_pressed', { eventId: event.id, source: 'this_week' })
         router.push(`/events/${event.id}`)
-      })
+      }, !!user && event.createdBy === user?.id)
     )
-  }, [featured, track, router, signedUpEvents, upcomingExploreEvents])
+  }, [featured, track, router, signedUpEvents, upcomingExploreEvents, user?.id])
 
   const greetingName = user?.firstName || user?.username || 'friend'
   const todayLabel = new Date().toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric' })
@@ -336,6 +337,7 @@ export default function HomeScreen() {
       {featured ? (
         <FeaturedEventCard
           featured={featured}
+          isHosting={!!user && featured.event.createdBy === user?.id}
           onPress={() => {
             track('home_featured_event_pressed', { eventId: featured.event.id })
             router.push(`/events/${featured.event.id}`)

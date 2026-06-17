@@ -148,6 +148,26 @@ function GoingPill({ label }: { label: string }) {
   )
 }
 
+// Shown on the hero when the event was created by the viewer (organizer).
+function HostingPill({ label }: { label: string }) {
+  return (
+    <View
+      style={{
+        backgroundColor: '#FFEDD5',
+        borderRadius: 999,
+        paddingHorizontal: 9,
+        paddingVertical: 4,
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: 5,
+      }}
+    >
+      <View style={{ width: 6, height: 6, borderRadius: 3, backgroundColor: '#9A3412' }} />
+      <Text style={{ fontWeight: '500', fontSize: 11, color: '#9A3412' }}>{label}</Text>
+    </View>
+  )
+}
+
 function AttendeeStack({
   attendees,
   fallback,
@@ -191,9 +211,11 @@ function AttendeeStack({
 export function FeaturedEventCard({
   featured,
   onPress,
+  isHosting,
 }: {
   featured: FeaturedSource
   onPress: () => void
+  isHosting?: boolean
 }) {
   const c = useColors()
   const isDark = c.bg === '#1A1A1A'
@@ -261,6 +283,7 @@ export function FeaturedEventCard({
         ) : null}
         <View style={{ position: 'absolute', top: 12, left: 12, flexDirection: 'row', gap: 6 }}>
           {countdown && <InkPill label={countdown} />}
+          {isHosting && <HostingPill label="Hosting" />}
           {goingPill && <GoingPill label="You're going" />}
         </View>
       </View>
