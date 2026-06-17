@@ -1,6 +1,6 @@
 import React, { useCallback, useMemo, useState } from 'react'
-import { ActivityIndicator, Platform, Pressable, ScrollView, Text, View, useWindowDimensions } from 'react-native'
-import { ChevronRight, Compass, LogIn, MapPin } from 'lucide-react-native'
+import { ActivityIndicator, Image, Platform, Pressable, ScrollView, Text, View, useWindowDimensions } from 'react-native'
+import { ChevronRight, MapPin } from 'lucide-react-native'
 import { useFocusEffect, useRouter } from 'expo-router'
 import { useAnalytics } from '../../utils/analytics'
 import { useUser } from '../../components/contexts'
@@ -15,6 +15,10 @@ import { BoardPostCard, boardPostToMessage } from '../../components/boards'
 import { DesktopColumns, desktopScrollContent, useDesktopLayout } from '../../components/layout/DesktopColumns'
 import AuthPromptModal from '../../components/ui/AuthPromptModal'
 import type { AppColors } from '../../tokens'
+
+// 3D compass emoji for the guest welcome card — distinct from the feed's diya,
+// matching the centered setup-card styling used on the Feed.
+const welcomeArtwork = require('../../assets/images/onboarding/compass.png')
 
 function formatDatePill(dateStr: string): { month: string; day: string } {
   const parsed = new Date(`${dateStr}T00:00:00`)
@@ -520,33 +524,58 @@ function AnchorCard({
 }) {
   const cardBase = { borderRadius: 18, borderWidth: 1, borderColor: c.border, backgroundColor: c.card } as const
 
-  // Guest: welcome + primary Log in + secondary paste-invite.
+  // Guest: centered welcome card matching the Feed's signed-out CTA — emoji on
+  // top, centered title + subtitle, plain full-width Log in, "Paste it" link.
   if (state === 'guest') {
     return (
-      <View style={[cardBase, { padding: 16, gap: 14 }]}>
-        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 14 }}>
-          <View style={{ width: 44, height: 44, borderRadius: 13, backgroundColor: c.accentSoft, alignItems: 'center', justifyContent: 'center' }}>
-            <Compass size={21} color={c.accent} />
-          </View>
-          <View style={{ flex: 1, gap: 2 }}>
-            <Text style={{ fontFamily: 'Inclusive Sans', fontSize: 17, color: c.text }}>Make Janata yours</Text>
-            <Text style={{ fontSize: 13.5, lineHeight: 19, color: c.textMuted }}>
-              Janata is invite-only. Log in, or paste an invite to get in.
-            </Text>
-          </View>
+      <View style={[cardBase, { paddingHorizontal: 20, paddingTop: 24, paddingBottom: 20, gap: 20 }]}>
+        <View style={{ alignItems: 'center', gap: 12 }}>
+          <Image
+            source={welcomeArtwork}
+            accessibilityIgnoresInvertColors
+            style={{ width: 72, height: 72 }}
+            resizeMode="contain"
+          />
+          <Text style={{ fontFamily: 'Inclusive Sans', fontSize: 22, lineHeight: 28, color: c.text, textAlign: 'center' }}>
+            Make Janata yours
+          </Text>
+          <Text style={{ fontSize: 14, lineHeight: 20, color: c.textMuted, textAlign: 'center' }}>
+            Your center, events, and community will show up here.
+          </Text>
         </View>
-        <Pressable
-          onPress={onLogin}
-          accessibilityRole="button"
-          accessibilityLabel="Log in"
-          style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8, paddingVertical: 11, borderRadius: 12, backgroundColor: c.accent }}
-        >
-          <LogIn size={16} color={c.textInverse} />
-          <Text style={{ fontFamily: 'Inclusive Sans', fontSize: 14, color: c.textInverse }}>Log in</Text>
-        </Pressable>
-        <Pressable onPress={onPasteInvite} accessibilityRole="button" hitSlop={6} style={{ alignItems: 'center' }}>
-          <Text style={{ fontSize: 13.5, color: c.accent }}>Have an invite? Paste it →</Text>
-        </Pressable>
+
+        <View style={{ gap: 10 }}>
+          <Pressable
+            onPress={onLogin}
+            accessibilityRole="button"
+            accessibilityLabel="Log in"
+            style={{
+              width: '100%',
+              minHeight: 48,
+              borderRadius: 12,
+              borderWidth: 1,
+              borderColor: c.accent,
+              backgroundColor: c.accent,
+              paddingHorizontal: 16,
+              alignItems: 'center',
+              justifyContent: 'center',
+            }}
+          >
+            <Text style={{ fontFamily: 'Inclusive Sans', fontSize: 15, fontWeight: '600', color: c.textInverse }}>
+              Log in
+            </Text>
+          </Pressable>
+
+          <Pressable
+            onPress={onPasteInvite}
+            accessibilityRole="button"
+            style={{ minHeight: 44, alignItems: 'center', justifyContent: 'center' }}
+          >
+            <Text style={{ fontSize: 14, color: c.textMuted }}>
+              Have an invite? <Text style={{ color: c.accent, fontWeight: '600' }}>Paste it</Text>
+            </Text>
+          </Pressable>
+        </View>
       </View>
     )
   }
