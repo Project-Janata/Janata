@@ -40,7 +40,7 @@ import type { MapPoint, EventDisplay, AttendeeInfo } from '../../utils/api'
 import { removeEvent } from '../../utils/api'
 import { extractCityState } from '../../utils/addressParsing'
 import { WeekCalendar } from '../../components'
-import { ADMIN_EMAIL, isLocal } from '../../utils/admin'
+import { ADMIN_EMAIL, isLocal, isSevakOrAdmin } from '../../utils/admin'
 import { EmptyState } from '../../components/ui/EmptyState'
 import { DiscoverListSkeleton } from '../../components/ui/Skeleton'
 import { ExploreEventItem } from '../../components/explore/ExploreEventItem.web'
@@ -174,6 +174,7 @@ function EventPanelInner({
         attendees={attendees}
         isPast={isPast}
         isAdmin={isAdmin}
+        canManage={canEdit}
         onClose={onClose}
         onToggleRegistration={handleToggleRegistration}
         isToggling={isToggling}
@@ -256,9 +257,9 @@ export default function DiscoverScreenWeb() {
   const { user } = useUser()
   const { track } = useAnalytics()
   const isAdmin = user?.email === ADMIN_EMAIL || (user?.verificationLevel !== undefined && user.verificationLevel >= 107)
-  // Beta: any signed-in user can create events. Backend enforces auth-only;
-  // post-beta this becomes a coordinator-tier gate (see issue tracker).
-  const canCreate = !!user
+  // Event creation is coordinator-gated: only sevak-and-above (or admins) see
+  // the create entry point. Mirrors the backend /addEvent gate.
+  const canCreate = isSevakOrAdmin(user)
   // Events-first: the desktop sidebar always shows the events list (the old
   // Events/Centers tab model was dropped to match native explore.tsx and the
   // mobile-web fallback).
@@ -266,6 +267,7 @@ export default function DiscoverScreenWeb() {
   const [searchQuery, setSearchQuery] = useState('')
   const [selectedDate, setSelectedDate] = useState<string | null>(null)
   const [showGoingOnly, setShowGoingOnly] = useState(false)
+  const [showMineOnly, setShowMineOnly] = useState(false)
   const [showPastEvents, setShowPastEvents] = useState(false)
   // Center dropdown — picks which center's *area* to show events for, mirroring
   // the mobile fallback. "__all__" = every center (no proximity scoping); null =
@@ -284,7 +286,12 @@ export default function DiscoverScreenWeb() {
   // Event form panel: null = hidden, { id?: string } = open (id present = edit, absent = create)
   const [formPanel, setFormPanel] = useState<{ id?: string } | null>(null)
   const { items, filteredPoints, loading, allEvents, allCenters, refresh, updateEventStatus } =
-    useDiscoverData(activeFilter, searchQuery, user?.id, showPastEvents, showGoingOnly, user?.interests ?? undefined, user?.centerID, { fetchAttendees: true })
+    useDiscoverData(activeFilter, searchQuery, user?.id, showPastEvents, showGoingOnly, showMineOnly, user?.interests ?? undefined, user?.centerID, { fetchAttendees: true })
+
+  const hasCreatedEvents = useMemo(
+    () => allEvents.some((e) => e.createdBy === user?.id),
+    [allEvents, user?.id]
+  )
 
   // Get user's center for map initial location
   const { center: userCenter } = useCenterDetail(user?.centerID || '')
@@ -802,6 +809,17 @@ export default function DiscoverScreenWeb() {
                         onPress={() => {
                           track('discover_going_filter_toggled', { enabled: !showGoingOnly, source: 'discover' })
                           setShowGoingOnly((prev: boolean) => !prev)
+                        }}
+                      />
+                    )}
+                    {user && hasCreatedEvents && (
+                      <FilterChip
+                        label="Mine"
+                        variant="outline"
+                        active={showMineOnly}
+                        onPress={() => {
+                          track('discover_mine_filter_toggled', { enabled: !showMineOnly, source: 'discover' })
+                          setShowMineOnly((prev: boolean) => !prev)
                         }}
                       />
                     )}

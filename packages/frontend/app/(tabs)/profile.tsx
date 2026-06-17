@@ -34,7 +34,7 @@ function datePill(dateStr?: string | null): { m: string; d: string } {
 export default function Profile() {
   const router = useRouter()
   const navigation = useNavigation()
-  const { user, loading } = useUser()
+  const { user, loading, refreshUser } = useUser()
   const { isDark } = useTheme()
   const c = isDark ? DARK : LIGHT
   const { track } = useAnalytics()
@@ -46,13 +46,14 @@ export default function Profile() {
 
   useFocusEffect(
     useCallback(() => {
+      void refreshUser()
       fetchCenters().then(setAllCenters).catch(() => {})
       if (user?.username) {
         fetchUserPosts(user.username).then((p) => setCreatedCount(p.length)).catch(() => {})
         fetchUserEvents(user.username).then(setEvents).catch(() => {})
         fetchUserGroups(user.username).then(setGroups).catch(() => {})
       }
-    }, [user?.username])
+    }, [user?.username, refreshUser])
   )
 
   const displayName =

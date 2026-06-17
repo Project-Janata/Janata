@@ -30,6 +30,7 @@ import { useTheme } from '../../components/contexts'
 import { Badge, Avatar, FilterChip } from '../../components/ui'
 import { type FilterPickerOption } from '../../components/ui/FilterPickerModal'
 import { useUser } from '../../components/contexts/UserContext'
+import { isSevakOrAdmin } from '../../utils/admin'
 import { useDiscoverData, type DiscoverFilter } from '../../hooks/useApiData'
 import type { EventDisplay, DiscoverCenter, AttendeeInfo } from '../../utils/api'
 import { extractCityState } from '../../utils/addressParsing'
@@ -261,6 +262,7 @@ export default function DiscoverScreen() {
   const [searchQuery, setSearchQuery] = useState('')
   const [selectedDate, setSelectedDate] = useState<string | null>(null)
   const [showGoingOnly, setShowGoingOnly] = useState(false)
+  const [showMineOnly, setShowMineOnly] = useState(false)
   const [showPastEvents, setShowPastEvents] = useState(false)
   const [selectedCenter, setSelectedCenter] = useState<string | null>(null)
   // The center dropdown opens an in-sheet list (not a modal) — view, pick one, or close.
@@ -276,7 +278,12 @@ export default function DiscoverScreen() {
     allEvents,
     allCenters,
     refresh,
-  } = useDiscoverData(activeFilter, searchQuery, user?.id, showPastEvents, showGoingOnly, user?.interests ?? undefined, user?.centerID, { fetchAttendees: true })
+  } = useDiscoverData(activeFilter, searchQuery, user?.id, showPastEvents, showGoingOnly, showMineOnly, user?.interests ?? undefined, user?.centerID, { fetchAttendees: true })
+
+  const hasCreatedEvents = useMemo(
+    () => allEvents.some((e) => e.createdBy === user?.id),
+    [allEvents, user?.id]
+  )
 
   useEffect(() => {
     setShowGoingOnly(isGoingFilterParam(params.going))
@@ -763,8 +770,19 @@ export default function DiscoverScreen() {
                       }}
                     />
                   )}
+                  {user && hasCreatedEvents && (
+                    <FilterChip
+                      label="Mine"
+                      variant="outline"
+                      active={showMineOnly}
+                      onPress={() => {
+                        track('discover_mine_filter_toggled', { enabled: !showMineOnly, source: 'discover' })
+                        setShowMineOnly((prev) => !prev)
+                      }}
+                    />
+                  )}
                 </View>
-                {user && (
+                {isSevakOrAdmin(user) && (
                   <Pressable
                     accessibilityRole="button"
                     accessibilityLabel="Create event"

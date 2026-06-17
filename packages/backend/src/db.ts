@@ -670,6 +670,57 @@ export async function getEventAttendees(
   return result.results ?? []
 }
 
+export interface EventRosterRegisteredRow {
+  id: string
+  username: string
+  email: string | null
+  first_name: string | null
+  last_name: string | null
+  profile_image: string | null
+  joined_at: string
+}
+
+export interface EventRosterGuestRow {
+  email: string
+  name: string
+  rsvped_at: string
+}
+
+/**
+ * Full attendee roster for an event's coordinator — registered members (with
+ * email + join date) plus account-less guest RSVPs that haven't been upgraded
+ * into a real account yet. This is the gated "replaces the Google Form" view;
+ * the caller (route) enforces creator/admin access before returning PII.
+ */
+export async function getEventRoster(
+  db: D1Database,
+  eventId: string,
+): Promise<{ registered: EventRosterRegisteredRow[]; guests: EventRosterGuestRow[] }> {
+  const registered = await db
+    .prepare(
+      `SELECT u.id, u.username, u.email, u.first_name, u.last_name, u.profile_image,
+              ea.created_at AS joined_at
+       FROM users u
+       JOIN event_attendees ea ON ea.user_id = u.id
+       WHERE ea.event_id = ?1
+       ORDER BY ea.created_at DESC`,
+    )
+    .bind(eventId)
+    .all<EventRosterRegisteredRow>()
+  // Only guests not yet upgraded — once a guest signs up + verifies, they
+  // become a real attendee row and would otherwise be double-counted.
+  const guests = await db
+    .prepare(
+      `SELECT email, name, created_at AS rsvped_at
+       FROM event_guest_rsvps
+       WHERE event_id = ?1 AND upgraded_user_id IS NULL
+       ORDER BY created_at DESC`,
+    )
+    .bind(eventId)
+    .all<EventRosterGuestRow>()
+  return { registered: registered.results ?? [], guests: guests.results ?? [] }
+}
+
 /**
  * IDs of every user "part of" a board, for notification fan-out (#102).
  *   - center board: users whose home center matches

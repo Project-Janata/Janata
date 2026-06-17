@@ -13,6 +13,7 @@ import { cors } from 'hono/cors'
 import type { Env, UserRow, EventRow, CenterRow, BoardPostApiResponse, BoardType } from './types'
 import {
   userRowToApi,
+  userRowToAttendee,
   userRowToPublicProfile,
   centerRowToApi,
   eventRowToApi,
@@ -1904,6 +1905,14 @@ app.post('/boards/posts/:postId/report', authMiddleware, rateLimit(10, 60_000), 
 
 app.post('/addEvent', authMiddleware, async (c) => {
   const user = c.get('user')
+
+  // Event creation is coordinator-gated: only sevak-and-above (or a global
+  // admin) can create events. Beta coordinators (e.g. SJ/Dallas pilots) are
+  // provisioned at SEVAK; they invite normal members to their center.
+  if (!isAdmin(user) && (user.verification_level ?? 0) < SEVAK) {
+    return c.json({ message: 'Only coordinators can create events' }, 403)
+  }
+
   const data = await c.req.json<{
     title?: string
     description?: string
@@ -2192,9 +2201,50 @@ app.post('/getEventUsers', async (c) => {
   }
 
   const attendees = await db.getEventAttendees(c.env.DB, id)
+  // Public endpoint — return display-only fields, never PII. (Coordinators get
+  // emails + guests via the gated GET /events/:id/roster.)
   return c.json({
     message: 'Success',
-    users: attendees.map((u) => userRowToApi(u)),
+    users: attendees.map((u) => userRowToAttendee(u)),
+  })
+})
+
+// Coordinator-only attendee roster. Unlike /getEventUsers (public, avatar-only
+// display), this returns emails + account-less guest RSVPs and is gated to the
+// event's creator or an admin — the "replaces the Google Form / spreadsheet"
+// view that lives on the event page.
+app.get('/events/:id/roster', authMiddleware, async (c) => {
+  const user = c.get('user')
+  const id = c.req.param('id')
+
+  const event = await db.getEventById(c.env.DB, id)
+  if (!event) {
+    return c.json({ message: 'Event not found' }, 404)
+  }
+
+  const canManage = isAdmin(user) || (!!event.created_by && event.created_by === user.id)
+  if (!canManage) {
+    return c.json(
+      { message: 'Only the event creator or an admin can view the attendee roster' },
+      403,
+    )
+  }
+
+  const { registered, guests } = await db.getEventRoster(c.env.DB, id)
+  return c.json({
+    registered: registered.map((r) => ({
+      id: r.id,
+      name: [r.first_name, r.last_name].filter(Boolean).join(' ').trim() || r.username,
+      email: r.email,
+      image: r.profile_image,
+      joinedAt: r.joined_at,
+    })),
+    guests: guests.map((g) => ({ name: g.name, email: g.email, rsvpedAt: g.rsvped_at })),
+    counts: {
+      registered: registered.length,
+      guests: guests.length,
+      total: registered.length + guests.length,
+    },
   })
 })
 

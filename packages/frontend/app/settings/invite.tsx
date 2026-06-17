@@ -26,6 +26,40 @@ const ROLE_PHRASE: Record<InviteRole, string> = {
   admin: 'an admin',
 }
 
+// Copy text to the clipboard on web. Tries the async Clipboard API first
+// (HTTPS / modern browsers), then falls back to a hidden-textarea +
+// execCommand('copy') so copy still works on http:// or older browsers where
+// `navigator.clipboard` is undefined. Returns whether the copy succeeded.
+async function copyToClipboardWeb(text: string): Promise<boolean> {
+  try {
+    if (typeof navigator !== 'undefined' && navigator.clipboard?.writeText) {
+      await navigator.clipboard.writeText(text)
+      return true
+    }
+  } catch {
+    // fall through to the execCommand fallback
+  }
+  try {
+    if (typeof document !== 'undefined') {
+      const ta = document.createElement('textarea')
+      ta.value = text
+      ta.setAttribute('readonly', '')
+      ta.style.position = 'fixed'
+      ta.style.top = '-9999px'
+      ta.style.opacity = '0'
+      document.body.appendChild(ta)
+      ta.focus()
+      ta.select()
+      const ok = document.execCommand('copy')
+      document.body.removeChild(ta)
+      return ok
+    }
+  } catch {
+    // ignore
+  }
+  return false
+}
+
 export default function InviteScreen() {
   const { getToken, user } = useUser()
   const c = useColors()
@@ -104,11 +138,16 @@ export default function InviteScreen() {
     // Voice: no "verified" — in a hard gate every account is, so the promise is
     // "you're in instantly" (#440 copy decision).
     const blurb = 'Join me on Janata. This invite gets you in instantly.'
+    let copySucceeded = false
     try {
-      if (isWeb && typeof navigator !== 'undefined' && navigator.clipboard) {
-        await navigator.clipboard.writeText(inviteUrl)
-        setCopied(true)
-        setTimeout(() => setCopied(false), 2000)
+      if (isWeb) {
+        // Web: copy to clipboard (with execCommand fallback for non-HTTPS /
+        // older browsers). Never fall through to the native Share sheet here.
+        copySucceeded = await copyToClipboardWeb(inviteUrl)
+        if (copySucceeded) {
+          setCopied(true)
+          setTimeout(() => setCopied(false), 2000)
+        }
       } else if (Platform.OS === 'ios') {
         // iOS treats `url` as its own share item (rich link preview), so the
         // message stays link-free to avoid the link appearing twice.
@@ -124,6 +163,7 @@ export default function InviteScreen() {
       source: 'invite_screen',
       method: isWeb ? 'copy' : 'share_sheet',
       invite_code: code,
+      ...(isWeb ? { copy_succeeded: copySucceeded } : {}),
     })
   }
 

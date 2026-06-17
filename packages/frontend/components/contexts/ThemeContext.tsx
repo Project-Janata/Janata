@@ -127,10 +127,14 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
 
   // ── Apply to NativeWind + DOM on every change ──────────────────────────────
   useEffect(() => {
-    // React Native's native AppearanceModule only accepts concrete color
-    // schemes. Keep "system" as the stored preference, but apply the resolved
-    // light/dark value on native to avoid Android startup crashes.
-    setColorScheme(isWeb ? preference : theme)
+    // On native we now pass "system" through to NativeWind so it keeps tracking
+    // the OS color scheme (otherwise it locks to the last resolved light/dark
+    // value and "Auto" stops following the system — see #509). Concrete
+    // light/dark preferences still apply directly.
+    // NOTE: this reverses a prior workaround that always passed a concrete value
+    // to avoid an Android startup crash — that concern must be re-verified on a
+    // device before relying on this in production.
+    setColorScheme(isWeb ? preference : preference === 'system' ? 'system' : theme)
     if (isWeb) {
       applyToDOM(theme)
     } else {

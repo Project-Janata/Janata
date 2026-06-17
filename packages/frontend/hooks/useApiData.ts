@@ -276,12 +276,12 @@ export function useEventDetail(eventId: string, username?: string, userId?: stri
           if (mounted) {
             setAttendees(
               users.map((u) => ({
-                name: u.firstName ? `${u.firstName} ${u.lastName || ''}`.trim() : u.username,
+                name: u.firstName ? `${u.firstName} ${u.lastName || ''}`.trim() : (u.username ?? 'Member'),
                 subtitle: '',
                 image: u.profileImage ?? undefined,
                 initials: u.firstName
                   ? `${u.firstName[0]}${u.lastName?.[0] || ''}`.toUpperCase()
-                  : u.username.slice(0, 2).toUpperCase(),
+                  : (u.username?.slice(0, 2).toUpperCase() ?? 'M'),
               }))
             )
             // Check if current user is in attendees list
@@ -324,11 +324,11 @@ export function useEventDetail(eventId: string, username?: string, userId?: stri
           // Re-fetch attendees after unregistering
           const updatedUsers = await fetchEventUsers(eventId)
           const newAttendeesList = updatedUsers.map((u) => ({
-            name: u.firstName ? `${u.firstName} ${u.lastName || ''}`.trim() : u.username,
+            name: u.firstName ? `${u.firstName} ${u.lastName || ''}`.trim() : (u.username ?? 'Member'),
             image: u.profileImage || undefined,
             initials: u.firstName
               ? `${u.firstName[0]}${u.lastName?.[0] || ''}`.toUpperCase()
-              : u.username.slice(0, 2).toUpperCase(),
+              : (u.username?.slice(0, 2).toUpperCase() ?? 'M'),
           }))
           setEvent((prev) =>
             prev
@@ -343,12 +343,12 @@ export function useEventDetail(eventId: string, username?: string, userId?: stri
           // Also update attendees state
           setAttendees(
             updatedUsers.map((u) => ({
-              name: u.firstName ? `${u.firstName} ${u.lastName || ''}`.trim() : u.username,
+              name: u.firstName ? `${u.firstName} ${u.lastName || ''}`.trim() : (u.username ?? 'Member'),
               subtitle: '',
               image: u.profileImage ?? undefined,
               initials: u.firstName
                 ? `${u.firstName[0]}${u.lastName?.[0] || ''}`.toUpperCase()
-                : u.username.slice(0, 2).toUpperCase(),
+                : (u.username?.slice(0, 2).toUpperCase() ?? 'M'),
             }))
           )
         } else {
@@ -358,11 +358,11 @@ export function useEventDetail(eventId: string, username?: string, userId?: stri
           // Re-fetch attendees after registering
           const updatedUsers = await fetchEventUsers(eventId)
           const newAttendeesList = updatedUsers.map((u) => ({
-            name: u.firstName ? `${u.firstName} ${u.lastName || ''}`.trim() : u.username,
+            name: u.firstName ? `${u.firstName} ${u.lastName || ''}`.trim() : (u.username ?? 'Member'),
             image: u.profileImage || undefined,
             initials: u.firstName
               ? `${u.firstName[0]}${u.lastName?.[0] || ''}`.toUpperCase()
-              : u.username.slice(0, 2).toUpperCase(),
+              : (u.username?.slice(0, 2).toUpperCase() ?? 'M'),
           }))
           setEvent((prev) =>
             prev
@@ -377,12 +377,12 @@ export function useEventDetail(eventId: string, username?: string, userId?: stri
           // Also update attendees state
           setAttendees(
             updatedUsers.map((u) => ({
-              name: u.firstName ? `${u.firstName} ${u.lastName || ''}`.trim() : u.username,
+              name: u.firstName ? `${u.firstName} ${u.lastName || ''}`.trim() : (u.username ?? 'Member'),
               subtitle: '',
               image: u.profileImage ?? undefined,
               initials: u.firstName
                 ? `${u.firstName[0]}${u.lastName?.[0] || ''}`.toUpperCase()
-                : u.username.slice(0, 2).toUpperCase(),
+                : (u.username?.slice(0, 2).toUpperCase() ?? 'M'),
             }))
           )
         }
@@ -721,6 +721,7 @@ export function useDiscoverData(
   userId?: string,
   showPastEvents = false,
   showGoingOnly = false,
+  showMineOnly = false,
   userInterests?: string[],
   userCenterID?: string | null,
   options?: UseDiscoverOptions,
@@ -750,11 +751,11 @@ export function useDiscoverData(
           allApiEvents.map(async (e) => {
             const users = await fetchEventUsers(e.eventID)
             const attendeesList = users.map((u) => ({
-              name: u.firstName ? `${u.firstName} ${u.lastName || ''}`.trim() : u.username,
+              name: u.firstName ? `${u.firstName} ${u.lastName || ''}`.trim() : (u.username ?? 'Member'),
               image: u.profileImage || undefined,
               initials: u.firstName
                 ? `${u.firstName[0]}${u.lastName?.[0] || ''}`.toUpperCase()
-                : u.username.slice(0, 2).toUpperCase(),
+                : (u.username?.slice(0, 2).toUpperCase() ?? 'M'),
             }))
             const userIsRegistered = userId ? users.some((u) => u.id === userId) : false
             return {
@@ -822,14 +823,19 @@ export function useDiscoverData(
       ? interestEvents.filter((e) => e.isRegistered)
       : interestEvents
 
+    // Mine-only toggle (events the current user created)
+    const mineEvents = showMineOnly
+      ? goingEvents.filter((e) => e.createdBy === userId)
+      : goingEvents
+
     // Search query (events: title/location, centers: name/address)
     const events = query
-      ? goingEvents.filter(
+      ? mineEvents.filter(
           (e) =>
             e.title.toLowerCase().includes(query) ||
             e.location.toLowerCase().includes(query)
         )
-      : goingEvents
+      : mineEvents
     const centers = query
       ? allCenters.filter(
           (c) =>
@@ -839,7 +845,7 @@ export function useDiscoverData(
       : allCenters
 
     return { filteredEventList: events, filteredCenterList: centers }
-  }, [allEvents, allCenters, searchQuery, showPastEvents, showGoingOnly, userInterests])
+  }, [allEvents, allCenters, searchQuery, showPastEvents, showGoingOnly, showMineOnly, userId, userInterests])
 
   const items = useMemo<DiscoverItem[]>(() => {
     if (filter === 'Centers') {

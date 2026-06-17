@@ -1,6 +1,7 @@
 import React from 'react'
 import { Pressable, Text, View } from 'react-native'
 import { useColors } from '../../hooks/useColors'
+import Badge from '../ui/Badge'
 
 export type WeekItem = {
   id: string
@@ -9,6 +10,7 @@ export type WeekItem = {
   title: string
   subtitle: string
   highlight: boolean
+  hosting?: boolean
   onPress?: () => void
 }
 
@@ -36,7 +38,10 @@ export function MiniEventRow({ item }: { item: WeekItem }) {
         <Text style={{ fontFamily: 'Inclusive Sans', fontSize: 18, lineHeight: 20, color: c.text }}>{item.day}</Text>
       </View>
       <View style={{ flex: 1, minWidth: 0, justifyContent: 'center', gap: 2 }}>
-        <Text style={{ fontFamily: 'Inclusive Sans', fontSize: 14, color: c.text }} numberOfLines={1}>{item.title}</Text>
+        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+          <Text style={{ fontFamily: 'Inclusive Sans', fontSize: 14, color: c.text, flexShrink: 1 }} numberOfLines={1}>{item.title}</Text>
+          {item.hosting && <Badge label="Hosting" variant="host" />}
+        </View>
         <Text style={{ fontSize: 12, lineHeight: 16, color: c.textMuted }} numberOfLines={1}>{item.subtitle}</Text>
       </View>
     </Pressable>

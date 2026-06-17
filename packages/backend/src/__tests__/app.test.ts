@@ -397,6 +397,10 @@ describe('invite gate (#403)', () => {
     beforeEach(async () => {
       const adminToken = await createAdmin()
       const { token } = await registerAndLogin('host', 'password123')
+      // Event creation is coordinator-gated (sevak+); the host is a coordinator.
+      await env.DB.prepare('UPDATE users SET verification_level = 54 WHERE username = ?')
+        .bind('host')
+        .run()
       const { body: center } = await jsonPost(
         '/api/addCenter',
         { centerName: 'Guest Center', latitude: 37.0, longitude: -121.0 },
@@ -1915,6 +1919,11 @@ describe('event routes', () => {
     adminToken = await createAdmin()
     const { token } = await registerAndLogin('eventuser', 'password123')
     userToken = token
+    // Event creation is coordinator-gated (sevak+). The fixture creator is a
+    // pilot coordinator, so promote it to SEVAK.
+    await env.DB.prepare('UPDATE users SET verification_level = 54 WHERE username = ?')
+      .bind('eventuser')
+      .run()
 
     // Create a center for events (requires auth now)
     const { body } = await jsonPost(
@@ -1946,6 +1955,22 @@ describe('event routes', () => {
       expect(res.status).toBe(200)
       expect(body.id).toBeDefined()
       expect(typeof body.tier).toBe('number')
+    })
+
+    it('rejects a non-coordinator (normal member) with 403', async () => {
+      const { token: memberToken } = await registerAndLogin('plainmember-evt', 'password123')
+      const { res } = await jsonPost(
+        '/api/addEvent',
+        {
+          title: 'Unauthorized Event',
+          date: '2025-06-01T10:00:00Z',
+          latitude: 37.0,
+          longitude: -121.0,
+          centerID: centerId,
+        },
+        authHeader(memberToken)
+      )
+      expect(res.status).toBe(403)
     })
 
     it('rejects missing centerID (400)', async () => {
@@ -2163,7 +2188,93 @@ describe('event routes', () => {
       const { res, body } = await jsonPost('/api/getEventUsers', { id: addBody.id })
       expect(res.status).toBe(200)
       expect(body.users).toHaveLength(1)
-      expect(body.users[0].username).toBe('eventuser')
+      expect(body.users[0].id).toBeDefined()
+    })
+
+    it('does NOT leak PII — no email/username/phone/DOB in the public list', async () => {
+      const { body: addBody } = await jsonPost(
+        '/api/addEvent',
+        {
+          title: 'PII Event',
+          date: '2025-06-01T10:00:00Z',
+          latitude: 37.0,
+          longitude: -121.0,
+          centerID: centerId,
+        },
+        authHeader(userToken),
+      )
+      await jsonPost('/api/attendEvent', { eventID: addBody.id }, authHeader(userToken))
+
+      const { body } = await jsonPost('/api/getEventUsers', { id: addBody.id })
+      const attendee = body.users[0]
+      expect(attendee).not.toHaveProperty('email')
+      expect(attendee).not.toHaveProperty('username')
+      expect(attendee).not.toHaveProperty('phoneNumber')
+      expect(attendee).not.toHaveProperty('dateOfBirth')
+      // Display-only fields remain.
+      expect(attendee).toHaveProperty('id')
+      expect(attendee).toHaveProperty('profileImage')
+    })
+  })
+
+  describe('GET /api/events/:id/roster', () => {
+    async function createEvent() {
+      const { body } = await jsonPost(
+        '/api/addEvent',
+        {
+          title: 'Roster Event',
+          date: '2030-06-01T10:00:00Z',
+          latitude: 37.0,
+          longitude: -121.0,
+          centerID: centerId,
+        },
+        authHeader(userToken),
+      )
+      return body.id as string
+    }
+
+    it('returns registered members (with email) + guests to the creator', async () => {
+      const eventId = await createEvent()
+      await jsonPost('/api/attendEvent', { eventID: eventId }, authHeader(userToken))
+      await jsonPost('/api/attendEventGuest', {
+        eventID: eventId,
+        name: 'Guest Person',
+        email: 'guest@example.com',
+      })
+
+      const { res, body } = await fetchJSON(`/api/events/${eventId}/roster`, {
+        headers: authHeader(userToken),
+      })
+      expect(res.status).toBe(200)
+      expect(body.counts).toEqual({ registered: 1, guests: 1, total: 2 })
+      expect(body.registered[0].email).toBe('eventuser')
+      expect(body.guests[0].email).toBe('guest@example.com')
+      expect(body.guests[0].name).toBe('Guest Person')
+    })
+
+    it('rejects a non-creator, non-admin viewer with 403', async () => {
+      const eventId = await createEvent()
+      const { token: stranger } = await registerAndLogin('roster-stranger', 'password123')
+      const { res } = await fetchJSON(`/api/events/${eventId}/roster`, {
+        headers: authHeader(stranger),
+      })
+      expect(res.status).toBe(403)
+    })
+
+    it('lets an admin view any event roster', async () => {
+      const eventId = await createEvent()
+      const { res, body } = await fetchJSON(`/api/events/${eventId}/roster`, {
+        headers: authHeader(adminToken),
+      })
+      expect(res.status).toBe(200)
+      expect(body.counts.total).toBe(0)
+    })
+
+    it('returns 404 for an unknown event', async () => {
+      const { res } = await fetchJSON('/api/events/does-not-exist/roster', {
+        headers: authHeader(adminToken),
+      })
+      expect(res.status).toBe(404)
     })
   })
 

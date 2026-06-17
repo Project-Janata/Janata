@@ -16,6 +16,7 @@ import { useRouter } from 'expo-router'
 import { DestructiveButton, SecondaryButton, Text, Avatar } from '../../components/ui'
 import ThemeSelector from '../../components/settings/ThemeSelector'
 import { useAnalytics } from '../../utils/analytics'
+import { isSuperAdmin } from '../../utils/admin'
 import Constants from 'expo-constants'
 
 const APP_VERSION = Constants.expoConfig?.version || '0.2.0'
@@ -179,6 +180,43 @@ export default function Preferences() {
             </Pressable>
           </View>
         </View>
+
+        {/* Admin Section — super admins only. Web routes in-app to /admin;
+            native (this file is web, but keep parity) opens the live site. */}
+        {isSuperAdmin(user) ? (
+          <View>
+            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: 12 }}>
+              <Shield size={20} color={iconColor} />
+              <Text style={{ fontSize: 17, fontWeight: '600', color: textColor }}>Admin</Text>
+            </View>
+            <Pressable
+              style={{
+                flexDirection: 'row',
+                alignItems: 'center',
+                justifyContent: 'space-between',
+                padding: isNarrowWeb ? 20 : 28,
+                backgroundColor: cardBg,
+                borderRadius: 20,
+                borderWidth: 1,
+                borderColor,
+              }}
+              onPress={() => {
+                track('home_admin_pressed', { source: 'settings_web', platform: Platform.OS })
+                if (Platform.OS === 'web') {
+                  router.push('/admin')
+                } else {
+                  Linking.openURL('https://chinmayajanata.org/admin').catch(() => {})
+                }
+              }}
+            >
+              <View style={{ flex: 1, marginRight: 12 }}>
+                <Text style={{ fontSize: 15, color: textColor }}>Admin dashboard</Text>
+                <Text style={{ fontSize: 13, color: mutedTextColor, marginTop: 2 }}>Manage centers, events, and moderation</Text>
+              </View>
+              <ChevronRight size={18} color={iconColor} />
+            </Pressable>
+          </View>
+        ) : null}
 
         {/* Notifications Section */}
         <View>
