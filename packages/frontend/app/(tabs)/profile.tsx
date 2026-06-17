@@ -198,7 +198,8 @@ export default function Profile() {
             onPress={onShare}
             accessibilityRole="button"
             accessibilityLabel="Share profile"
-            style={({ pressed }) => ({
+            android_ripple={{ color: c.cardActive }}
+            style={{
               flex: 1,
               flexDirection: 'row',
               alignItems: 'center',
@@ -208,8 +209,8 @@ export default function Profile() {
               borderRadius: 12,
               borderWidth: 1,
               borderColor: c.border,
-              backgroundColor: pressed ? c.cardActive : c.card,
-            })}
+              backgroundColor: c.card,
+            }}
           >
             <Share2 size={16} color={c.text} />
             <Text style={{ fontSize: 14, fontWeight: '600', color: c.text }}>Share</Text>
@@ -218,7 +219,8 @@ export default function Profile() {
             onPress={onEdit}
             accessibilityRole="button"
             accessibilityLabel="Edit profile"
-            style={({ pressed }) => ({
+            android_ripple={{ color: c.cardActive }}
+            style={{
               flex: 1,
               flexDirection: 'row',
               alignItems: 'center',
@@ -226,8 +228,8 @@ export default function Profile() {
               gap: 8,
               height: 40,
               borderRadius: 12,
-              backgroundColor: pressed ? c.cardActive : c.text,
-            })}
+              backgroundColor: c.text,
+            }}
           >
             <Pencil size={16} color={c.textInverse} />
             <Text style={{ fontSize: 14, fontWeight: '600', color: c.textInverse }}>Edit profile</Text>
