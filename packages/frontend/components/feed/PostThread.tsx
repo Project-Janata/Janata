@@ -4,6 +4,7 @@ import {
   Building2,
   CalendarDays,
   ChevronUp,
+  Flag,
   Globe2,
   MoreHorizontal,
   Pencil,
@@ -22,6 +23,7 @@ import {
   deleteBoardPost,
   editBoardPost,
   fetchBoardPostReplies,
+  reportBoardPost,
   setBoardPostPinned,
   toggleBoardPostReaction,
 } from '../../utils/api'
@@ -30,6 +32,7 @@ import {
   authorFromUser,
   canModifyPost,
   canPinPosts,
+  canReportPost,
   optimisticReply,
 } from './feedData'
 import type { FeedPost } from './types'
@@ -107,10 +110,12 @@ export function PostThread({
   const [editDraft, setEditDraft] = useState(post.body)
   const [actionBusy, setActionBusy] = useState(false)
   const [actionError, setActionError] = useState<string | null>(null)
+  const [actionNotice, setActionNotice] = useState<string | null>(null)
 
   const canPin = post.groupKind !== 'public' && canPinPosts(user)
   const isAuthor = canModifyPost(user, post.author.id)
-  const hasMenu = canPin || isAuthor
+  const canReport = canReportPost(user, post.author.id)
+  const hasMenu = canPin || isAuthor || canReport
   const authorProfilePress =
     onAuthorPress && post.author.id !== user?.id
       ? () => onAuthorPress(post.author.id)
@@ -149,6 +154,24 @@ export function PostThread({
     } catch (err: any) {
       track('feed_post_delete_failed', { post_id: post.postId, error: err?.message, source: 'post_thread' })
       setActionError(err?.message || 'Could not delete the post.')
+    } finally {
+      setActionBusy(false)
+    }
+  }
+
+  const handleReport = async () => {
+    if (actionBusy) return
+    setActionBusy(true)
+    setActionError(null)
+    setActionNotice(null)
+    try {
+      await reportBoardPost(post.postId)
+      setMenuOpen(false)
+      setActionNotice('Thanks — this post was reported to the moderators.')
+      track('feed_post_reported', { post_id: post.postId, source: 'post_thread' })
+    } catch (err: any) {
+      track('feed_post_report_failed', { post_id: post.postId, error: err?.message, source: 'post_thread' })
+      setActionError(err?.message || 'Could not submit the report.')
     } finally {
       setActionBusy(false)
     }
@@ -225,6 +248,7 @@ export function PostThread({
     setMenuOpen(false)
     setEditOpen(false)
     setActionError(null)
+    setActionNotice(null)
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [post.postId])
 
@@ -296,6 +320,10 @@ export function PostThread({
 
       {actionError ? (
         <Text style={{ fontSize: 12, color: '#C2410C', marginTop: 8 }}>{actionError}</Text>
+      ) : null}
+
+      {actionNotice ? (
+        <Text style={{ fontSize: 12, color: colors.accent, marginTop: 8 }}>{actionNotice}</Text>
       ) : null}
 
       <View
@@ -446,6 +474,7 @@ export function PostThread({
         colors={colors}
         canPin={canPin}
         isAuthor={isAuthor}
+        canReport={canReport}
         pinned={pinned}
         busy={actionBusy}
         postId={post.postId}
@@ -458,6 +487,7 @@ export function PostThread({
           track('feed_post_edit_opened', { post_id: post.postId, source: 'post_thread' })
         }}
         onDelete={handleDelete}
+        onReport={handleReport}
       />
 
       <EditPostModal
@@ -830,6 +860,7 @@ function ActionMenuSheet({
   colors,
   canPin,
   isAuthor,
+  canReport,
   pinned,
   busy,
   postId,
@@ -837,11 +868,13 @@ function ActionMenuSheet({
   onTogglePin,
   onEdit,
   onDelete,
+  onReport,
 }: {
   visible: boolean
   colors: AppColors
   canPin: boolean
   isAuthor: boolean
+  canReport: boolean
   pinned: boolean
   busy: boolean
   postId: string
@@ -849,11 +882,16 @@ function ActionMenuSheet({
   onTogglePin: () => void
   onEdit: () => void
   onDelete: () => void
+  onReport: () => void
 }) {
   const { track } = useAnalytics()
   const [confirmingDelete, setConfirmingDelete] = useState(false)
+  const [confirmingReport, setConfirmingReport] = useState(false)
   useEffect(() => {
-    if (!visible) setConfirmingDelete(false)
+    if (!visible) {
+      setConfirmingDelete(false)
+      setConfirmingReport(false)
+    }
   }, [visible])
 
   return (
@@ -955,6 +993,62 @@ function ActionMenuSheet({
                 destructive
                 disabled={busy}
                 onPress={() => { setConfirmingDelete(true); track('feed_post_delete_confirm_shown', { post_id: postId, source: 'post_thread' }) }}
+              />
+            )
+          ) : null}
+          {canReport ? (
+            confirmingReport ? (
+              <View style={{ paddingVertical: 10, paddingHorizontal: 12, gap: 10 }}>
+                <Text style={{ fontSize: 14, color: colors.text }}>
+                  Report this post to the moderators?
+                </Text>
+                <View style={{ flexDirection: 'row', gap: 10 }}>
+                  <Pressable
+                    onPress={() => { setConfirmingReport(false); track('feed_post_report_cancelled', { post_id: postId, source: 'post_thread' }) }}
+                    disabled={busy}
+                    accessibilityRole="button"
+                    accessibilityLabel="Cancel report"
+                    style={{
+                      flex: 1,
+                      borderRadius: 12,
+                      borderWidth: 1,
+                      borderColor: colors.border,
+                      paddingVertical: 11,
+                      alignItems: 'center',
+                    }}
+                  >
+                    <Text style={{ fontSize: 14, color: colors.text }}>Cancel</Text>
+                  </Pressable>
+                  <Pressable
+                    onPress={onReport}
+                    disabled={busy}
+                    accessibilityRole="button"
+                    accessibilityLabel="Confirm report"
+                    style={{
+                      flex: 1,
+                      borderRadius: 12,
+                      backgroundColor: '#C2410C',
+                      paddingVertical: 11,
+                      alignItems: 'center',
+                      opacity: busy ? 0.6 : 1,
+                    }}
+                  >
+                    {busy ? (
+                      <ActivityIndicator size="small" color="#FFFFFF" />
+                    ) : (
+                      <Text style={{ fontSize: 14, color: '#FFFFFF' }}>Report</Text>
+                    )}
+                  </Pressable>
+                </View>
+              </View>
+            ) : (
+              <MenuRow
+                icon={<Flag size={18} color="#C2410C" />}
+                label="Report post"
+                colors={colors}
+                destructive
+                disabled={busy}
+                onPress={() => { setConfirmingReport(true); track('feed_post_report_confirm_shown', { post_id: postId, source: 'post_thread' }) }}
               />
             )
           ) : null}

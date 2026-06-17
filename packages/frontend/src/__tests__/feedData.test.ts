@@ -6,6 +6,7 @@ import {
   optimisticReply,
   canPinPosts,
   canModifyPost,
+  canReportPost,
   applyOptimisticReaction,
 } from '../../components/feed/feedData'
 import type { GroupBoard } from '../../components/feed/types'
@@ -148,6 +149,23 @@ describe('canModifyPost', () => {
     expect(canModifyPost({ id: 'u1', username: 'a' } as any, 'u2')).toBe(false)
     expect(canModifyPost({ username: 'a' } as any, 'u1')).toBe(false)
     expect(canModifyPost(null, 'u1')).toBe(false)
+  })
+})
+
+describe('canReportPost', () => {
+  it('lets a verified member report someone else\'s post', () => {
+    expect(canReportPost({ id: 'u1', username: 'a', isVerified: true } as any, 'u2')).toBe(true)
+    expect(canReportPost({ id: 'u1', username: 'a', verificationLevel: 1 } as any, 'u2')).toBe(true)
+  })
+
+  it('hides report on your own post (edit/delete cover that)', () => {
+    expect(canReportPost({ id: 'u1', username: 'a', isVerified: true } as any, 'u1')).toBe(false)
+  })
+
+  it('requires a signed-in verified user', () => {
+    expect(canReportPost(null, 'u2')).toBe(false)
+    expect(canReportPost({ id: 'u1', username: 'a' } as any, 'u2')).toBe(false)
+    expect(canReportPost({ id: 'u1', username: 'a', verificationLevel: 0 } as any, 'u2')).toBe(false)
   })
 })
 
