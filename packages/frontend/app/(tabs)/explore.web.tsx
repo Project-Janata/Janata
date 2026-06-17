@@ -267,6 +267,7 @@ export default function DiscoverScreenWeb() {
   const [searchQuery, setSearchQuery] = useState('')
   const [selectedDate, setSelectedDate] = useState<string | null>(null)
   const [showGoingOnly, setShowGoingOnly] = useState(false)
+  const [showMineOnly, setShowMineOnly] = useState(false)
   const [showPastEvents, setShowPastEvents] = useState(false)
   // Center dropdown — picks which center's *area* to show events for, mirroring
   // the mobile fallback. "__all__" = every center (no proximity scoping); null =
@@ -285,7 +286,12 @@ export default function DiscoverScreenWeb() {
   // Event form panel: null = hidden, { id?: string } = open (id present = edit, absent = create)
   const [formPanel, setFormPanel] = useState<{ id?: string } | null>(null)
   const { items, filteredPoints, loading, allEvents, allCenters, refresh, updateEventStatus } =
-    useDiscoverData(activeFilter, searchQuery, user?.id, showPastEvents, showGoingOnly, user?.interests ?? undefined, user?.centerID, { fetchAttendees: true })
+    useDiscoverData(activeFilter, searchQuery, user?.id, showPastEvents, showGoingOnly, showMineOnly, user?.interests ?? undefined, user?.centerID, { fetchAttendees: true })
+
+  const hasCreatedEvents = useMemo(
+    () => allEvents.some((e) => e.createdBy === user?.id),
+    [allEvents, user?.id]
+  )
 
   // Get user's center for map initial location
   const { center: userCenter } = useCenterDetail(user?.centerID || '')
@@ -803,6 +809,17 @@ export default function DiscoverScreenWeb() {
                         onPress={() => {
                           track('discover_going_filter_toggled', { enabled: !showGoingOnly, source: 'discover' })
                           setShowGoingOnly((prev: boolean) => !prev)
+                        }}
+                      />
+                    )}
+                    {user && hasCreatedEvents && (
+                      <FilterChip
+                        label="Mine"
+                        variant="outline"
+                        active={showMineOnly}
+                        onPress={() => {
+                          track('discover_mine_filter_toggled', { enabled: !showMineOnly, source: 'discover' })
+                          setShowMineOnly((prev: boolean) => !prev)
                         }}
                       />
                     )}

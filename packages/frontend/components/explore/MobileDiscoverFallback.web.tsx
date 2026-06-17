@@ -37,6 +37,7 @@ export function MobileDiscoverFallback() {
   const [searchQuery, setSearchQuery] = useState('')
   const [selectedDate, setSelectedDate] = useState<string | null>(null)
   const [showGoingOnly, setShowGoingOnly] = useState(false)
+  const [showMineOnly, setShowMineOnly] = useState(false)
   const [showPastEvents] = useState(false)
   const [selectedCenter, setSelectedCenter] = useState<string | null>(null)
   // The center dropdown opens an in-sheet list (not a modal) - view, pick one, or close.
@@ -49,9 +50,15 @@ export function MobileDiscoverFallback() {
     user?.id,
     showPastEvents,
     showGoingOnly,
+    showMineOnly,
     user?.interests ?? undefined,
     user?.centerID,
     { fetchAttendees: true }
+  )
+
+  const hasCreatedEvents = useMemo(
+    () => allEvents.some((e) => e.createdBy === user?.id),
+    [allEvents, user?.id]
   )
 
   useEffect(() => {
@@ -517,6 +524,17 @@ export function MobileDiscoverFallback() {
                       onPress={() => {
                         track('discover_going_filter_toggled', { enabled: !showGoingOnly, source: 'discover' })
                         setShowGoingOnly((prev: boolean) => !prev)
+                      }}
+                    />
+                  )}
+                  {user && hasCreatedEvents && (
+                    <FilterChip
+                      label="Mine"
+                      variant="outline"
+                      active={showMineOnly}
+                      onPress={() => {
+                        track('discover_mine_filter_toggled', { enabled: !showMineOnly, source: 'discover' })
+                        setShowMineOnly((prev: boolean) => !prev)
                       }}
                     />
                   )}

@@ -69,7 +69,7 @@ export default function HomeScreen() {
   const detailColors = useDetailColors()
   const { events: myEvents, loading: myEventsLoading, refetch: refetchMyEvents } = useMyEvents(user?.username)
   const { allEvents, allCenters, loading: discoverLoading, refresh: refreshDiscover } = useDiscoverData(
-    'Events', '', user?.id, false, false, user?.interests ?? undefined, user?.centerID
+    'Events', '', user?.id, false, false, false, user?.interests ?? undefined, user?.centerID
   )
 
   // Boards peek (#199): surface the 1-2 latest posts from the user's center

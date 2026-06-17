@@ -721,6 +721,7 @@ export function useDiscoverData(
   userId?: string,
   showPastEvents = false,
   showGoingOnly = false,
+  showMineOnly = false,
   userInterests?: string[],
   userCenterID?: string | null,
   options?: UseDiscoverOptions,
@@ -822,14 +823,19 @@ export function useDiscoverData(
       ? interestEvents.filter((e) => e.isRegistered)
       : interestEvents
 
+    // Mine-only toggle (events the current user created)
+    const mineEvents = showMineOnly
+      ? goingEvents.filter((e) => e.createdBy === userId)
+      : goingEvents
+
     // Search query (events: title/location, centers: name/address)
     const events = query
-      ? goingEvents.filter(
+      ? mineEvents.filter(
           (e) =>
             e.title.toLowerCase().includes(query) ||
             e.location.toLowerCase().includes(query)
         )
-      : goingEvents
+      : mineEvents
     const centers = query
       ? allCenters.filter(
           (c) =>
@@ -839,7 +845,7 @@ export function useDiscoverData(
       : allCenters
 
     return { filteredEventList: events, filteredCenterList: centers }
-  }, [allEvents, allCenters, searchQuery, showPastEvents, showGoingOnly, userInterests])
+  }, [allEvents, allCenters, searchQuery, showPastEvents, showGoingOnly, showMineOnly, userId, userInterests])
 
   const items = useMemo<DiscoverItem[]>(() => {
     if (filter === 'Centers') {
