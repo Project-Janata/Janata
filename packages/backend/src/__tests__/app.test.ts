@@ -3020,7 +3020,7 @@ describe('POST /api/auth/invite-codes (mint)', () => {
     const { res, body } = await jsonPost('/api/auth/invite-codes', {}, authHeader(token))
     expect(res.status).toBe(200)
     expect(body.code).toMatch(/^[0-9A-F]{12}$/)
-    expect(body.shareUrl).toBe(`https://chinmayajanata.org/i/${body.code}`)
+    expect(body.shareUrl).toBe(`https://janata.app/i/${body.code}`)
     expect(body.maxUses).toBe(25)
     const ttlDays = (new Date(body.expiresAt).getTime() - Date.now()) / (24 * 60 * 60 * 1000)
     expect(ttlDays).toBeGreaterThan(6.9)
@@ -3110,7 +3110,7 @@ describe('GET /api/auth/invite-codes/mine', () => {
     })
     expect(body.codes).toHaveLength(2)
     expect(body.codes[0].isUsable).toBe(true)
-    expect(body.codes[0].shareUrl).toBe(`https://chinmayajanata.org/i/${body.codes[0].code}`)
+    expect(body.codes[0].shareUrl).toBe(`https://janata.app/i/${body.codes[0].code}`)
   })
 
   it("does not leak other users' codes", async () => {

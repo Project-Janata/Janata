@@ -1,0 +1,10 @@
+name = "janata-shortlink"
+main = "src/index.ts"
+compatibility_date = "2026-02-26"
+workers_dev = false
+
+# Binds the worker to the whole janata.app zone. Account id comes from the
+# CLOUDFLARE_ACCOUNT_ID env var (same as the other workers in this repo).
+routes = [
+  { pattern = "janata.app/*", zone_name = "janata.app" },
+]

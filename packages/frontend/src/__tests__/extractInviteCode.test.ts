@@ -20,6 +20,11 @@ describe('extractInviteCode', () => {
     expect(extractInviteCode('https://chinmayajanata.org/i/ABC123')).toBe('ABC123')
   })
 
+  it('pulls the code out of a janata.app short link', () => {
+    expect(extractInviteCode('https://janata.app/i/ABC123')).toBe('ABC123')
+    expect(extractInviteCode('janata.app/i/ABC123?utm=x')).toBe('ABC123')
+  })
+
   it('pulls the code out of a legacy /invite/ link', () => {
     expect(extractInviteCode('https://chinmayajanata.org/invite/XYZ789')).toBe('XYZ789')
   })
