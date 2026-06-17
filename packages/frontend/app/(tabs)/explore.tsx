@@ -673,6 +673,22 @@ export default function DiscoverScreen() {
                 placeholderTextColor="#9CA3AF"
                 value={searchQuery}
                 onChangeText={setSearchQuery}
+                onFocus={() => {
+                  // Keep the sheet visible above the keyboard: if it's below ~50%
+                  // (collapsed/peek), snap up to the mid stop (~80% visible).
+                  const { mid } = snapsRef.current
+                  if (offsetRef.current > mid + 1) {
+                    offsetRef.current = mid
+                    setIsSheetExpanded(false)
+                    Animated.spring(sheetY, {
+                      toValue: mid,
+                      useNativeDriver: false,
+                      damping: 28,
+                      stiffness: 220,
+                      mass: 0.8,
+                    }).start()
+                  }
+                }}
                 onEndEditing={() => {
                   if (searchQuery.trim()) {
                     track('discover_search', { query: searchQuery.trim(), source: 'discover' })

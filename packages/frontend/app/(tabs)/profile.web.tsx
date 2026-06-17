@@ -120,21 +120,21 @@ export default function Profile() {
       onPress={() => { track('settings_invite_pressed', { source: 'profile_web' }); router.push('/settings/invite') }}
       accessibilityRole="button"
       accessibilityLabel="Invite friends"
-      style={[card, { flexDirection: 'row', alignItems: 'center', gap: 13, padding: 16, marginTop: 14 }]}
+      style={{ flexDirection: 'row', alignItems: 'center', gap: 12, marginTop: 14, paddingTop: 14, borderTopWidth: 1, borderTopColor: c.border }}
     >
-      <View style={{ width: 40, height: 40, borderRadius: 11, backgroundColor: c.accentSoft, alignItems: 'center', justifyContent: 'center' }}>
-        <UserPlus size={18} color="#C2410C" />
+      <View style={{ width: 34, height: 34, borderRadius: 10, backgroundColor: c.accentSoft, alignItems: 'center', justifyContent: 'center' }}>
+        <UserPlus size={16} color="#C2410C" />
       </View>
       <View style={{ flex: 1, minWidth: 0 }}>
-        <Text style={{ fontSize: 14.5, fontWeight: '600', color: c.text }}>Invite friends</Text>
-        <Text style={{ fontSize: 12.5, color: c.textMuted, marginTop: 2 }}>Share Janata with your community</Text>
+        <Text style={{ fontSize: 14, fontWeight: '600', color: c.text }}>Invite friends</Text>
+        <Text style={{ fontSize: 12.5, color: c.textMuted, marginTop: 1 }}>Share Janata with your community</Text>
       </View>
-      <ChevronRight size={16} color={c.iconMuted} />
+      <ChevronRight size={18} color={c.iconMuted} />
     </Pressable>
   )
 
   const ProfileCard = (
-    <View style={[card, { padding: 16, ...(isDesktop ? { position: 'sticky' as 'absolute', top: 80 } : {}) }]}>
+    <View style={[card, { padding: 16 }]}>
       <View style={{ flexDirection: 'row', alignItems: 'center', gap: 14 }}>
         {user?.profileImage ? (
           <Image source={{ uri: user.profileImage }} style={{ width: 66, height: 66, borderRadius: 33, borderWidth: 3, borderColor: c.card, backgroundColor: c.surface }} />
@@ -209,6 +209,8 @@ export default function Profile() {
           ))}
         </View>
       ) : null}
+
+      {InviteCard}
 
       <Pressable
         onPress={onSettings}
@@ -330,10 +332,7 @@ export default function Profile() {
             : { flexDirection: 'column', gap: 18 }),
         }}
       >
-        <View style={isDesktop ? { width: 330 } : { width: '100%' }}>
-          {ProfileCard}
-          {InviteCard}
-        </View>
+        <View style={isDesktop ? { width: 330 } : { width: '100%' }}>{ProfileCard}</View>
         <View style={{ flex: 1, width: '100%' }}>{RightColumn}</View>
       </View>
     </ScrollView>
