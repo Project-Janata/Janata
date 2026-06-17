@@ -14,6 +14,7 @@ import type { Env, UserRow, EventRow, CenterRow, BoardPostApiResponse, BoardType
 import {
   userRowToApi,
   userRowToAttendee,
+  userRowToBoardPostAuthor,
   userRowToPublicProfile,
   centerRowToApi,
   eventRowToApi,
@@ -74,7 +75,7 @@ function boardPostToApi(post: db.BoardPostWithAuthor): BoardPostApiResponse {
     deletedAt: post.deleted_at,
     pinnedAt: post.pinned_at,
     pinnedBy: post.pinned_by,
-    author: userRowToApi(post.author),
+    author: userRowToBoardPostAuthor(post.author),
     reactions: post.reactions,
     replyCount: post.reply_count,
   }

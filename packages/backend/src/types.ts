@@ -295,6 +295,16 @@ export interface BoardApiResponse {
   createdAt: string
 }
 
+export interface BoardPostAuthorApiResponse {
+  id: string
+  firstName: string
+  lastName: string
+  profileImage: string | null
+  centerID: string | null
+  verificationLevel: number
+  isVerified: boolean
+}
+
 export interface BoardPostApiResponse {
   id: string
   boardId: string | null
@@ -306,7 +316,7 @@ export interface BoardPostApiResponse {
   deletedAt: string | null
   pinnedAt: string | null
   pinnedBy: string | null
-  author: UserApiResponse
+  author: BoardPostAuthorApiResponse
   reactions: BoardReactionCount[]
   replyCount: number
 }
@@ -398,6 +408,18 @@ export function userRowToPublicProfile(
     region: row.region,
     hostedEvents,
     createdAt: row.created_at,
+  }
+}
+
+export function userRowToBoardPostAuthor(row: UserRow): BoardPostAuthorApiResponse {
+  return {
+    id: row.id,
+    firstName: row.first_name,
+    lastName: row.last_name,
+    profileImage: row.profile_image,
+    centerID: row.center_id,
+    verificationLevel: row.verification_level,
+    isVerified: row.verification_level >= NORMAL_USER,
   }
 }
 

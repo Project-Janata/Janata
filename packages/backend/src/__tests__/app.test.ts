@@ -87,6 +87,66 @@ function authHeader(token: string) {
   return { Authorization: `Bearer ${token}` }
 }
 
+const SAFE_BOARD_POST_AUTHOR_KEYS = [
+  'centerID',
+  'firstName',
+  'id',
+  'isVerified',
+  'lastName',
+  'profileImage',
+  'verificationLevel',
+]
+
+const FORBIDDEN_BOARD_POST_AUTHOR_KEYS = [
+  'username',
+  'email',
+  'dateOfBirth',
+  'phone',
+  'phoneNumber',
+  'points',
+  'isActive',
+  'profileComplete',
+  'interests',
+  'school',
+  'work',
+  'region',
+  'lookingFor',
+  'isSuspended',
+  'suspendedAt',
+  'suspendedUntil',
+  'suspendedReason',
+  'suspendedBy',
+  'createdAt',
+  'updatedAt',
+]
+
+function expectSafeBoardPostAuthor(
+  author: any,
+  expected: {
+    id: string
+    firstName: string
+    lastName: string
+    profileImage: string | null
+    centerID: string | null
+    verificationLevel?: number
+    isVerified?: boolean
+  },
+) {
+  expect(author).toMatchObject({
+    id: expected.id,
+    firstName: expected.firstName,
+    lastName: expected.lastName,
+    profileImage: expected.profileImage,
+    centerID: expected.centerID,
+    verificationLevel: expected.verificationLevel ?? NORMAL_USER,
+    isVerified: expected.isVerified ?? true,
+  })
+  expect(Object.keys(author).sort()).toEqual([...SAFE_BOARD_POST_AUTHOR_KEYS].sort())
+  for (const field of FORBIDDEN_BOARD_POST_AUTHOR_KEYS) {
+    expect(author).not.toHaveProperty(field)
+  }
+}
+
 /**
  * Create the admin user and return their token.
  * Uses the ADMIN_EMAIL as the username so isAdmin() recognizes it.
@@ -1111,11 +1171,13 @@ describe('board routes', () => {
   let adminToken: string
   let memberToken: string
   let centerId: string
+  let memberId: string
 
   beforeEach(async () => {
     adminToken = await createAdmin()
     const member = await registerAndLogin('boardmember', 'password123')
     memberToken = member.token
+    memberId = member.user.id
 
     const { body } = await jsonPost(
       '/api/addCenter',
@@ -1128,8 +1190,25 @@ describe('board routes', () => {
     )
     centerId = body.id
 
-    await env.DB.prepare('UPDATE users SET center_id = ? WHERE username = ?')
-      .bind(centerId, 'boardmember')
+    await env.DB.prepare(
+      `UPDATE users
+       SET center_id = ?,
+           first_name = ?,
+           last_name = ?,
+           profile_image = ?,
+           date_of_birth = ?,
+           phone_number = ?
+       WHERE username = ?`,
+    )
+      .bind(
+        centerId,
+        'Board',
+        'Member',
+        'https://img.example.com/boardmember.jpg',
+        '1999-01-02',
+        '+15551234567',
+        'boardmember',
+      )
       .run()
   })
 
@@ -1154,7 +1233,28 @@ describe('board routes', () => {
 
     expect(createRes.status).toBe(201)
     expect(createBody.post.body).toBe('Who is driving from South Bay?')
-    expect(createBody.post.author.username).toBe('boardmember')
+    expectSafeBoardPostAuthor(createBody.post.author, {
+      id: memberId,
+      firstName: 'Board',
+      lastName: 'Member',
+      profileImage: 'https://img.example.com/boardmember.jpg',
+      centerID: centerId,
+    })
+
+    await env.DB.prepare(
+      `UPDATE users
+       SET suspended_at = ?,
+           suspended_until = ?,
+           suspended_reason = ?
+       WHERE id = ?`,
+    )
+      .bind(
+        '2026-01-01T00:00:00Z',
+        '2030-01-01T00:00:00Z',
+        'test suspension should not leak',
+        memberId,
+      )
+      .run()
 
     const { body } = await fetchJSON(
       `/api/boards/center/${centerId}`,
@@ -1163,6 +1263,13 @@ describe('board routes', () => {
 
     expect(body.posts).toHaveLength(1)
     expect(body.posts[0].body).toBe('Who is driving from South Bay?')
+    expectSafeBoardPostAuthor(body.posts[0].author, {
+      id: memberId,
+      firstName: 'Board',
+      lastName: 'Member',
+      profileImage: 'https://img.example.com/boardmember.jpg',
+      centerID: centerId,
+    })
   })
 
   it('rejects center board access for signed-in users at another center', async () => {
@@ -1571,7 +1678,13 @@ describe('board routes', () => {
       )
       expect(createRes.status).toBe(201)
       expect(createBody.reply.body).toBe('first reply')
-      expect(createBody.reply.author.username).toBe('boardmember')
+      expectSafeBoardPostAuthor(createBody.reply.author, {
+        id: memberId,
+        firstName: 'Board',
+        lastName: 'Member',
+        profileImage: 'https://img.example.com/boardmember.jpg',
+        centerID: centerId,
+      })
 
       const { res: listRes, body: listBody } = await fetchJSON(
         `/api/boards/posts/${parentId}/replies`,
@@ -1580,6 +1693,13 @@ describe('board routes', () => {
       expect(listRes.status).toBe(200)
       expect(listBody.replies).toHaveLength(1)
       expect(listBody.replies[0].body).toBe('first reply')
+      expectSafeBoardPostAuthor(listBody.replies[0].author, {
+        id: memberId,
+        firstName: 'Board',
+        lastName: 'Member',
+        profileImage: 'https://img.example.com/boardmember.jpg',
+        centerID: centerId,
+      })
     })
 
     it('excludes replies from the top-level board listing', async () => {
@@ -1714,11 +1834,27 @@ describe('GET /api/feed — aggregated cross-board feed', () => {
     )
     otherCenterId = c2.id
 
-    // Place member at center A; stranger stays unaffiliated.
+    // Place member at center A; stranger stays unaffiliated. Also set private
+    // fields that board/feed author payloads must never expose.
     await env.DB.prepare(
-      'UPDATE users SET center_id = ? WHERE username = ?',
+      `UPDATE users
+       SET center_id = ?,
+           first_name = ?,
+           last_name = ?,
+           profile_image = ?,
+           date_of_birth = ?,
+           phone_number = ?
+       WHERE username = ?`,
     )
-      .bind(centerId, 'feedmember')
+      .bind(
+        centerId,
+        'Feed',
+        'Member',
+        'https://img.example.com/feedmember.jpg',
+        '1998-03-04',
+        '+15557654321',
+        'feedmember',
+      )
       .run()
     const memberRow = await env.DB.prepare(
       'SELECT id FROM users WHERE username = ?',
@@ -1751,6 +1887,43 @@ describe('GET /api/feed — aggregated cross-board feed', () => {
     )
     expect(res.status).toBe(200)
     expect(body.posts.map((p: { body: string }) => p.body)).toEqual(['mine'])
+  })
+
+  it('returns safe author payloads in aggregated feed posts', async () => {
+    await jsonPost(
+      `/api/boards/center/${centerId}/posts`,
+      { body: 'safe author' },
+      authHeader(memberToken),
+    )
+    await env.DB.prepare(
+      `UPDATE users
+       SET suspended_at = ?,
+           suspended_until = ?,
+           suspended_reason = ?
+       WHERE id = ?`,
+    )
+      .bind(
+        '2026-01-01T00:00:00Z',
+        '2030-01-01T00:00:00Z',
+        'test suspension should not leak',
+        memberId,
+      )
+      .run()
+
+    const { res, body } = await fetchJSON(
+      '/api/feed',
+      { headers: authHeader(memberToken) },
+    )
+    expect(res.status).toBe(200)
+    expect(body.posts).toHaveLength(1)
+    expect(body.posts[0].body).toBe('safe author')
+    expectSafeBoardPostAuthor(body.posts[0].author, {
+      id: memberId,
+      firstName: 'Feed',
+      lastName: 'Member',
+      profileImage: 'https://img.example.com/feedmember.jpg',
+      centerID: centerId,
+    })
   })
 
   it('includes event board posts only for events the user RSVPd to', async () => {
