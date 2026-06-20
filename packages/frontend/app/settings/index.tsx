@@ -10,6 +10,7 @@ import {
   AlertTriangle,
   UserPlus,
   Bell,
+  MessageSquare,
 } from 'lucide-react-native'
 import { useUser, useTheme } from '../../components/contexts'
 import { Avatar, Text, Section, StackHeader } from '../../components/ui'
@@ -215,6 +216,27 @@ export default function PreferencesNative() {
               <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12 }}>
                 <UserPlus size={20} color={textColor} />
                 <Text style={{ fontSize: 15, color: textColor }}>Invite Friends</Text>
+              </View>
+            </MenuRow>
+          </View>
+        </Section>
+
+        <Section title="FEEDBACK" titleColor={faintColor}>
+          <View
+            style={{
+              borderTopWidth: 1,
+              borderBottomWidth: 1,
+              borderColor,
+              marginHorizontal: -16,
+            }}
+          >
+            <MenuRow onPress={() => {
+              track('settings_feedback_pressed', { source: 'settings' })
+              router.push('/feedback?from=/settings')
+            }}>
+              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12 }}>
+                <MessageSquare size={20} color={textColor} />
+                <Text style={{ fontSize: 15, color: textColor }}>Send Feedback</Text>
               </View>
             </MenuRow>
           </View>

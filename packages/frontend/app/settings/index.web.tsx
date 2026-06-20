@@ -172,6 +172,23 @@ export default function Preferences() {
                 alignItems: 'center',
                 justifyContent: 'space-between',
                 padding: isNarrowWeb ? 20 : 28,
+                borderBottomWidth: 1,
+                borderBottomColor: borderColor,
+              }}
+              onPress={() => {
+                track('settings_feedback_pressed', { source: 'settings_web' })
+                router.push('/feedback?from=/settings')
+              }}
+            >
+              <Text style={{ fontSize: 15, color: textColor }}>Send Feedback</Text>
+              <ChevronRight size={18} color={iconColor} />
+            </Pressable>
+            <Pressable
+              style={{
+                flexDirection: 'row',
+                alignItems: 'center',
+                justifyContent: 'space-between',
+                padding: isNarrowWeb ? 20 : 28,
               }}
               onPress={handleLogout}
             >

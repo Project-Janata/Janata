@@ -332,6 +332,7 @@ function RootLayoutNav({ onAuthReady }: { onAuthReady: () => void }) {
           <Stack.Screen name="edit-profile" options={{ headerShown: false }} />
           <Stack.Screen name="center-picker" options={{ headerShown: false }} />
           <Stack.Screen name="admin" options={{ headerShown: false }} />
+          <Stack.Screen name="feedback" options={{ headerShown: true, title: 'Feedback' }} />
         </Stack>
         </View>
         {showBottomNav && <WebBottomNav />}
