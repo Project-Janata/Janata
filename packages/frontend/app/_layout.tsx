@@ -33,6 +33,7 @@ import {
 import { ErrorBoundaryWithAnalytics } from '../components/ui/ErrorBoundary'
 import WebBottomNav from '../components/ui/WebBottomNav'
 import { AnalyticsScreenTracker, AnalyticsBootstrap } from '../utils/analytics'
+import { resolvePostHogHost, isSafeClientPostHogKey } from '../utils/analyticsConfig'
 import { supportsNativeDriver } from '../utils/animation'
 import { usePushNotifications } from '../hooks/usePushNotifications'
 import { getIntroShown } from '../utils/introStorage'
@@ -45,9 +46,20 @@ export const unstable_settings = {
 SplashScreen.preventAutoHideAsync()
 SplashScreen.setOptions({ duration: 350, fade: true })
 
-const posthogHost = process.env.EXPO_PUBLIC_POSTHOG_HOST || 'https://us.i.posthog.com'
+// Web captures through the app's own origin (/ingest, rewritten to PostHog at
+// the edge) so the browser never makes a cross-origin request — no CORS errors,
+// ad-blocker resistant. Native talks to the direct absolute ingestion host. See
+// utils/analyticsConfig.ts and #541.
+const posthogHost = resolvePostHogHost({
+  platform: Platform.OS as 'web' | 'ios' | 'android',
+  // Reference the literal so Expo inlines it at build time (a dynamic lookup off
+  // a passed-in process.env object is NOT inlined and reads undefined on web).
+  env: { EXPO_PUBLIC_POSTHOG_HOST: process.env.EXPO_PUBLIC_POSTHOG_HOST },
+  origin: typeof window !== 'undefined' ? window.location?.origin : undefined,
+})
 const posthogKey = process.env.EXPO_PUBLIC_POSTHOG_KEY
-const posthogEnabled = !!(posthogKey && posthogKey.trim().length > 0)
+// Only ship the public project key (phc_…); never a personal/secret key.
+const posthogEnabled = isSafeClientPostHogKey(posthogKey)
 
 export default function RootLayout() {
   const [fontsLoaded] = useFonts({

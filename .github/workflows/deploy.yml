@@ -73,7 +73,12 @@ jobs:
         env:
           # Inlined at build time by Expo; same key as local packages/frontend/.env
           EXPO_PUBLIC_POSTHOG_KEY: ${{ secrets.EXPO_PUBLIC_POSTHOG_KEY }}
-          EXPO_PUBLIC_POSTHOG_HOST: ${{ secrets.EXPO_PUBLIC_POSTHOG_HOST }}
+          # NOTE: deliberately NOT setting EXPO_PUBLIC_POSTHOG_HOST for web.
+          # Web analytics must stay same-origin to avoid CORS / ad-blocker drops
+          # (#541): with no override, resolvePostHogHost() routes the browser to
+          # the app's own /ingest path, which the Pages Function (public/functions/
+          # ingest/[[path]].js) proxies to PostHog. Setting a *.posthog.com host
+          # here would reintroduce the cross-origin request the proxy exists to fix.
 
       - name: Show Pages production branch (diagnostic)
         run: npx wrangler pages project list
