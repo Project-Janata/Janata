@@ -80,20 +80,37 @@ function extractTap(response: Notifications.NotificationResponse): PushTapPayloa
 }
 
 /**
+ * Notification identifiers we've already routed this session. The launch tap
+ * (#535) is surfaced on two channels — the live listener and
+ * getLastNotificationResponseAsync — and the latter keeps returning the SAME
+ * launch response for the whole session, re-delivered every time the routing
+ * effect re-subscribes. Keying on the notification identifier ensures each tap
+ * is handled exactly once, no matter how many channels report it or how often
+ * the listener is re-created. Module-level so it survives re-subscription.
+ */
+const handledTapIds = new Set<string>()
+
+/**
  * Subscribe to notification taps. Fires the handler when the user taps a push
- * (both cold-start and warm). Returns an unsubscribe function.
+ * (both cold-start and warm). Each distinct notification is routed at most once
+ * per session. Returns an unsubscribe function.
  */
 export function addNotificationResponseListener(
   handler: (payload: PushTapPayload) => void,
 ): () => void {
-  // Warm taps while the app is running.
-  const sub = Notifications.addNotificationResponseReceivedListener((response) => {
+  const handleOnce = (response: Notifications.NotificationResponse) => {
+    const id = response.notification.request.identifier
+    if (id && handledTapIds.has(id)) return
+    if (id) handledTapIds.add(id)
     handler(extractTap(response))
-  })
+  }
+
+  // Warm taps while the app is running.
+  const sub = Notifications.addNotificationResponseReceivedListener(handleOnce)
 
   // Cold start: the app was launched by tapping a notification.
   Notifications.getLastNotificationResponseAsync().then((response) => {
-    if (response) handler(extractTap(response))
+    if (response) handleOnce(response)
   })
 
   return () => sub.remove()
