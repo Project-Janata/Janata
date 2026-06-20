@@ -412,6 +412,13 @@ export default function FeedScreen() {
     router.push('/explore' as never)
   }, [router, track])
 
+  // Hard-gate path (new-15): the not-yet-invited paste an invite link/code.
+  // /auth's invite step validates it; #403's Door 1 takes over post-#440.
+  const handlePasteInvite = useCallback(() => {
+    track('feed_paste_invite_pressed', { source: 'feed_setup' })
+    router.push('/auth' as never)
+  }, [router, track])
+
   // Inline "join your center" from the empty-state rail. A guest can't persist a
   // center yet, so we stash the pick and route to auth (it survives sign-in via
   // centerPickerStore). A signed-in member joins immediately via updateProfile,
@@ -526,6 +533,7 @@ export default function FeedScreen() {
             onSignIn={handleSignIn}
             onJoinCenter={handleJoinCenter}
             onBrowseEvents={handleBrowseEvents}
+            onPasteInvite={handlePasteInvite}
             onCompose={() => {
               track('feed_compose_pressed', { source: 'feed_empty_panel' })
               setCreatePostOpen(true)

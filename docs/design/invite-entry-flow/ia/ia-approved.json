@@ -1,0 +1,34 @@
+{
+  "chosen": "A — door-routed (intent-first; auth just-in-time)",
+  "tree": {
+    "id": "root", "label": "Entry routing",
+    "children": [
+      { "id": "door1", "label": "Door 1 · Invite landing (chinmayajanata.org/i/CODE)", "states": ["invited", "auto-logged-in"], "children": [
+        { "id": "new-01", "label": "Vouch banner: 'Anand invited you to Janata' (inviter avatar+name)" },
+        { "id": "new-02", "label": "One strong hero: 3D art + one-line what-Janata-is (extra slides OPTIONAL/swipeable, not forced)" },
+        { "id": "new-03", "label": "Accept invite (primary) + Already a member? Log in (ghost)" },
+        { "id": "create-account", "label": "Create account: email + password, invite pre-applied, verified at inception" },
+        { "id": "new-04", "label": "Invalid/expired state -> paste a link / request one" },
+        { "id": "new-05", "label": "Auto-logged-in -> one-tap 'Join?' or open app (NO signup)" }
+      ]},
+      { "id": "door2", "label": "Door 2 · Browse-first landing (chinmayajanata.org)", "states": ["cold", "not-invited", "existing-not-logged-in"], "children": [
+        { "id": "new-10", "label": "Real events + centers near you, immediately; location pill refiner (fallback 'Popular this week' if location unknown)" },
+        { "id": "new-11", "label": "Tap event -> event detail -> RSVP -> name+email only (account-less; #191 guest RSVP backing)" },
+        { "id": "new-12", "label": "Tries member account -> invite wall: 'members need an invite' + RSVP + ask a member" },
+        { "id": "new-13", "label": "Log in (existing member) -> in-context login -> resume pending action" }
+      ]}
+    ]
+  },
+  "rule": "Auth never blocks the door. It fires only at the commit moment (Accept / RSVP / Log in), and the user only ever sees the variant that fits their state.",
+  "kept_from_current": ["form-01 email->checkUserExists routing (reused for Condition 3 login)", "act-03 forgot password", "copy-03 terms/privacy footer"],
+  "cut": ["form-03 invite-as-typed-code-step (replaced by invite-as-door new-01..03)", "blk-02 generic 3-bullet benefit list on initial auth step (replaced by door-specific heroes)", "PUBLIC-EXPLORE silent-account browse hack (AuthPromptModal; #440 deletes it)"],
+  "added": ["new-01","new-02","new-03","new-04","new-05","new-10","new-11","new-12","new-13"],
+  "reality_check": {
+    "already_in_v2": ["logged-out browse (tab layout ungated)", "account-less RSVP (#191 + event_guest_rsvps)", "email->exists->login (auth.tsx)"],
+    "in_pr_440": ["verified-at-inception register", "spinner resolver invite/[code].tsx", "auto-logged-in -> /(tabs)", "deletes AuthPromptModal/PUBLIC-EXPLORE"],
+    "net_new_this_round": ["Door 1 vouch screen (#403 owns build)", "Door 2 browse-first landing screen (#404 owns build)"],
+    "still_a_todo": "hard-gate enforcement (retire PUBLIC-EXPLORE + grandfather migration) deferred in #440 — account-less RSVP and invite-only accounts coexist until it lands"
+  },
+  "rationale": "Wins every top task: vouch felt at 0 taps, events at 0 taps, RSVP without account, existing-member login from the browse door, auto-logged-in skips signup. Lines up with #440's direction; fills the two screens #440 left to #403/#404; makes Door 1 leaner than the mock's forced carousel.",
+  "approved": { "at": "2026-06-09T00:40:00Z", "note": "Yes — build Door 1 + Door 2 on this flow (after confirming it matches v2/#440)" }
+}

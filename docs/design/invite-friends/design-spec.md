@@ -15,6 +15,7 @@ The Invite Friends screen is the one surface this work owns. Today it is a dead 
 IA principle chosen: **A — minimal, share-first.** One real link, one primary action, nothing else.
 
 What changes structurally:
+
 - **The link and its data are real.** Mint/fetch via `inviteClient`; the member always has one stable, ready link. No "generate" step, no placeholder.
 - **Limits and expiry leave the UI.** No "X uses left / N days" line. Backend keeps `maxUses` / `expiresAt`, but mints with an effectively unlimited, non-expiring link and an **invisible cap (~100 uses) + silent rate-limit** as a leaked-link backstop.
 - **Share collapses to one action.** The native share sheet already offers every channel, so the Messages/WhatsApp/Email/Other tiles are removed. Primary = **Share link** (native) / **Copy link** (web).
@@ -56,39 +57,39 @@ Deferred to other issues: invite landing/welcome + gate (#403), logged-out/guest
 
 ## 4. Change table
 
-| ID | Label | Verdict | From | To | Notes |
-|---|---|---|---|---|---|
-| nav-01 | Settings (outer header) | merge | settings/_layout.tsx | single `StackHeader` "Invite Friends" | Collapse the doubled header to one. |
-| nav-02 | Invite Friends (StackHeader) | merge → nav-01 | settings/invite.tsx:92 | single header | — |
-| blk-01 | Hero gradient badge | keep | settings/invite.tsx:102 | unchanged (`GradientIconBadge`, UserPlus) | — |
-| copy-01 | "Bring a friend" | keep | settings/invite.tsx:105 | unchanged | — |
-| copy-02 | subtitle | keep (reword) | settings/invite.tsx:108 | center-agnostic, no "verified" | see copy table |
-| blk-02 | Invite link card | merge | settings/invite.tsx:124 | link block (linkbox) | Card chrome simplified to the linkbox. |
-| copy-03 | "YOUR INVITE LINK" | keep | settings/invite.tsx:125 | unchanged | — |
-| blk-03 | Link value | keep + **fix** | settings/invite.tsx:139 | real minted link from `inviteClient.listMyCodes`/`mintCode` | Stop reading `user.inviteCode`; one canonical `chinmayajanata.org/i/CODE` format. |
-| act-01 | Share / Copy | keep | settings/invite.tsx:147 | single primary button; Share→native sheet, Copy→clipboard(web) | — |
-| copy-04 | "Expires in 7 days • 8 uses left" | **cut** | settings/invite.tsx:169 | — | Removed from UI (v1). Backend keeps `expiresAt`/`maxUses`. |
-| copy-05 | "SHARE VIA" | **cut** | settings/invite.tsx:177 | — | Native share sheet covers channels. |
-| act-02 | Share via Messages | **cut** | settings/invite.tsx:191 | — | native sheet |
-| act-03 | Share via WhatsApp | **cut** | settings/invite.tsx:201 | — | native sheet |
-| act-04 | Share via Email | **cut** | settings/invite.tsx:211 | — | native sheet |
-| act-05 | Share via Other | **cut** | settings/invite.tsx:226 | — | native sheet |
-| state-01 | Copied confirmation | keep | settings/invite.tsx:160 | toast/inline check | — |
-| state-02 | Disabled/no-link default | **cut** | settings/invite.tsx:151 | — | No longer reachable once the link is always real. |
-| state-03 | (missing) real minted state | **resolved** | inviteClient.ts:111-228 | becomes the default | This is the screen's normal state now. |
-| new-01 | Loading shimmer | **add** | — | link area while fetching/minting | Brief; link auto-loads. |
+| ID       | Label                             | Verdict        | From                    | To                                                             | Notes                                                                             |
+| -------- | --------------------------------- | -------------- | ----------------------- | -------------------------------------------------------------- | --------------------------------------------------------------------------------- |
+| nav-01   | Settings (outer header)           | merge          | settings/\_layout.tsx   | single `StackHeader` "Invite Friends"                          | Collapse the doubled header to one.                                               |
+| nav-02   | Invite Friends (StackHeader)      | merge → nav-01 | settings/invite.tsx:92  | single header                                                  | —                                                                                 |
+| blk-01   | Hero gradient badge               | keep           | settings/invite.tsx:102 | unchanged (`GradientIconBadge`, UserPlus)                      | —                                                                                 |
+| copy-01  | "Bring a friend"                  | keep           | settings/invite.tsx:105 | unchanged                                                      | —                                                                                 |
+| copy-02  | subtitle                          | keep (reword)  | settings/invite.tsx:108 | center-agnostic, no "verified"                                 | see copy table                                                                    |
+| blk-02   | Invite link card                  | merge          | settings/invite.tsx:124 | link block (linkbox)                                           | Card chrome simplified to the linkbox.                                            |
+| copy-03  | "YOUR INVITE LINK"                | keep           | settings/invite.tsx:125 | unchanged                                                      | —                                                                                 |
+| blk-03   | Link value                        | keep + **fix** | settings/invite.tsx:139 | real minted link from `inviteClient.listMyCodes`/`mintCode`    | Stop reading `user.inviteCode`; one canonical `chinmayajanata.org/i/CODE` format. |
+| act-01   | Share / Copy                      | keep           | settings/invite.tsx:147 | single primary button; Share→native sheet, Copy→clipboard(web) | —                                                                                 |
+| copy-04  | "Expires in 7 days • 8 uses left" | **cut**        | settings/invite.tsx:169 | —                                                              | Removed from UI (v1). Backend keeps `expiresAt`/`maxUses`.                        |
+| copy-05  | "SHARE VIA"                       | **cut**        | settings/invite.tsx:177 | —                                                              | Native share sheet covers channels.                                               |
+| act-02   | Share via Messages                | **cut**        | settings/invite.tsx:191 | —                                                              | native sheet                                                                      |
+| act-03   | Share via WhatsApp                | **cut**        | settings/invite.tsx:201 | —                                                              | native sheet                                                                      |
+| act-04   | Share via Email                   | **cut**        | settings/invite.tsx:211 | —                                                              | native sheet                                                                      |
+| act-05   | Share via Other                   | **cut**        | settings/invite.tsx:226 | —                                                              | native sheet                                                                      |
+| state-01 | Copied confirmation               | keep           | settings/invite.tsx:160 | toast/inline check                                             | —                                                                                 |
+| state-02 | Disabled/no-link default          | **cut**        | settings/invite.tsx:151 | —                                                              | No longer reachable once the link is always real.                                 |
+| state-03 | (missing) real minted state       | **resolved**   | inviteClient.ts:111-228 | becomes the default                                            | This is the screen's normal state now.                                            |
+| new-01   | Loading shimmer                   | **add**        | —                       | link area while fetching/minting                               | Brief; link auto-loads.                                                           |
 
 ---
 
 ## 5. Copy table
 
-| ID | Old | New | Where |
-|---|---|---|---|
-| copy-02 | "They'll see your name and skip verification at {center}." | "They get in instantly." | subtitle |
-| blk-03 | chinmayajanata.org/i/your-code-here (placeholder) | chinmayajanata.org/i/{realCode} | link value |
-| act-01 | "Copy" / "Share" | "Share link" (native) · "Copy link" (web) | primary button |
-| copy-04 | "Expires in 7 days • 8 uses left" | (removed) | — |
-| desktop hint | (none) | "Anyone with this link gets right in." | desktop card, under link (NEW-COPY) |
+| ID           | Old                                                        | New                                       | Where                               |
+| ------------ | ---------------------------------------------------------- | ----------------------------------------- | ----------------------------------- |
+| copy-02      | "They'll see your name and skip verification at {center}." | "They get in instantly."                  | subtitle                            |
+| blk-03       | chinmayajanata.org/i/your-code-here (placeholder)          | chinmayajanata.org/i/{realCode}           | link value                          |
+| act-01       | "Copy" / "Share"                                           | "Share link" (native) · "Copy link" (web) | primary button                      |
+| copy-04      | "Expires in 7 days • 8 uses left"                          | (removed)                                 | —                                   |
+| desktop hint | (none)                                                     | "Anyone with this link gets right in."    | desktop card, under link (NEW-COPY) |
 
 ---
 
@@ -131,10 +132,11 @@ Deferred to other issues: invite landing/welcome + gate (#403), logged-out/guest
 - **Invite-open landing + welcome + gate** → #403 (`AuthFlowCore`, invite intent). See the alignment mock `hifi/mock-invite-open-v3.html`: vouch banner + reused onboarding intro (3 slides) → email/password → onboarding → "you're in." Center-agnostic, "verified" dropped. This spec does **not** build it; it documents the intended shape so #403 stays consistent.
 - **Logged-out / guest states** → #404.
 - **`chinmayajanata.org` universal-link plumbing** (iOS associatedDomains + Android intentFilters + `/i/CODE` route → `openAuth('invite', { inviteCode })`, web fallback when app not installed) → #104.
-- **`janata.app` short-link layer** → #104. Canonical link stays `chinmayajanata.org/i/CODE`; `janata.app/CODE` is a t.co-style wrapper that is shareable on its own — deep-links into the app on mobile, redirects/expands to the canonical link on web.
+- **Short-link/domain work** → separate #104 thread. This PR keeps canonical share links on `chinmayajanata.org/i/CODE`.
 - **Regenerate / "reset my link"** (link revocation) — deferred; no UI in v1.
 
 ### Engineering flags (for #342, not design)
+
 - **Leaked-link backstop:** invisible per-link cap (~100) + silent rate-limit; keep `maxUses`/`expiresAt` columns.
 - **Attribution:** persist the inviter→invitee graph server-side (for the post-MSC vouching system + abuse tracing) even though the UI shows none.
 - **Hard gate:** require a valid invite at `/auth/register`; retire `PUBLIC-EXPLORE`; promote to NORMAL_USER at register on a valid link.

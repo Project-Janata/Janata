@@ -31,7 +31,7 @@ if (typeof document !== 'undefined') {
       .auth-input::placeholder { color: #9CA3AF; }
       .auth-input:disabled { opacity: 0.6; cursor: not-allowed; }
       .auth-input { font-size: 16px !important; } /* Prevent iOS zoom on focus */
-      .auth-submit:hover:not(:disabled) { background-color: #B91C1C !important; }
+      .auth-submit:hover:not(:disabled) { background-color: #D97520 !important; }
       @supports (min-height: 100dvh) {
         .auth-root { min-height: 100dvh !important; }
       }
@@ -75,7 +75,6 @@ export default function AuthScreen() {
   const [inviteCode, setInviteCode] = useState(urlInviteCode || '')
   const [errors, setErrors] = useState<{ [key: string]: string }>({})
   const [showDevPanel, setShowDevPanel] = useState(false)
-  const emailEditable = authStep === 'initial' || (authStep === 'signup' && !urlEmail)
   // Focus state for input styling
   const [emailFocused, setEmailFocused] = useState(false)
   const [passwordFocused, setPasswordFocused] = useState(false)
@@ -84,6 +83,14 @@ export default function AuthScreen() {
   const [viewportWidth, setViewportWidth] = useState(() =>
     typeof window !== 'undefined' ? window.innerWidth : 1280
   )
+  const inviteCodeFromUrl = extractInviteCode(urlInviteCode)
+  const isInviteSignup = authStep === 'signup' && !!inviteCodeFromUrl
+  const [inviteSignupEmailConfirmed, setInviteSignupEmailConfirmed] = useState(!!urlEmail)
+  const isInviteSignupEmailStep = isInviteSignup && !inviteSignupEmailConfirmed
+  const showSignupPasswordFields = authStep === 'signup' && (!isInviteSignup || inviteSignupEmailConfirmed)
+  const emailEditable =
+    authStep === 'initial' ||
+    (authStep === 'signup' && !urlEmail && (!isInviteSignup || !inviteSignupEmailConfirmed))
 
   useEffect(() => {
     const nextStep =
@@ -97,6 +104,7 @@ export default function AuthScreen() {
     setPassword('')
     setConfirmPassword('')
     setErrors({})
+    setInviteSignupEmailConfirmed(!!urlEmail)
   }, [initialMode, urlEmail, urlInviteCode])
 
   useEffect(() => {
@@ -131,6 +139,32 @@ export default function AuthScreen() {
       }
     } catch (e: any) {
       track('auth_check_failed', { source: 'auth' })
+      setErrors({ form: e.message || 'Failed to connect to server.' })
+    }
+  }, [username, checkUserExists, track])
+
+  const handleInviteSignupEmailContinue = useCallback(async () => {
+    setErrors({})
+    if (!username) {
+      setErrors({ username: 'Please enter your email.' })
+      return
+    }
+    if (!validateEmail(username)) {
+      setErrors({ username: 'You must enter a valid email address.' })
+      return
+    }
+    try {
+      track('auth_invite_email_submitted', { source: 'auth' })
+      const exists = await checkUserExists(username)
+      if (exists) {
+        track('auth_invite_existing_user', { source: 'auth' })
+        setAuthStep('login')
+        return
+      }
+      track('auth_invite_new_user', { source: 'auth' })
+      setInviteSignupEmailConfirmed(true)
+    } catch (e: any) {
+      track('auth_invite_email_check_failed', { source: 'auth' })
       setErrors({ form: e.message || 'Failed to connect to server.' })
     }
   }, [username, checkUserExists, track])
@@ -232,22 +266,39 @@ export default function AuthScreen() {
       } else if (authStep === 'invite-code') {
         handleInviteCodeContinue()
       } else if (authStep === 'signup') {
-        handleSignup()
+        if (isInviteSignupEmailStep) {
+          handleInviteSignupEmailContinue()
+        } else {
+          handleSignup()
+        }
       } else {
         handleContinue()
       }
     },
-    [authStep, handleLogin, handleInviteCodeContinue, handleSignup, handleContinue]
+    [
+      authStep,
+      isInviteSignupEmailStep,
+      handleLogin,
+      handleInviteCodeContinue,
+      handleInviteSignupEmailContinue,
+      handleSignup,
+      handleContinue,
+    ]
   )
 
   const handleBack = useCallback(() => {
     track('auth_back_pressed', { source: 'auth', from_step: authStep })
+    if (isInviteSignup) {
+      router.push('/landing')
+      return
+    }
     setAuthStep('initial')
     setPassword('')
     setConfirmPassword('')
     setInviteCode('')
+    setInviteSignupEmailConfirmed(false)
     setErrors({})
-  }, [authStep, track])
+  }, [authStep, isInviteSignup, router, track])
 
   const handleUsernameChange = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
     setUsername(e.target.value)
@@ -273,8 +324,9 @@ export default function AuthScreen() {
     loading ||
     (authStep === 'initial' && !username) ||
     (authStep === 'invite-code' && !inviteCode) ||
-    (authStep !== 'initial' && authStep !== 'invite-code' && !password) ||
-    (authStep === 'signup' && !confirmPassword)
+    (authStep === 'login' && !password) ||
+    (authStep === 'signup' && isInviteSignupEmailStep && !username) ||
+    (authStep === 'signup' && !isInviteSignupEmailStep && (!password || !confirmPassword))
 
   const errorMessages = Object.values(errors).filter(Boolean)
 
@@ -299,7 +351,7 @@ export default function AuthScreen() {
   }
 
   const focusInputStyle: React.CSSProperties = {
-    borderColor: '#C2410C',
+    borderColor: '#E8862A',
     boxShadow: '0 0 0 3px rgba(194,65,12,0.1)',
     backgroundColor: '#FFFFFF',
   }
@@ -317,7 +369,11 @@ export default function AuthScreen() {
       : authStep === 'invite-code'
         ? 'Enter your invite link.'
         : authStep === 'signup'
-          ? 'Join the community.'
+          ? isInviteSignup
+            ? isInviteSignupEmailStep
+              ? "You've been invited."
+              : 'Create your account.'
+            : 'Join the community.'
           : 'Welcome.'
 
   const subtitle =
@@ -326,7 +382,11 @@ export default function AuthScreen() {
       : authStep === 'invite-code'
         ? 'Paste your invite link or code to continue'
         : authStep === 'signup'
-          ? 'Create your account to get started'
+          ? isInviteSignup
+            ? isInviteSignupEmailStep
+              ? 'Enter your email to accept this Janata invite.'
+              : 'Your invite is applied. Choose a password to finish.'
+            : 'Create your account to get started'
           : 'Enter your email to get started'
 
   const buttonText = loading
@@ -336,7 +396,11 @@ export default function AuthScreen() {
       : authStep === 'invite-code'
         ? 'Continue'
         : authStep === 'signup'
-          ? 'Create Account'
+          ? isInviteSignup
+            ? isInviteSignupEmailStep
+              ? 'Continue'
+              : 'Accept invite and create account'
+            : 'Create Account'
           : 'Continue'
   const isNarrowWeb = viewportWidth < 1024
   const isMobile = viewportWidth < 640
@@ -370,7 +434,7 @@ export default function AuthScreen() {
           flex: 1,
         }}
       >
-        {/* Top nav: back to landing (left) + Discover (right) */}
+        {/* Top nav: landing/home (left) + guest browsing (right) */}
         <nav
           style={{
             display: 'flex',
@@ -382,12 +446,13 @@ export default function AuthScreen() {
         >
           <button
             onClick={() => { track('auth_back_to_home_pressed', { source: 'auth' }); router.push('/landing') }}
+            aria-label={isInviteSignup ? 'Go to Janata home' : undefined}
             style={{
               background: 'none',
               border: 'none',
               cursor: 'pointer',
-              padding: '8px 4px',
-              margin: '-8px -4px',
+              padding: isInviteSignup ? 0 : '8px 4px',
+              margin: isInviteSignup ? 0 : '-8px -4px',
               fontSize: 14,
               fontFamily: 'Inclusive Sans, sans-serif',
               color: '#78716C',
@@ -396,26 +461,27 @@ export default function AuthScreen() {
               alignItems: 'center',
             }}
           >
-            &larr; Back to home
+            {isInviteSignup ? <Logo size={isMobile ? 28 : 32} /> : '← Back to home'}
           </button>
           <button
-            onClick={() => { track('auth_discover_pressed', { source: 'auth' }); router.push('/(tabs)') }}
+            onClick={() => { track('auth_browse_as_guest_pressed', { source: 'auth' }); router.push('/(tabs)') }}
             style={{
-              background: 'none',
-              border: 'none',
+              background: '#FFFFFF',
+              border: '1px solid #D6D3D1',
+              borderRadius: 8,
               cursor: 'pointer',
-              padding: '8px 4px',
-              margin: '-8px -4px',
+              padding: '9px 14px',
+              margin: 0,
               fontSize: 14,
               fontFamily: 'Inclusive Sans, sans-serif',
               fontWeight: '500',
-              color: '#C2410C',
+              color: '#57534E',
               minHeight: 44,
               display: 'flex',
               alignItems: 'center',
             }}
           >
-            Discover &rarr;
+            Browse as guest
           </button>
         </nav>
 
@@ -429,8 +495,9 @@ export default function AuthScreen() {
           }}
         >
         <div style={{ maxWidth: 400, width: '100%', padding: isNarrowWeb ? 0 : '0 48px' }}>
-          {/* Back button (login/signup steps) */}
-          {authStep !== 'initial' && (
+          {/* Back button (login/signup steps). Invite links already have a
+              single top-left exit, so avoid showing two back controls. */}
+          {authStep !== 'initial' && !isInviteSignup && (
             <button
               onClick={handleBack}
               style={{
@@ -454,19 +521,58 @@ export default function AuthScreen() {
           )}
 
           {/* Janata logo */}
-          <div
-            onClick={() => { track('auth_logo_pressed', { source: 'auth' }); router.push('/landing') }}
-            role="link"
-            style={{ marginBottom: isMobile ? 32 : 48, cursor: 'pointer' }}
-          >
-            <Logo size={isMobile ? 28 : 32} />
-          </div>
+          {!isInviteSignup && (
+            <div
+              onClick={() => { track('auth_logo_pressed', { source: 'auth' }); router.push('/landing') }}
+              role="link"
+              style={{ marginBottom: isMobile ? 28 : 48, cursor: 'pointer' }}
+            >
+              <Logo size={isMobile ? 28 : 32} />
+            </div>
+          )}
 
           {/* Heading */}
+          {isInviteSignup && (
+            <div
+              style={{
+                display: 'flex',
+                alignItems: 'center',
+                gap: 8,
+                marginBottom: 14,
+              }}
+            >
+              <span
+                aria-hidden="true"
+                style={{
+                  display: 'block',
+                  flex: '0 0 auto',
+                  width: 8,
+                  height: 8,
+                  borderRadius: 999,
+                  backgroundColor: '#E8862A',
+                }}
+              />
+              <p
+                style={{
+                  margin: 0,
+                  color: '#9A3412',
+                  fontFamily: 'Inclusive Sans, sans-serif',
+                  fontSize: 13,
+                  fontWeight: 700,
+                  lineHeight: '18px',
+                  textTransform: 'uppercase',
+                }}
+              >
+                Invite applied
+              </p>
+            </div>
+          )}
+
           <h1
             style={{
               fontFamily: '"Inclusive Sans", sans-serif',
-              fontSize: isMobile ? 28 : isNarrowWeb ? 32 : 36,
+              fontSize: isMobile ? 28 : isNarrowWeb ? 32 : isInviteSignup ? 34 : 36,
+              lineHeight: 1.15,
               fontWeight: '400',
               color: '#1C1917',
               marginBottom: 8,
@@ -487,7 +593,7 @@ export default function AuthScreen() {
                 'Stay connected with your center and sangha',
               ].map((line) => (
                 <div key={line} style={{ display: 'flex', gap: 10, alignItems: 'flex-start', marginBottom: 9 }}>
-                  <span style={{ color: '#C2410C', fontSize: 14, lineHeight: '22px' }}>✓</span>
+                  <span style={{ color: '#E8862A', fontSize: 14, lineHeight: '22px' }}>✓</span>
                   <span style={{ fontFamily: 'Inclusive Sans, sans-serif', fontSize: 14.5, lineHeight: '22px', color: '#57534E' }}>{line}</span>
                 </div>
               ))}
@@ -500,12 +606,53 @@ export default function AuthScreen() {
               fontFamily: 'Inclusive Sans, sans-serif',
               fontSize: 16,
               color: '#78716C',
-              marginBottom: 32,
+              marginBottom: isInviteSignup ? 18 : 32,
               marginTop: 0,
+              lineHeight: '24px',
             }}
           >
             {subtitle}
           </p>
+
+          {isInviteSignup && !isInviteSignupEmailStep && (
+            <div
+              style={{
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'space-between',
+                gap: 12,
+                borderRadius: 10,
+                backgroundColor: '#F5F5F4',
+                border: '1px solid #E7E5E4',
+                padding: '10px 12px',
+                marginBottom: 20,
+              }}
+            >
+              <span
+                style={{
+                  color: '#78716C',
+                  fontFamily: 'Inclusive Sans, sans-serif',
+                  fontSize: 12,
+                  fontWeight: 700,
+                  textTransform: 'uppercase',
+                }}
+              >
+                Invite code
+              </span>
+              <span
+                style={{
+                  color: '#1C1917',
+                  fontFamily: 'JetBrains Mono, monospace',
+                  fontSize: 13,
+                  overflow: 'hidden',
+                  textOverflow: 'ellipsis',
+                  whiteSpace: 'nowrap',
+                }}
+              >
+                {inviteCodeFromUrl}
+              </span>
+            </div>
+          )}
 
           {/* Error alert box */}
           {errorMessages.length > 0 && (
@@ -592,7 +739,7 @@ export default function AuthScreen() {
                   border: 'none',
                   padding: 0,
                   marginTop: -4,
-                  color: '#C2410C',
+                  color: '#E8862A',
                   fontSize: 13,
                   cursor: 'pointer',
                   textDecoration: 'underline',
@@ -604,7 +751,7 @@ export default function AuthScreen() {
             )}
 
             {/* Password + PasswordStrength + Confirm (signup) */}
-            {authStep === 'signup' && (
+            {showSignupPasswordFields && (
               <>
                 <input
                   className="auth-input"
@@ -643,7 +790,7 @@ export default function AuthScreen() {
                 width: '100%',
                 height: 48,
                 minHeight: 44,
-                backgroundColor: '#C2410C',
+                backgroundColor: '#E8862A',
                 color: '#FFFFFF',
                 border: 'none',
                 borderRadius: 8,
@@ -724,7 +871,7 @@ export default function AuthScreen() {
                   }
                 }}
                 style={{
-                  color: '#C2410C',
+                  color: '#E8862A',
                   cursor: 'pointer',
                   padding: '8px 4px',
                   margin: '-8px -4px',
@@ -758,7 +905,7 @@ export default function AuthScreen() {
                   }
                 }}
                 style={{
-                  color: '#C2410C',
+                  color: '#E8862A',
                   cursor: 'pointer',
                   padding: '8px 4px',
                   margin: '-8px -4px',
@@ -821,7 +968,7 @@ export default function AuthScreen() {
               tabIndex={0}
               onClick={() => { track('terms_viewed', { source: 'auth' }); router.push('/terms') }}
               onKeyDown={(e) => { if (e.key === 'Enter') { track('terms_viewed', { source: 'auth' }); router.push('/terms') } }}
-              style={{ color: '#C2410C', cursor: 'pointer' }}
+              style={{ color: '#E8862A', cursor: 'pointer' }}
             >
               Terms of Service
             </span>
@@ -831,7 +978,7 @@ export default function AuthScreen() {
               tabIndex={0}
               onClick={() => { track('privacy_policy_viewed', { source: 'auth' }); router.push('/privacy') }}
               onKeyDown={(e) => { if (e.key === 'Enter') { track('privacy_policy_viewed', { source: 'auth' }); router.push('/privacy') } }}
-              style={{ color: '#C2410C', cursor: 'pointer' }}
+              style={{ color: '#E8862A', cursor: 'pointer' }}
             >
               Privacy Policy
             </span>

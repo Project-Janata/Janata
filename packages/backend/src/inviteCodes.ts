@@ -43,8 +43,12 @@ const SELECT_COLUMNS = `code, label, verification_level, is_active, created_at,
 
 function normalizeCode(code: string): string {
   const trimmed = (code ?? '').trim()
+  const fromJoinLink = trimmed.match(/chinmayajanata\.org\/join\?code=([^&#\s]+)/i)
+  if (fromJoinLink) {
+    return decodeURIComponent(fromJoinLink[1]).trim().toUpperCase()
+  }
   const fromLink = trimmed.match(
-    /(?:janata\.app\/i\/|chinmayajanata\.org\/invite\/|chinmayajanata\.org\/i\/)([^/?#\s]+)/i,
+    /(?:chinmayajanata\.org\/invite\/|chinmayajanata\.org\/i\/)([^/?#\s]+)/i
   )
   return (fromLink ? fromLink[1] : trimmed).trim().toUpperCase()
 }
@@ -60,17 +64,12 @@ function isCodeUsable(row: InviteCodeRow, now: Date = new Date()): boolean {
  * Validate an invite code. Returns the row if it's active, not expired,
  * and has remaining uses. Returns null otherwise.
  */
-export async function validateInviteCode(
-  env: Env,
-  code: string,
-): Promise<InviteCodeRow | null> {
+export async function validateInviteCode(env: Env, code: string): Promise<InviteCodeRow | null> {
   if (!code || typeof code !== 'string' || code.trim().length === 0) {
     return null
   }
 
-  const result = await env.DB.prepare(
-    `SELECT ${SELECT_COLUMNS} FROM invite_codes WHERE code = ?`,
-  )
+  const result = await env.DB.prepare(`SELECT ${SELECT_COLUMNS} FROM invite_codes WHERE code = ?`)
     .bind(normalizeCode(code))
     .first<InviteCodeRow>()
 
@@ -83,17 +82,12 @@ export async function validateInviteCode(
  * Used for admin lookups and consumption flows that need to inspect
  * a previously-valid code.
  */
-export async function getInviteCode(
-  env: Env,
-  code: string,
-): Promise<InviteCodeRow | null> {
+export async function getInviteCode(env: Env, code: string): Promise<InviteCodeRow | null> {
   if (!code || typeof code !== 'string') {
     return null
   }
 
-  const result = await env.DB.prepare(
-    `SELECT ${SELECT_COLUMNS} FROM invite_codes WHERE code = ?`,
-  )
+  const result = await env.DB.prepare(`SELECT ${SELECT_COLUMNS} FROM invite_codes WHERE code = ?`)
     .bind(normalizeCode(code))
     .first<InviteCodeRow>()
 
@@ -114,7 +108,7 @@ export type InviteCodeStatus = 'ok' | 'not_found' | 'inactive' | 'expired' | 'ex
  */
 export function classifyInviteCodeRow(
   row: InviteCodeRow | null,
-  now: Date = new Date(),
+  now: Date = new Date()
 ): InviteCodeStatus {
   if (!row) return 'not_found'
   if (row.is_active !== 1) return 'inactive'
@@ -131,7 +125,7 @@ export function classifyInviteCodeRow(
 export async function classifyInviteCode(
   env: Env,
   code: string,
-  now: Date = new Date(),
+  now: Date = new Date()
 ): Promise<InviteCodeStatus> {
   return classifyInviteCodeRow(await getInviteCode(env, code), now)
 }
@@ -145,7 +139,7 @@ export async function createInviteCode(
   code: string,
   label: string,
   verificationLevel: number,
-  isActive: boolean = true,
+  isActive: boolean = true
 ): Promise<{ success: boolean; error?: string }> {
   if (!code || code.trim().length === 0) {
     return { success: false, error: 'Code is required' }
@@ -164,7 +158,7 @@ export async function createInviteCode(
     const now = new Date().toISOString()
     await env.DB.prepare(
       `INSERT INTO invite_codes (code, label, verification_level, is_active, created_at)
-       VALUES (?, ?, ?, ?, ?)`,
+       VALUES (?, ?, ?, ?, ?)`
     )
       .bind(normalizeCode(code), label.trim(), verificationLevel, isActive ? 1 : 0, now)
       .run()
@@ -190,7 +184,7 @@ export interface MintInviteOptions {
 export async function mintUserInviteCode(
   env: Env,
   userId: string,
-  options: MintInviteOptions = {},
+  options: MintInviteOptions = {}
 ): Promise<
   | { success: true; code: string; expiresAt: string; maxUses: number }
   | { success: false; error: string }
@@ -217,7 +211,7 @@ export async function mintUserInviteCode(
         `INSERT INTO invite_codes
            (code, label, verification_level, is_active, created_at,
             created_by_user_id, expires_at, max_uses, uses_count)
-         VALUES (?, ?, ?, 1, ?, ?, ?, ?, 0)`,
+         VALUES (?, ?, ?, 1, ?, ?, ?, ?, 0)`
       )
         .bind(code, `User invite from ${userId}`, NORMAL_USER, now, userId, expiresAt, maxUses)
         .run()
@@ -249,7 +243,7 @@ export async function consumeInviteCode(env: Env, code: string): Promise<boolean
      WHERE code = ?
        AND is_active = 1
        AND (expires_at IS NULL OR expires_at > ?)
-       AND (max_uses IS NULL OR uses_count < max_uses)`,
+       AND (max_uses IS NULL OR uses_count < max_uses)`
   )
     .bind(normalizeCode(code), new Date().toISOString())
     .run()
@@ -261,14 +255,11 @@ export async function consumeInviteCode(env: Env, code: string): Promise<boolean
 /**
  * List invite codes minted by a specific user.
  */
-export async function getUserMintedCodes(
-  env: Env,
-  userId: string,
-): Promise<InviteCodeRow[]> {
+export async function getUserMintedCodes(env: Env, userId: string): Promise<InviteCodeRow[]> {
   const result = await env.DB.prepare(
     `SELECT ${SELECT_COLUMNS} FROM invite_codes
      WHERE created_by_user_id = ?
-     ORDER BY created_at DESC`,
+     ORDER BY created_at DESC`
   )
     .bind(userId)
     .all<InviteCodeRow>()
@@ -281,7 +272,7 @@ export async function getUserMintedCodes(
  */
 export async function deactivateInviteCode(
   env: Env,
-  code: string,
+  code: string
 ): Promise<{ success: boolean; error?: string }> {
   try {
     const result = await env.DB.prepare(`UPDATE invite_codes SET is_active = 0 WHERE code = ?`)
@@ -298,7 +289,7 @@ export async function deactivateInviteCode(
  */
 export async function reactivateInviteCode(
   env: Env,
-  code: string,
+  code: string
 ): Promise<{ success: boolean; error?: string }> {
   try {
     const result = await env.DB.prepare(`UPDATE invite_codes SET is_active = 1 WHERE code = ?`)
@@ -315,7 +306,7 @@ export async function reactivateInviteCode(
  */
 export async function getAllInviteCodes(env: Env): Promise<InviteCodeRow[]> {
   const result = await env.DB.prepare(
-    `SELECT ${SELECT_COLUMNS} FROM invite_codes ORDER BY created_at DESC`,
+    `SELECT ${SELECT_COLUMNS} FROM invite_codes ORDER BY created_at DESC`
   ).all<InviteCodeRow>()
   return result.results || []
 }
@@ -335,7 +326,7 @@ export async function countUsersWithCode(env: Env, code: string): Promise<number
  */
 export async function getUsersWithCode(env: Env, code: string): Promise<string[]> {
   const result = await env.DB.prepare(
-    `SELECT id FROM users WHERE invite_code = ? ORDER BY created_at DESC`,
+    `SELECT id FROM users WHERE invite_code = ? ORDER BY created_at DESC`
   )
     .bind(normalizeCode(code))
     .all<{ id: string }>()

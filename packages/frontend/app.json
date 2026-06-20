@@ -29,16 +29,56 @@
           "action": "VIEW",
           "autoVerify": true,
           "data": [
-            { "scheme": "https", "host": "chinmayajanata.org", "pathPrefix": "/invite" },
-            { "scheme": "https", "host": "chinmayajanata.org", "pathPrefix": "/events" },
-            { "scheme": "https", "host": "chinmayajanata.org", "pathPrefix": "/center" },
-            { "scheme": "https", "host": "chinmayajanata.org", "pathPrefix": "/feed" },
-            { "scheme": "https", "host": "chinmayajanata.org", "pathPrefix": "/auth" },
-            { "scheme": "https", "host": "www.chinmayajanata.org", "pathPrefix": "/invite" },
-            { "scheme": "https", "host": "www.chinmayajanata.org", "pathPrefix": "/events" },
-            { "scheme": "https", "host": "www.chinmayajanata.org", "pathPrefix": "/center" },
-            { "scheme": "https", "host": "www.chinmayajanata.org", "pathPrefix": "/feed" },
-            { "scheme": "https", "host": "www.chinmayajanata.org", "pathPrefix": "/auth" }
+            {
+              "scheme": "https",
+              "host": "chinmayajanata.org",
+              "pathPrefix": "/center"
+            },
+            {
+              "scheme": "https",
+              "host": "chinmayajanata.org",
+              "pathPrefix": "/events"
+            },
+            {
+              "scheme": "https",
+              "host": "chinmayajanata.org",
+              "pathPrefix": "/feed"
+            },
+            {
+              "scheme": "https",
+              "host": "chinmayajanata.org",
+              "pathPrefix": "/i"
+            },
+            {
+              "scheme": "https",
+              "host": "chinmayajanata.org",
+              "pathPrefix": "/auth"
+            },
+            {
+              "scheme": "https",
+              "host": "www.chinmayajanata.org",
+              "pathPrefix": "/center"
+            },
+            {
+              "scheme": "https",
+              "host": "www.chinmayajanata.org",
+              "pathPrefix": "/events"
+            },
+            {
+              "scheme": "https",
+              "host": "www.chinmayajanata.org",
+              "pathPrefix": "/feed"
+            },
+            {
+              "scheme": "https",
+              "host": "www.chinmayajanata.org",
+              "pathPrefix": "/i"
+            },
+            {
+              "scheme": "https",
+              "host": "www.chinmayajanata.org",
+              "pathPrefix": "/auth"
+            }
           ],
           "category": ["BROWSABLE", "DEFAULT"]
         },
@@ -46,11 +86,56 @@
           "action": "VIEW",
           "autoVerify": true,
           "data": [
-            { "scheme": "https", "host": "janata.app", "pathPrefix": "/i" },
-            { "scheme": "https", "host": "janata.app", "pathPrefix": "/e" },
-            { "scheme": "https", "host": "janata.app", "pathPrefix": "/c" },
-            { "scheme": "https", "host": "janata.app", "pathPrefix": "/f" },
-            { "scheme": "https", "host": "janata.app", "pathPrefix": "/u" }
+            {
+              "scheme": "https",
+              "host": "chinmayajanata.org",
+              "pathPrefix": "/center"
+            },
+            {
+              "scheme": "https",
+              "host": "chinmayajanata.org",
+              "pathPrefix": "/events"
+            },
+            {
+              "scheme": "https",
+              "host": "chinmayajanata.org",
+              "pathPrefix": "/feed"
+            },
+            {
+              "scheme": "https",
+              "host": "chinmayajanata.org",
+              "pathPrefix": "/i"
+            },
+            {
+              "scheme": "https",
+              "host": "chinmayajanata.org",
+              "pathPrefix": "/auth"
+            },
+            {
+              "scheme": "https",
+              "host": "www.chinmayajanata.org",
+              "pathPrefix": "/center"
+            },
+            {
+              "scheme": "https",
+              "host": "www.chinmayajanata.org",
+              "pathPrefix": "/events"
+            },
+            {
+              "scheme": "https",
+              "host": "www.chinmayajanata.org",
+              "pathPrefix": "/feed"
+            },
+            {
+              "scheme": "https",
+              "host": "www.chinmayajanata.org",
+              "pathPrefix": "/i"
+            },
+            {
+              "scheme": "https",
+              "host": "www.chinmayajanata.org",
+              "pathPrefix": "/auth"
+            }
           ],
           "category": ["BROWSABLE", "DEFAULT"]
         }

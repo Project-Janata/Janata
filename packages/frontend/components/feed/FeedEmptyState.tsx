@@ -24,6 +24,7 @@ export function FeedEmptyState({
   onSignIn,
   onJoinCenter,
   onBrowseEvents,
+  onPasteInvite,
   onCompose,
   onOpenGroup,
 }: {
@@ -37,6 +38,8 @@ export function FeedEmptyState({
   onSignIn: () => void
   onJoinCenter: (centerId: string) => Promise<boolean> | void
   onBrowseEvents: () => void
+  /** Hard-gate path for the not-yet-invited: paste an invite link or code. */
+  onPasteInvite?: () => void
   onCompose?: () => void
   onOpenGroup: (group: GroupBoard) => void
 }) {
@@ -63,6 +66,7 @@ export function FeedEmptyState({
       onSignIn={onSignIn}
       onJoinCenter={onJoinCenter}
       onBrowseEvents={onBrowseEvents}
+      onPasteInvite={onPasteInvite}
     />
   )
 

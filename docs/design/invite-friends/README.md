@@ -4,13 +4,13 @@ This folder is the full context for the invite-links feature: the design we land
 
 ## Artifacts (open the HTML in a browser)
 
-| File | What it is |
-|---|---|
-| `design-spec.md` | The implementation spec for the Invite Friends screen (change table, copy, redlines, acceptance). |
-| `mock-invite-friends.html` / `02-invite-friends-hifi.png` | Hifi mock of the Invite Friends screen (surface 1) — mobile states + desktop card. |
-| `mock-invite-open-flow.html` / `03-invite-open-flow.png` | Hifi mock of what a friend sees after tapping a link (surface 2). Alignment reference for #403, **not built here**. |
-| `01-before.png` | The screen before (fake link + fake "8 uses left"). |
-| `04-built-mobile.png` / `05-built-desktop.png` | The screen as built in this PR, captured live (real minted link). |
+| File                                                      | What it is                                                                                                          |
+| --------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------- |
+| `design-spec.md`                                          | The implementation spec for the Invite Friends screen (change table, copy, redlines, acceptance).                   |
+| `mock-invite-friends.html` / `02-invite-friends-hifi.png` | Hifi mock of the Invite Friends screen (surface 1) — mobile states + desktop card.                                  |
+| `mock-invite-open-flow.html` / `03-invite-open-flow.png`  | Hifi mock of what a friend sees after tapping a link (surface 2). Alignment reference for #403, **not built here**. |
+| `01-before.png`                                           | The screen before (fake link + fake "8 uses left").                                                                 |
+| `04-built-mobile.png` / `05-built-desktop.png`            | The screen as built in this PR, captured live (real minted link).                                                   |
 
 ## The model we locked (2026-06-07, Kish + design pass)
 
@@ -18,7 +18,7 @@ This folder is the full context for the invite-links feature: the design we land
 2. **Invited = verified at inception** (Bluesky/Clubhouse). A valid invite promotes the new user to `NORMAL_USER` at register, not at email-verify.
 3. **Drop the word "verified" in UI.** In a hard gate every account is verified, so the word has no contrast. Copy is "they get in instantly."
 4. **Center-agnostic.** An invite grants **Janata** membership, not membership of a specific center. Redemption sets the level, not `center_id`; the member picks centers normally.
-5. **Canonical domain = `chinmayajanata.org`** (path `/i/CODE`) — the link we mint, display, and store. It's already registered for universal links and is the backend's domain. **`janata.app` is a short-link layer on top, not a competing domain:** `janata.app/CODE` links are shareable and behave like a `t.co` wrapper — on mobile they act as a deep link straight into the app; on web they expand/redirect to the matching `chinmayajanata.org/i/CODE` link. So a member can hand out either form and both land in the right place. *Reconcile #104 to this split (canonical = chinmayajanata.org, janata.app = short redirect).*
+5. **Domain = `chinmayajanata.org`** (path `/i/CODE`), NOT janata.app. It's already registered for universal links and is the backend's domain. _This reverses the earlier janata.app direction in #104 — reconcile #104._
 6. **Surface 1 is minimal:** hero + center-agnostic subtitle + one real link + one Share (Copy on web). No share-via tiles (the native share sheet covers channels). No "generate" step (the member always has one ready link). No invite limit/expiry in the UI (backend keeps the fields).
 7. **Leaked-link backstop:** keep an invisible cap (~100 uses) + silent rate-limit — the gate is only as strong as the link's secrecy.
 8. **Entry point:** Invite Friends stays in Settings/Account for v1 (expand entry points, e.g. a post-RSVP nudge, later).
@@ -39,7 +39,6 @@ This folder is the full context for the invite-links feature: the design we land
 - **Canonical share URL alignment:** backend currently mints `chinmayajanata.org/join?code=`; align it to `/i/CODE` so screen, share, and backend agree.
 - **Server-side attribution:** persist inviter→invitee for the post-MSC vouching system + abuse tracing.
 - **Native share message copy:** define what the share sheet pre-fills.
-- **Short-link layer (`janata.app`):** wire `janata.app/CODE` (short code at root, no `/i/`) as a redirect/deep-link wrapper over the canonical `chinmayajanata.org/i/CODE` (t.co-style) — deep link on mobile, 301/expand to the full link on web. **Full build + test spec: `janata-app-shortlink-spec.md` → tracked in #104 (assigned to @theabhiramr).**
-- **Reconcile #104** to the canonical/short-link split: canonical = chinmayajanata.org, janata.app = short redirect (the issue still treats janata.app as the primary domain).
+- **Reconcile #104** to chinmayajanata.org (it still references janata.app). Short-link/domain work should stay on its own thread.
 
 Full session artifacts (sketches, IA options, all mock versions): `~/.gstack/projects/Project-Janatha-Project-Janatha/refine/20260607-191425-invite-links-flow/`.

@@ -29,7 +29,7 @@ const OnboardingHeader = () => {
                 outputRange: ['0%', '100%'],
               }),
               height: '100%',
-              backgroundColor: '#ea580c',
+              backgroundColor: '#E8862A',
             }}
             className="rounded-full"
           />

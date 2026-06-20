@@ -34,7 +34,16 @@ import * as notifications from './notifications'
 import * as push from './push'
 import * as passwordReset from './passwordReset'
 import { sendVerificationEmail } from './email'
-import { ADMIN_EMAIL, NORMAL_USER, SEVAK, BRAHMACHARI, TIER_DESCALE, ADMIN_CUTOFF, DEVELOPER_EMAILS, UNVERIFIED_USER } from './constants'
+import {
+  ADMIN_EMAIL,
+  NORMAL_USER,
+  SEVAK,
+  BRAHMACHARI,
+  TIER_DESCALE,
+  ADMIN_CUTOFF,
+  DEVELOPER_EMAILS,
+  UNVERIFIED_USER,
+} from './constants'
 import { rateLimit, cacheControl, securityHeaders, validate } from './middleware'
 
 // ── Hono app type with CF bindings ────────────────────────────────────
@@ -98,9 +107,7 @@ function preview(text: string, max = 140): string {
 }
 
 function fireNotify(c: any, work: Promise<unknown>): void {
-  const safe = Promise.resolve(work).catch((err) =>
-    console.error('[notify] fan-out failed:', err),
-  )
+  const safe = Promise.resolve(work).catch((err) => console.error('[notify] fan-out failed:', err))
   try {
     c.executionCtx?.waitUntil(safe)
   } catch {
@@ -123,7 +130,7 @@ function suspendedPostingResponse(c: any, user: UserRow): Response | null {
       reason: 'suspended',
       suspendedUntil: user.suspended_until,
     },
-    403,
+    403
   )
 }
 
@@ -131,7 +138,7 @@ async function verifyBoardAccess(
   c: any,
   type: BoardType,
   parentId: string,
-  user: UserRow,
+  user: UserRow
 ): Promise<Response | null> {
   if (!parentId) {
     return c.json({ message: 'Board parent ID is required' }, 400)
@@ -366,10 +373,15 @@ app.post('/auth/register', rateLimit(5, 60_000), async (c) => {
 
   let verificationLevel = UNVERIFIED_USER
   let inviteCodeUsed: string | null = null
+  let invitedByUserId: string | null = null
 
   if (isDeveloper) {
     verificationLevel = BRAHMACHARI
-  } else if (body.inviteCode && typeof body.inviteCode === 'string' && body.inviteCode.trim().length > 0) {
+  } else if (
+    body.inviteCode &&
+    typeof body.inviteCode === 'string' &&
+    body.inviteCode.trim().length > 0
+  ) {
     const inviteCodeData = await inviteCodes.validateInviteCode(c.env, body.inviteCode)
     if (!inviteCodeData) {
       return c.json({ message: 'Invalid or inactive invite code' }, 401)
@@ -382,6 +394,7 @@ app.post('/auth/register', rateLimit(5, 60_000), async (c) => {
       return c.json({ message: 'Invite code already redeemed or expired' }, 409)
     }
     inviteCodeUsed = inviteCodeData.code
+    invitedByUserId = inviteCodeData.created_by_user_id
     // Invited = verified at inception. Email confirmation stays quiet and
     // non-blocking (used only for password recovery).
     verificationLevel = NORMAL_USER
@@ -398,6 +411,7 @@ app.post('/auth/register', rateLimit(5, 60_000), async (c) => {
       email: normalizedUsername.toLowerCase(),
       verification_level: verificationLevel,
       invite_code: inviteCodeUsed,
+      invited_by_user_id: invitedByUserId,
     })
 
     if (!created.success) {
@@ -409,7 +423,7 @@ app.post('/auth/register', rateLimit(5, 60_000), async (c) => {
               ? 'Username already exists'
               : 'Failed to create user',
         },
-        status,
+        status
       )
     }
 
@@ -421,11 +435,13 @@ app.post('/auth/register', rateLimit(5, 60_000), async (c) => {
       try {
         const bytes = new Uint8Array(32)
         crypto.getRandomValues(bytes)
-        const token = Array.from(bytes).map((b) => b.toString(16).padStart(2, '0')).join('')
+        const token = Array.from(bytes)
+          .map((b) => b.toString(16).padStart(2, '0'))
+          .join('')
         const expiresAt = new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString()
 
         await c.env.DB.prepare(
-          `INSERT INTO email_verification_tokens (token, user_id, expires_at) VALUES (?, ?, ?)`,
+          `INSERT INTO email_verification_tokens (token, user_id, expires_at) VALUES (?, ?, ?)`
         )
           .bind(token, userId, expiresAt)
           .run()
@@ -439,7 +455,7 @@ app.post('/auth/register', rateLimit(5, 60_000), async (c) => {
 
     return c.json(
       { message: 'User registered successfully', username: normalizedUsername.toLowerCase() },
-      201,
+      201
     )
   } catch (err: any) {
     console.error('createUser error:', err)
@@ -553,12 +569,14 @@ app.post('/auth/send-verification-email', rateLimit(3, 60 * 60_000), authMiddlew
   // 32 bytes = 64 hex chars = 256 bits entropy
   const bytes = new Uint8Array(32)
   crypto.getRandomValues(bytes)
-  const token = Array.from(bytes).map((b) => b.toString(16).padStart(2, '0')).join('')
+  const token = Array.from(bytes)
+    .map((b) => b.toString(16).padStart(2, '0'))
+    .join('')
   const expiresAt = new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString()
 
   try {
     await c.env.DB.prepare(
-      `INSERT INTO email_verification_tokens (token, user_id, expires_at) VALUES (?, ?, ?)`,
+      `INSERT INTO email_verification_tokens (token, user_id, expires_at) VALUES (?, ?, ?)`
     )
       .bind(token, user.id, expiresAt)
       .run()
@@ -580,7 +598,7 @@ app.get('/auth/verify-email', async (c) => {
 
   const row = await c.env.DB.prepare(
     `SELECT token, user_id, expires_at, consumed_at
-       FROM email_verification_tokens WHERE token = ?`,
+       FROM email_verification_tokens WHERE token = ?`
   )
     .bind(token)
     .first<{ token: string; user_id: string; expires_at: string; consumed_at: string | null }>()
@@ -614,9 +632,7 @@ app.get('/auth/verify-email', async (c) => {
     }
   }
 
-  await c.env.DB.prepare(
-    `UPDATE email_verification_tokens SET consumed_at = ? WHERE token = ?`,
-  )
+  await c.env.DB.prepare(`UPDATE email_verification_tokens SET consumed_at = ? WHERE token = ?`)
     .bind(now, token)
     .run()
 
@@ -672,7 +688,7 @@ app.post('/auth/password-reset/verify', rateLimit(10, 60_000), async (c) => {
     c.env,
     body.username,
     body.code,
-    body.newPassword,
+    body.newPassword
   )
   return c.json(result, result.ok ? 200 : 400)
 })
@@ -684,7 +700,7 @@ app.post('/auth/password-reset/verify', rateLimit(10, 60_000), async (c) => {
 // post-signup via /auth/redeem-invite. See
 // docs/plans/2026-05-05-v2-roles-invites-messaging.md §5.A.
 
-const INVITE_SHARE_URL_BASE = 'https://janata.app/i'
+const INVITE_SHARE_URL_BASE = 'https://chinmayajanata.org/i'
 
 app.post('/auth/invite-codes', authMiddleware, async (c) => {
   const user = c.get('user')
@@ -772,13 +788,16 @@ app.post('/auth/redeem-invite', rateLimit(5, 60_000), authMiddleware, async (c) 
     // Race: the last remaining use was taken between classify and consume.
     return c.json(
       { message: 'This invite link has reached its maximum number of uses', reason: 'exhausted' },
-      409,
+      409
     )
   }
 
   // Record the code on the user. If email is already verified, apply the
   // promotion now. Otherwise the bump happens at email-verify.
-  const updates: Partial<UserRow> = { invite_code: codeRow.code }
+  const updates: Partial<UserRow> = {
+    invite_code: codeRow.code,
+    invited_by_user_id: codeRow.created_by_user_id,
+  }
   let promoted = false
   if (user.email_verified_at && user.verification_level < codeRow.verification_level) {
     updates.verification_level = codeRow.verification_level
@@ -1240,7 +1259,7 @@ app.get('/profile/:username/groups', authMiddleware, async (c) => {
   const targetUser = await db.getUserByUsername(c.env.DB, username)
   if (!targetUser) return c.json({ message: 'User not found' }, 404)
   const groups = targetUser.center_id
-    ? [centerRowToApi(await db.getCenterById(c.env.DB, targetUser.center_id) as any)]
+    ? [centerRowToApi((await db.getCenterById(c.env.DB, targetUser.center_id)) as any)]
     : []
   return c.json({ groups: groups.filter(Boolean) })
 })
@@ -1336,8 +1355,7 @@ app.post('/boards/:type/:id/posts', authMiddleware, async (c) => {
     (async () => {
       const recipientIds = await db.getBoardRecipientIds(c.env.DB, typeParam, parentId)
       const authorName = displayName(user)
-      const where =
-        typeParam === 'event' ? 'an event you’re attending' : 'your center board'
+      const where = typeParam === 'event' ? 'an event you’re attending' : 'your center board'
       await push.dispatchNotification(
         c.env,
         recipientIds,
@@ -1349,9 +1367,9 @@ app.post('/boards/:type/:id/posts', authMiddleware, async (c) => {
           actionUrl: `/feed/${postId}`,
           relatedUserId: user.id,
           data: { boardType: typeParam, parentId, postId },
-        },
+        }
       )
-    })(),
+    })()
   )
 
   return c.json({ post: boardPostToApi(post) }, 201)
@@ -1447,8 +1465,8 @@ app.post('/boards/posts/:postId/reactions', authMiddleware, async (c) => {
           data: board
             ? { boardType: board.type, parentId: board.parent_id, postId: post.id }
             : { boardType: 'public', parentId: 'public', postId: post.id },
-        },
-      ),
+        }
+      )
     )
   }
 
@@ -1477,9 +1495,7 @@ app.patch('/boards/posts/:postId', authMiddleware, async (c) => {
     if (accessError) return accessError
   }
 
-  const body: { body?: string } = await c.req
-    .json<{ body?: string }>()
-    .catch(() => ({}))
+  const body: { body?: string } = await c.req.json<{ body?: string }>().catch(() => ({}))
   const text = typeof body.body === 'string' ? body.body.trim() : ''
   if (!text) {
     return c.json({ message: 'Post body is required' }, 400)
@@ -1500,16 +1516,18 @@ app.patch('/boards/posts/:postId', authMiddleware, async (c) => {
       case 'window_expired':
         return c.json(
           { message: 'Edit window has expired (posts are editable for 5 minutes after creation)' },
-          409,
+          409
         )
     }
   }
 
   // Return the updated post in the same shape as the create response.
-  const updated = post.board_id === null
-    ? await db.getBoardPostWithAuthorById(c.env.DB, postId)
-    : (await db.listBoardPosts(c.env.DB, post.board_id, { limit: 100 }))
-        .find((p) => p.id === postId)
+  const updated =
+    post.board_id === null
+      ? await db.getBoardPostWithAuthorById(c.env.DB, postId)
+      : (await db.listBoardPosts(c.env.DB, post.board_id, { limit: 100 })).find(
+          (p) => p.id === postId
+        )
   if (!updated) {
     return c.json({ message: 'Post edited but could not be reloaded' }, 500)
   }
@@ -1550,10 +1568,7 @@ app.delete('/boards/posts/:postId', authMiddleware, async (c) => {
       case 'already_deleted':
         return c.json({ message: 'Post is already deleted' }, 410)
       case 'forbidden':
-        return c.json(
-          { message: 'Only the author or an admin can delete this post' },
-          403,
-        )
+        return c.json({ message: 'Only the author or an admin can delete this post' }, 403)
     }
   }
 
@@ -1586,10 +1601,7 @@ app.post('/boards/posts/:postId/pin', authMiddleware, async (c) => {
 
   // Pin authority gate
   if (user.verification_level < SEVAK && !isAdmin(user)) {
-    return c.json(
-      { message: 'Only sevaks, brahmacharis, or admins can pin posts' },
-      403,
-    )
+    return c.json({ message: 'Only sevaks, brahmacharis, or admins can pin posts' }, 403)
   }
 
   const result = await db.pinBoardPost(c.env.DB, postId, user.id)
@@ -1626,10 +1638,7 @@ app.post('/boards/posts/:postId/unpin', authMiddleware, async (c) => {
   if (accessError) return accessError
 
   if (user.verification_level < SEVAK && !isAdmin(user)) {
-    return c.json(
-      { message: 'Only sevaks, brahmacharis, or admins can unpin posts' },
-      403,
-    )
+    return c.json({ message: 'Only sevaks, brahmacharis, or admins can unpin posts' }, 403)
   }
 
   const result = await db.unpinBoardPost(c.env.DB, postId)
@@ -1671,9 +1680,7 @@ app.post('/boards/posts/:postId/replies', authMiddleware, async (c) => {
   const suspended = suspendedPostingResponse(c, user)
   if (suspended) return suspended
 
-  const body: { body?: string } = await c.req
-    .json<{ body?: string }>()
-    .catch(() => ({}))
+  const body: { body?: string } = await c.req.json<{ body?: string }>().catch(() => ({}))
   const text = typeof body.body === 'string' ? body.body.trim() : ''
   if (!text) {
     return c.json({ message: 'Reply body is required' }, 400)
@@ -1700,7 +1707,7 @@ app.post('/boards/posts/:postId/replies', authMiddleware, async (c) => {
       case 'parent_is_reply':
         return c.json(
           { message: 'Cannot reply to a reply — threads are single-level only in v2' },
-          409,
+          409
         )
       case 'insert_failed':
         return c.json({ message: 'Failed to create reply' }, 500)
@@ -1731,8 +1738,8 @@ app.post('/boards/posts/:postId/replies', authMiddleware, async (c) => {
         data: board
           ? { boardType: board.type, parentId: board.parent_id, postId: parentPostId }
           : { boardType: 'public', parentId: 'public', postId: parentPostId },
-      },
-    ),
+      }
+    )
   )
 
   return c.json({ reply: boardPostToApi(created) }, 201)
@@ -1779,7 +1786,7 @@ app.get('/feed', authMiddleware, async (c) => {
       id: user.id,
       center_id: user.center_id,
     },
-    { limit, offset },
+    { limit, offset }
   )
 
   return c.json({
@@ -1957,9 +1964,9 @@ app.post('/addEvent', authMiddleware, async (c) => {
           actionUrl: `/events/${eventId}`,
           relatedEventId: eventId,
           relatedUserId: user.id,
-        },
+        }
       )
-    })(),
+    })()
   )
 
   return c.json({ id: eventId, tier })
@@ -1983,13 +1990,13 @@ app.post('/removeEvent', authMiddleware, async (c) => {
   if (!isAdmin(user) && !isCreator) {
     return c.json(
       { message: 'Insufficient permissions - only admin or event creator can delete' },
-      401,
+      401
     )
   }
 
   // Capture attendees BEFORE deleting — the cascade wipes event_attendees.
   const attendeeIds = (await db.getBoardRecipientIds(c.env.DB, 'event', id)).filter(
-    (uid) => uid !== user.id,
+    (uid) => uid !== user.id
   )
 
   const result = await db.deleteEvent(c.env.DB, id)
@@ -2003,8 +2010,8 @@ app.post('/removeEvent', authMiddleware, async (c) => {
           notifications.NOTIFICATION_TYPES.EVENT_CANCELLED,
           `Event cancelled: ${existing.title}`,
           'An event you RSVP’d to has been cancelled.',
-          { relatedUserId: user.id },
-        ),
+          { relatedUserId: user.id }
+        )
       )
     }
     return c.json({ message: 'Event removed' })
@@ -2053,7 +2060,10 @@ app.post('/updateEvent', authMiddleware, async (c) => {
   const isCreator = existing.created_by === user.id
   const isEditable = userIsAdmin || isCreator || existing.created_by === null
   if (!isEditable) {
-    return c.json({ message: 'Insufficient permissions - only admin or event creator can edit' }, 401)
+    return c.json(
+      { message: 'Insufficient permissions - only admin or event creator can edit' },
+      401
+    )
   }
 
   const updates: Partial<EventRow> = {}
@@ -2077,15 +2087,15 @@ app.post('/updateEvent', authMiddleware, async (c) => {
     // Notify attendees that event details changed (EVENT_UPDATED). Only fire
     // when a guest-visible field actually changed (skip pure tier/count writes).
     const meaningful = ['title', 'description', 'date', 'address', 'center_id'].some(
-      (k) => (updates as Record<string, unknown>)[k] !== undefined,
+      (k) => (updates as Record<string, unknown>)[k] !== undefined
     )
     if (meaningful) {
       fireNotify(
         c,
         (async () => {
-          const recipientIds = (
-            await db.getBoardRecipientIds(c.env.DB, 'event', eventId)
-          ).filter((uid) => uid !== user.id)
+          const recipientIds = (await db.getBoardRecipientIds(c.env.DB, 'event', eventId)).filter(
+            (uid) => uid !== user.id
+          )
           await push.dispatchNotification(
             c.env,
             recipientIds,
@@ -2096,9 +2106,9 @@ app.post('/updateEvent', authMiddleware, async (c) => {
               actionUrl: `/events/${eventId}`,
               relatedEventId: eventId,
               relatedUserId: user.id,
-            },
+            }
           )
-        })(),
+        })()
       )
     }
     return c.json({ message: 'Event updated' })
@@ -2143,7 +2153,7 @@ app.post('/attendEvent', authMiddleware, async (c) => {
   if (event.requires_verified === 1 && (user.verification_level ?? 0) < NORMAL_USER) {
     return c.json(
       { message: 'This event requires a verified account. Please verify your email to RSVP.' },
-      403,
+      403
     )
   }
 
@@ -2174,8 +2184,8 @@ app.post('/attendEvent', authMiddleware, async (c) => {
           actionUrl: `/events/${eventID}`,
           relatedEventId: eventID,
           relatedUserId: user.id,
-        },
-      ),
+        }
+      )
     )
   }
 
@@ -2215,8 +2225,11 @@ app.post('/attendEventGuest', rateLimit(5, 60_000), async (c) => {
   if (!event) return c.json({ message: 'Event not found' }, 404)
   if (event.requires_verified === 1) {
     return c.json(
-      { message: 'This event requires a verified account. Please sign up and verify your email to RSVP.' },
-      403,
+      {
+        message:
+          'This event requires a verified account. Please sign up and verify your email to RSVP.',
+      },
+      403
     )
   }
 
@@ -2448,7 +2461,10 @@ app.get('/admin/stats', adminMiddleware, async (c) => {
 app.get('/admin/users', adminMiddleware, async (c) => {
   const url = new URL(c.req.url)
   const q = url.searchParams.get('q') || undefined
-  const limit = Math.min(Math.max(parseInt(url.searchParams.get('limit') ?? '50', 10) || 50, 1), 100)
+  const limit = Math.min(
+    Math.max(parseInt(url.searchParams.get('limit') ?? '50', 10) || 50, 1),
+    100
+  )
   const offset = Math.max(parseInt(url.searchParams.get('offset') ?? '0', 10) || 0, 0)
   const { data, total } = await db.listUsers(c.env.DB, { q, limit, offset })
   return c.json({ data: data.map(userRowToApi), total, limit, offset })
@@ -2457,7 +2473,10 @@ app.get('/admin/users', adminMiddleware, async (c) => {
 app.get('/admin/centers', adminMiddleware, async (c) => {
   const url = new URL(c.req.url)
   const q = url.searchParams.get('q') || undefined
-  const limit = Math.min(Math.max(parseInt(url.searchParams.get('limit') ?? '50', 10) || 50, 1), 100)
+  const limit = Math.min(
+    Math.max(parseInt(url.searchParams.get('limit') ?? '50', 10) || 50, 1),
+    100
+  )
   const offset = Math.max(parseInt(url.searchParams.get('offset') ?? '0', 10) || 0, 0)
   const { data, total } = await db.listCenters(c.env.DB, { q, limit, offset })
   return c.json({ data: data.map(centerRowToApi), total, limit, offset })
@@ -2466,7 +2485,10 @@ app.get('/admin/centers', adminMiddleware, async (c) => {
 app.get('/admin/events', adminMiddleware, async (c) => {
   const url = new URL(c.req.url)
   const q = url.searchParams.get('q') || undefined
-  const limit = Math.min(Math.max(parseInt(url.searchParams.get('limit') ?? '50', 10) || 50, 1), 100)
+  const limit = Math.min(
+    Math.max(parseInt(url.searchParams.get('limit') ?? '50', 10) || 50, 1),
+    100
+  )
   const offset = Math.max(parseInt(url.searchParams.get('offset') ?? '0', 10) || 0, 0)
   const { data, total } = await db.listEvents(c.env.DB, { q, limit, offset })
   return c.json({ data: data.map(eventRowToApi), total, limit, offset })
@@ -2581,7 +2603,8 @@ app.put('/admin/events/:id', adminMiddleware, async (c) => {
   if (body.category !== undefined) updates.category = body.category
   if (body.externalUrl !== undefined) updates.external_url = body.externalUrl
   if (body.signupUrl !== undefined) updates.signup_url = body.signupUrl
-  if (body.allowJanataSignup !== undefined) updates.allow_janata_signup = body.allowJanataSignup ? 1 : 0
+  if (body.allowJanataSignup !== undefined)
+    updates.allow_janata_signup = body.allowJanataSignup ? 1 : 0
 
   const result = await db.updateEvent(c.env.DB, eventId, updates)
   if (result.success) {
@@ -2868,10 +2891,19 @@ app.put('/notifications/preferences', authMiddleware, async (c) => {
   }
 
   const BOOL_KEYS = [
-    'inAppEnabled', 'pushEnabled', 'emailEnabled',
-    'eventReminders', 'eventCreated', 'eventCancelled', 'eventUpdated',
-    'attendeeJoined', 'centerAnnouncements',
-    'boardPosts', 'boardReplies', 'boardReactions', 'boardMentions',
+    'inAppEnabled',
+    'pushEnabled',
+    'emailEnabled',
+    'eventReminders',
+    'eventCreated',
+    'eventCancelled',
+    'eventUpdated',
+    'attendeeJoined',
+    'centerAnnouncements',
+    'boardPosts',
+    'boardReplies',
+    'boardReactions',
+    'boardMentions',
     'quietHoursEnabled',
   ] as const
   for (const k of BOOL_KEYS) {
@@ -2897,14 +2929,18 @@ app.put('/notifications/preferences', authMiddleware, async (c) => {
   if (body.eventCancelled !== undefined) updates.event_cancelled = body.eventCancelled ? 1 : 0
   if (body.eventUpdated !== undefined) updates.event_updated = body.eventUpdated ? 1 : 0
   if (body.attendeeJoined !== undefined) updates.attendee_joined = body.attendeeJoined ? 1 : 0
-  if (body.centerAnnouncements !== undefined) updates.center_announcements = body.centerAnnouncements ? 1 : 0
+  if (body.centerAnnouncements !== undefined)
+    updates.center_announcements = body.centerAnnouncements ? 1 : 0
   if (body.boardPosts !== undefined) updates.board_posts = body.boardPosts ? 1 : 0
   if (body.boardReplies !== undefined) updates.board_replies = body.boardReplies ? 1 : 0
   if (body.boardReactions !== undefined) updates.board_reactions = body.boardReactions ? 1 : 0
   if (body.boardMentions !== undefined) updates.board_mentions = body.boardMentions ? 1 : 0
-  if (body.quietHoursStart !== undefined) updates.quiet_hours_start = body.quietHoursStart as string | null
-  if (body.quietHoursEnd !== undefined) updates.quiet_hours_end = body.quietHoursEnd as string | null
-  if (body.quietHoursEnabled !== undefined) updates.quiet_hours_enabled = body.quietHoursEnabled ? 1 : 0
+  if (body.quietHoursStart !== undefined)
+    updates.quiet_hours_start = body.quietHoursStart as string | null
+  if (body.quietHoursEnd !== undefined)
+    updates.quiet_hours_end = body.quietHoursEnd as string | null
+  if (body.quietHoursEnabled !== undefined)
+    updates.quiet_hours_enabled = body.quietHoursEnabled ? 1 : 0
 
   const prefs = await notifications.updateNotificationPreferences(c.env, user.id, updates)
 
@@ -2961,10 +2997,15 @@ app.post('/push/unregister', authMiddleware, async (c) => {
  */
 app.get('/admin/notifications', adminMiddleware, async (c) => {
   const url = new URL(c.req.url)
-  const limit = Math.min(Math.max(parseInt(url.searchParams.get('limit') ?? '50', 10) || 50, 1), 100)
+  const limit = Math.min(
+    Math.max(parseInt(url.searchParams.get('limit') ?? '50', 10) || 50, 1),
+    100
+  )
   const offset = Math.max(parseInt(url.searchParams.get('offset') ?? '0', 10) || 0, 0)
   const userId = url.searchParams.get('userId') || undefined
-  const typeId = url.searchParams.get('typeId') ? parseInt(url.searchParams.get('typeId')!, 10) : undefined
+  const typeId = url.searchParams.get('typeId')
+    ? parseInt(url.searchParams.get('typeId')!, 10)
+    : undefined
 
   let query = `SELECT n.*, u.first_name, u.last_name, u.username FROM notifications n LEFT JOIN users u ON n.user_id = u.id`
   const conditions: string[] = []
@@ -2995,12 +3036,17 @@ app.get('/admin/notifications', adminMiddleware, async (c) => {
   if (conditions.length > 0) {
     countQuery += ` WHERE ${conditions.join(' AND ')}`
   }
-  const countResult = await c.env.DB.prepare(countQuery).bind(...countValues).first<{ count: number }>()
+  const countResult = await c.env.DB.prepare(countQuery)
+    .bind(...countValues)
+    .first<{ count: number }>()
 
   return c.json({
     data: (result.results || []).map((row: any) => ({
       ...notifications.notificationRowToApi(row),
-      recipientName: row.first_name && row.last_name ? `${row.first_name} ${row.last_name}` : row.username || 'Unknown',
+      recipientName:
+        row.first_name && row.last_name
+          ? `${row.first_name} ${row.last_name}`
+          : row.username || 'Unknown',
       recipientUsername: row.username,
     })),
     total: countResult?.count || 0,
@@ -3016,9 +3062,13 @@ app.get('/admin/notifications', adminMiddleware, async (c) => {
 app.get('/admin/notifications/stats', adminMiddleware, async (c) => {
   const [totalResult, unreadResult, typeBreakdown, recentResult] = await Promise.all([
     c.env.DB.prepare('SELECT COUNT(*) as count FROM notifications').first<{ count: number }>(),
-    c.env.DB.prepare('SELECT COUNT(*) as count FROM notifications WHERE is_read = 0').first<{ count: number }>(),
+    c.env.DB.prepare('SELECT COUNT(*) as count FROM notifications WHERE is_read = 0').first<{
+      count: number
+    }>(),
     c.env.DB.prepare('SELECT type_id, COUNT(*) as count FROM notifications GROUP BY type_id').all(),
-    c.env.DB.prepare('SELECT COUNT(*) as count FROM notifications WHERE created_at > datetime("now", "-24 hours")').first<{ count: number }>(),
+    c.env.DB.prepare(
+      'SELECT COUNT(*) as count FROM notifications WHERE created_at > datetime("now", "-24 hours")'
+    ).first<{ count: number }>(),
   ])
 
   return c.json({
@@ -3080,8 +3130,8 @@ app.post('/admin/notifications/send', adminMiddleware, async (c) => {
             body.message,
             body.actionUrl ?? null,
             now,
-            now,
-          ),
+            now
+          )
         )
         const results = await c.env.DB.batch(statements)
         sent += results.reduce((acc, r) => acc + (r.success ? 1 : 0), 0)
@@ -3094,11 +3144,21 @@ app.post('/admin/notifications/send', adminMiddleware, async (c) => {
     return c.json({ message: 'userId is required when not broadcasting' }, 400)
   }
 
-  const notif = await notifications.createNotification(c.env, body.userId, body.typeId, body.title, body.message, {
-    actionUrl: body.actionUrl,
-  })
+  const notif = await notifications.createNotification(
+    c.env,
+    body.userId,
+    body.typeId,
+    body.title,
+    body.message,
+    {
+      actionUrl: body.actionUrl,
+    }
+  )
 
-  return c.json({ message: 'Notification sent', notification: notifications.notificationRowToApi(notif) })
+  return c.json({
+    message: 'Notification sent',
+    notification: notifications.notificationRowToApi(notif),
+  })
 })
 
 /**
@@ -3108,7 +3168,9 @@ app.post('/admin/notifications/send', adminMiddleware, async (c) => {
 app.delete('/admin/notifications/:id', adminMiddleware, async (c) => {
   const notifId = c.req.param('id')
 
-  const result = await c.env.DB.prepare('DELETE FROM notifications WHERE id = ?').bind(notifId).run()
+  const result = await c.env.DB.prepare('DELETE FROM notifications WHERE id = ?')
+    .bind(notifId)
+    .run()
 
   // Distinguish "didn't exist" (404) from a DB failure (500). `result.success`
   // is true even on 0-row deletes, so use meta.changes for the 404 path (#127).
@@ -3128,11 +3190,18 @@ app.delete('/admin/notifications/:id', adminMiddleware, async (c) => {
 /** Admin moderation queue: reported posts grouped by post, newest first. */
 app.get('/admin/moderation/queue', moderatorMiddleware, async (c) => {
   const url = new URL(c.req.url)
-  const limit = Math.min(Math.max(parseInt(url.searchParams.get('limit') ?? '50', 10) || 50, 1), 100)
+  const limit = Math.min(
+    Math.max(parseInt(url.searchParams.get('limit') ?? '50', 10) || 50, 1),
+    100
+  )
   const offset = Math.max(parseInt(url.searchParams.get('offset') ?? '0', 10) || 0, 0)
   const includeResolved = url.searchParams.get('includeResolved') === 'true'
 
-  const { items, total } = await db.listModerationQueue(c.env.DB, { limit, offset, includeResolved })
+  const { items, total } = await db.listModerationQueue(c.env.DB, {
+    limit,
+    offset,
+    includeResolved,
+  })
   return c.json({
     data: items.map((item) => ({
       post: boardPostToApi(item.post),
@@ -3257,7 +3326,10 @@ app.post('/admin/moderation/users/:userId/unsuspend', adminMiddleware, async (c)
 /** Admin: moderation audit log, newest first. */
 app.get('/admin/moderation/audit', moderatorMiddleware, async (c) => {
   const url = new URL(c.req.url)
-  const limit = Math.min(Math.max(parseInt(url.searchParams.get('limit') ?? '50', 10) || 50, 1), 100)
+  const limit = Math.min(
+    Math.max(parseInt(url.searchParams.get('limit') ?? '50', 10) || 50, 1),
+    100
+  )
   const offset = Math.max(parseInt(url.searchParams.get('offset') ?? '0', 10) || 0, 0)
   const { items, total } = await db.listModerationActions(c.env.DB, { limit, offset })
   return c.json({ data: items.map(moderationActionRowToApi), total, limit, offset })

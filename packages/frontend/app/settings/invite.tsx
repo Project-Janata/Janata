@@ -13,7 +13,7 @@ const MONO_FONT = Platform.select({
   default: 'monospace',
 })
 
-const linkForCode = (code: string) => `https://janata.app/i/${code}`
+const linkForCode = (code: string) => `https://chinmayajanata.org/i/${code}`
 
 export default function InviteScreen() {
   const { getToken } = useUser()
@@ -70,14 +70,21 @@ export default function InviteScreen() {
   // per-app tiles.
   const handleShare = async () => {
     if (!inviteUrl) return
-    const message = `Join me on Janata: ${inviteUrl}`
+    // Voice: no "verified" — in a hard gate every account is, so the promise is
+    // "you're in instantly" (#440 copy decision).
+    const blurb = 'Join me on Janata. This invite gets you in instantly.'
     try {
       if (isWeb && typeof navigator !== 'undefined' && navigator.clipboard) {
         await navigator.clipboard.writeText(inviteUrl)
         setCopied(true)
         setTimeout(() => setCopied(false), 2000)
+      } else if (Platform.OS === 'ios') {
+        // iOS treats `url` as its own share item (rich link preview), so the
+        // message stays link-free to avoid the link appearing twice.
+        await Share.share({ message: blurb, url: inviteUrl }, { subject: 'Join me on Janata' })
       } else {
-        await Share.share({ message })
+        // Android's share intent ignores `url`, so the link must ride in the message.
+        await Share.share({ message: `${blurb} ${inviteUrl}`, title: 'Join me on Janata' })
       }
     } catch {
       // user dismissed share / clipboard blocked — no-op
@@ -107,7 +114,9 @@ export default function InviteScreen() {
           <GradientIconBadge size={96}>
             <UserPlus size={40} color="#fff" strokeWidth={2} />
           </GradientIconBadge>
-          <Text style={{ fontFamily: 'Inclusive Sans', fontSize: 32, color: c.text, marginTop: 16 }}>
+          <Text
+            style={{ fontFamily: 'Inclusive Sans', fontSize: 32, color: c.text, marginTop: 16 }}
+          >
             Bring a friend
           </Text>
           <Text
@@ -123,7 +132,9 @@ export default function InviteScreen() {
           </Text>
 
           <View style={{ width: '100%', marginTop: 32 }}>
-            <Text style={{ fontSize: 11, letterSpacing: 0.9, color: c.textFaint, marginBottom: 10 }}>
+            <Text
+              style={{ fontSize: 11, letterSpacing: 0.9, color: c.textFaint, marginBottom: 10 }}
+            >
               YOUR INVITE LINK
             </Text>
 
@@ -177,7 +188,7 @@ export default function InviteScreen() {
                     ellipsizeMode="tail"
                     style={{ flex: 1, fontFamily: MONO_FONT, fontSize: 13, color: c.text }}
                   >
-                    janata.app/i/{code}
+                    chinmayajanata.org/i/{code}
                   </Text>
                 </View>
 
