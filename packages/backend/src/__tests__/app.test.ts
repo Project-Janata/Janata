@@ -12,7 +12,7 @@ import { app } from '../app'
 import { hashPassword } from '../auth'
 import * as db from '../db'
 import { clearRateLimits } from '../middleware'
-import { ADMIN_EMAIL, NORMAL_USER } from '../constants'
+import { ADMIN_EMAIL, BRAHMACHARI, NORMAL_USER, SEVAK } from '../constants'
 
 // ── Helpers ──────────────────────────────────────────────────────────
 
@@ -341,13 +341,27 @@ describe('POST /api/auth/register', () => {
     expect(body.message).toBe('User registered successfully')
   })
 
-  it('invite gate ON: developer email bypasses without an invite (201)', async () => {
+  it('invite gate ON: developer email still needs an invite', async () => {
     const { res, body } = await registerGated({
       username: 'kishparikh18@gmail.com',
       password: 'password123',
     })
+    expect(res.status).toBe(403)
+    expect(body.message).toContain('invite is required')
+  })
+
+  it('invite gate ON: developer email with an invite is elevated', async () => {
+    const { res, body } = await registerGated({
+      username: 'kishparikh18@gmail.com',
+      password: 'password123',
+      inviteCode: TEST_INVITE_CODE,
+    })
     expect(res.status).toBe(201)
     expect(body.message).toBe('User registered successfully')
+    const row = await env.DB.prepare('SELECT verification_level FROM users WHERE username = ?')
+      .bind('kishparikh18@gmail.com')
+      .first<{ verification_level: number }>()
+    expect(row?.verification_level).toBe(BRAHMACHARI)
   })
 })
 
@@ -405,7 +419,7 @@ describe('invite gate (#403)', () => {
   })
 
   describe('role-bearing invite links (#451)', () => {
-    it('lets an admin mint an admin-role link that lands the recipient at admin', async () => {
+    it('lets an admin mint a single-use admin-role link that lands the recipient at admin', async () => {
       const adminToken = await createAdmin()
       const { res, body } = await jsonPost(
         '/api/auth/invite-codes',
@@ -414,6 +428,10 @@ describe('invite gate (#403)', () => {
       )
       expect(res.status).toBe(200)
       expect(body.role).toBe('admin')
+      expect(body.maxUses).toBe(1)
+      const ttlDays = (new Date(body.expiresAt).getTime() - Date.now()) / (24 * 60 * 60 * 1000)
+      expect(ttlDays).toBeGreaterThan(0.9)
+      expect(ttlDays).toBeLessThan(1.1)
 
       await jsonPost('/api/auth/register', {
         username: 'newadmin',
@@ -440,6 +458,23 @@ describe('invite gate (#403)', () => {
       expect(res.status).toBe(403)
     })
 
+    it('caps elevated role links tighter than normal member links', async () => {
+      const adminToken = await createAdmin()
+      const tooManyUses = await jsonPost(
+        '/api/auth/invite-codes',
+        { role: 'admin', maxUses: 25 },
+        authHeader(adminToken),
+      )
+      expect(tooManyUses.res.status).toBe(400)
+
+      const tooLong = await jsonPost(
+        '/api/auth/invite-codes',
+        { role: 'admin', expiresInDays: 30 },
+        authHeader(adminToken),
+      )
+      expect(tooLong.res.status).toBe(400)
+    })
+
     it('rejects an unknown role (400)', async () => {
       const adminToken = await createAdmin()
       const { res } = await jsonPost(
@@ -457,15 +492,15 @@ describe('invite gate (#403)', () => {
     beforeEach(async () => {
       const adminToken = await createAdmin()
       const { token } = await registerAndLogin('host', 'password123')
-      // Event creation is coordinator-gated (sevak+); the host is a coordinator.
-      await env.DB.prepare('UPDATE users SET verification_level = 54 WHERE username = ?')
-        .bind('host')
-        .run()
       const { body: center } = await jsonPost(
         '/api/addCenter',
         { centerName: 'Guest Center', latitude: 37.0, longitude: -121.0 },
         authHeader(adminToken),
       )
+      // Event creation is coordinator-gated to the coordinator's own center.
+      await env.DB.prepare('UPDATE users SET center_id = ?, verification_level = ? WHERE username = ?')
+        .bind(center.id, SEVAK, 'host')
+        .run()
       const { body: ev } = await jsonPost(
         '/api/addEvent',
         {
@@ -574,6 +609,35 @@ describe('POST /api/auth/authenticate', () => {
     })
     expect(res.status).toBe(400)
   })
+
+  it('rejects inactive accounts even with a correct password', async () => {
+    await env.DB.prepare('UPDATE users SET is_active = 0 WHERE username = ?')
+      .bind('authuser')
+      .run()
+    const { res, body } = await jsonPost('/api/auth/authenticate', {
+      username: 'authuser',
+      password: 'password123',
+    })
+    expect(res.status).toBe(403)
+    expect(body.reason).toBe('inactive')
+  })
+
+  it('does not let X-Forwarded-For rotation bypass the login rate limit', async () => {
+    clearRateLimits()
+    let lastStatus = 0
+    for (let i = 0; i < 6; i++) {
+      const { res } = await fetchJSON('/api/auth/authenticate', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'X-Forwarded-For': `203.0.113.${i}`,
+        },
+        body: JSON.stringify({ username: 'authuser', password: 'wrongpassword' }),
+      })
+      lastStatus = res.status
+    }
+    expect(lastStatus).toBe(429)
+  })
 })
 
 // ═══════════════════════════════════════════════════════════════════════
@@ -634,6 +698,23 @@ describe('POST /api/auth/refresh', () => {
     expect(res.status).toBe(200)
     expect(body.token).toBeDefined()
     expect(body.refreshToken).toBeDefined()
+  })
+
+  it('rejects refresh tokens for inactive accounts', async () => {
+    const login = await registerAndLogin('inactive-refresh', 'password123')
+    const auth = await jsonPost('/api/auth/authenticate', {
+      username: 'inactive-refresh',
+      password: 'password123',
+    })
+    await env.DB.prepare('UPDATE users SET is_active = 0 WHERE username = ?')
+      .bind('inactive-refresh')
+      .run()
+
+    const { res, body } = await jsonPost('/api/auth/refresh', {
+      refreshToken: auth.body.refreshToken ?? login.token,
+    })
+    expect(res.status).toBe(403)
+    expect(body.reason).toBe('inactive')
   })
 })
 
@@ -702,6 +783,18 @@ describe('GET /api/auth/verify', () => {
       headers: authHeader(legacy),
     })
     expect(res.status).toBe(200)
+  })
+
+  it('rejects otherwise valid tokens for inactive accounts', async () => {
+    const { token } = await registerAndLogin('inactiveverify', 'password123')
+    await env.DB.prepare('UPDATE users SET is_active = 0 WHERE username = ?')
+      .bind('inactiveverify')
+      .run()
+    const { res, body } = await fetchJSON('/api/auth/verify', {
+      headers: authHeader(token),
+    })
+    expect(res.status).toBe(403)
+    expect(body.reason).toBe('inactive')
   })
 })
 
@@ -775,13 +868,23 @@ describe('PUT /api/auth/update-profile', () => {
       {
         firstName: 'Updated',
         lastName: 'Name',
-        email: 'updated@example.com',
       },
       authHeader(token)
     )
     expect(res.status).toBe(200)
     expect(body.user.firstName).toBe('Updated')
-    expect(body.user.email).toBe('updated@example.com')
+    expect(body.user.email).toBe('updateuser')
+  })
+
+  it('rejects self-service email changes', async () => {
+    const { token } = await registerAndLogin('emailchange', 'password123')
+    const { res, body } = await jsonPut(
+      '/api/auth/update-profile',
+      { email: ADMIN_EMAIL },
+      authHeader(token),
+    )
+    expect(res.status).toBe(400)
+    expect(body.message).toContain('verified email-change flow')
   })
 
   it('coerces empty centerID to null', async () => {
@@ -1258,7 +1361,7 @@ describe('board routes', () => {
 
     const { body } = await fetchJSON(
       `/api/boards/center/${centerId}`,
-      { headers: authHeader(memberToken) },
+      { headers: authHeader(adminToken) },
     )
 
     expect(body.posts).toHaveLength(1)
@@ -1910,9 +2013,14 @@ describe('GET /api/feed — aggregated cross-board feed', () => {
       )
       .run()
 
+    const viewer = await registerAndLogin('feed-viewer', 'password123')
+    await env.DB.prepare('UPDATE users SET center_id = ? WHERE id = ?')
+      .bind(centerId, viewer.user.id)
+      .run()
+
     const { res, body } = await fetchJSON(
       '/api/feed',
-      { headers: authHeader(memberToken) },
+      { headers: authHeader(viewer.token) },
     )
     expect(res.status).toBe(200)
     expect(body.posts).toHaveLength(1)
@@ -2153,11 +2261,6 @@ describe('event routes', () => {
     adminToken = await createAdmin()
     const { token } = await registerAndLogin('eventuser', 'password123')
     userToken = token
-    // Event creation is coordinator-gated (sevak+). The fixture creator is a
-    // pilot coordinator, so promote it to SEVAK.
-    await env.DB.prepare('UPDATE users SET verification_level = 54 WHERE username = ?')
-      .bind('eventuser')
-      .run()
 
     // Create a center for events (requires auth now)
     const { body } = await jsonPost(
@@ -2170,6 +2273,12 @@ describe('event routes', () => {
       authHeader(adminToken)
     )
     centerId = body.id
+
+    // Event creation is coordinator-gated to a user's own center. The fixture
+    // creator is a pilot coordinator for this center.
+    await env.DB.prepare('UPDATE users SET center_id = ?, verification_level = ? WHERE username = ?')
+      .bind(centerId, SEVAK, 'eventuser')
+      .run()
   })
 
   describe('POST /api/addEvent', () => {
@@ -2252,6 +2361,57 @@ describe('event routes', () => {
       expect(res.status).toBe(400)
     })
 
+    it('rejects impossible ISO datetimes (400)', async () => {
+      const { res } = await jsonPost(
+        '/api/addEvent',
+        {
+          title: 'Impossible Date',
+          date: '2026-02-31T10:00:00Z',
+          latitude: 37.0,
+          longitude: -121.0,
+          centerID: centerId,
+        },
+        authHeader(userToken),
+      )
+      expect(res.status).toBe(400)
+    })
+
+    it('rejects javascript URL payloads (400)', async () => {
+      const { res } = await jsonPost(
+        '/api/addEvent',
+        {
+          title: 'Bad URL',
+          date: '2025-06-01T10:00:00Z',
+          latitude: 37.0,
+          longitude: -121.0,
+          centerID: centerId,
+          signupUrl: 'javascript:alert(1)',
+        },
+        authHeader(userToken),
+      )
+      expect(res.status).toBe(400)
+    })
+
+    it('rejects cross-center event creation by a non-admin coordinator (403)', async () => {
+      const { body: otherCenter } = await jsonPost(
+        '/api/addCenter',
+        { centerName: 'Other Event Center', latitude: 38.0, longitude: -122.0 },
+        authHeader(adminToken),
+      )
+      const { res } = await jsonPost(
+        '/api/addEvent',
+        {
+          title: 'Wrong Center',
+          date: '2025-06-01T10:00:00Z',
+          latitude: 38.0,
+          longitude: -122.0,
+          centerID: otherCenter.id,
+        },
+        authHeader(userToken),
+      )
+      expect(res.status).toBe(403)
+    })
+
     it('requires authentication (401)', async () => {
       const { res } = await jsonPost('/api/addEvent', {
         title: 'No Auth',
@@ -2283,6 +2443,30 @@ describe('event routes', () => {
       expect(body.event.externalUrl).toBe('https://chinmayamission.com/events/satsang')
       expect(body.event.signupUrl).toBe('https://eventbrite.com/e/12345')
       expect(body.event.allowJanataSignup).toBe(true)
+    })
+
+    it('persists requiresVerified and blocks guest RSVP when set at create time', async () => {
+      const { body: addBody } = await jsonPost(
+        '/api/addEvent',
+        {
+          title: 'Verified Only',
+          date: '2025-06-01T10:00:00Z',
+          latitude: 37.0,
+          longitude: -121.0,
+          centerID: centerId,
+          requiresVerified: true,
+        },
+        authHeader(userToken),
+      )
+      const { body } = await jsonPost('/api/fetchEvent', { id: addBody.id })
+      expect(body.event.requiresVerified).toBe(true)
+
+      const guest = await jsonPost('/api/attendEventGuest', {
+        eventID: addBody.id,
+        name: 'Guest Blocked',
+        email: 'blocked-guest@example.com',
+      })
+      expect(guest.res.status).toBe(403)
     })
 
     it('defaults allowJanataSignup to false when omitted', async () => {
@@ -2676,6 +2860,58 @@ describe('event routes', () => {
         authHeader(userToken)
       )
       expect(res.status).toBe(404)
+    })
+
+    it('rejects invalid update payloads before storing them', async () => {
+      const { body: addBody } = await jsonPost(
+        '/api/addEvent',
+        {
+          title: 'Validation Target',
+          date: '2025-06-01T10:00:00Z',
+          latitude: 37.0,
+          longitude: -121.0,
+          centerID: centerId,
+        },
+        authHeader(userToken),
+      )
+
+      const badDate = await jsonPost(
+        '/api/updateEvent',
+        { eventJSON: { id: addBody.id, date: '2026-02-31T10:00:00Z' } },
+        authHeader(userToken),
+      )
+      expect(badDate.res.status).toBe(400)
+
+      const badCategory = await jsonPost(
+        '/api/updateEvent',
+        { eventJSON: { id: addBody.id, category: 123456 } },
+        authHeader(userToken),
+      )
+      expect(badCategory.res.status).toBe(400)
+    })
+
+    it('does not let a non-admin edit legacy events without a creator', async () => {
+      const { body: addBody } = await jsonPost(
+        '/api/addEvent',
+        {
+          title: 'Legacy Event',
+          date: '2025-06-01T10:00:00Z',
+          latitude: 37.0,
+          longitude: -121.0,
+          centerID: centerId,
+        },
+        authHeader(userToken),
+      )
+      await env.DB.prepare('UPDATE events SET created_by = NULL WHERE id = ?')
+        .bind(addBody.id)
+        .run()
+
+      const { res } = await jsonPost(
+        '/api/updateEvent',
+        { eventJSON: { id: addBody.id, title: 'Hijacked' } },
+        authHeader(userToken),
+      )
+      expect(res.status).toBe(401)
     })
 
     it('returns 400 for missing event ID', async () => {
@@ -3100,13 +3336,32 @@ describe('Admin event actions', () => {
     const adminToken = await createAdmin()
     const { eventId } = await createTestEvent(adminToken)
     const { res, body } = await jsonPut(`/api/admin/events/${eventId}`, {
-      title: 'Updated Event', description: 'New description',
+      title: 'Updated Event', description: 'New description', requiresVerified: true,
     }, authHeader(adminToken))
     expect(res.status).toBe(200)
     expect(body.message).toBe('Event updated')
     const { body: fetched } = await jsonPost('/api/fetchEvent', { id: eventId })
     expect(fetched.event.title).toBe('Updated Event')
     expect(fetched.event.description).toBe('New description')
+    expect(fetched.event.requiresVerified).toBe(true)
+  })
+
+  it('PUT /api/admin/events/:id rejects invalid event fields', async () => {
+    const adminToken = await createAdmin()
+    const { eventId } = await createTestEvent(adminToken)
+    const badUrl = await jsonPut(
+      `/api/admin/events/${eventId}`,
+      { signupUrl: 'javascript:alert(1)' },
+      authHeader(adminToken),
+    )
+    expect(badUrl.res.status).toBe(400)
+
+    const badDate = await jsonPut(
+      `/api/admin/events/${eventId}`,
+      { date: '2026-02-31T10:00:00Z' },
+      authHeader(adminToken),
+    )
+    expect(badDate.res.status).toBe(400)
   })
 
   it('DELETE /api/admin/events/:id deletes event', async () => {
@@ -3417,7 +3672,7 @@ describe('GET /api/auth/invite-codes/mine', () => {
 })
 
 describe('POST /api/auth/redeem-invite', () => {
-  it('records the invite code for an unverified user (no email-verify yet)', async () => {
+  it('redeems and promotes an unverified user immediately', async () => {
     // Verified user mints a code
     const { token: devToken } = await registerAsDeveloper()
     const { body: minted } = await jsonPost('/api/auth/invite-codes', {}, authHeader(devToken))
@@ -3434,8 +3689,8 @@ describe('POST /api/auth/redeem-invite', () => {
       authHeader(auth.token),
     )
     expect(res.status).toBe(200)
-    expect(body.message).toContain('verify your email')
-    expect(body.user.verificationLevel).toBe(30) // still UNVERIFIED
+    expect(body.message).toContain('now verified')
+    expect(body.user.verificationLevel).toBe(NORMAL_USER)
   })
 
   it('rejects already-verified users with 400', async () => {
