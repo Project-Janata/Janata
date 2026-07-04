@@ -3,14 +3,16 @@
  *
  * Om Sri Chinmaya Sadgurave Namaha. Om Sri Gurubyo Namaha.
  *
- * Outbound email. Verification email prefers Cloudflare Email Sending; other
- * transactional email keeps the existing Resend path when configured. Throws
- * on failure so callers can decide whether to surface the error or swallow it.
+ * Outbound email. Verification email goes through mail.sahasta.com so Sahasta
+ * domain ownership stays in the Sahasta Cloudflare account; other transactional
+ * email keeps the existing Resend path. Throws on failure so callers can decide
+ * whether to surface the error or swallow it.
  */
 
 import type { Env } from './types'
 
 const RESEND_API_URL = 'https://api.resend.com/emails'
+const DEFAULT_MAIL_APP_BASE_URL = 'https://mail.sahasta.com'
 const DEFAULT_VERIFICATION_FROM_EMAIL = 'janataverify@sahasta.com'
 
 interface SendArgs {
@@ -19,7 +21,7 @@ interface SendArgs {
   subject: string
   html: string
   text?: string
-  preferCloudflare?: boolean
+  preferMailApp?: boolean
 }
 
 /**
@@ -38,19 +40,8 @@ async function sendEmail(env: Env, args: SendArgs): Promise<void> {
     throw new Error('Email sender is not configured')
   }
 
-  if (args.preferCloudflare && env.EMAIL) {
-    await env.EMAIL.send({
-      from,
-      to: args.to,
-      subject: args.subject,
-      html: args.html,
-      text: args.text,
-    })
-    return
-  }
-
-  if (args.preferCloudflare && env.RESEND_API_KEY) {
-    await sendViaResend(env, args, from)
+  if (args.preferMailApp) {
+    await sendViaMailApp(env, args, from)
     return
   }
 
@@ -59,6 +50,73 @@ async function sendEmail(env: Env, args: SendArgs): Promise<void> {
   }
 
   await sendViaResend(env, args, from)
+}
+
+async function sendViaMailApp(env: Env, args: SendArgs, from: string): Promise<void> {
+  const authEmail = env.MAIL_APP_EMAIL?.trim()
+  const authPassword = env.MAIL_APP_PASSWORD
+  if (!authEmail || !authPassword) {
+    throw new Error('MAIL_APP_EMAIL and MAIL_APP_PASSWORD are not configured')
+  }
+
+  const baseUrl = env.MAIL_APP_BASE_URL || DEFAULT_MAIL_APP_BASE_URL
+  const loginRes = await fetch(mailAppUrl(baseUrl, '/api/auth/login'), {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify({
+      email: authEmail,
+      password: authPassword,
+    }),
+  })
+  if (!loginRes.ok) {
+    const body = await loginRes.text().catch(() => '')
+    throw new Error(`Mail App login failed: ${loginRes.status} ${body}`)
+  }
+
+  const headersWithCookies = loginRes.headers as Headers & {
+    getSetCookie?: () => string[]
+  }
+  const setCookies = headersWithCookies.getSetCookie?.() ?? []
+  const session = sessionCookie(
+    setCookies.length > 0 ? setCookies : [loginRes.headers.get('Set-Cookie') ?? ''],
+  )
+  if (!session) {
+    throw new Error('Mail App login did not return a session cookie')
+  }
+
+  const sendRes = await fetch(mailAppUrl(baseUrl, '/api/send'), {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      Cookie: `session=${session}`,
+    },
+    body: JSON.stringify({
+      from,
+      to: args.to,
+      subject: args.subject,
+      html: args.html,
+      text: args.text,
+    }),
+  })
+
+  if (!sendRes.ok) {
+    const body = await sendRes.text().catch(() => '')
+    throw new Error(`Mail App send failed: ${sendRes.status} ${body}`)
+  }
+}
+
+function mailAppUrl(baseUrl: string, path: string): string {
+  return new URL(path, baseUrl).toString()
+}
+
+function sessionCookie(setCookies: string[]): string | null {
+  for (const setCookie of setCookies) {
+    const match = /\bsession=([^;,\s]+)/.exec(setCookie)
+    if (match?.[1]) return match[1]
+  }
+  return null
 }
 
 async function sendViaResend(env: Env, args: SendArgs, from: string): Promise<void> {
@@ -117,7 +175,7 @@ export async function sendVerificationEmail(
     subject: 'Verify your Chinmaya Janata email',
     html,
     text,
-    preferCloudflare: true,
+    preferMailApp: true,
   })
 }
 

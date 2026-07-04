@@ -16,10 +16,6 @@ name = "chinmaya-janata-api-v2preview"
 main = "src/worker.ts"
 compatibility_date = "2026-02-26"
 
-send_email = [
-  { name = "EMAIL", allowed_sender_addresses = ["janataverify@sahasta.com"] }
-]
-
 [[d1_databases]]
 binding = "DB"
 database_name = "chinmaya-janata-db-v2preview"
@@ -37,6 +33,7 @@ bucket_name = "chinmaya-janata-avatars"
 # can read the repo could otherwise mint valid preview tokens.
 [vars]
 RESEND_FROM_EMAIL = "noreply@chinmayajanata.org"
+MAIL_APP_BASE_URL = "https://mail.sahasta.com"
 VERIFICATION_FROM_EMAIL = "janataverify@sahasta.com"
 # Invite gate ON (#342): preview exercises the real invite-only flow. The seed
 # script registers its role users with a valid code (see seed-preview-roles.sh).
@@ -46,3 +43,5 @@ REQUIRE_INVITE_CODE = "true"
 #   bunx wrangler secret put JWT_SECRET         --config packages/backend/wrangler.preview.toml
 #   bunx wrangler secret put JWT_REFRESH_SECRET --config packages/backend/wrangler.preview.toml
 #   bunx wrangler secret put RESEND_API_KEY     --config packages/backend/wrangler.preview.toml
+#   bunx wrangler secret put MAIL_APP_EMAIL     --config packages/backend/wrangler.preview.toml
+#   bunx wrangler secret put MAIL_APP_PASSWORD  --config packages/backend/wrangler.preview.toml

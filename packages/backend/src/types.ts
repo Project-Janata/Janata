@@ -13,8 +13,6 @@ import { NORMAL_USER } from './constants'
 export interface Env {
   DB: D1Database
   AVATARS: R2Bucket
-  /** Cloudflare Email Sending binding for Worker-native outbound email. */
-  EMAIL?: SendEmail
   JWT_SECRET: string
   JWT_REFRESH_SECRET?: string
   /**
@@ -28,7 +26,13 @@ export interface Env {
   RESEND_API_KEY?: string
   /** Default from address for Resend/default transactional email. */
   RESEND_FROM_EMAIL?: string
-  /** From address for verification email sent through Cloudflare Email Sending. */
+  /** Base URL for the Sahasta Mail App verification sender API. */
+  MAIL_APP_BASE_URL?: string
+  /** Mail App account used to send verification email. Secret. */
+  MAIL_APP_EMAIL?: string
+  /** Mail App password used to send verification email. Secret. */
+  MAIL_APP_PASSWORD?: string
+  /** From address for verification email sent through the Sahasta Mail App. */
   VERIFICATION_FROM_EMAIL?: string
   /** When "true", outbound email sends are skipped. Tests set this. */
   EMAIL_SEND_DISABLED?: string

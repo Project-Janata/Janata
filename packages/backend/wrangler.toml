@@ -11,14 +11,12 @@
 #   bunx wrangler secret put JWT_SECRET
 #   bunx wrangler secret put JWT_REFRESH_SECRET
 #   bunx wrangler secret put RESEND_API_KEY
+#   bunx wrangler secret put MAIL_APP_EMAIL
+#   bunx wrangler secret put MAIL_APP_PASSWORD
 
 name = "chinmaya-janata-api"
 main = "src/worker.ts"
 compatibility_date = "2026-02-26"
-
-send_email = [
-  { name = "EMAIL", allowed_sender_addresses = ["janataverify@sahasta.com"] }
-]
 
 [[d1_databases]]
 binding = "DB"
@@ -29,11 +27,12 @@ database_id = "d38b4cd2-963b-45eb-9f83-1e72f9d3aa5d"
 binding = "AVATARS"
 bucket_name = "chinmaya-janata-avatars"
 
-# Non-secret vars only. JWT_SECRET / JWT_REFRESH_SECRET / RESEND_API_KEY
-# come from `wrangler secret put` (see comment block at top). For `wrangler
-# dev`, values come from .dev.vars (gitignored, see .dev.vars.example).
+# Non-secret vars only. Secrets come from `wrangler secret put` (see comment
+# block at top). For `wrangler dev`, values come from .dev.vars (gitignored,
+# see .dev.vars.example).
 [vars]
 RESEND_FROM_EMAIL = "noreply@chinmayajanata.org"
+MAIL_APP_BASE_URL = "https://mail.sahasta.com"
 VERIFICATION_FROM_EMAIL = "janataverify@sahasta.com"
 # Invite gate ON (#342): refuse API signups without a valid invite code.
 REQUIRE_INVITE_CODE = "true"
