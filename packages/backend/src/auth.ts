@@ -82,17 +82,41 @@ interface TokenPayload extends JWTPayload {
   id: string
   username: string
   type?: 'access' | 'refresh'
+  // Fingerprint of users.password at issue time. When the password changes
+  // (reset flow, "change password" future), the fingerprint shifts and all
+  // outstanding JWTs fail the authMiddleware check. Optional so JWTs issued
+  // before this rollout still verify.
+  tv?: string
 }
 
 function secretToKey(secret: string): Uint8Array {
   return new TextEncoder().encode(secret)
 }
 
+/**
+ * Derives a short, stable fingerprint of a stored password hash.
+ * Used as the `tv` (token version) claim on JWTs so that rotating a user's
+ * password invalidates every live JWT for that user.
+ *
+ * Hashing the already-hashed password keeps us from putting raw hash bytes
+ * into the token. 16 hex chars = 64 bits, plenty to detect any change.
+ */
+export async function passwordFingerprint(passwordHash: string): Promise<string> {
+  const bytes = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(passwordHash))
+  const arr = new Uint8Array(bytes)
+  let hex = ''
+  for (let i = 0; i < 8; i++) {
+    hex += arr[i].toString(16).padStart(2, '0')
+  }
+  return hex
+}
+
 export async function generateToken(
-  user: { id: string; username: string },
+  user: { id: string; username: string; password: string },
   secret: string,
 ): Promise<string> {
-  return new SignJWT({ id: user.id, username: user.username, type: 'access' })
+  const tv = await passwordFingerprint(user.password)
+  return new SignJWT({ id: user.id, username: user.username, type: 'access', tv })
     .setProtectedHeader({ alg: 'HS256' })
     .setIssuedAt()
     .setExpirationTime('30d')
@@ -100,10 +124,11 @@ export async function generateToken(
 }
 
 export async function generateRefreshToken(
-  user: { id: string; username: string },
+  user: { id: string; username: string; password: string },
   secret: string,
 ): Promise<string> {
-  return new SignJWT({ id: user.id, username: user.username, type: 'refresh' })
+  const tv = await passwordFingerprint(user.password)
+  return new SignJWT({ id: user.id, username: user.username, type: 'refresh', tv })
     .setProtectedHeader({ alg: 'HS256' })
     .setIssuedAt()
     .setExpirationTime('90d')

@@ -1,104 +1,65 @@
 import React from 'react'
-import { View, Text, Pressable, ScrollView, Platform, useWindowDimensions } from 'react-native'
+import { View, Pressable, Platform } from 'react-native'
 import { SafeAreaView } from 'react-native-safe-area-context'
-import { useRouter, usePathname, Slot, Stack } from 'expo-router'
-import { ArrowLeft, User, Settings as SettingsIcon } from 'lucide-react-native'
+import { useRouter, Slot, Stack } from 'expo-router'
+import { ArrowLeft } from 'lucide-react-native'
 import { useTheme } from '../../components/contexts'
-import Logo from '../../components/ui/Logo'
+import { Text } from '../../components/ui'
 
-const SETTINGS_TABS = [
-  { id: 'profile', label: 'Profile', icon: User, path: '/settings/profile' },
-  { id: 'preferences', label: 'Preferences', icon: SettingsIcon, path: '/settings/preferences' },
-]
-
+// Settings is one combined page (Profile section + preferences) on web, and a
+// stack on native. The old web sidebar (Profile / Preferences tabs) was removed
+// because Profile now lives as the top section of the page — see
+// settings/index.web.tsx. The /settings/profile route redirects here (#346).
 export default function SettingsLayout() {
   const router = useRouter()
-  const pathname = usePathname()
   const { isDark } = useTheme()
-  const { width } = useWindowDimensions()
 
-  const showSidebar = Platform.OS === 'web' && width >= 768
-
-  const handleTabPress = (path: string) => {
-    router.push(path as any)
-  }
-
-  const handleClose = () => {
-    router.push('/')
-  }
-
-  // Native: Stack with slide animation
+  // Native: stack with slide animation (unchanged)
   if (Platform.OS !== 'web') {
     return (
       <Stack screenOptions={{ headerShown: false, animation: 'slide_from_right' }}>
-        <Stack.Screen name="preferences" />
-        <Stack.Screen name="profile" />
+        <Stack.Screen name="index" />
+        <Stack.Screen name="invite" />
+        <Stack.Screen name="notifications" />
       </Stack>
     )
   }
 
-  // Web: sidebar layout
+  const handleClose = () => {
+    if (router.canGoBack()) router.back()
+    else router.push('/')
+  }
+
   return (
-    <>
-      <Stack.Screen options={{ headerShown: false }} />
-      <SafeAreaView className="flex-1 bg-white dark:bg-neutral-900" edges={['bottom']}>
-        <View className="flex-1 flex-row">
-          {showSidebar && (
-            <View className="w-64 border-r border-stone-200 dark:border-stone-700 bg-stone-50 dark:bg-stone-900">
-              <View className="p-6 border-b border-stone-200 dark:border-stone-700">
-                <View className="flex-row items-center justify-between mb-2">
-                  <Pressable
-                    onPress={handleClose}
-                    className="p-1"
-                    style={{ minWidth: 44, minHeight: 44, justifyContent: 'center', alignItems: 'center' }}
-                  >
-                    <ArrowLeft size={20} color={isDark ? '#a1a1aa' : '#71717a'} />
-                  </Pressable>
-                  <Text className="text-2xl font-inter font-bold text-content dark:text-content-dark">
-                    Settings
-                  </Text>
-                  <View style={{ width: 44 }} />
-                </View>
-              </View>
-              <ScrollView className="flex-1 p-3">
-                {SETTINGS_TABS.map((tab) => {
-                  const isActive = pathname === tab.path || pathname.startsWith(tab.path + '/')
-                  const Icon = tab.icon
-                  return (
-                    <Pressable
-                      key={tab.id}
-                      onPress={() => handleTabPress(tab.path)}
-                      className={`flex-row items-center gap-3 px-4 py-3 rounded-xl mb-1 ${
-                        isActive
-                          ? 'bg-primary shadow-sm'
-                          : 'bg-transparent hover:bg-stone-100 dark:hover:bg-stone-800'
-                      }`}
-                      style={{ minHeight: 44 }}
-                    >
-                      <Icon
-                        size={20}
-                        className={
-                          isActive ? 'text-white' : 'text-stone-500 dark:text-stone-400'
-                        }
-                      />
-                      <Text
-                        className={`font-inter font-medium text-base ${
-                          isActive ? 'text-white' : 'text-content dark:text-content-dark'
-                        }`}
-                      >
-                        {tab.label}
-                      </Text>
-                    </Pressable>
-                  )
-                })}
-              </ScrollView>
-            </View>
-          )}
-          <View className="flex-1">
-            <Slot />
-          </View>
-        </View>
-      </SafeAreaView>
-    </>
+    <SafeAreaView
+      style={{ flex: 1, backgroundColor: isDark ? '#1A1A1A' : '#F5F5F4' }}
+      edges={['top', 'bottom']}
+    >
+      <View
+        style={{
+          flexDirection: 'row',
+          alignItems: 'center',
+          gap: 8,
+          paddingHorizontal: 12,
+          paddingVertical: 10,
+          borderBottomWidth: 1,
+          borderBottomColor: isDark ? '#262626' : '#E7E5E4',
+          backgroundColor: isDark ? '#171717' : '#FFFFFF',
+        }}
+      >
+        <Pressable
+          onPress={handleClose}
+          accessibilityRole="button"
+          accessibilityLabel="Back"
+          style={{ width: 40, height: 40, justifyContent: 'center', alignItems: 'center' }}
+        >
+          <ArrowLeft size={22} color={isDark ? '#a1a1aa' : '#71717a'} />
+        </Pressable>
+        <Text style={{ fontSize: 18, color: isDark ? '#FAFAF9' : '#1C1917' }}>Settings</Text>
+      </View>
+      <View style={{ flex: 1 }}>
+        <Slot />
+      </View>
+    </SafeAreaView>
   )
 }

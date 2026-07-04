@@ -1,67 +1,38 @@
-const colors = require('tailwindcss/colors')
-
 /** @type {import('tailwindcss').Config} */
 module.exports = {
   darkMode: 'class',
   content: [
-    // Only scan local directories - do NOT scan node_modules or parent directories
     './app/**/*.{js,jsx,ts,tsx}',
     './components/**/*.{js,jsx,ts,tsx}',
   ],
   presets: [require('nativewind/preset')],
   theme: {
     extend: {
-      colors: {
-        primary: {
-          DEFAULT: colors.orange[600],
-          press: colors.orange[700],
-        },
-        background: {
-          DEFAULT: colors.white,
-          light: colors.neutral[300],
-          dark: colors.neutral[900],
-        },
-        backgroundStrong: {
-          DEFAULT: colors.gray[900],
-          light: colors.neutral[100],
-          dark: colors.neutral[800],
-        },
-        content: {
-          DEFAULT: colors.gray[900],
-          light: colors.gray[700],
-          dark: colors.gray[100],
-        },
-        contentStrong: {
-          DEFAULT: colors.gray[600],
-          light: colors.gray[500],
-          dark: colors.gray[400],
-        },
-        muted: {
-          DEFAULT: colors.neutral[200],
-          light: colors.neutral[200],
-          dark: colors.neutral[600],
-        },
-        outlineColor: {
-          DEFAULT: colors.gray[700],
-          dark: colors.gray[300],
-        },
-        borderColor: {
-          DEFAULT: colors.gray[200],
-          dark: colors.neutral[700],
-        },
-        card: {
-          DEFAULT: colors.white,
-          dark: colors.neutral[800],
-        },
-      },
       fontFamily: {
-        sans: ['Inter-Regular'],
-        inter: ['Inter-Regular'],
-        'inter-bold': ['Inter-Bold'],
-        'inter-semibold': ['Inter-SemiBold'],
-        'inter-medium': ['Inter-Medium'],
-        'inter-light': ['Inter-Light'],
-        'inclusive-sans': ['"Inclusive Sans"', 'sans-serif'],
+        sans:  ['Inclusive Sans', 'ui-sans-serif', 'system-ui', 'sans-serif'],
+        ui:    ['Inter', 'ui-sans-serif', 'system-ui', 'sans-serif'],
+        serif: ['ui-serif', 'Georgia', 'Cambria', 'serif'],
+        mono:  ['ui-monospace', 'SFMono-Regular', 'Menlo', 'monospace'],
+      },
+      colors: {
+        // Brand
+        primary: { DEFAULT: '#E8862A', press: '#D97520', soft: '#FFF7ED' },
+        // Surfaces (light / dark via NativeWind dark: prefix)
+        card:    { DEFAULT: '#FFFFFF',  dark: '#262626' },
+        panel:   { DEFAULT: '#F7F4EF', dark: '#1F1F1F' },
+        // Text
+        content:     { DEFAULT: '#1C1917', dark: '#FAFAFA' },
+        contentSoft: { DEFAULT: '#44403C', dark: '#D6D3D1' },
+        muted:       { DEFAULT: '#78716C', dark: '#A8A29E' },
+        faint:       { DEFAULT: '#A8A29E', dark: '#737373' },
+        // Borders
+        borderColor: { DEFAULT: '#E7E5E4', dark: '#3A3A3A' },
+        // Status
+        success: { DEFAULT: '#059669', dark: '#34D399' },
+        // Legacy aliases kept for gradual migration
+        background:       { DEFAULT: '#F5F5F4', dark: '#1A1A1A' },
+        backgroundStrong: { DEFAULT: '#F0EDE8', dark: '#171717' },
+        outlineColor:     { DEFAULT: '#D6D3D1', dark: '#525252' },
       },
     },
   },

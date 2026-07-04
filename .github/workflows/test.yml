@@ -3,30 +3,30 @@ name: CI
 on:
   push:
     branches:
-      - '*'
+      - '**'
   pull_request:
     branches:
       - main
+      - v2
 
 jobs:
   check:
     runs-on: ubuntu-latest
 
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
 
       - name: Use Node.js
-        uses: actions/setup-node@v4
+        uses: actions/setup-node@v5
         with:
           node-version: '22'
           cache: 'npm'
 
       - name: Clean install
-        run: rm -rf node_modules package-lock.json && npm install
+        run: npm ci
 
-      - name: TypeScript check (backend)
-        run: npx tsc --noEmit
-        working-directory: packages/backend
+      - name: TypeScript check
+        run: npm run typecheck
 
       - name: Run backend tests
         run: npm run test:backend

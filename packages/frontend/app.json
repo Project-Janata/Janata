@@ -1,16 +1,16 @@
 {
   "expo": {
-    "name": "Chinmaya Janata",
+    "name": "Janata",
     "slug": "chinmaya-janata",
-    "version": "1.0.0",
+    "version": "2.0.0",
     "orientation": "portrait",
     "icon": "./assets/images/logo.png",
-    "scheme": "myapp",
+    "scheme": "janata",
     "userInterfaceStyle": "automatic",
     "splash": {
-      "image": "./assets/images/logo.png",
+      "image": "./assets/images/logo_with_text.png",
       "resizeMode": "contain",
-      "backgroundColor": "#ffffff"
+      "backgroundColor": "#FAFAF7"
     },
     "android": {
       "adaptiveIcon": {
@@ -21,23 +21,165 @@
         "INTERNET",
         "ACCESS_NETWORK_STATE",
         "ACCESS_FINE_LOCATION",
+        "ACCESS_COARSE_LOCATION",
+        "INTERNET",
+        "ACCESS_NETWORK_STATE",
+        "ACCESS_FINE_LOCATION",
         "ACCESS_COARSE_LOCATION"
       ],
-      "package": "org.chinmayamission.janata"
+      "package": "org.chinmayamission.janata",
+      "intentFilters": [
+        {
+          "action": "VIEW",
+          "autoVerify": true,
+          "data": [
+            {
+              "scheme": "https",
+              "host": "chinmayajanata.org",
+              "pathPrefix": "/center"
+            },
+            {
+              "scheme": "https",
+              "host": "chinmayajanata.org",
+              "pathPrefix": "/events"
+            },
+            {
+              "scheme": "https",
+              "host": "chinmayajanata.org",
+              "pathPrefix": "/feed"
+            },
+            {
+              "scheme": "https",
+              "host": "chinmayajanata.org",
+              "pathPrefix": "/i"
+            },
+            {
+              "scheme": "https",
+              "host": "chinmayajanata.org",
+              "pathPrefix": "/auth"
+            },
+            {
+              "scheme": "https",
+              "host": "www.chinmayajanata.org",
+              "pathPrefix": "/center"
+            },
+            {
+              "scheme": "https",
+              "host": "www.chinmayajanata.org",
+              "pathPrefix": "/events"
+            },
+            {
+              "scheme": "https",
+              "host": "www.chinmayajanata.org",
+              "pathPrefix": "/feed"
+            },
+            {
+              "scheme": "https",
+              "host": "www.chinmayajanata.org",
+              "pathPrefix": "/i"
+            },
+            {
+              "scheme": "https",
+              "host": "www.chinmayajanata.org",
+              "pathPrefix": "/auth"
+            },
+            {
+              "scheme": "https",
+              "host": "janata.app",
+              "pathPrefix": "/i"
+            }
+          ],
+          "category": [
+            "BROWSABLE",
+            "DEFAULT"
+          ]
+        },
+        {
+          "action": "VIEW",
+          "autoVerify": true,
+          "data": [
+            {
+              "scheme": "https",
+              "host": "chinmayajanata.org",
+              "pathPrefix": "/center"
+            },
+            {
+              "scheme": "https",
+              "host": "chinmayajanata.org",
+              "pathPrefix": "/events"
+            },
+            {
+              "scheme": "https",
+              "host": "chinmayajanata.org",
+              "pathPrefix": "/feed"
+            },
+            {
+              "scheme": "https",
+              "host": "chinmayajanata.org",
+              "pathPrefix": "/i"
+            },
+            {
+              "scheme": "https",
+              "host": "chinmayajanata.org",
+              "pathPrefix": "/auth"
+            },
+            {
+              "scheme": "https",
+              "host": "www.chinmayajanata.org",
+              "pathPrefix": "/center"
+            },
+            {
+              "scheme": "https",
+              "host": "www.chinmayajanata.org",
+              "pathPrefix": "/events"
+            },
+            {
+              "scheme": "https",
+              "host": "www.chinmayajanata.org",
+              "pathPrefix": "/feed"
+            },
+            {
+              "scheme": "https",
+              "host": "www.chinmayajanata.org",
+              "pathPrefix": "/i"
+            },
+            {
+              "scheme": "https",
+              "host": "www.chinmayajanata.org",
+              "pathPrefix": "/auth"
+            },
+            {
+              "scheme": "https",
+              "host": "janata.app",
+              "pathPrefix": "/i"
+            }
+          ],
+          "category": [
+            "BROWSABLE",
+            "DEFAULT"
+          ]
+        }
+      ]
     },
     "assetBundlePatterns": [
       "**/*"
     ],
     "ios": {
+      "icon": "./assets/images/logo.png",
       "supportsTablet": true,
-      "buildNumber": "27",
+      "buildNumber": "35",
       "infoPlist": {
         "NSLocationWhenInUseUsageDescription": "Chinmaya Janata uses your location to show nearby centers and events on the map.",
         "NSPhotoLibraryUsageDescription": "Chinmaya Janata needs access to your photo library to set your profile picture.",
         "NSCameraUsageDescription": "Chinmaya Janata needs access to your camera to take a profile picture.",
         "ITSAppUsesNonExemptEncryption": false
       },
-      "bundleIdentifier": "org.chinmayamission.janata"
+      "bundleIdentifier": "org.chinmayamission.janata",
+      "associatedDomains": [
+        "applinks:chinmayajanata.org",
+        "applinks:www.chinmayajanata.org",
+        "applinks:janata.app"
+      ]
     },
     "web": {
       "bundler": "metro",
@@ -47,7 +189,27 @@
     "plugins": [
       "expo-router",
       "expo-font",
-      "expo-localization"
+      "expo-localization",
+      [
+        "expo-splash-screen",
+        {
+          "image": "./assets/images/logo_with_text.png",
+          "resizeMode": "contain",
+          "backgroundColor": "#FAFAF7",
+          "imageWidth": 280,
+          "dark": {
+            "image": "./assets/images/logo_with_text.png",
+            "backgroundColor": "#0F0F0F"
+          }
+        }
+      ],
+      [
+        "expo-notifications",
+        {
+          "icon": "./assets/images/logo.png",
+          "color": "#FF8A3D"
+        }
+      ]
     ],
     "experiments": {
       "typedRoutes": true
@@ -58,6 +220,12 @@
         "projectId": "558764c0-25bc-4394-8d2e-604d11f36b22"
       }
     },
-    "owner": "chinmaya-janata"
+    "owner": "chinmaya-janata",
+    "runtimeVersion": {
+      "policy": "appVersion"
+    },
+    "updates": {
+      "url": "https://u.expo.dev/558764c0-25bc-4394-8d2e-604d11f36b22"
+    }
   }
 }

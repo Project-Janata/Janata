@@ -1,0 +1,180 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1"/>
+<title>IA options as workflow diagrams — invite-entry-flow</title>
+<style>
+  :root{
+    --ink:#1c1917;--mut:#6e6c68;--line:#b9b6b1;--bg:#bdbab6;
+    --door1:#C2410C;--door1bg:#FFF4ED;        /* invited */
+    --cold:#2563EB;--coldbg:#EFF6FF;           /* cold / not-invited */
+    --login:#7c3aed;--loginbg:#F5F0FF;         /* existing, not logged in */
+    --auto:#059669;--autobg:#ECFDF5;           /* auto logged in */
+    --router:#1c1917;--screen:#fff;--term:#3a3733;
+  }
+  *{box-sizing:border-box}
+  body{margin:0;background:var(--bg);font-family:Inter,system-ui,sans-serif;color:var(--ink);padding:24px 18px 70px}
+  .wrap{max-width:1280px;margin:0 auto}
+  h1{font-size:20px;margin:0 0 3px}
+  .lede{font-size:13px;color:#332f2b;margin:0 0 12px;max-width:920px;line-height:1.5}
+  .key{display:flex;gap:14px;flex-wrap:wrap;margin:0 0 22px;font-size:11.5px}
+  .key span{display:inline-flex;align-items:center;gap:6px;font-weight:600}
+  .sw{width:13px;height:13px;border-radius:4px;display:inline-block}
+  .opt{background:#cfccc8;border-radius:16px;padding:16px 16px 20px;margin-bottom:20px}
+  .opt-h{display:flex;align-items:baseline;gap:10px;flex-wrap:wrap;margin-bottom:12px}
+  .opt-h .k{font-size:16px;font-weight:700}
+  .opt-h .p{font-size:12.5px;color:#4a4641;font-weight:600}
+  .rec{font-size:10.5px;font-weight:700;letter-spacing:.04em;text-transform:uppercase;background:#1c1917;color:#fff;border-radius:5px;padding:2px 7px}
+  /* flow grid */
+  .flow{display:grid;grid-template-columns:repeat(6,1fr);gap:0 10px;align-items:start}
+  .stage{font-size:9.5px;font-weight:700;letter-spacing:.05em;text-transform:uppercase;color:#5a5752;text-align:center;padding-bottom:8px;border-bottom:1px dashed #a9a6a1;margin-bottom:10px}
+  .col{display:flex;flex-direction:column;gap:9px}
+  .node{position:relative;border-radius:9px;padding:8px 9px;font-size:10.5px;line-height:1.3;background:var(--screen);border:1px solid var(--line)}
+  .node .t{font-weight:700;display:block;margin-bottom:1px}
+  .node .s{color:var(--mut);font-size:9.5px}
+  .entry{border-left:4px solid}
+  .e1{border-left-color:var(--door1);background:var(--door1bg)}
+  .e2{border-left-color:var(--cold);background:var(--coldbg)}
+  .e3{border-left-color:var(--login);background:var(--loginbg)}
+  .e4{border-left-color:var(--auto);background:var(--autobg)}
+  .router{background:var(--router);color:#fff;text-align:center;font-weight:700;border:none}
+  .router .s{color:#cfcdc9}
+  .screen{box-shadow:0 2px 6px rgba(0,0,0,.08)}
+  .door1{border-top:3px solid var(--door1)}
+  .cold{border-top:3px solid var(--cold)}
+  .term{background:var(--term);color:#fff;border:none;text-align:center;font-weight:700}
+  .term .s{color:#cfcdc9}
+  .arrow{font-size:9px;color:#6e6c68;text-align:center;margin:-4px 0}
+  .tagrow{display:flex;gap:3px;flex-wrap:wrap;margin-top:4px}
+  .tg{font-size:8px;font-weight:700;padding:1px 4px;border-radius:3px;color:#fff}
+  .t1{background:var(--door1)}.t2{background:var(--cold)}.t3{background:var(--login)}.t4{background:var(--auto)}
+  .note{font-size:11px;color:#3f3b36;margin:12px 0 0;line-height:1.5;background:#fff;border:1px solid #ddd;border-radius:8px;padding:9px 12px}
+  .note b{color:#1c1917}
+  .id{display:inline-block;min-width:13px;height:13px;padding:0 3px;border-radius:3px;background:#e6e4e1;color:#44403c;font-size:8px;font-weight:700;text-align:center;line-height:13px;margin-right:3px;font-family:ui-monospace,monospace}
+</style></head>
+<body><div class="wrap">
+  <h1>IA options as workflow diagrams</h1>
+  <p class="lede">Same three options, drawn as routing flows. Follow a colored entry state left→right. The four colors are the four user states from your onboarding review. Stage columns: <b>entry signal → router → door screen → action → just-in-time auth → in the app.</b></p>
+  <div class="key">
+    <span><span class="sw" style="background:var(--door1)"></span>Invited (tapped a friend's link)</span>
+    <span><span class="sw" style="background:var(--cold)"></span>Cold / not-invited</span>
+    <span><span class="sw" style="background:var(--login)"></span>Has account, not logged in</span>
+    <span><span class="sw" style="background:var(--auto)"></span>Auto-logged-in (returning member)</span>
+  </div>
+
+  <!-- ============ OPTION A ============ -->
+  <div class="opt">
+    <div class="opt-h"><span class="k">A — Door-routed</span><span class="p">the link picks the door; auth summoned just-in-time</span><span class="rec">Recommended</span></div>
+    <div class="flow">
+      <div class="stage">Entry signal</div><div class="stage">Router</div><div class="stage">Door screen</div><div class="stage">Action</div><div class="stage">JIT auth</div><div class="stage">In the app</div>
+
+      <!-- col1 entries -->
+      <div class="col">
+        <div class="node entry e1"><span class="t">Invite link</span><span class="s">chinmayajanata.org/i/CODE</span></div>
+        <div class="node entry e2"><span class="t">Cold open</span><span class="s">chinmayajanata.org</span></div>
+        <div class="node entry e2" style="border-left-color:var(--cold)"><span class="t">Event / share link</span><span class="s">/events/ID</span></div>
+        <div class="node entry e4"><span class="t">Returning session</span><span class="s">app cold start</span></div>
+      </div>
+      <!-- col2 router -->
+      <div class="col">
+        <div class="node router"><span class="t">Invite resolver</span><span class="s">code valid? logged in?</span></div>
+        <div class="node router"><span class="t">Root</span><span class="s">session check</span></div>
+      </div>
+      <!-- col3 door screens -->
+      <div class="col">
+        <div class="node screen door1"><span class="t"><span class="id">new-01</span>Door 1 · Vouch screen</span><span class="s">"Anand invited you" + 1-line what-it-is + optional slides</span><div class="tagrow"><span class="tg t1">invited</span></div></div>
+        <div class="node screen cold"><span class="t"><span class="id">new-10</span>Door 2 · Browse landing</span><span class="s">events + centers near you · location pill</span><div class="tagrow"><span class="tg t2">cold</span></div></div>
+        <div class="node screen"><span class="t"><span class="id">new-04</span>Invalid / expired</span><span class="s">paste a link / request one</span></div>
+        <div class="node term" style="background:var(--auto)"><span class="t">→ open app</span><span class="s">auto-login, no door</span><div class="tagrow"><span class="tg t4">auto</span></div></div>
+      </div>
+      <!-- col4 action -->
+      <div class="col">
+        <div class="node"><span class="t"><span class="id">new-03</span>Accept invite</span><div class="tagrow"><span class="tg t1">invited</span></div></div>
+        <div class="node"><span class="t"><span class="id">new-05</span>One-tap "Join?"</span><span class="s">invite link while already logged in</span><div class="tagrow"><span class="tg t4">auto</span></div></div>
+        <div class="node"><span class="t">Tap event → <span class="id">new-11</span>RSVP</span><div class="tagrow"><span class="tg t2">cold</span></div></div>
+        <div class="node"><span class="t"><span class="id">new-13</span>Log in</span><span class="s">"Already a member?"</span><div class="tagrow"><span class="tg t3">existing</span></div></div>
+        <div class="node"><span class="t"><span class="id">new-12</span>Tries member account</span><span class="s">→ invite wall</span><div class="tagrow"><span class="tg t2">cold</span></div></div>
+      </div>
+      <!-- col5 jit auth -->
+      <div class="col">
+        <div class="node"><span class="t">Create account</span><span class="s">email + pw · invite pre-applied · verified at inception</span></div>
+        <div class="node"><span class="t">Name + email only</span><span class="s">no password, no account (account-less RSVP)</span></div>
+        <div class="node"><span class="t">Password</span><span class="s">resume pending action</span></div>
+      </div>
+      <!-- col6 terminal -->
+      <div class="col">
+        <div class="node term"><span class="t">Member · in the app</span><span class="s">Home / center / event</span><div class="tagrow"><span class="tg t1">invited</span><span class="tg t3">existing</span><span class="tg t4">auto</span></div></div>
+        <div class="node term"><span class="t">RSVP confirmed</span><span class="s">no account · nudge: ask a member for an invite</span><div class="tagrow"><span class="tg t2">cold</span></div></div>
+      </div>
+    </div>
+    <p class="note"><b>Why this one:</b> every state has a purpose-built path. Invited gets the earned vouch moment; cold sees real events at zero taps; existing-member logs in from the browse door; auto-logged-in skips signup entirely (one-tap join or straight into the app). Auth never blocks the door — it fires at the commit (Accept / RSVP / Log in).</p>
+  </div>
+
+  <!-- ============ OPTION B ============ -->
+  <div class="opt">
+    <div class="opt-h"><span class="k">B — One content canvas</span><span class="p">everyone lands on the browse grid; vouch is a banner layer</span></div>
+    <div class="flow">
+      <div class="stage">Entry signal</div><div class="stage">Router</div><div class="stage">Door screen</div><div class="stage">Action</div><div class="stage">JIT auth</div><div class="stage">In the app</div>
+      <div class="col">
+        <div class="node entry e1"><span class="t">Invite link</span></div>
+        <div class="node entry e2"><span class="t">Cold open</span></div>
+        <div class="node entry e3"><span class="t">Existing, logged out</span></div>
+        <div class="node entry e4"><span class="t">Returning session</span></div>
+      </div>
+      <div class="col"><div class="node router"><span class="t">Root</span><span class="s">one canvas for all · adds banner if invite present</span></div></div>
+      <div class="col">
+        <div class="node screen cold"><span class="t"><span class="id">new-10</span>Browse canvas</span><span class="s">events/centers near you</span><div class="tagrow"><span class="tg t1">invited</span><span class="tg t2">cold</span><span class="tg t3">existing</span></div></div>
+        <div class="node screen door1" style="border-top-color:var(--door1)"><span class="t"><span class="id">new-01</span>+ vouch banner on top</span><span class="s">only when invite present</span><div class="tagrow"><span class="tg t1">invited</span></div></div>
+        <div class="node term" style="background:var(--auto)"><span class="t">→ open app</span><div class="tagrow"><span class="tg t4">auto</span></div></div>
+      </div>
+      <div class="col">
+        <div class="node"><span class="t"><span class="id">new-03</span>Accept (banner)</span></div>
+        <div class="node"><span class="t">Tap event → RSVP</span></div>
+        <div class="node"><span class="t">Log in</span></div>
+      </div>
+      <div class="col">
+        <div class="node"><span class="t">Create account</span><span class="s">invite pre-applied</span></div>
+        <div class="node"><span class="t">Name + email</span></div>
+      </div>
+      <div class="col">
+        <div class="node term"><span class="t">Member · in app</span></div>
+        <div class="node term"><span class="t">RSVP confirmed</span></div>
+      </div>
+    </div>
+    <p class="note"><b>Difference:</b> the router is thin — one canvas does all jobs, the invite is just a banner. Cheapest to build. <b>But</b> the vouch competes with the grid and the invite stops feeling like an earned moment — counter to your Door-1 call.</p>
+  </div>
+
+  <!-- ============ OPTION C ============ -->
+  <div class="opt">
+    <div class="opt-h"><span class="k">C — One adaptive screen</span><span class="p">today's funnel made intent-aware; hero swaps, path reveals progressively</span></div>
+    <div class="flow">
+      <div class="stage">Entry signal</div><div class="stage">Router</div><div class="stage">Door screen</div><div class="stage">Action</div><div class="stage">JIT auth</div><div class="stage">In the app</div>
+      <div class="col">
+        <div class="node entry e1"><span class="t">Invite link</span></div>
+        <div class="node entry e2"><span class="t">Cold open</span></div>
+        <div class="node entry e3"><span class="t">Existing, logged out</span></div>
+        <div class="node entry e4"><span class="t">Returning session</span></div>
+      </div>
+      <div class="col"><div class="node router"><span class="t">Adaptive entry</span><span class="s">reads link → picks hero</span></div></div>
+      <div class="col">
+        <div class="node screen door1"><span class="t"><span class="id">new-01</span>Vouch hero</span><span class="s">invited variant</span><div class="tagrow"><span class="tg t1">invited</span></div></div>
+        <div class="node screen cold"><span class="t"><span class="id">new-10</span>Value hero</span><span class="s">"Browse events" expands grid (1 tap)</span><div class="tagrow"><span class="tg t2">cold</span><span class="tg t3">existing</span></div></div>
+        <div class="node term" style="background:var(--auto)"><span class="t">→ open app</span><div class="tagrow"><span class="tg t4">auto</span></div></div>
+      </div>
+      <div class="col">
+        <div class="node"><span class="t">Accept → inline email/pw</span></div>
+        <div class="node"><span class="t">Browse ▾ → event → RSVP</span></div>
+        <div class="node"><span class="t">Log in</span></div>
+      </div>
+      <div class="col">
+        <div class="node"><span class="t">Create account (inline)</span></div>
+        <div class="node"><span class="t">Name + email</span></div>
+      </div>
+      <div class="col">
+        <div class="node term"><span class="t">Member · in app</span></div>
+        <div class="node term"><span class="t">RSVP confirmed</span></div>
+      </div>
+    </div>
+    <p class="note"><b>Difference:</b> one screen, fewest surfaces. <b>But</b> the cold visitor's events sit behind a "Browse" tap, so relevance isn't immediate — the weakest on Door 2's #1 task.</p>
+  </div>
+
+</div></body></html>

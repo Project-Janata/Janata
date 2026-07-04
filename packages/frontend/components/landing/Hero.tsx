@@ -1,6 +1,7 @@
 import React, { useEffect, useMemo, useRef } from 'react'
 import { View, Text, Pressable, Platform, useWindowDimensions, ScrollView, Image } from 'react-native'
 import { useRouter } from 'expo-router'
+import { usePostHog } from 'posthog-react-native'
 import { useEventList, useCenterList } from '../../hooks/useApiData'
 import type { EventDisplay, DiscoverCenter } from '../../utils/api'
 
@@ -277,7 +278,7 @@ function ScrollCard({ card, width }: { card: CardData; width: number }) {
         )}
         <Text
           style={{
-            fontFamily: 'Inter, sans-serif',
+            fontFamily: 'Inclusive Sans, sans-serif',
             fontWeight: '600',
             fontSize: titleSize,
             color: '#1C1917',
@@ -286,7 +287,7 @@ function ScrollCard({ card, width }: { card: CardData; width: number }) {
         >
           {card.title}
         </Text>
-        <Text style={{ fontFamily: 'Inter, sans-serif', fontSize: subtitleSize, color: '#78716C' }}>
+        <Text style={{ fontFamily: 'Inclusive Sans, sans-serif', fontSize: subtitleSize, color: '#78716C' }}>
           {card.subtitle}
         </Text>
       </View>
@@ -319,7 +320,7 @@ function ScrollCard({ card, width }: { card: CardData; width: number }) {
         >
           <Text
             style={{
-              fontFamily: 'Inter, sans-serif',
+              fontFamily: 'Inclusive Sans, sans-serif',
               fontWeight: '700',
               fontSize: iconFontSize,
               color: '#C2410C',
@@ -331,7 +332,7 @@ function ScrollCard({ card, width }: { card: CardData; width: number }) {
         <View style={{ flex: 1 }}>
           <Text
             style={{
-              fontFamily: 'Inter, sans-serif',
+              fontFamily: 'Inclusive Sans, sans-serif',
               fontWeight: '600',
               fontSize: titleSize,
               color: '#1C1917',
@@ -340,7 +341,7 @@ function ScrollCard({ card, width }: { card: CardData; width: number }) {
           >
             {card.title}
           </Text>
-          <Text style={{ fontFamily: 'Inter, sans-serif', fontSize: subtitleSize, color: '#78716C' }}>
+          <Text style={{ fontFamily: 'Inclusive Sans, sans-serif', fontSize: subtitleSize, color: '#78716C' }}>
             {card.subtitle}
           </Text>
         </View>
@@ -372,7 +373,7 @@ function ScrollCard({ card, width }: { card: CardData; width: number }) {
       </Text>
       <Text
         style={{
-          fontFamily: 'Inter, sans-serif',
+          fontFamily: 'Inclusive Sans, sans-serif',
           fontWeight: '600',
           fontSize: titleSize,
           color: '#1C1917',
@@ -381,7 +382,7 @@ function ScrollCard({ card, width }: { card: CardData; width: number }) {
       >
         {card.title.replace(card.stat + ' ', '')}
       </Text>
-      <Text style={{ fontFamily: 'Inter, sans-serif', fontSize: subtitleSize, color: '#78716C' }}>
+      <Text style={{ fontFamily: 'Inclusive Sans, sans-serif', fontSize: subtitleSize, color: '#78716C' }}>
         {card.subtitle}
       </Text>
     </View>
@@ -422,7 +423,9 @@ function InfiniteScrollColumn({
   )
 }
 
-const TEAM = [
+type TeamMember = { name: string; image: any; color?: string }
+
+const TEAM: TeamMember[] = [
   { name: 'Abhiram', image: require('../../assets/images/landing/abhiram.jpg') },
   { name: 'Kish', image: require('../../assets/images/landing/kish.jpg') },
   { name: 'Sahanav', image: require('../../assets/images/landing/sahanav.jpg') },
@@ -453,14 +456,14 @@ function AvatarStack() {
                 width: 38,
                 height: 38,
                 borderRadius: 19,
-                backgroundColor: person.color,
+                backgroundColor: person.color ?? '#9CA3AF',
                 borderWidth: 2,
                 borderColor: '#FAFAF7',
                 alignItems: 'center',
                 justifyContent: 'center',
               }}
             >
-              <Text style={{ fontFamily: 'Inter, sans-serif', fontWeight: '600', fontSize: 14, color: '#FFFFFF' }}>
+              <Text style={{ fontFamily: 'Inclusive Sans, sans-serif', fontWeight: '600', fontSize: 14, color: '#FFFFFF' }}>
                 {person.name[0]}
               </Text>
             </View>
@@ -496,6 +499,7 @@ function HorizontalScrollRow({ cards }: { cards: CardData[] }) {
 
 export function Hero() {
   const router = useRouter()
+  const posthog = usePostHog()
   const { width } = useWindowDimensions()
   const isMobile = width < 768
   const isTablet = width >= 768 && width < 1024
@@ -610,7 +614,7 @@ export function Hero() {
           >
             <Text
               style={{
-                fontFamily: 'Inter, sans-serif',
+                fontFamily: 'Inclusive Sans, sans-serif',
                 fontWeight: '600',
                 fontSize: 12,
                 color: '#C2410C',
@@ -621,7 +625,7 @@ export function Hero() {
           </View>
           <Text
             style={{
-              fontFamily: 'Inter, sans-serif',
+              fontFamily: 'Inclusive Sans, sans-serif',
               fontSize: 13,
               color: '#A8A29E',
             }}
@@ -646,7 +650,7 @@ export function Hero() {
 
         <Text
           style={{
-            fontFamily: 'Inter, sans-serif',
+            fontFamily: 'Inclusive Sans, sans-serif',
             fontWeight: '400',
             fontSize: isMobile ? 16 : 20,
             lineHeight: isMobile ? 26 : 32,
@@ -668,7 +672,10 @@ export function Hero() {
           }}
         >
           <Pressable
-            onPress={() => router.push('/(tabs)')}
+            onPress={() => {
+              posthog?.capture('landing_cta_pressed', { variant: 'hero', label: 'start_exploring' })
+              router.push('/explore')
+            }}
             className="bg-primary active:bg-primary-press rounded-full"
             style={{
               paddingHorizontal: 28,
@@ -682,7 +689,7 @@ export function Hero() {
           >
             <Text
               style={{
-                fontFamily: 'Inter, sans-serif',
+                fontFamily: 'Inclusive Sans, sans-serif',
                 fontWeight: '500',
                 fontSize: 16,
                 color: '#FFFFFF',
@@ -697,7 +704,7 @@ export function Hero() {
         {/* Avatar stack + tagline */}
         <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12 }}>
           <AvatarStack />
-          <Text style={{ fontFamily: 'Inter, sans-serif', fontSize: 14, color: '#78716C' }}>
+          <Text style={{ fontFamily: 'Inclusive Sans, sans-serif', fontSize: 14, color: '#78716C' }}>
             By CHYKs, for CHYKs.
           </Text>
         </View>

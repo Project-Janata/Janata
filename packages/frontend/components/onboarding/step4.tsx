@@ -1,12 +1,11 @@
 import { View, Text, Pressable } from 'react-native'
 import { SafeAreaView } from 'react-native-safe-area-context'
-import React, { useState } from 'react'
+import React from 'react'
 import { useOnboarding } from '../contexts'
 import { PrimaryButton } from '../ui'
 
 export default function Step4() {
-  const { goToNextStep, interests, setInterests, skipOnboarding, returnTo, isSubmitting } = useOnboarding()
-  const [error, setError] = useState<string | null>(null)
+  const { goToNextStep, interests, setInterests } = useOnboarding()
   const interestOptions = [
     'Satsangs',
     'Bhiksha',
@@ -24,14 +23,6 @@ export default function Step4() {
     }
   }
 
-  const handleContinue = () => {
-    if (interests.length === 0) {
-      setError('Please select at least one interest')
-      return
-    }
-    goToNextStep()
-  }
-
   return (
     <SafeAreaView className="flex-1 bg-white dark:bg-neutral-900">
       <View className="max-w-[720px] w-full flex-1 self-center px-6">
@@ -39,11 +30,14 @@ export default function Step4() {
           <View className="w-full">
             {/* Header */}
             <View className="mb-8">
-              <Text className="text-4xl font-inter font-bold text-content dark:text-content-dark text-center mb-3">
+              <Text className="text-4xl font-sans font-bold text-content dark:text-content-dark text-center mb-3">
                 What are your interests?
               </Text>
-              <Text className="text-lg font-inter text-stone-500 dark:text-stone-400 text-center">
+              <Text className="text-lg font-sans text-stone-500 dark:text-stone-400 text-center">
                 Select topics that interest you to personalize your experience.
+              </Text>
+              <Text className="text-sm font-sans text-stone-400 dark:text-stone-500 text-center">
+                Optional. You can update these later.
               </Text>
             </View>
 
@@ -62,7 +56,7 @@ export default function Step4() {
                     }`}
                   >
                     <Text
-                      className={`font-inter font-semibold text-base ${
+                      className={`font-sans font-semibold text-base ${
                         isSelected ? 'text-white' : 'text-stone-600 dark:text-stone-300'
                       }`}
                     >
@@ -72,30 +66,20 @@ export default function Step4() {
                 )
               })}
             </View>
-
-            {/* Error Message */}
-            {error && (
-              <View className="w-full max-w-md self-center mt-4 bg-red-50 dark:bg-red-900/20 rounded-xl p-4">
-                <Text className="text-red-600 dark:text-red-400 font-inter text-center">
-                  {error}
-                </Text>
-              </View>
-            )}
           </View>
         </View>
 
         {/* Button */}
         <View className="pb-6">
           <PrimaryButton
-            onPress={handleContinue}
-            disabled={interests.length === 0}
+            onPress={goToNextStep}
             style={{ width: '100%', maxWidth: 448, alignSelf: 'center' }}
           >
             Continue
           </PrimaryButton>
-          {returnTo && (
-            <Pressable onPress={skipOnboarding} disabled={isSubmitting} style={{ alignSelf: 'center', marginTop: 12 }}>
-              <Text className="text-sm font-inter text-stone-400 dark:text-stone-500">
+          {interests.length === 0 && (
+            <Pressable onPress={goToNextStep} style={{ alignSelf: 'center', marginTop: 12 }}>
+              <Text className="text-sm font-sans text-stone-400 dark:text-stone-500">
                 Skip for now
               </Text>
             </Pressable>

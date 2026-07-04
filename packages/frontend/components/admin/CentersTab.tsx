@@ -1,5 +1,5 @@
 import React, { useState, useMemo, useEffect, useCallback } from 'react'
-import { View, Text, Pressable, ActivityIndicator, TextInput } from 'react-native'
+import { View, Text, Pressable, ActivityIndicator, TextInput, useWindowDimensions } from 'react-native'
 import { MapPin, Globe, Phone, User, Image as ImageIcon, Pencil } from 'lucide-react-native'
 import AdminTable, { type Column } from './AdminTable'
 import AdminDetailPanel from './AdminDetailPanel'
@@ -19,10 +19,14 @@ import {
 } from '../../utils/api'
 import { useDetailColors } from '../../hooks/useDetailColors'
 import { useTheme } from '../contexts'
+import { useAnalytics } from '../../utils/analytics'
 
 export default function CentersTab() {
   const colors = useDetailColors()
   const { isDark } = useTheme()
+  const { width } = useWindowDimensions()
+  const { track } = useAnalytics()
+  const isCompact = width < 640
   const [search, setSearch] = useState('')
   const [centers, setCenters] = useState<CenterData[]>([])
   const [total, setTotal] = useState(0)
@@ -61,7 +65,7 @@ export default function CentersTab() {
       setCenters(result.data)
       setTotal(result.total)
     } catch (err: any) {
-      console.error('Failed to load centers:', err)
+      if (__DEV__) console.error('Failed to load centers:', err)
       setError(err?.message || 'Failed to load centers. Are you logged in?')
     } finally {
       setLoading(false)
@@ -116,7 +120,7 @@ export default function CentersTab() {
 
     return (
       <View style={{ alignSelf: 'flex-start', backgroundColor: bg, paddingHorizontal: 8, paddingVertical: 2, borderRadius: 99 }}>
-        <Text style={{ fontFamily: 'Inter-SemiBold', fontSize: 10, color: textColor }}>
+        <Text style={{ fontFamily: 'Inclusive Sans', fontSize: 10, color: textColor }}>
           {isVerified ? 'Verified' : 'Pending'}
         </Text>
       </View>
@@ -152,6 +156,7 @@ export default function CentersTab() {
         acharya: form.acharya.trim() || null,
         pointOfContact: form.pointOfContact.trim() || null,
       })
+      track('admin_center_updated', { centerId: selected.centerID, source: 'admin' })
       await loadCenters(search)
       setEditing(false)
     } catch (err: any) {
@@ -165,9 +170,10 @@ export default function CentersTab() {
     if (!selected) return
     try {
       await adminVerifyCenter(selected.centerID)
+      track('admin_center_verified', { centerId: selected.centerID, source: 'admin' })
       loadCenters(search)
     } catch (err) {
-      console.error('Failed to toggle verification:', err)
+      if (__DEV__) console.error('Failed to toggle verification:', err)
     }
   }
 
@@ -175,11 +181,12 @@ export default function CentersTab() {
     if (!deleteTarget) return
     try {
       await adminDeleteCenter(deleteTarget.centerID)
+      track('admin_center_deleted', { centerId: deleteTarget.centerID, source: 'admin' })
       setDeleteTarget(null)
       setSelectedId(null)
       loadCenters(search)
     } catch (err) {
-      console.error('Failed to delete center:', err)
+      if (__DEV__) console.error('Failed to delete center:', err)
     }
   }
 
@@ -189,7 +196,7 @@ export default function CentersTab() {
       header: 'Name',
       flex: 2,
       render: (item) => (
-        <Text style={{ fontFamily: 'Inter-Medium', fontSize: 13, color: colors.text }} numberOfLines={1}>
+        <Text style={{ fontFamily: 'Inclusive Sans', fontSize: 13, color: colors.text }} numberOfLines={1}>
           {item.name}
         </Text>
       ),
@@ -199,7 +206,7 @@ export default function CentersTab() {
       header: 'Address',
       flex: 2,
       render: (item) => (
-        <Text style={{ fontFamily: 'Inter-Regular', fontSize: 13, color: colors.textSecondary }} numberOfLines={1}>
+        <Text style={{ fontFamily: 'Inclusive Sans', fontSize: 13, color: colors.textSecondary }} numberOfLines={1}>
           {item.address || '\u2014'}
         </Text>
       ),
@@ -209,7 +216,7 @@ export default function CentersTab() {
       header: 'Members',
       flex: 1,
       render: (item) => (
-        <Text style={{ fontFamily: 'Inter-Regular', fontSize: 13, color: colors.textSecondary }}>
+        <Text style={{ fontFamily: 'Inclusive Sans', fontSize: 13, color: colors.textSecondary }}>
           {item.memberCount}
         </Text>
       ),
@@ -233,11 +240,11 @@ export default function CentersTab() {
   if (error && centers.length === 0) {
     return (
       <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center', padding: 40 }}>
-        <Text style={{ fontFamily: 'Inter-Medium', fontSize: 14, color: '#DC2626', textAlign: 'center' }}>
+        <Text style={{ fontFamily: 'Inclusive Sans', fontSize: 14, color: '#DC2626', textAlign: 'center' }}>
           {error}
         </Text>
         <Pressable onPress={() => loadCenters()} style={{ marginTop: 12, paddingHorizontal: 16, paddingVertical: 8, backgroundColor: '#E8862A', borderRadius: 8 }}>
-          <Text style={{ fontFamily: 'Inter-SemiBold', fontSize: 13, color: '#fff' }}>Retry</Text>
+          <Text style={{ fontFamily: 'Inclusive Sans', fontSize: 13, color: '#fff' }}>Retry</Text>
         </Pressable>
       </View>
     )
@@ -245,12 +252,20 @@ export default function CentersTab() {
 
   return (
     <View style={{ flex: 1, flexDirection: 'row' }}>
-      <View style={{ flex: 1, padding: 20 }}>
-        <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
-          <Text style={{ fontFamily: 'Inter-Bold', fontSize: 18, color: colors.text }}>
+      <View style={{ flex: 1, padding: isCompact ? 14 : 20 }}>
+        <View
+          style={{
+            flexDirection: isCompact ? 'column' : 'row',
+            justifyContent: 'space-between',
+            alignItems: isCompact ? 'stretch' : 'center',
+            gap: 10,
+            marginBottom: 16,
+          }}
+        >
+          <Text style={{ fontFamily: 'Inclusive Sans', fontSize: 18, color: colors.text }}>
             Centers ({total})
           </Text>
-          <View style={{ width: 260 }}>
+          <View style={{ width: isCompact ? '100%' : 260 }}>
             <AdminSearchInput value={search} onChangeText={setSearch} placeholder="Search centers..." />
           </View>
         </View>
@@ -317,7 +332,7 @@ export default function CentersTab() {
                 colors={colors}
               />
               {saveError && (
-                <Text style={{ fontFamily: 'Inter-Regular', fontSize: 12, color: '#DC2626' }}>
+                <Text style={{ fontFamily: 'Inclusive Sans', fontSize: 12, color: '#DC2626' }}>
                   {saveError}
                 </Text>
               )}
@@ -327,7 +342,7 @@ export default function CentersTab() {
                   disabled={saving}
                   style={{ backgroundColor: '#E8862A', paddingHorizontal: 14, paddingVertical: 8, borderRadius: 8, opacity: saving ? 0.6 : 1 }}
                 >
-                  <Text style={{ fontFamily: 'Inter-SemiBold', fontSize: 12, color: '#fff' }}>
+                  <Text style={{ fontFamily: 'Inclusive Sans', fontSize: 12, color: '#fff' }}>
                     {saving ? 'Saving…' : 'Save'}
                   </Text>
                 </Pressable>
@@ -336,7 +351,7 @@ export default function CentersTab() {
                   disabled={saving}
                   style={{ backgroundColor: colors.iconBoxBg, paddingHorizontal: 14, paddingVertical: 8, borderRadius: 8 }}
                 >
-                  <Text style={{ fontFamily: 'Inter-SemiBold', fontSize: 12, color: colors.text }}>
+                  <Text style={{ fontFamily: 'Inclusive Sans', fontSize: 12, color: colors.text }}>
                     Cancel
                   </Text>
                 </Pressable>
@@ -367,7 +382,7 @@ export default function CentersTab() {
                   style={{ backgroundColor: '#E8862A', paddingHorizontal: 14, paddingVertical: 8, borderRadius: 8, flexDirection: 'row', alignItems: 'center', gap: 6 }}
                 >
                   <Pencil size={12} color="#fff" />
-                  <Text style={{ fontFamily: 'Inter-SemiBold', fontSize: 12, color: '#fff' }}>
+                  <Text style={{ fontFamily: 'Inclusive Sans', fontSize: 12, color: '#fff' }}>
                     Edit
                   </Text>
                 </Pressable>
@@ -376,7 +391,7 @@ export default function CentersTab() {
                   onPress={handleVerify}
                   style={{ backgroundColor: colors.iconBoxBg, paddingHorizontal: 14, paddingVertical: 8, borderRadius: 8 }}
                 >
-                  <Text style={{ fontFamily: 'Inter-SemiBold', fontSize: 12, color: colors.text }}>
+                  <Text style={{ fontFamily: 'Inclusive Sans', fontSize: 12, color: colors.text }}>
                     {selected.isVerified ? 'Unverify' : 'Verify'}
                   </Text>
                 </Pressable>
@@ -385,7 +400,7 @@ export default function CentersTab() {
                   onPress={() => setDeleteTarget(selected)}
                   style={{ backgroundColor: colors.iconBoxBg, paddingHorizontal: 14, paddingVertical: 8, borderRadius: 8 }}
                 >
-                  <Text style={{ fontFamily: 'Inter-SemiBold', fontSize: 12, color: isDark ? '#F87171' : '#DC2626' }}>
+                  <Text style={{ fontFamily: 'Inclusive Sans', fontSize: 12, color: isDark ? '#F87171' : '#DC2626' }}>
                     Delete
                   </Text>
                 </Pressable>
@@ -397,7 +412,7 @@ export default function CentersTab() {
           {membersLoading ? (
             <ActivityIndicator size="small" color="#E8862A" />
           ) : members.length === 0 ? (
-            <Text style={{ fontFamily: 'Inter-Regular', fontSize: 12, color: colors.textMuted }}>
+            <Text style={{ fontFamily: 'Inclusive Sans', fontSize: 12, color: colors.textMuted }}>
               No members
             </Text>
           ) : (
@@ -440,7 +455,7 @@ function EditField({ icon, label, value, onChangeText, placeholder, colors }: Ed
     <View style={{ gap: 4 }}>
       <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
         {icon}
-        <Text style={{ fontFamily: 'Inter-Medium', fontSize: 11, color: colors.textMuted, textTransform: 'uppercase', letterSpacing: 0.5 }}>
+        <Text style={{ fontFamily: 'Inclusive Sans', fontSize: 11, color: colors.textMuted, textTransform: 'uppercase', letterSpacing: 0.5 }}>
           {label}
         </Text>
       </View>
@@ -450,7 +465,7 @@ function EditField({ icon, label, value, onChangeText, placeholder, colors }: Ed
         placeholder={placeholder}
         placeholderTextColor={colors.textMuted}
         style={{
-          fontFamily: 'Inter-Regular',
+          fontFamily: 'Inclusive Sans',
           fontSize: 13,
           color: colors.text,
           backgroundColor: colors.iconBoxBg,

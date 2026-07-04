@@ -1,0 +1,54 @@
+name: Deploy v2 Preview
+
+# Manually-triggered, fully-isolated v2 preview deploy.
+# Deploys the v2 frontend + backend + a FRESH isolated D1 + seeded role logins to:
+#   https://v2preview.project-janatha.pages.dev
+# Never touches prod (separate worker, separate D1, Pages preview branch).
+# Uses the CI-stored CLOUDFLARE_API_TOKEN — no local wrangler login needed.
+
+on:
+  # Push to the dedicated deploy branch triggers a (re)deploy. Runs from the
+  # pushed branch, so no presence on the default branch is required and pushing
+  # to main (which would side-trigger the staging deploy) is avoided entirely.
+  push:
+    branches:
+      - 'deploy/v2preview'
+  workflow_dispatch:
+    inputs:
+      confirm:
+        description: 'Deploy the isolated v2 preview (does NOT touch prod)'
+        required: true
+        type: choice
+        options:
+          - 'yes'
+        default: 'yes'
+
+concurrency:
+  group: v2preview-deploy
+  cancel-in-progress: false
+
+jobs:
+  deploy-v2preview:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v5
+
+      - uses: actions/setup-node@v5
+        with:
+          node-version: '22'
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Gate — typecheck + backend tests
+        run: npm run typecheck && npm run test:backend
+
+      - name: Deploy isolated v2 preview (worker + fresh D1 + Pages + role seed)
+        run: bash scripts/ci/deploy-v2preview.sh
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          # PostHog intentionally blank on preview (no preview traffic in the prod project)
+          EXPO_PUBLIC_POSTHOG_KEY: ''
+          EXPO_PUBLIC_POSTHOG_HOST: ''

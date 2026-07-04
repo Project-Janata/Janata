@@ -1,10 +1,20 @@
-import { useEffect, useRef } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import { View, Text, ScrollView, Image, Pressable, ActivityIndicator, Linking, useWindowDimensions } from 'react-native'
 import { useLocalSearchParams, useRouter } from 'expo-router'
-import { ChevronLeft, Share2, MapPin, Globe, Phone, User, Navigation, BadgeCheck, Users } from 'lucide-react-native'
-import { useCenterDetail } from '../../hooks/useApiData'
-import { useDetailColors } from '../../hooks/useDetailColors'
-import type { EventDisplay } from '../../utils/api'
+import { ChevronLeft, Share2, MapPin, Globe, Phone, User, BadgeCheck, Users, Lock } from 'lucide-react-native'
+import { useBoard, useCenterDetail } from '../../hooks/useApiData'
+import { useDetailColors, type DetailColors } from '../../hooks/useDetailColors'
+import { useColors } from '../../hooks/useColors'
+import { createBoardPost, type EventDisplay } from '../../utils/api'
+import { DetailSection } from '../../components/ui'
+import { ThreadPanel, boardPostToMessage, type BoardMessage } from '../../components/boards'
+import { PostThread, type FeedPost } from '../../components/feed'
+import { buildFeedPostFromMessage } from '../../components/feed/feedData'
+import { useUser } from '../../components/contexts'
+import { CenterAbout } from '../../components/center/CenterAbout'
+import { SeoHead } from '../../components/seo/SeoHead'
+import { buildCenterJsonLd } from '../../components/seo/jsonLd'
+import { useAnalytics } from '../../utils/analytics'
 
 export default function CenterDetailWeb() {
   const { id: rawId } = useLocalSearchParams()
@@ -17,7 +27,10 @@ export default function CenterDetailWeb() {
 
   useEffect(() => {
     if (!initiallyMobile.current && id) {
-      router.replace(`/?detail=center&id=${id}`)
+      // Desktop detail is rendered by the Explore screen's panel (it consumes
+      // ?detail=&id= and shows the CenterDetailPanel column). Route there, not
+      // to "/" — Home has no detail consumer, so the panel never opened.
+      router.replace(`/explore?detail=center&id=${id}`)
     } else if (!id) {
       router.replace('/')
     }
@@ -42,12 +55,87 @@ function formatDateCallout(dateStr: string): { month: string; day: string } {
   return { month, day }
 }
 
+function LockedBoard({ colors }: { colors: DetailColors }) {
+  return (
+    <View
+      style={{
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: 12,
+        paddingVertical: 14,
+        paddingHorizontal: 14,
+        borderRadius: 14,
+        borderWidth: 1,
+        borderColor: colors.border,
+        backgroundColor: colors.iconBoxBg,
+      }}
+    >
+      <Lock size={18} color={colors.textSecondary} />
+      <Text style={{ flex: 1, fontSize: 13, color: colors.textSecondary }}>
+        Verified members of this center can post and reply on the board.
+      </Text>
+    </View>
+  )
+}
+
 function MobileCenterDetail({ centerId }: { centerId: string }) {
   const router = useRouter()
+  const { user } = useUser()
+  const { track } = useAnalytics()
   const { center, events, loading } = useCenterDetail(centerId)
   const colors = useDetailColors()
+  const appColors = useColors()
+  const [threadDetailPost, setThreadDetailPost] = useState<FeedPost | null>(null)
+
+  // Fire center_viewed once per center load. Mirrors the native page's
+  // event so web traffic isn't missing from PostHog. (#analytics)
+  useEffect(() => {
+    if (!loading && center?.id) {
+      track('center_viewed', {
+        centerId: center.id,
+        name: center.name,
+        source: 'web_detail',
+      })
+    }
+  }, [loading, center?.id, center?.name])
+  const canPostToThread =
+    !!user && (user.centerID === center?.id || (user.verificationLevel ?? 0) >= 107)
+  const canEditCenter = !!user && (user.verificationLevel ?? 0) >= 107
+  const { posts: boardPosts, refetch: refetchBoard } = useBoard('center', center?.id, canPostToThread)
+  const boardMessages = useMemo(() => boardPosts.map(boardPostToMessage), [boardPosts])
+
+  const handleCreateThreadPost = async (body: string) => {
+    if (!center?.id) return
+    await createBoardPost('center', center.id, body)
+    track('center_board_post_created', { centerId: center.id, source: 'web_detail' })
+    track('content_created', {
+      content_type: 'post',
+      surface: 'center_board_web',
+      board_kind: 'center',
+      parent_id: center.id,
+      character_count: body?.length ?? 0,
+    })
+    await refetchBoard()
+  }
+
+  const openThreadPost = (message: BoardMessage) => {
+    if (!center?.id) return
+    track('center_board_post_opened', { centerId: center.id, postId: message.id, source: 'web_detail' })
+    setThreadDetailPost(
+      buildFeedPostFromMessage(message, {
+        groupId: `center-${center.id}`,
+        kind: 'center',
+        parentId: center.id,
+        title: center.name,
+        subtitle: center.address || 'Center board',
+      })
+    )
+  }
+
+  const closeThreadPost = () => setThreadDetailPost(null)
 
   const handleShare = () => {
+    track('center_shared', { centerId: center?.id ?? '', source: 'web_detail' })
     if (typeof navigator !== 'undefined' && navigator.share) {
       navigator.share({ title: center?.name || 'Center', text: `Check out ${center?.name} on Chinmaya Janata!` }).catch(() => {})
     } else if (typeof navigator !== 'undefined' && navigator.clipboard) {
@@ -57,21 +145,25 @@ function MobileCenterDetail({ centerId }: { centerId: string }) {
 
   const handleAddressPress = () => {
     if (!center?.address) return
+    track('center_address_pressed', { centerId: center.id, source: 'web_detail' })
     Linking.openURL(`https://maps.google.com/?q=${encodeURIComponent(center.address)}`)
   }
 
   const handleWebsitePress = () => {
     if (!center?.website) return
+    track('center_website_pressed', { centerId: center.id, source: 'web_detail' })
     const url = center.website.startsWith('http') ? center.website : `https://${center.website}`
     Linking.openURL(url)
   }
 
   const handlePhonePress = () => {
     if (!center?.phone) return
+    track('center_phone_pressed', { centerId: center.id, source: 'web_detail' })
     Linking.openURL(`tel:${center.phone}`)
   }
 
   const handleEventPress = (event: EventDisplay) => {
+    track('center_event_pressed', { centerId: center?.id ?? '', eventId: event.id, source: 'web_detail' })
     router.push(`/events/${event.id}`)
   }
 
@@ -87,45 +179,92 @@ function MobileCenterDetail({ centerId }: { centerId: string }) {
     return (
       <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: colors.panelBg }}>
         <Text style={{ color: colors.textSecondary, fontSize: 16 }}>Center not found</Text>
-        <Pressable onPress={() => router.back()} style={{ marginTop: 16 }}>
+        <Pressable onPress={() => { track('center_not_found_back_pressed', { centerId, source: 'web_detail' }); router.back() }} style={{ marginTop: 16 }}>
           <Text style={{ color: '#E8862A', fontSize: 16 }}>Go back</Text>
         </Pressable>
       </View>
     )
   }
 
+  // ── Focused thread view (a board post + its replies) ─────────────────
+  if (threadDetailPost) {
+    return (
+      <View style={{ flex: 1, backgroundColor: appColors.bg }}>
+        <View style={{ paddingTop: 12 }}>
+          <Pressable
+            onPress={() => { track('center_board_thread_closed', { centerId: center?.id, source: 'web_detail' }); closeThreadPost() }}
+            accessibilityRole="button"
+            accessibilityLabel="Back to board"
+            style={{ flexDirection: 'row', alignItems: 'center', gap: 6, paddingHorizontal: 16, paddingVertical: 10 }}
+          >
+            <ChevronLeft size={20} color={appColors.accent} />
+            <Text style={{ fontSize: 14, color: appColors.accent }}>Back to board</Text>
+          </Pressable>
+        </View>
+        <View style={{ flex: 1 }}>
+          <PostThread
+            post={threadDetailPost}
+            fullScreen
+            colors={appColors}
+            onPostChanged={refetchBoard}
+            onPostDeleted={() => {
+              closeThreadPost()
+              refetchBoard()
+            }}
+          />
+        </View>
+      </View>
+    )
+  }
+
   const displayWebsite = (center.website ?? '').replace(/^https?:\/\//, '').replace(/\/$/, '')
+  const seoTitle = center.name || 'Center'
+  const seoDesc =
+    `${center.name} — a Chinmaya Mission center` +
+    (center.address ? ` at ${center.address}` : '') +
+    '. Find upcoming events, contact info, and connect with the local community on Chinmaya Janata.'
+  const centerJsonLd = buildCenterJsonLd(center)
 
   return (
     <View style={{ flex: 1, backgroundColor: colors.panelBg }}>
+      <SeoHead
+        title={seoTitle}
+        description={seoDesc}
+        path={`/center/${center.id}`}
+        ogImage={center.image || undefined}
+        jsonLd={centerJsonLd}
+      />
       {/* Header */}
-      <View style={{ paddingHorizontal: 16, paddingTop: 16, paddingBottom: 8, gap: 10 }}>
+      <View style={{ paddingHorizontal: 16, paddingTop: 16, paddingBottom: 12, gap: 12 }}>
         <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
-          <Pressable onPress={() => router.back()} style={{ flexDirection: 'row', alignItems: 'center', gap: 4 }}>
+          <Pressable
+            onPress={() => { track('center_back_pressed', { centerId: center?.id, source: 'web_detail' }); router.back() }}
+            accessibilityRole="button"
+            accessibilityLabel="Back"
+            style={{ flexDirection: 'row', alignItems: 'center', gap: 4 }}
+          >
             <ChevronLeft size={20} color={colors.textSecondary} />
             <Text style={{ color: colors.textSecondary, fontSize: 16 }}>Back</Text>
           </Pressable>
-          <Pressable onPress={handleShare} style={{ padding: 8 }}>
+          <Pressable onPress={handleShare} accessibilityRole="button" accessibilityLabel="Share this center" style={{ padding: 8 }}>
             <Share2 size={18} color={colors.textSecondary} />
           </Pressable>
         </View>
-        <Text style={{ fontSize: 22, fontWeight: 'bold', color: colors.text }}>{center.name}</Text>
+        <Text style={{ fontSize: 26, fontWeight: 'bold', color: colors.text }}>{center.name}</Text>
         {(center.memberCount > 0 || center.isVerified) && (
           <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
             {center.memberCount > 0 && (
               <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4 }}>
-                <Users size={13} color={colors.textSecondary} />
+                <Users size={14} color={colors.textSecondary} />
                 <Text style={{ fontSize: 13, color: colors.textSecondary }}>
                   {center.memberCount} {center.memberCount === 1 ? 'member' : 'members'}
                 </Text>
               </View>
             )}
-            {center.memberCount > 0 && center.isVerified && (
-              <Text style={{ fontSize: 13, color: colors.textMuted }}>·</Text>
-            )}
+            {center.memberCount > 0 && center.isVerified && <Text style={{ fontSize: 13, color: colors.textMuted }}>·</Text>}
             {center.isVerified && (
               <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4 }}>
-                <BadgeCheck size={13} color="#E8862A" />
+                <BadgeCheck size={14} color="#E8862A" />
                 <Text style={{ fontSize: 13, color: '#E8862A' }}>Verified</Text>
               </View>
             )}
@@ -133,106 +272,119 @@ function MobileCenterDetail({ centerId }: { centerId: string }) {
         )}
       </View>
 
-      <ScrollView style={{ flex: 1 }} contentContainerStyle={{ paddingBottom: 40 }}>
+      <ScrollView style={{ flex: 1 }} contentContainerStyle={{ paddingBottom: 40 }} keyboardShouldPersistTaps="handled">
         {/* Hero image */}
         {center.image ? (
-          <Image source={{ uri: center.image }} style={{ width: '100%', height: 200 }} resizeMode="cover" />
+          <Image source={{ uri: center.image }} style={{ width: '100%', height: 200, marginBottom: 4 }} resizeMode="cover" />
         ) : null}
 
-        <View style={{ paddingHorizontal: 16, paddingTop: 20, gap: 16 }}>
-          {/* Point of contact */}
-          {center.pointOfContact ? (
-            <Text style={{ color: colors.textSecondary, fontSize: 13 }}>
-              Point of Contact: {center.pointOfContact}
-            </Text>
-          ) : null}
+        {/* ABOUT (editable by admins — #285) */}
+        {(canEditCenter || !!center.description?.trim() || !!center.pointOfContact?.trim()) ? (
+          <DetailSection title="About" first>
+            <CenterAbout
+              centerId={center.id}
+              description={center.description}
+              pointOfContact={center.pointOfContact}
+              canEdit={canEditCenter}
+            />
+          </DetailSection>
+        ) : null}
 
-          {/* Address */}
-          {center.address ? (
-            <View style={{ flexDirection: 'row', alignItems: 'flex-start', gap: 10 }}>
-              <MapPin size={18} color="#E8862A" style={{ marginTop: 2 }} />
-              <View style={{ flex: 1, gap: 8 }}>
-                <Text style={{ color: colors.text, fontSize: 15 }}>{center.address}</Text>
+        {/* DETAILS */}
+        <DetailSection title="Details" first={!(canEditCenter || !!center.description?.trim() || !!center.pointOfContact?.trim())}>
+          <View style={{ gap: 16 }}>
+            {center.address ? (
+              <View style={{ flexDirection: 'row', alignItems: 'flex-start', gap: 10 }}>
+                <MapPin size={18} color="#E8862A" style={{ marginTop: 2 }} />
+                <View style={{ flex: 1, gap: 6 }}>
+                  <Text style={{ color: colors.text, fontSize: 15 }}>{center.address}</Text>
+                  <Pressable onPress={handleAddressPress} style={{ alignSelf: 'flex-start', paddingVertical: 2 }} accessibilityLabel="Get directions">
+                    <Text style={{ color: '#E8862A', fontSize: 14, fontWeight: '600' }}>Get directions →</Text>
+                  </Pressable>
+                </View>
+              </View>
+            ) : null}
+
+            {center.website ? (
+              <Pressable onPress={handleWebsitePress} style={{ flexDirection: 'row', alignItems: 'center', gap: 10 }}>
+                <Globe size={18} color="#E8862A" />
+                <Text style={{ color: '#E8862A', fontSize: 15, flex: 1 }} numberOfLines={1}>{displayWebsite}</Text>
+              </Pressable>
+            ) : null}
+
+            {center.phone ? (
+              <Pressable onPress={handlePhonePress} style={{ flexDirection: 'row', alignItems: 'center', gap: 10 }}>
+                <Phone size={18} color="#E8862A" />
+                <Text style={{ color: colors.text, fontSize: 15, flex: 1 }}>{center.phone}</Text>
+              </Pressable>
+            ) : null}
+
+            {center.acharya ? (
+              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10 }}>
+                <User size={18} color="#E8862A" />
+                <View style={{ flex: 1 }}>
+                  <Text style={{ color: colors.text, fontSize: 15 }}>{center.acharya}</Text>
+                  <Text style={{ color: colors.textSecondary, fontSize: 13 }}>Resident Acharya</Text>
+                </View>
+              </View>
+            ) : null}
+          </View>
+        </DetailSection>
+
+        {/* UPCOMING EVENTS */}
+        {events.length > 0 ? (
+          <DetailSection title="Upcoming Events" count={events.length} contentStyle={{ gap: 8 }}>
+            {events.map((event) => {
+              const { month, day } = formatDateCallout(event.date)
+              return (
                 <Pressable
-                  onPress={handleAddressPress}
-                  style={{ alignSelf: 'flex-start', paddingVertical: 4 }}
-                  accessibilityLabel="Get directions"
+                  key={event.id}
+                  onPress={() => handleEventPress(event)}
+                  style={{
+                    flexDirection: 'row',
+                    alignItems: 'center',
+                    backgroundColor: colors.cardBg,
+                    borderRadius: 12,
+                    paddingVertical: 12,
+                    paddingHorizontal: 14,
+                  }}
                 >
-                  <Text style={{ color: '#E8862A', fontSize: 14, fontWeight: '600', fontFamily: 'Inter-SemiBold' }}>
-                    Get directions →
-                  </Text>
+                  <View style={{ width: 52, alignItems: 'center' }}>
+                    <Text style={{ fontSize: 11, fontWeight: '600', color: '#E8862A', textTransform: 'uppercase' }}>{month}</Text>
+                    <Text style={{ fontSize: 22, fontWeight: '600', color: colors.text }}>{day}</Text>
+                  </View>
+                  <View style={{ width: 1, backgroundColor: colors.border, alignSelf: 'stretch', marginHorizontal: 12 }} />
+                  <View style={{ flex: 1 }}>
+                    <Text style={{ fontSize: 14, fontWeight: '600', color: colors.text }} numberOfLines={2}>{event.title}</Text>
+                    <Text style={{ fontSize: 12, color: colors.textSecondary, marginTop: 2 }}>
+                      {event.time}{event.attendees > 0 ? ` · ${event.attendees} attending` : ''}
+                    </Text>
+                  </View>
                 </Pressable>
-              </View>
-            </View>
-          ) : null}
+              )
+            })}
+          </DetailSection>
+        ) : null}
 
-          {/* Website */}
-          {center.website ? (
-            <Pressable onPress={handleWebsitePress} style={{ flexDirection: 'row', alignItems: 'center', gap: 10 }}>
-              <Globe size={18} color="#E8862A" />
-              <Text style={{ color: '#E8862A', fontSize: 15, flex: 1 }} numberOfLines={1}>{displayWebsite}</Text>
-            </Pressable>
-          ) : null}
-
-          {/* Phone */}
-          {center.phone ? (
-            <Pressable onPress={handlePhonePress} style={{ flexDirection: 'row', alignItems: 'center', gap: 10 }}>
-              <Phone size={18} color="#E8862A" />
-              <Text style={{ color: colors.text, fontSize: 15, flex: 1 }}>{center.phone}</Text>
-            </Pressable>
-          ) : null}
-
-          {/* Acharya */}
-          {center.acharya ? (
-            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10 }}>
-              <User size={18} color="#E8862A" />
-              <View style={{ flex: 1 }}>
-                <Text style={{ color: colors.text, fontSize: 15 }}>{center.acharya}</Text>
-                <Text style={{ color: colors.textSecondary, fontSize: 13 }}>Resident Acharya</Text>
-              </View>
-            </View>
-          ) : null}
-
-          {/* Upcoming Events */}
-          {events.length > 0 && (
-            <View style={{ marginTop: 8 }}>
-              <Text style={{ color: colors.textSecondary, fontSize: 12, fontWeight: '600', marginBottom: 12, letterSpacing: 0.5 }}>
-                UPCOMING EVENTS
-              </Text>
-              <View style={{ gap: 8 }}>
-                {events.map((event) => {
-                  const { month, day } = formatDateCallout(event.date)
-                  return (
-                    <Pressable
-                      key={event.id}
-                      onPress={() => handleEventPress(event)}
-                      style={{
-                        flexDirection: 'row',
-                        alignItems: 'center',
-                        backgroundColor: colors.cardBg,
-                        borderRadius: 8,
-                        paddingVertical: 12,
-                        paddingHorizontal: 14,
-                      }}
-                    >
-                      <View style={{ width: 52, alignItems: 'center' }}>
-                        <Text style={{ fontSize: 11, fontWeight: '600', color: '#E8862A', textTransform: 'uppercase' }}>{month}</Text>
-                        <Text style={{ fontSize: 22, fontWeight: '600', color: colors.text }}>{day}</Text>
-                      </View>
-                      <View style={{ width: 1, backgroundColor: colors.border, alignSelf: 'stretch', marginHorizontal: 12 }} />
-                      <View style={{ flex: 1 }}>
-                        <Text style={{ fontSize: 14, fontWeight: '600', color: colors.text }} numberOfLines={2}>{event.title}</Text>
-                        <Text style={{ fontSize: 12, color: colors.textSecondary, marginTop: 2 }}>
-                          {event.time}{event.attendees > 0 ? ` · ${event.attendees} attending` : ''}
-                        </Text>
-                      </View>
-                    </Pressable>
-                  )
-                })}
-              </View>
+        {/* BOARD */}
+        <DetailSection title="Board" count={canPostToThread ? boardMessages.length : undefined} contentStyle={{ paddingHorizontal: 0 }}>
+          {canPostToThread ? (
+            <ThreadPanel
+              messages={boardMessages}
+              colors={colors}
+              emptyTitle="Be the first to post"
+              emptySubtitle={`Ask about rides, what to bring, or anything else for ${center.name}.`}
+              composerPlaceholder="Write to the board..."
+              composerState="open"
+              onSubmitPost={handleCreateThreadPost}
+              onMessagePress={openThreadPost}
+            />
+          ) : (
+            <View style={{ paddingHorizontal: 16 }}>
+              <LockedBoard colors={colors} />
             </View>
           )}
-        </View>
+        </DetailSection>
       </ScrollView>
     </View>
   )

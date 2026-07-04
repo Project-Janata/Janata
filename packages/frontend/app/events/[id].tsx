@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react'
+import React, { useMemo, useState, useEffect, useRef } from 'react'
 import { View, Text, ScrollView, Image, Pressable, ActivityIndicator, Alert, Share, Linking } from 'react-native'
 import { DetailSkeleton } from '../../components/ui/Skeleton'
 import { SafeAreaView } from 'react-native-safe-area-context'
@@ -11,15 +11,21 @@ import {
   User,
   Clock,
   CheckCircle,
+  Lock,
   Pencil,
   Trash2,
 } from 'lucide-react-native'
-import { usePostHog } from 'posthog-react-native'
-import { useEventDetail } from '../../hooks/useApiData'
+import { useAnalytics } from '../../utils/analytics'
+import { useBoard, useEventDetail } from '../../hooks/useApiData'
 import { useUser } from '../../components/contexts'
-import { Badge, UnderlineTabBar, Avatar, PrimaryButton, DestructiveButton } from '../../components/ui'
+import { Badge, Avatar, PrimaryButton, DestructiveButton, DetailSection } from '../../components/ui'
 import { useDetailColors, type DetailColors } from '../../hooks/useDetailColors'
-import { removeEvent } from '../../utils/api'
+import { useColors } from '../../hooks/useColors'
+import { createBoardPost, removeEvent } from '../../utils/api'
+import { ThreadPanel, boardPostToMessage, type BoardMessage } from '../../components/boards'
+import { PostThread, type FeedPost } from '../../components/feed'
+import { buildFeedPostFromMessage } from '../../components/feed/feedData'
+import GuestRsvpSheet from '../../components/events/GuestRsvpSheet'
 
 const ADMIN_EMAIL = 'chinmayajanata@gmail.com'
 
@@ -76,6 +82,25 @@ function formatRelativeDateTime(dateStr: string, timeStr: string): string {
   return `${relative} · ${absolute}`
 }
 
+// Split an address like "129 Woodbury Rd, Woodbury, NY - 11797, US" into
+// the street segment and the rest using the first comma as the boundary.
+function splitStreet(addr: string): string {
+  const i = addr.indexOf(',')
+  return i === -1 ? addr : addr.slice(0, i).trim()
+}
+function splitRest(addr: string): string {
+  const i = addr.indexOf(',')
+  return i === -1 ? '' : addr.slice(i + 1).trim()
+}
+
+function hostnameOf(url: string): string {
+  try {
+    return new URL(url).hostname.replace(/^www\./, '')
+  } catch {
+    return 'official site'
+  }
+}
+
 // ── Sub-components ───────────────────────────────────────────────────────
 
 function MetaIcon({
@@ -110,7 +135,7 @@ function AvatarStack({
   attendees: { image?: string; initials?: string; name: string }[]
   colors: DetailColors
 }) {
-  const shown = attendees.slice(0, 3)
+  const shown = attendees.slice(0, 5)
   return (
     <View style={{ flexDirection: 'row', marginLeft: 4 }}>
       {shown.map((a, i) => (
@@ -119,7 +144,7 @@ function AvatarStack({
           image={a.image}
           initials={a.initials}
           name={a.name}
-          size={24}
+          size={28}
           style={{
             borderWidth: 2,
             borderColor: colors.avatarBorder,
@@ -142,6 +167,7 @@ function HeaderBar({
   onBack,
   onEdit,
   onDelete,
+  onShare,
   colors,
 }: {
   title: string
@@ -152,6 +178,7 @@ function HeaderBar({
   onBack: () => void
   onEdit?: () => void
   onDelete?: () => void
+  onShare?: () => void
   colors: DetailColors
 }) {
   const router = useRouter()
@@ -161,16 +188,16 @@ function HeaderBar({
       style={{
         paddingHorizontal: 16,
         paddingTop: 8,
-        paddingBottom: 12,
-        borderBottomWidth: isRegistered ? 0 : 1,
-        borderBottomColor: colors.border,
-        gap: 10,
+        paddingBottom: 14,
+        gap: 12,
       }}
     >
       {/* Top row: back + actions */}
       <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
         <Pressable
           onPress={onBack}
+          accessibilityRole="button"
+          accessibilityLabel="Back"
           style={{
             flexDirection: 'row',
             alignItems: 'center',
@@ -181,13 +208,7 @@ function HeaderBar({
           }}
         >
           <ChevronLeft size={20} color={colors.iconHeader} />
-          <Text
-            style={{
-              fontFamily: 'Inter-Regular',
-              fontSize: 14,
-              color: colors.iconHeader,
-            }}
-          >
+          <Text style={{ fontFamily: 'Inclusive Sans', fontSize: 14, color: colors.iconHeader }}>
             Back
           </Text>
         </Pressable>
@@ -199,13 +220,7 @@ function HeaderBar({
                 onEdit?.()
                 router.push(`/events/form?id=${eventId}`)
               }}
-              style={{
-                padding: 8,
-                minHeight: 44,
-                minWidth: 44,
-                alignItems: 'center',
-                justifyContent: 'center',
-              }}
+              style={{ padding: 8, minHeight: 44, minWidth: 44, alignItems: 'center', justifyContent: 'center' }}
               accessibilityLabel="Edit event"
             >
               <Pencil size={18} color={colors.iconHeader} />
@@ -214,13 +229,7 @@ function HeaderBar({
           {eventId && isAdmin && onDelete && (
             <Pressable
               onPress={onDelete}
-              style={{
-                padding: 8,
-                minHeight: 44,
-                minWidth: 44,
-                alignItems: 'center',
-                justifyContent: 'center',
-              }}
+              style={{ padding: 8, minHeight: 44, minWidth: 44, alignItems: 'center', justifyContent: 'center' }}
               accessibilityLabel="Delete event"
             >
               <Trash2 size={18} color="#DC2626" />
@@ -229,19 +238,16 @@ function HeaderBar({
           {!isPast && (
             <Pressable
               onPress={() => {
+                onShare?.()
                 const url = eventId ? `https://chinmayajanata.org/events/${eventId}` : 'https://chinmayajanata.org'
                 Share.share({
                   message: `Check out ${title} on Chinmaya Janata! ${url}`,
                   url,
                 }).catch(() => {})
               }}
-              style={{
-                padding: 8,
-                minHeight: 44,
-                minWidth: 44,
-                alignItems: 'center',
-                justifyContent: 'center',
-              }}
+              accessibilityRole="button"
+              accessibilityLabel="Share this event"
+              style={{ padding: 8, minHeight: 44, minWidth: 44, alignItems: 'center', justifyContent: 'center' }}
             >
               <Share2 size={18} color={colors.iconHeader} />
             </Pressable>
@@ -254,16 +260,16 @@ function HeaderBar({
         <Text
           style={{
             flex: 1,
-            fontFamily: 'Inter-Bold',
-            fontSize: 20,
+            fontFamily: 'Inclusive Sans',
+            fontSize: 26,
             color: colors.text,
-            lineHeight: 26,
+            lineHeight: 32,
           }}
         >
           {title}
         </Text>
         {isRegistered && (
-          <View style={{ marginTop: 3 }}>
+          <View style={{ marginTop: 5 }}>
             <Badge label="Going" variant="going" />
           </View>
         )}
@@ -272,62 +278,60 @@ function HeaderBar({
   )
 }
 
-// ── Meta section ─────────────────────────────────────────────────────────
+// ── Details section content ──────────────────────────────────────────────
 
-function MetaSection({
+function DetailsContent({
   event,
   attendees,
   isPast,
   colors,
 }: {
-  event: { location: string; address?: string; attendees: number; pointOfContact?: string; signupUrl?: string | null; allowJanataSignup?: boolean }
-  attendees: { image?: string; initials?: string; name: string; subtitle: string }[]
+  event: {
+    date: string
+    time: string
+    location: string
+    address?: string
+    attendees: number
+    pointOfContact?: string
+    description?: string
+    signupUrl?: string | null
+    allowJanataSignup?: boolean
+  }
+  attendees: { image?: string; initials?: string; name: string }[]
   isPast?: boolean
   colors: DetailColors
 }) {
   const iconColor = isPast ? colors.textMuted : '#E8862A'
-  const attendLabel = `${event.attendees} on Janata`
+  const loc = (event.location || '').trim()
+  const addr = (event.address || '').trim()
+  const dupe = loc && addr && loc === addr
+  const line1 = dupe ? splitStreet(addr) : loc
+  const line2 = dupe ? splitRest(addr) : addr
 
   return (
     <View style={{ gap: 16 }}>
-      {/* Location — when location and address are the same value (common
-          when the venue isn't named separately), split into "street" /
-          "city, state, zip" so the second line isn't a duplicate. */}
-      {(() => {
-        const loc = (event.location || '').trim()
-        const addr = (event.address || '').trim()
-        const dupe = loc && addr && loc === addr
-        const line1 = dupe ? splitStreet(addr) : loc
-        const line2 = dupe ? splitRest(addr) : addr
-        return (
-          <View style={{ flexDirection: 'row', alignItems: 'flex-start', gap: 12 }}>
-            <MetaIcon icon={MapPin} color={iconColor} colors={colors} />
-            <View style={{ flex: 1, gap: 2, justifyContent: 'center' }}>
-              {line1 ? (
-                <Text style={{ fontFamily: 'Inter-Medium', fontSize: 14, color: colors.text }}>
-                  {line1}
-                </Text>
-              ) : null}
-              {line2 ? (
-                <Text
-                  style={{ fontFamily: 'Inter-Regular', fontSize: 13, color: colors.textSecondary }}
-                >
-                  {line2}
-                </Text>
-              ) : null}
-            </View>
-          </View>
-        )
-      })()}
+      {/* Date & time */}
+      <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12 }}>
+        <MetaIcon icon={Clock} color={iconColor} colors={colors} />
+        <Text style={{ fontFamily: 'Inclusive Sans', fontSize: 14, color: colors.text }}>
+          {formatRelativeDateTime(event.date, event.time)}
+        </Text>
+      </View>
 
-      {/* Attendees — hidden when external signup is exclusive (no native RSVP) */}
-      {!(event.signupUrl && !event.allowJanataSignup) && (
-        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12 }}>
-          <MetaIcon icon={Users} color={iconColor} colors={colors} />
-          <Text style={{ fontFamily: 'Inter-Medium', fontSize: 14, color: colors.text }}>
-            {attendLabel}
-          </Text>
-          <AvatarStack attendees={attendees} colors={colors} />
+      {/* Location */}
+      {(line1 || line2) && (
+        <View style={{ flexDirection: 'row', alignItems: 'flex-start', gap: 12 }}>
+          <MetaIcon icon={MapPin} color={iconColor} colors={colors} />
+          <View style={{ flex: 1, gap: 2, justifyContent: 'center' }}>
+            {line1 ? (
+              <Text style={{ fontFamily: 'Inclusive Sans', fontSize: 14, color: colors.text }}>{line1}</Text>
+            ) : null}
+            {line2 ? (
+              <Text style={{ fontFamily: 'Inclusive Sans', fontSize: 13, color: colors.textSecondary }}>
+                {line2}
+              </Text>
+            ) : null}
+          </View>
         </View>
       )}
 
@@ -335,42 +339,70 @@ function MetaSection({
       {event.pointOfContact ? (
         <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12 }}>
           <MetaIcon icon={User} color={iconColor} colors={colors} />
-          <Text style={{ fontFamily: 'Inter-Medium', fontSize: 14, color: colors.text }}>
+          <Text style={{ fontFamily: 'Inclusive Sans', fontSize: 14, color: colors.text }}>
             Contact: {event.pointOfContact}
           </Text>
         </View>
+      ) : null}
+
+      {/* About */}
+      {event.description ? (
+        <Text
+          style={{
+            fontFamily: 'Inclusive Sans',
+            fontSize: 14,
+            color: colors.textSecondary,
+            lineHeight: 21,
+            marginTop: 2,
+          }}
+        >
+          {event.description}
+        </Text>
       ) : null}
     </View>
   )
 }
 
-// ── About section ────────────────────────────────────────────────────────
+// ── Attendees section content ────────────────────────────────────────────
 
-function AboutSection({ description, colors }: { description?: string; colors: DetailColors }) {
-  if (!description) return null
+function AttendeesContent({
+  attendees,
+  colors,
+}: {
+  attendees: { image?: string; initials?: string; name: string; subtitle: string }[]
+  colors: DetailColors
+}) {
+  if (attendees.length === 0) {
+    return (
+      <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10, paddingVertical: 4 }}>
+        <Users size={18} color={colors.textMuted} />
+        <Text style={{ fontFamily: 'Inclusive Sans', fontSize: 14, color: colors.textSecondary }}>
+          No attendees yet — be the first to RSVP.
+        </Text>
+      </View>
+    )
+  }
   return (
-    <View style={{ gap: 12 }}>
-      <Text
-        style={{
-          fontFamily: 'Inter-Medium',
-          fontSize: 11,
-          color: colors.textMuted,
-          letterSpacing: 0.5,
-          textTransform: 'uppercase',
-        }}
-      >
-        About
-      </Text>
-      <Text
-        style={{
-          fontFamily: 'Inter-Regular',
-          fontSize: 14,
-          color: colors.textSecondary,
-          lineHeight: 20,
-        }}
-      >
-        {description}
-      </Text>
+    <View>
+      {attendees.map((attendee, index) => (
+        <View
+          key={index}
+          style={{ flexDirection: 'row', alignItems: 'center', paddingVertical: 10, gap: 12 }}
+        >
+          <Avatar image={attendee.image} initials={attendee.initials} name={attendee.name} size={40} />
+          <View style={{ flex: 1, gap: 2 }}>
+            <Text style={{ fontFamily: 'Inclusive Sans', fontSize: 14, color: colors.text }}>
+              {attendee.name}
+            </Text>
+            {attendee.subtitle ? (
+              <Text style={{ fontFamily: 'Inclusive Sans', fontSize: 12, color: colors.textSecondary }}>
+                {attendee.subtitle}
+              </Text>
+            ) : null}
+          </View>
+          {index === 0 && <Badge label="HOST" variant="host" />}
+        </View>
+      ))}
     </View>
   )
 }
@@ -386,18 +418,17 @@ function AttendedBanner({ count, colors }: { count: number; colors: DetailColors
         padding: 12,
         paddingHorizontal: 16,
         gap: 4,
+        marginBottom: 4,
       }}
     >
       <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
         <CheckCircle size={18} color="#059669" />
-        <Text style={{ fontFamily: 'Inter-SemiBold', fontSize: 14, color: '#059669' }}>
+        <Text style={{ fontFamily: 'Inclusive Sans', fontSize: 14, color: '#059669' }}>
           You attended this event
         </Text>
       </View>
       {count > 1 && (
-        <Text
-          style={{ fontFamily: 'Inter-Regular', fontSize: 12, color: '#059669', marginLeft: 26 }}
-        >
+        <Text style={{ fontFamily: 'Inclusive Sans', fontSize: 12, color: '#059669', marginLeft: 26 }}>
           Along with {count - 1} others
         </Text>
       )}
@@ -405,27 +436,7 @@ function AttendedBanner({ count, colors }: { count: number; colors: DetailColors
   )
 }
 
-// ── Action bar ───────────────────────────────────────────────────────────
-
-// Split an address like "129 Woodbury Rd, Woodbury, NY - 11797, US" into
-// the street segment ("129 Woodbury Rd") and the rest ("Woodbury, NY - 11797, US")
-// using the first comma as the boundary.
-function splitStreet(addr: string): string {
-  const i = addr.indexOf(',')
-  return i === -1 ? addr : addr.slice(0, i).trim()
-}
-function splitRest(addr: string): string {
-  const i = addr.indexOf(',')
-  return i === -1 ? '' : addr.slice(i + 1).trim()
-}
-
-function hostnameOf(url: string): string {
-  try {
-    return new URL(url).hostname.replace(/^www\./, '')
-  } catch {
-    return 'official site'
-  }
-}
+// ── Action bar (RSVP) ──────────────────────────────────────────────────────
 
 function ActionBar({
   isRegistered,
@@ -434,6 +445,8 @@ function ActionBar({
   isToggling,
   signupUrl,
   allowJanataSignup,
+  onExternalSignup,
+  guestRsvped,
   colors,
 }: {
   isRegistered?: boolean
@@ -442,8 +455,16 @@ function ActionBar({
   isToggling: boolean
   signupUrl?: string | null
   allowJanataSignup?: boolean
+  onExternalSignup?: () => void
+  // Guest RSVPed this session — lock the attend CTA to a confirmed state.
+  guestRsvped?: boolean
   colors: DetailColors
 }) {
+  const guestGoing = (
+    <View style={{ minHeight: 48, borderRadius: 12, borderWidth: 1, borderColor: colors.border, alignItems: 'center', justifyContent: 'center' }}>
+      <Text style={{ fontFamily: 'Inclusive Sans', fontSize: 15, fontWeight: '500', color: colors.text }}>✓ You're going</Text>
+    </View>
+  )
   if (isPast) return null
 
   const wrapperStyle = {
@@ -455,8 +476,6 @@ function ActionBar({
     backgroundColor: colors.panelBg,
   } as const
 
-  // External signup + admin opted into Janata as alternate. Janata primary,
-  // external secondary.
   if (signupUrl && allowJanataSignup) {
     return (
       <View style={{ ...wrapperStyle, gap: 8 }}>
@@ -464,17 +483,22 @@ function ActionBar({
           <DestructiveButton onPress={onToggle} disabled={isToggling} loading={isToggling}>
             Cancel Registration
           </DestructiveButton>
+        ) : guestRsvped ? (
+          guestGoing
         ) : (
           <PrimaryButton onPress={onToggle} disabled={isToggling} loading={isToggling}>
             Attend on Janata
           </PrimaryButton>
         )}
         <Pressable
-          onPress={() => Linking.openURL(signupUrl)}
+          onPress={() => {
+            onExternalSignup?.()
+            Linking.openURL(signupUrl)
+          }}
           style={{ paddingVertical: 12, alignItems: 'center', justifyContent: 'center' }}
           accessibilityLabel={`Sign up at ${hostnameOf(signupUrl)}`}
         >
-          <Text style={{ fontFamily: 'Inter-SemiBold', fontSize: 14, color: '#E8862A' }}>
+          <Text style={{ fontFamily: 'Inclusive Sans', fontSize: 14, color: '#E8862A' }}>
             Or sign up at {hostnameOf(signupUrl)}
           </Text>
         </Pressable>
@@ -482,16 +506,15 @@ function ActionBar({
     )
   }
 
-  // External signup is exclusive.
   if (signupUrl) {
     return (
       <View style={wrapperStyle}>
-        <PrimaryButton onPress={() => Linking.openURL(signupUrl)}>
+        <PrimaryButton onPress={() => { onExternalSignup?.(); Linking.openURL(signupUrl) }}>
           Sign up at {hostnameOf(signupUrl)}
         </PrimaryButton>
         <Text
           style={{
-            fontFamily: 'Inter-Regular',
+            fontFamily: 'Inclusive Sans',
             fontSize: 12,
             color: colors.textMuted,
             textAlign: 'center',
@@ -516,12 +539,14 @@ function ActionBar({
 
   return (
     <View style={wrapperStyle}>
-      <PrimaryButton onPress={onToggle} disabled={isToggling} loading={isToggling}>
-        Attend Event
-      </PrimaryButton>
+      {guestRsvped ? guestGoing : (
+        <PrimaryButton onPress={onToggle} disabled={isToggling} loading={isToggling}>
+          Attend Event
+        </PrimaryButton>
+      )}
       <Text
         style={{
-          fontFamily: 'Inter-Regular',
+          fontFamily: 'Inclusive Sans',
           fontSize: 12,
           color: colors.textMuted,
           textAlign: 'center',
@@ -534,43 +559,69 @@ function ActionBar({
   )
 }
 
+// ── Locked board hint (shown in Comments when board isn't accessible) ──────
+
+function LockedComments({ colors }: { colors: DetailColors }) {
+  return (
+    <View
+      style={{
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: 12,
+        paddingVertical: 14,
+        paddingHorizontal: 14,
+        borderRadius: 14,
+        borderWidth: 1,
+        borderColor: colors.border,
+        backgroundColor: colors.iconBoxBg,
+      }}
+    >
+      <Lock size={18} color={colors.textSecondary} />
+      <Text style={{ flex: 1, fontFamily: 'Inclusive Sans', fontSize: 13, color: colors.textSecondary }}>
+        RSVP to join the conversation — ask about carpooling, what to bring, and more.
+      </Text>
+    </View>
+  )
+}
+
 // ── Main component ───────────────────────────────────────────────────────
 
 export default function EventDetailPage() {
   const { id: rawId } = useLocalSearchParams()
   const id = Array.isArray(rawId) ? rawId[0] : rawId
   const router = useRouter()
-  const posthog = usePostHog()
+  const { track } = useAnalytics()
   const userContext = useUser()
   const { user, authStatus } = userContext
-  const [activeTab, setActiveTab] = useState('Details')
   const username = authStatus === 'authenticated' ? user?.username : undefined
   const userId = authStatus === 'authenticated' ? user?.id : undefined
   const { event, attendees, loading, toggleRegistration, isToggling, isCreator } =
     useEventDetail(id as string, username, userId)
   const colors = useDetailColors()
+  const appColors = useColors()
   const hasTrackedView = useRef(false)
+  const [threadDetailPost, setThreadDetailPost] = useState<FeedPost | null>(null)
+  const [showGuestRsvp, setShowGuestRsvp] = useState(false)
+  // Guest RSVPed this session — lock the attend CTA so they don't re-submit.
+  const [guestRsvped, setGuestRsvped] = useState(false)
 
   const isAdmin = user?.email === ADMIN_EMAIL || (user?.verificationLevel !== undefined && user.verificationLevel >= 107)
   const canEdit = isAdmin || isCreator
 
   const isPast = event?.date ? new Date(event.date + 'T23:59:59') < new Date() : false
+  const canAccessEventBoard = !!user && !!event?.id && (!!event.isRegistered || isCreator || isAdmin)
+  const { posts: boardPosts, refetch: refetchBoard } = useBoard('event', event?.id, canAccessEventBoard)
+  const eventBoardMessages = useMemo(() => boardPosts.map(boardPostToMessage), [boardPosts])
 
-  // Track event viewed
   useEffect(() => {
     if (!loading && event && !hasTrackedView.current) {
       hasTrackedView.current = true
-      posthog?.capture('event_viewed', { eventId: id, title: event.title, isPast })
+      track('event_viewed', { eventId: id, title: event.title, isPast })
     }
-  }, [loading, event, id, isPast, posthog])
-
-  const handleTabChange = (newTab: string) => {
-    posthog?.capture('event_tab_changed', { tab: newTab, eventId: id })
-    setActiveTab(newTab)
-  }
+  }, [loading, event, id, isPast])
 
   const handleEditPress = () => {
-    posthog?.capture('event_edit_opened', { eventId: id })
+    track('event_edit_opened', { eventId: id, source: 'event_detail' })
   }
 
   const handleDeletePress = () => {
@@ -585,7 +636,7 @@ export default function EventDetailPage() {
           style: 'destructive',
           onPress: async () => {
             try {
-              posthog?.capture('event_deleted', { eventId: id })
+              track('event_deleted', { eventId: id, source: 'event_detail' })
               await removeEvent(id as string)
               router.replace('/')
             } catch (err: any) {
@@ -598,13 +649,20 @@ export default function EventDetailPage() {
   }
 
   const handleToggleRegistration = async () => {
-    if (!user?.username) return
+    // Guest taps RSVP → account-less RSVP sheet (name+email). Accounts are
+    // invite-only; the member path is the invite wall (#404), not RSVP.
+    if (!user) {
+      track('event_guest_rsvp_opened', { eventId: id, source: 'event_detail' })
+      setShowGuestRsvp(true)
+      return
+    }
+    if (!user.username) return
     try {
-      posthog?.capture(event?.isRegistered ? 'event_unregistered' : 'event_registered', { eventId: id })
+      track(event?.isRegistered ? 'event_unregistered' : 'event_registered', { eventId: id, source: 'event_detail' })
       await toggleRegistration(user.username)
     } catch (err: any) {
       const message = err?.message || ''
-      posthog?.capture('event_registration_failed', { eventId: id, error: message })
+      track('event_registration_failed', { eventId: id, error: message, source: 'event_detail' })
       if (message.includes('Already registered')) {
         Alert.alert('Already Registered', 'You are already registered for this event.')
       } else if (message.includes('Not registered')) {
@@ -613,6 +671,39 @@ export default function EventDetailPage() {
         Alert.alert('Error', 'Failed to update registration. Please try again.')
       }
     }
+  }
+
+  const handleCreateThreadPost = async (body: string) => {
+    if (!event?.id) return
+    await createBoardPost('event', event.id, body)
+    track('event_board_post_created', { eventId: id, source: 'event_detail' })
+    track('content_created', {
+      content_type: 'post',
+      surface: 'event_board',
+      board_kind: 'event',
+      parent_id: id,
+      character_count: body?.length ?? 0,
+    })
+    await refetchBoard()
+  }
+
+  const openThreadPost = (message: BoardMessage) => {
+    if (!event?.id) return
+    track('event_board_post_opened', { eventId: id, postId: message.id, source: 'event_detail' })
+    setThreadDetailPost(
+      buildFeedPostFromMessage(message, {
+        groupId: `event-${event.id}`,
+        kind: 'event',
+        parentId: event.id,
+        title: event.title,
+        subtitle: event.location || `${event.attendees ?? 0} going`,
+      })
+    )
+  }
+
+  const closeThreadPost = () => {
+    track('event_board_thread_closed', { eventId: id, source: 'event_detail' })
+    setThreadDetailPost(null)
   }
 
   // ── Loading state ────────────────────────────────────────────────────
@@ -630,26 +721,12 @@ export default function EventDetailPage() {
   if (!event) {
     return (
       <SafeAreaView style={{ flex: 1, backgroundColor: colors.panelBg }}>
-        <View
-          style={{ flex: 1, justifyContent: 'center', alignItems: 'center', paddingHorizontal: 16 }}
-        >
-          <Text
-            style={{
-              fontSize: 22,
-              fontFamily: 'Inter-SemiBold',
-              color: colors.text,
-              marginBottom: 16,
-            }}
-          >
+        <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center', paddingHorizontal: 16 }}>
+          <Text style={{ fontSize: 22, fontFamily: 'Inclusive Sans', color: colors.text, marginBottom: 16 }}>
             Event not found
           </Text>
-          <Pressable
-            onPress={() => router.back()}
-            style={{ marginTop: 8, minHeight: 44, justifyContent: 'center' }}
-          >
-            <Text style={{ fontSize: 16, fontFamily: 'Inter-Medium', color: '#E8862A' }}>
-              Go Back
-            </Text>
+          <Pressable onPress={() => router.back()} style={{ marginTop: 8, minHeight: 44, justifyContent: 'center' }}>
+            <Text style={{ fontSize: 16, fontFamily: 'Inclusive Sans', color: '#E8862A' }}>Go Back</Text>
           </Pressable>
         </View>
       </SafeAreaView>
@@ -660,203 +737,136 @@ export default function EventDetailPage() {
 
   const isRegistered = !!event?.isRegistered && !isPast
 
-  // ── Registered state (with tabs) ─────────────────────────────────────
+  // ── Focused thread view (a board post + its replies) ─────────────────
+  // Reuses the same PostThread (with its bottom-docked composer) as the
+  // Connect feed, so opening a comment feels identical across the app.
 
-  if (isRegistered) {
+  if (threadDetailPost) {
     return (
-      <SafeAreaView style={{ flex: 1, backgroundColor: colors.panelBg }}>
-        <HeaderBar
-          title={event.title}
-          isPast={false}
-          isRegistered
-          isAdmin={canEdit}
-          eventId={id as string}
-          onBack={() => router.back()}
-          onEdit={handleEditPress}
-          onDelete={canEdit ? handleDeletePress : undefined}
-          colors={colors}
-        />
-
-        <View style={{ paddingTop: 8 }}>
-          <UnderlineTabBar
-            tabs={['Details', 'People']}
-            activeTab={activeTab}
-            onTabChange={handleTabChange}
+      <SafeAreaView style={{ flex: 1, backgroundColor: appColors.bg }}>
+        <View style={{ paddingTop: 6 }}>
+          <Pressable
+            onPress={closeThreadPost}
+            accessibilityRole="button"
+            accessibilityLabel="Back to board"
+            style={{ flexDirection: 'row', alignItems: 'center', gap: 6, paddingHorizontal: 16, paddingVertical: 12 }}
+          >
+            <ChevronLeft size={20} color={appColors.accent} />
+            <Text style={{ fontFamily: 'Inclusive Sans', fontSize: 14, color: appColors.accent }}>
+              Back to board
+            </Text>
+          </Pressable>
+        </View>
+        <View style={{ flex: 1 }}>
+          <PostThread
+            post={threadDetailPost}
+            fullScreen
+            colors={appColors}
+            onPostChanged={refetchBoard}
+            onPostDeleted={() => {
+              closeThreadPost()
+              refetchBoard()
+            }}
           />
         </View>
-
-        <ScrollView
-          style={{ flex: 1 }}
-          contentContainerStyle={{ paddingBottom: 100 }}
-          showsVerticalScrollIndicator={false}
-        >
-          {activeTab === 'Details' && (
-            <View style={{ paddingHorizontal: 20, paddingTop: 20, paddingBottom: 24, gap: 20 }}>
-              {/* Date & time */}
-              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12 }}>
-                <MetaIcon icon={Clock} color="#E8862A" colors={colors} />
-                <Text style={{ fontFamily: 'Inter-Medium', fontSize: 14, color: colors.text }}>
-                  {formatRelativeDateTime(event.date, event.time)}
-                </Text>
-              </View>
-
-              <MetaSection event={event} attendees={attendees} colors={colors} />
-              <AboutSection description={event.description} colors={colors} />
-            </View>
-          )}
-
-          {activeTab === 'People' && (
-            <View style={{ paddingTop: 16, paddingHorizontal: 20 }}>
-              <Text
-                style={{
-                  fontFamily: 'Inter-Medium',
-                  fontSize: 13,
-                  color: colors.textSecondary,
-                  marginBottom: 12,
-                }}
-              >
-                {event.attendees} {event.attendees === 1 ? 'person' : 'people'} on Janata
-              </Text>
-              {attendees.length > 0 ? (
-                attendees.map((attendee, index) => (
-                  <View
-                    key={index}
-                    style={{
-                      flexDirection: 'row',
-                      alignItems: 'center',
-                      paddingVertical: 12,
-                      gap: 12,
-                    }}
-                  >
-                    <Avatar
-                      image={attendee.image}
-                      initials={attendee.initials}
-                      name={attendee.name}
-                      size={42}
-                    />
-                    <View style={{ flex: 1, gap: 2 }}>
-                      <Text
-                        style={{ fontFamily: 'Inter-Medium', fontSize: 14, color: colors.text }}
-                      >
-                        {attendee.name}
-                      </Text>
-                      {attendee.subtitle ? (
-                        <Text
-                          style={{
-                            fontFamily: 'Inter-Regular',
-                            fontSize: 12,
-                            color: colors.textSecondary,
-                          }}
-                        >
-                          {attendee.subtitle}
-                        </Text>
-                      ) : null}
-                    </View>
-                    {index === 0 && <Badge label="HOST" variant="host" />}
-                  </View>
-                ))
-              ) : (
-                <View style={{ alignItems: 'center', paddingVertical: 32 }}>
-                  <Users size={48} color={colors.textMuted} />
-                  <Text
-                    style={{
-                      fontFamily: 'Inter-Regular',
-                      fontSize: 14,
-                      color: colors.textSecondary,
-                      marginTop: 12,
-                    }}
-                  >
-                    No attendees yet
-                  </Text>
-                </View>
-              )}
-            </View>
-          )}
-
-        </ScrollView>
-
-        <ActionBar
-          isRegistered
-          onToggle={handleToggleRegistration}
-          isToggling={isToggling}
-          signupUrl={event.signupUrl}
-          allowJanataSignup={event.allowJanataSignup}
-          colors={colors}
-        />
       </SafeAreaView>
     )
   }
 
-  // ── Default / past state ─────────────────────────────────────────────
+  // ── Sectioned detail (Details → Attendees → Comments) ────────────────
+
+  const isExternalOnly = !!event.signupUrl && !event.allowJanataSignup
 
   return (
     <SafeAreaView style={{ flex: 1, backgroundColor: colors.panelBg }}>
       <HeaderBar
         title={event.title}
         isPast={isPast}
+        isRegistered={isRegistered}
         isAdmin={canEdit}
         eventId={id as string}
         onBack={() => router.back()}
         onEdit={handleEditPress}
         onDelete={canEdit ? handleDeletePress : undefined}
+        onShare={() => track('event_shared', { eventId: id, source: 'event_detail' })}
         colors={colors}
       />
 
-      {/* Hero image — edge-to-edge */}
-      {event.image ? (
-        <View style={{ width: '100%', height: 200, position: 'relative' }}>
-          <Image
-            source={{ uri: event.image }}
-            style={{ width: '100%', height: 200, opacity: isPast ? 0.75 : 1 }}
-            resizeMode="cover"
-          />
-          {isPast && (
-            <View
-              style={{
-                position: 'absolute',
-                top: 0,
-                left: 0,
-                right: 0,
-                bottom: 0,
-                backgroundColor: 'rgba(0,0,0,0.15)',
-              }}
-            />
-          )}
-          <View style={{ position: 'absolute', bottom: 16, left: 16 }}>
-            <Badge
-              label={isPast ? 'Past Event' : 'Upcoming'}
-              variant={isPast ? 'past' : 'upcoming'}
-            />
-          </View>
-        </View>
-      ) : null}
-
       <ScrollView
         style={{ flex: 1 }}
-        contentContainerStyle={{
-          paddingHorizontal: 20,
-          paddingTop: 20,
-          paddingBottom: isPast ? 40 : 100,
-          gap: 20,
-        }}
+        contentContainerStyle={{ paddingBottom: isPast ? 32 : 24 }}
+        keyboardShouldPersistTaps="handled"
         showsVerticalScrollIndicator={false}
       >
-        {/* Attended banner (past + user was registered) */}
-        {isPast && isRegistered && <AttendedBanner count={event.attendees} colors={colors} />}
+        {/* Hero image — edge-to-edge */}
+        {event.image ? (
+          <View style={{ width: '100%', height: 200, position: 'relative', marginBottom: 4 }}>
+            <Image
+              source={{ uri: event.image }}
+              style={{ width: '100%', height: 200, opacity: isPast ? 0.75 : 1 }}
+              resizeMode="cover"
+            />
+            {isPast && (
+              <View style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, backgroundColor: 'rgba(0,0,0,0.15)' }} />
+            )}
+            <View style={{ position: 'absolute', bottom: 16, left: 16 }}>
+              <Badge label={isPast ? 'Past Event' : 'Upcoming'} variant={isPast ? 'past' : 'upcoming'} />
+            </View>
+          </View>
+        ) : null}
 
-        {/* Date & time */}
-        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12 }}>
-          <MetaIcon icon={Clock} color={isPast ? colors.textMuted : '#E8862A'} colors={colors} />
-          <Text style={{ fontFamily: 'Inter-Medium', fontSize: 14, color: colors.text }}>
-            {formatRelativeDateTime(event.date, event.time)}
-          </Text>
-        </View>
+        {/* DETAILS */}
+        <DetailSection title="Details" first>
+          {isPast && isRegistered ? <AttendedBanner count={event.attendees} colors={colors} /> : null}
+          <DetailsContent event={event} attendees={attendees} isPast={isPast} colors={colors} />
+        </DetailSection>
 
-        {/* Meta rows */}
-        <MetaSection event={event} attendees={attendees} isPast={isPast} colors={colors} />
+        {/* ATTENDEES — hidden when registration is external-only (no native RSVP) */}
+        {!isExternalOnly && (
+          <DetailSection
+            title="Attendees"
+            count={event.attendees}
+            contentStyle={{ gap: 8 }}
+          >
+            {event.attendees > 0 ? (
+              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10, marginBottom: 4 }}>
+                {attendees.length > 0 ? <AvatarStack attendees={attendees} colors={colors} /> : null}
+                <Text style={{ fontFamily: 'Inclusive Sans', fontSize: 13, color: colors.textSecondary }}>
+                  {event.attendees} {event.attendees === 1 ? 'person' : 'people'} on Janata
+                </Text>
+              </View>
+            ) : (
+              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10, paddingVertical: 4 }}>
+                <Users size={18} color={colors.textMuted} />
+                <Text style={{ fontFamily: 'Inclusive Sans', fontSize: 14, color: colors.textSecondary }}>
+                  No attendees yet — be the first to RSVP.
+                </Text>
+              </View>
+            )}
+            {attendees.length > 0 ? <AttendeesContent attendees={attendees} colors={colors} /> : null}
+          </DetailSection>
+        )}
 
-        {/* About */}
-        <AboutSection description={event.description} colors={colors} />
+        {/* COMMENTS — board posts, feed-style. Composer sits at the top of the
+            section; tapping a post opens the focused thread view above. */}
+        <DetailSection title="Comments" count={canAccessEventBoard ? eventBoardMessages.length : undefined} contentStyle={{ paddingHorizontal: 0 }}>
+          {canAccessEventBoard ? (
+            <ThreadPanel
+              messages={eventBoardMessages}
+              colors={colors}
+              emptyTitle="Be the first to post"
+              emptySubtitle={`Ask about carpooling, what to bring, or anything else for the ${event.attendees ?? 0} people going.`}
+              composerPlaceholder="Write to the group..."
+              composerState="open"
+              onSubmitPost={handleCreateThreadPost}
+              onMessagePress={openThreadPost}
+            />
+          ) : (
+            <View style={{ paddingHorizontal: 20 }}>
+              <LockedComments colors={colors} />
+            </View>
+          )}
+        </DetailSection>
       </ScrollView>
 
       <ActionBar
@@ -866,7 +876,17 @@ export default function EventDetailPage() {
         isToggling={isToggling}
         signupUrl={event.signupUrl}
         allowJanataSignup={event.allowJanataSignup}
+        onExternalSignup={() => track('event_external_signup_pressed', { eventId: id, signupUrl: event.signupUrl, source: 'event_detail' })}
+        guestRsvped={guestRsvped}
         colors={colors}
+      />
+
+      <GuestRsvpSheet
+        visible={showGuestRsvp}
+        onClose={() => setShowGuestRsvp(false)}
+        eventId={id as string}
+        eventTitle={event?.title}
+        onRsvped={() => setGuestRsvped(true)}
       />
     </SafeAreaView>
   )

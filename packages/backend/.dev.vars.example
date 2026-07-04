@@ -1,0 +1,4 @@
+JWT_SECRET="dev-local-jwt-secret-not-for-production"
+JWT_REFRESH_SECRET="dev-local-refresh-secret-not-for-production"
+EMAIL_SEND_DISABLED="true"
+# RESEND_API_KEY="re_..."   # only needed if you want email to actually send locally

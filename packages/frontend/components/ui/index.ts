@@ -10,6 +10,7 @@
 import PrimaryButton from './buttons/PrimaryButton'
 import AuthInput from './AuthInput'
 import SecondaryButton from './buttons/SecondaryButton'
+export { ImageLightbox } from './ImageLightbox'
 import GhostButton from './buttons/GhostButton'
 import IconButton from './buttons/IconButton'
 import DestructiveButton from './buttons/DestructiveButton'
@@ -22,6 +23,13 @@ import UnderlineTabBar from './UnderlineTabBar'
 import Avatar from './Avatar'
 import AuthPromptModal from './AuthPromptModal'
 import CopyLinkButton from './CopyLinkButton'
+import TabHeader from './TabHeader'
+import StackHeader from './StackHeader'
+import { Text } from './Text'
+import { Section } from './Section'
+import { DetailSection } from './DetailSection'
+import { GradientIconBadge } from './GradientIconBadge'
+import { IconBadge } from './IconBadge'
 
 export {
   PrimaryButton,
@@ -39,4 +47,11 @@ export {
   Avatar,
   AuthPromptModal,
   CopyLinkButton,
+  TabHeader,
+  StackHeader,
+  Text,
+  Section,
+  DetailSection,
+  GradientIconBadge,
+  IconBadge,
 }

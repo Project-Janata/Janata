@@ -1,8 +1,20 @@
-import { createContext, useContext, useState } from 'react'
+import { createContext, useContext, useEffect, useState } from 'react'
 import { router, useLocalSearchParams } from 'expo-router'
 import { Platform } from 'react-native'
 import { useUser } from './UserContext'
 import { usePostHog } from 'posthog-react-native'
+
+// Stable, human-readable name per onboarding step, so the drop-off funnel reads
+// "name → birthdate → center → interests" instead of opaque step numbers. The
+// numeric `step` property is kept alongside these for back-compat with existing
+// PostHog data. Step 5 is the Complete screen (final submit).
+const ONBOARDING_STEP_NAMES: Record<number, string> = {
+  1: 'name',
+  2: 'birthdate',
+  3: 'center',
+  4: 'interests',
+  5: 'complete',
+}
 
 interface OnboardingContextType {
   currentStep: number
@@ -49,8 +61,21 @@ export default function OnboardingProvider({ children }: { children: React.React
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [submitError, setSubmitError] = useState<string | null>(null)
 
+  // Fire onboarding_started once when the user enters the flow, so the funnel
+  // has a true top-of-funnel entry (not just the first step completion).
+  useEffect(() => {
+    posthog?.capture('onboarding_started', { total_steps: totalSteps })
+    // Intentionally once-per-mount; onboarding mounts once per attempt.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
+
   const goToNextStep = () => {
-    posthog?.capture('onboarding_step_completed', { step: currentStep })
+    posthog?.capture('onboarding_step_completed', {
+      step: currentStep, // numeric, kept for back-compat
+      step_index: currentStep,
+      step_name: ONBOARDING_STEP_NAMES[currentStep] ?? `step_${currentStep}`,
+      total_steps: totalSteps,
+    })
     // Allow incrementing past totalSteps to show Complete screen
     setCurrentStep(currentStep + 1)
   }
@@ -87,10 +112,17 @@ export default function OnboardingProvider({ children }: { children: React.React
 
       const data = await response.json()
       setUser(data.user)
-      router.replace(returnTo || '/')
-      posthog?.capture('onboarding_completed')
+      // Capture before navigating away so the events aren't dropped on unmount.
+      posthog?.capture('onboarding_completed', { total_steps: totalSteps })
+      posthog?.capture('profile_completed', {
+        source: 'onboarding',
+        has_photo: !!data.user?.profileImage,
+        interests_count: interests.length,
+        looking_for_count: 0,
+      })
+      router.replace((returnTo || '/') as never)
     } catch (error: any) {
-      posthog?.capture('onboarding_failed', { error: error.message })
+      posthog?.capture('onboarding_failed', { error: error.message, source: 'complete' })
       setSubmitError(error.message || 'Something went wrong. Please try again.')
     } finally {
       setIsSubmitting(false)
@@ -121,9 +153,22 @@ export default function OnboardingProvider({ children }: { children: React.React
       }
       const data = await response.json()
       setUser(data.user)
-      router.replace(returnTo || '/')
-      posthog?.capture('onboarding_skipped', { step: currentStep })
+      // The profile is now complete even though they skipped optional steps —
+      // fire both the skip signal and the canonical profile_completed (which is
+      // the cross-path "they're done" event used for the activation funnel).
+      posthog?.capture('onboarding_skipped', {
+        step: currentStep,
+        step_name: ONBOARDING_STEP_NAMES[currentStep] ?? `step_${currentStep}`,
+      })
+      posthog?.capture('profile_completed', {
+        source: 'onboarding_skip',
+        has_photo: !!data.user?.profileImage,
+        interests_count: interests.length,
+        looking_for_count: 0,
+      })
+      router.replace((returnTo || '/') as never)
     } catch (error: any) {
+      posthog?.capture('onboarding_failed', { error: error.message, source: 'skip' })
       setSubmitError(error.message || 'Something went wrong. Please try again.')
     } finally {
       setIsSubmitting(false)

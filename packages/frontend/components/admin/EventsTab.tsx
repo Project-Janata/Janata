@@ -1,5 +1,5 @@
 import React, { useState, useMemo, useEffect, useCallback } from 'react'
-import { View, Text, Pressable, ActivityIndicator } from 'react-native'
+import { View, Text, Pressable, ActivityIndicator, useWindowDimensions } from 'react-native'
 import { MapPin, Clock, Users, FileText } from 'lucide-react-native'
 import AdminTable, { type Column } from './AdminTable'
 import AdminDetailPanel from './AdminDetailPanel'
@@ -13,6 +13,7 @@ import {
 } from '../../utils/api'
 import { useDetailColors } from '../../hooks/useDetailColors'
 import { useTheme } from '../contexts'
+import { useAnalytics } from '../../utils/analytics'
 
 const formatDate = (dateStr: string) => {
   const d = new Date(dateStr)
@@ -27,6 +28,9 @@ const formatTime = (dateStr: string) => {
 export default function EventsTab() {
   const colors = useDetailColors()
   const { isDark } = useTheme()
+  const { width } = useWindowDimensions()
+  const { track } = useAnalytics()
+  const isCompact = width < 640
   const [search, setSearch] = useState('')
   const [events, setEvents] = useState<EventData[]>([])
   const [total, setTotal] = useState(0)
@@ -44,7 +48,7 @@ export default function EventsTab() {
       setEvents(result.data)
       setTotal(result.total)
     } catch (err: any) {
-      console.error('Failed to load events:', err)
+      if (__DEV__) console.error('Failed to load events:', err)
       setError(err?.message || 'Failed to load events. Are you logged in?')
     } finally {
       setLoading(false)
@@ -71,11 +75,12 @@ export default function EventsTab() {
     if (!deleteTarget) return
     try {
       await adminDeleteEvent(deleteTarget.eventID)
+      track('admin_event_deleted', { eventId: deleteTarget.eventID, source: 'admin' })
       setDeleteTarget(null)
       setSelectedId(null)
       loadEvents(search)
     } catch (err) {
-      console.error('Failed to delete event:', err)
+      if (__DEV__) console.error('Failed to delete event:', err)
     }
   }
 
@@ -85,7 +90,7 @@ export default function EventsTab() {
       header: 'Title',
       flex: 2,
       render: (item) => (
-        <Text style={{ fontFamily: 'Inter-Medium', fontSize: 13, color: colors.text }} numberOfLines={1}>
+        <Text style={{ fontFamily: 'Inclusive Sans', fontSize: 13, color: colors.text }} numberOfLines={1}>
           {item.title || 'Untitled'}
         </Text>
       ),
@@ -95,7 +100,7 @@ export default function EventsTab() {
       header: 'Date',
       flex: 1,
       render: (item) => (
-        <Text style={{ fontFamily: 'Inter-Regular', fontSize: 13, color: colors.textSecondary }}>
+        <Text style={{ fontFamily: 'Inclusive Sans', fontSize: 13, color: colors.textSecondary }}>
           {formatDate(item.date)}
         </Text>
       ),
@@ -105,7 +110,7 @@ export default function EventsTab() {
       header: 'Attendees',
       flex: 1,
       render: (item) => (
-        <Text style={{ fontFamily: 'Inter-Regular', fontSize: 13, color: colors.textSecondary }}>
+        <Text style={{ fontFamily: 'Inclusive Sans', fontSize: 13, color: colors.textSecondary }}>
           {item.peopleAttending}
         </Text>
       ),
@@ -123,11 +128,11 @@ export default function EventsTab() {
   if (error && events.length === 0) {
     return (
       <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center', padding: 40 }}>
-        <Text style={{ fontFamily: 'Inter-Medium', fontSize: 14, color: '#DC2626', textAlign: 'center' }}>
+        <Text style={{ fontFamily: 'Inclusive Sans', fontSize: 14, color: '#DC2626', textAlign: 'center' }}>
           {error}
         </Text>
         <Pressable onPress={() => loadEvents()} style={{ marginTop: 12, paddingHorizontal: 16, paddingVertical: 8, backgroundColor: '#E8862A', borderRadius: 8 }}>
-          <Text style={{ fontFamily: 'Inter-SemiBold', fontSize: 13, color: '#fff' }}>Retry</Text>
+          <Text style={{ fontFamily: 'Inclusive Sans', fontSize: 13, color: '#fff' }}>Retry</Text>
         </Pressable>
       </View>
     )
@@ -135,12 +140,20 @@ export default function EventsTab() {
 
   return (
     <View style={{ flex: 1, flexDirection: 'row' }}>
-      <View style={{ flex: 1, padding: 20 }}>
-        <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
-          <Text style={{ fontFamily: 'Inter-Bold', fontSize: 18, color: colors.text }}>
+      <View style={{ flex: 1, padding: isCompact ? 14 : 20 }}>
+        <View
+          style={{
+            flexDirection: isCompact ? 'column' : 'row',
+            justifyContent: 'space-between',
+            alignItems: isCompact ? 'stretch' : 'center',
+            gap: 10,
+            marginBottom: 16,
+          }}
+        >
+          <Text style={{ fontFamily: 'Inclusive Sans', fontSize: 18, color: colors.text }}>
             Events ({total})
           </Text>
-          <View style={{ width: 240 }}>
+          <View style={{ width: isCompact ? '100%' : 240 }}>
             <AdminSearchInput value={search} onChangeText={setSearch} placeholder="Search events..." />
           </View>
         </View>
@@ -180,7 +193,7 @@ export default function EventsTab() {
               onPress={() => setDeleteTarget(selected)}
               style={{ backgroundColor: colors.iconBoxBg, paddingHorizontal: 14, paddingVertical: 8, borderRadius: 8, alignSelf: 'flex-start' }}
             >
-              <Text style={{ fontFamily: 'Inter-SemiBold', fontSize: 12, color: isDark ? '#F87171' : '#DC2626' }}>
+              <Text style={{ fontFamily: 'Inclusive Sans', fontSize: 12, color: isDark ? '#F87171' : '#DC2626' }}>
                 Delete
               </Text>
             </Pressable>

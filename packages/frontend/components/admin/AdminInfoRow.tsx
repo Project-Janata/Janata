@@ -15,7 +15,7 @@ export default function AdminInfoRow({ icon, text, colors, textColor }: InfoRowP
       {icon}
       <Text
         style={{
-          fontFamily: 'Inter-Regular',
+          fontFamily: 'Inclusive Sans',
           fontSize: 12,
           color: textColor ?? colors.text,
           flex: 1,

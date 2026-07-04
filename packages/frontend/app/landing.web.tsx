@@ -13,6 +13,8 @@ import { ProblemSection } from '../components/landing/ProblemSection'
 import { CommunitySection } from '../components/landing/CommunitySection'
 import { FinalCTA } from '../components/landing/FinalCTA'
 import { Footer } from '../components/landing/Footer'
+import { SeoHead } from '../components/seo/SeoHead'
+import { buildOrganizationJsonLd } from '../components/seo/jsonLd'
 
 export default function LandingPage() {
   return (
@@ -22,6 +24,13 @@ export default function LandingPage() {
       bounces={false}
       overScrollMode="never"
     >
+      <SeoHead
+        title="Chinmaya Janata — Connect with your Chinmaya community"
+        exactTitle
+        description="Chinmaya Janata brings the worldwide Chinmaya Mission community together. Find nearby centers, discover upcoming events, and connect with fellow members."
+        path="/"
+        jsonLd={buildOrganizationJsonLd()}
+      />
       <NavBar />
       <Hero />
       <ProblemSection />

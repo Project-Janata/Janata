@@ -19,6 +19,7 @@ const localStorageMock = {
 
 // ── document.cookie mock ───────────────────────────────────────────────
 let cookieStore = ''
+let lastCookieWrite = ''
 
 // Save originals
 const origWindow = (globalThis as any).window
@@ -34,6 +35,7 @@ beforeEach(() => {
   localStorageMock.setItem.mockClear()
   localStorageMock.removeItem.mockClear()
   cookieStore = ''
+  lastCookieWrite = ''
 
   // Define window so typeof window !== 'undefined' passes
   ;(globalThis as any).window = globalThis
@@ -50,6 +52,7 @@ beforeEach(() => {
         return cookieStore
       },
       set cookie(val: string) {
+        lastCookieWrite = val
         const parts = val.split(';')
         const nameValue = parts[0].trim()
         const eqIdx = nameValue.indexOf('=')
@@ -122,8 +125,8 @@ async function getTokenStorage() {
   ;(globalThis as any).__DEV__ = true
   // Make sure window is still set after resetModules
   ;(globalThis as any).window = globalThis
-  vi.doUnmock('../../components/utils/tokenStorage')
-  return await import('../../components/utils/tokenStorage.web')
+  vi.doUnmock('../storage/tokenStorage')
+  return await import('../storage/tokenStorage.web')
 }
 
 describe('setStoredToken', () => {
@@ -133,6 +136,8 @@ describe('setStoredToken', () => {
 
     expect(localStorageMock.setItem).toHaveBeenCalledWith(TOKEN_KEY, 'my-token')
     expect(cookieStore).toContain(`${TOKEN_KEY}=my-token`)
+    expect(lastCookieWrite).toContain('Secure')
+    expect(lastCookieWrite).toContain('SameSite=Lax')
   })
 })
 
@@ -170,6 +175,8 @@ describe('removeStoredToken', () => {
     await removeStoredToken()
     expect(localStorageMock.removeItem).toHaveBeenCalledWith(TOKEN_KEY)
     expect(cookieStore).not.toContain(`${TOKEN_KEY}=to-remove`)
+    expect(lastCookieWrite).toContain('Secure')
+    expect(lastCookieWrite).toContain('SameSite=Lax')
   })
 })
 
@@ -207,6 +214,8 @@ describe('cookie fallback when localStorage throws', () => {
 
     await setStoredToken('fallback-token')
     expect(cookieStore).toContain(`${TOKEN_KEY}=fallback-token`)
+    expect(lastCookieWrite).toContain('Secure')
+    expect(lastCookieWrite).toContain('SameSite=Lax')
   })
 
   it('getStoredToken falls back to cookie when localStorage.getItem throws', async () => {

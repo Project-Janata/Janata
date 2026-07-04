@@ -1,5 +1,5 @@
 import React, { useMemo, useState, useEffect, useCallback } from 'react'
-import { View, Text, Pressable, StyleSheet, ActivityIndicator } from 'react-native'
+import { View, Text, Pressable, StyleSheet, ActivityIndicator, useWindowDimensions } from 'react-native'
 import { Building2, Calendar, Shield } from 'lucide-react-native'
 import AdminTable, { type Column } from './AdminTable'
 import AdminDetailPanel from './AdminDetailPanel'
@@ -14,6 +14,7 @@ import {
 import { useDetailColors } from '../../hooks/useDetailColors'
 import { useTheme } from '../contexts'
 import { Avatar } from '../ui'
+import { useAnalytics } from '../../utils/analytics'
 
 // ---------------------------------------------------------------------------
 // Role badge config
@@ -47,6 +48,9 @@ function formatJoinDate(iso?: string): string {
 export default function UsersTab() {
   const colors = useDetailColors()
   const { isDark } = useTheme()
+  const { width } = useWindowDimensions()
+  const { track } = useAnalytics()
+  const isCompact = width < 640
 
   const [search, setSearch] = useState('')
   const [users, setUsers] = useState<UserData[]>([])
@@ -65,7 +69,7 @@ export default function UsersTab() {
       setUsers(result.data)
       setTotal(result.total)
     } catch (err: any) {
-      console.error('Failed to load users:', err)
+      if (__DEV__) console.error('Failed to load users:', err)
       setError(err?.message || 'Failed to load users. Are you logged in?')
     } finally {
       setLoading(false)
@@ -99,7 +103,7 @@ export default function UsersTab() {
               style={{ marginRight: 8 }}
             />
             <Text
-              style={{ fontFamily: 'Inter-Medium', fontSize: 13, color: colors.text }}
+              style={{ fontFamily: 'Inclusive Sans', fontSize: 13, color: colors.text }}
               numberOfLines={1}
             >
               {user.firstName} {user.lastName}
@@ -113,7 +117,7 @@ export default function UsersTab() {
         flex: 2,
         render: (user: UserData) => (
           <Text
-            style={{ fontFamily: 'Inter-Regular', fontSize: 13, color: colors.textMuted }}
+            style={{ fontFamily: 'Inclusive Sans', fontSize: 13, color: colors.textMuted }}
             numberOfLines={1}
           >
             {user.email || user.username}
@@ -128,7 +132,7 @@ export default function UsersTab() {
           const badge = getRoleBadgeType(user)
           if (!badge) {
             return (
-              <Text style={{ fontFamily: 'Inter-Regular', fontSize: 13, color: colors.textMuted }}>
+              <Text style={{ fontFamily: 'Inclusive Sans', fontSize: 13, color: colors.textMuted }}>
                 {'\u2014'}
               </Text>
             )
@@ -144,7 +148,7 @@ export default function UsersTab() {
                 alignSelf: 'flex-start',
               }}
             >
-              <Text style={{ fontFamily: 'Inter-SemiBold', fontSize: 10, color: rc.text }}>
+              <Text style={{ fontFamily: 'Inclusive Sans', fontSize: 10, color: rc.text }}>
                 {rc.label}
               </Text>
             </View>
@@ -162,6 +166,7 @@ export default function UsersTab() {
       const result = await adminVerifyUser(selectedUser.id, {
         isVerified: !selectedUser.isVerified,
       })
+      track('admin_user_verification_changed', { userId: selectedUser.id, source: 'admin' })
       // Update local state
       setUsers((prev) =>
         prev.map((u) =>
@@ -172,7 +177,7 @@ export default function UsersTab() {
         prev ? { ...prev, isVerified: result.isVerified } : null
       )
     } catch (err) {
-      console.error('Failed to toggle verification:', err)
+      if (__DEV__) console.error('Failed to toggle verification:', err)
     }
   }
 
@@ -181,10 +186,11 @@ export default function UsersTab() {
     if (!selectedUser) return
     try {
       await adminDeleteUser(selectedUser.id)
+      track('admin_user_deleted', { userId: selectedUser.id, source: 'admin' })
       setSelectedUser(null)
       loadUsers(search)
     } catch (err) {
-      console.error('Failed to delete user:', err)
+      if (__DEV__) console.error('Failed to delete user:', err)
     }
   }
 
@@ -264,11 +270,11 @@ export default function UsersTab() {
   if (error && users.length === 0) {
     return (
       <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center', padding: 40 }}>
-        <Text style={{ fontFamily: 'Inter-Medium', fontSize: 14, color: '#DC2626', textAlign: 'center' }}>
+        <Text style={{ fontFamily: 'Inclusive Sans', fontSize: 14, color: '#DC2626', textAlign: 'center' }}>
           {error}
         </Text>
         <Pressable onPress={() => loadUsers()} style={{ marginTop: 12, paddingHorizontal: 16, paddingVertical: 8, backgroundColor: '#E8862A', borderRadius: 8 }}>
-          <Text style={{ fontFamily: 'Inter-SemiBold', fontSize: 13, color: '#fff' }}>Retry</Text>
+          <Text style={{ fontFamily: 'Inclusive Sans', fontSize: 13, color: '#fff' }}>Retry</Text>
         </Pressable>
       </View>
     )
@@ -277,9 +283,9 @@ export default function UsersTab() {
   return (
     <View style={styles.container}>
       <View style={styles.tablePanel}>
-        <View style={styles.header}>
+        <View style={[styles.header, isCompact && styles.compactHeader]}>
           <Text style={[styles.title, { color: colors.text }]}>Users ({total})</Text>
-          <View style={styles.searchWrap}>
+          <View style={isCompact ? styles.compactSearchWrap : styles.searchWrap}>
             <AdminSearchInput value={search} onChangeText={setSearch} placeholder="Search users..." />
           </View>
         </View>
@@ -327,21 +333,27 @@ const styles = StyleSheet.create({
     paddingHorizontal: 16,
     paddingVertical: 12,
   },
-  title: { fontFamily: 'Inter-Bold', fontSize: 16 },
+  compactHeader: {
+    flexDirection: 'column',
+    alignItems: 'stretch',
+    gap: 10,
+  },
+  title: { fontFamily: 'Inclusive Sans', fontSize: 16 },
   searchWrap: { width: 240 },
+  compactSearchWrap: { width: '100%' },
 })
 
 const detailStyles = StyleSheet.create({
   userHeader: { alignItems: 'center', marginBottom: 8 },
-  userName: { fontFamily: 'Inter-Bold', fontSize: 16, marginTop: 8 },
-  userEmail: { fontFamily: 'Inter-Regular', fontSize: 13, marginTop: 2 },
+  userName: { fontFamily: 'Inclusive Sans', fontSize: 16, marginTop: 8 },
+  userEmail: { fontFamily: 'Inclusive Sans', fontSize: 13, marginTop: 2 },
   actions: { flexDirection: 'row', gap: 8, marginTop: 16 },
   actionBtn: { flex: 1, paddingVertical: 10, borderRadius: 8, alignItems: 'center' },
-  actionBtnText: { fontFamily: 'Inter-SemiBold', fontSize: 13 },
+  actionBtnText: { fontFamily: 'Inclusive Sans', fontSize: 13 },
 })
 
 const infoStyles = StyleSheet.create({
   row: { flexDirection: 'row', alignItems: 'center', marginBottom: 10 },
   iconBox: { width: 28, height: 28, borderRadius: 6, alignItems: 'center', justifyContent: 'center', marginRight: 10 },
-  text: { fontFamily: 'Inter-Regular', fontSize: 13, flex: 1 },
+  text: { fontFamily: 'Inclusive Sans', fontSize: 13, flex: 1 },
 })

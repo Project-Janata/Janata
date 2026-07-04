@@ -1,240 +1,144 @@
-import React, { useState, useCallback } from 'react'
+import React, { useState } from 'react'
 import {
   View,
   Text,
   Platform,
   ScrollView,
-  KeyboardAvoidingView,
   Pressable,
   TouchableOpacity,
-  Alert,
+  ViewStyle,
 } from 'react-native'
 import { useRouter, useLocalSearchParams } from 'expo-router'
-import { Code, ArrowLeft } from 'lucide-react-native'
-import { usePostHog } from 'posthog-react-native'
+import { useSafeAreaInsets } from 'react-native-safe-area-context'
+import { ArrowLeft } from 'lucide-react-native'
+import { useAnalytics } from '../utils/analytics'
 import { AuthInput, Logo, PrimaryButton } from '../components/ui'
-import { useUser, useTheme } from '../components/contexts'
-import { validateEmail, validatePassword } from '../utils'
+import { useTheme } from '../components/contexts'
 import { PasswordStrength } from '../components'
 import DevPanel from '../components/DevPanel'
-import { API_BASE_URL } from '../src/config/api'
-// __DEV__ is a React Native/Expo global — always false in production builds
-const isDev = typeof __DEV__ !== 'undefined' && __DEV__
+import { useAuthFlow } from '../components/auth/useAuthFlow'
+import { InviteCodeInput } from '../components/invite/InviteCodeField'
+import { extractInviteCode } from '../utils/validation'
 
-type AuthStep = 'initial' | 'login' | 'invite-code' | 'signup'
+// __DEV__ is a React Native/Expo global — always false in production builds.
+// EXPO_PUBLIC_SHOW_DEV_TOOLS=1 also enables the dev/demo tools (set on the
+// isolated v2 preview build), so role-switching works for demos there too.
+const isDev =
+  (typeof __DEV__ !== 'undefined' && __DEV__) ||
+  process.env.EXPO_PUBLIC_SHOW_DEV_TOOLS === '1'
 
 export default function AuthScreen() {
   const router = useRouter()
+  const insets = useSafeAreaInsets()
   const { isDark } = useTheme()
-  const { checkUserExists, login, signup, loading } = useUser()
-  const posthog = usePostHog()
+  const { track } = useAnalytics()
+  const pageBg = isDark ? '#171717' : '#FAFAF7'
+  const textColor = isDark ? '#FAFAFA' : '#1C1917'
+  const mutedColor = isDark ? '#A8A29E' : '#78716C'
+  const topPadding = Math.max(insets.top + 118, 132)
 
-  // Read params for deep-link support (e.g. from AuthPromptModal)
-  const params = useLocalSearchParams<{ mode?: string; returnTo?: string; inviteCode?: string }>()
-  const urlInviteCode = params.inviteCode
-
-  const [authStep, setAuthStep] = useState<AuthStep>(
-    params.mode === 'login' ? 'login'
-      : params.mode === 'signup' && urlInviteCode ? 'signup'
-      : 'initial'
-  )
-  const [username, setUsername] = useState('')
-  const [password, setPassword] = useState('')
-  const [confirmPassword, setConfirmPassword] = useState('')
-  const [inviteCode, setInviteCode] = useState(urlInviteCode || '')
-  const [errors, setErrors] = useState<{ [key: string]: string }>({})
+  // All auth state + handlers live in the shared hook (see auth.web.tsx — same
+  // logic, different presentation). This file is RN markup only.
+  const {
+    authStep,
+    username,
+    password,
+    confirmPassword,
+    errorMessages,
+    loading,
+    inviterName,
+    hasInvite,
+    isInviteWallEntry,
+    emailEditable,
+    isButtonDisabled,
+    heading,
+    subtitle,
+    changeUsername,
+    changePassword,
+    changeConfirm,
+    handleSubmit,
+    handleBack,
+  } = useAuthFlow()
 
   const [showDevPanel, setShowDevPanel] = useState(false)
+  // `?invite=1` opens this screen straight to the paste-invite field, so the
+  // invite flow lives inside /auth instead of a separate /join page.
+  const { invite: inviteParam } = useLocalSearchParams<{ invite?: string }>()
+  const [showInviteField, setShowInviteField] = useState(inviteParam === '1')
+  const [inviteValue, setInviteValue] = useState('')
+  const [inviteError, setInviteError] = useState('')
 
-  const handleContinue = useCallback(async () => {
-    setErrors({})
-    if (!username) {
-      setErrors({ username: 'Please enter a username.' })
+  const revealInviteField = () => {
+    track('auth_have_invite_pressed', { source: 'auth' })
+    setShowInviteField(true)
+  }
+
+  const hideInviteField = () => {
+    track('auth_invite_entry_cancelled', { source: 'auth' })
+    setShowInviteField(false)
+    setInviteValue('')
+    setInviteError('')
+  }
+
+  const openInvite = (code: string) => {
+    track('auth_invite_code_submitted', { source: 'auth' })
+    router.push(`/i/${encodeURIComponent(code)}` as never)
+  }
+
+  const submitInvite = () => {
+    const code = extractInviteCode(inviteValue)
+    if (!code) {
+      setInviteError('Paste a valid invite link or code.')
       return
     }
-    if (!validateEmail(username)) {
-      setErrors({ username: 'You must enter a valid email address.' })
+    setInviteError('')
+    openInvite(code)
+  }
+
+  const handlePrimaryPress = () => {
+    if (showInviteField && inviteValue.trim()) {
+      submitInvite()
       return
     }
-    try {
-      posthog?.capture('auth_email_submitted')
-      const exists = await checkUserExists(username)
-      if (exists) {
-        posthog?.capture('auth_user_exists')
-        setAuthStep('login')
-      } else {
-        posthog?.capture('auth_user_new')
-        setAuthStep('invite-code')
-      }
-    } catch (e: any) {
-      posthog?.capture('auth_check_failed')
-      setErrors({ form: e.message || 'Failed to connect to server.' })
-    }
-  }, [username, checkUserExists, posthog])
+    handleSubmit()
+  }
 
-  const handleLogin = useCallback(async () => {
-    setErrors({})
-    if (!username) {
-      setErrors({ username: 'Please enter a username.' })
-      return
-    }
-
-    if (!password) {
-      setErrors({ password: 'Please enter your password.' })
-      return
-    }
-    try {
-      const result = await login(username, password)
-      if (result.success) {
-        router.replace('/(tabs)')
-      } else {
-        setErrors({ form: result.message || 'Username or password is incorrect.' })
-      }
-    } catch (e: any) {
-      setErrors({ form: 'Failed to connect to server. Please try again.' })
-    }
-  }, [username, password, login, router])
-
-  const handleInviteCodeContinue = useCallback(async () => {
-    setErrors({})
-    if (!inviteCode) {
-      setErrors({ inviteCode: 'Please enter your invite code.' })
-      return
-    }
-    try {
-      posthog?.capture('auth_invite_code_submitted')
-      // Validate the invite code with the backend
-      const response = await fetch(`${API_BASE_URL}/auth/validate-invite-code`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ code: inviteCode }),
-      })
-      const data = await response.json()
-      if (data.valid) {
-        posthog?.capture('auth_invite_code_valid')
-        setAuthStep('signup')
-      } else {
-        posthog?.capture('auth_invite_code_invalid')
-        setErrors({ form: data.error || 'Invalid or inactive invite code.' })
-      }
-    } catch (e: any) {
-      posthog?.capture('auth_invite_code_check_failed')
-      setErrors({ form: 'Failed to validate invite code. Please try again.' })
-    }
-  }, [inviteCode, posthog])
-
-  const handleSignup = useCallback(async () => {
-    setErrors({})
-    if (!username) {
-      setErrors({ username: 'Please enter a username.' })
-      return
-    }
-    if (!password) {
-      setErrors({ password: 'Please enter a password.' })
-      return
-    }
-    if (!validatePassword(password).isValid) {
-      setErrors({ password: 'Password does not meet complexity requirements.' })
-      return
-    }
-    if (password !== confirmPassword) {
-      setErrors({ confirmPassword: 'Passwords do not match.' })
-      return
-    }
-    try {
-      const result = await signup(username, password, inviteCode)
-      if (result.success) {
-        router.replace(params.returnTo ? `/onboarding?returnTo=${encodeURIComponent(params.returnTo)}` : '/onboarding')
-      } else {
-        setErrors({ form: result.message || 'Failed to sign up. Please try again.' })
-      }
-    } catch (e: any) {
-      setErrors({ form: 'Failed to connect to server. Please try again.' })
-    }
-  }, [username, password, confirmPassword, inviteCode, signup, router])
-
-  const handleSubmit = useCallback(
-    (e?: any) => {
-      if (Platform.OS === 'web' && e) {
-        e.preventDefault?.()
-        e.stopPropagation?.()
-      }
-
-      if (authStep === 'login') {
-        handleLogin()
-      } else if (authStep === 'invite-code') {
-        handleInviteCodeContinue()
-      } else if (authStep === 'signup') {
-        handleSignup()
-      } else {
-        handleContinue()
-      }
-    },
-    [authStep, handleLogin, handleInviteCodeContinue, handleSignup, handleContinue]
-  )
-
-  const handleBack = useCallback(() => {
-    setAuthStep('initial')
-    setPassword('')
-    setConfirmPassword('')
-    setInviteCode('')
-    setErrors({})
-  }, [])
-
-  const isButtonDisabled =
-    loading ||
-    (authStep === 'initial' && !username) ||
-    (authStep === 'invite-code' && !inviteCode) ||
-    (authStep !== 'initial' && authStep !== 'invite-code' && !password) ||
-    (authStep === 'signup' && !confirmPassword)
-
-  // Collect error messages to display
-  const errorMessages = Object.values(errors).filter(Boolean)
-
-  // Memoize input handlers to prevent recreation
-  const handleUsernameChange = useCallback((text: string) => {
-    setUsername(text)
-    setErrors((prev) => ({ ...prev, username: '' }))
-  }, [])
-
-  const handlePasswordChange = useCallback((text: string) => {
-    setPassword(text)
-    setErrors((prev) => ({ ...prev, password: '' }))
-  }, [])
-
-  const handleConfirmPasswordChange = useCallback((text: string) => {
-    setConfirmPassword(text)
-    setErrors((prev) => ({ ...prev, confirmPassword: '' }))
-  }, [])
-
-  const handleInviteCodeChange = useCallback((text: string) => {
-    setInviteCode(text)
-    setErrors((prev) => ({ ...prev, inviteCode: '' }))
-  }, [])
+  const inviteHasText = showInviteField && inviteValue.trim().length > 0
+  const primaryDisabled = inviteHasText ? loading : isButtonDisabled
+  const rootStyle: ViewStyle = { flex: 1, backgroundColor: pageBg }
 
   return (
-    <KeyboardAvoidingView
-      behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
-      className="flex-1"
-    >
+    <View style={rootStyle}>
       <ScrollView
-        contentContainerStyle={{ flexGrow: 1 }}
-        className="flex-1 bg-[#FAFAF7] dark:bg-background-dark"
+        contentContainerStyle={{
+          flexGrow: 1,
+          paddingHorizontal: 24,
+          paddingTop: topPadding,
+          paddingBottom: 32,
+        }}
+        style={{ flex: 1, backgroundColor: pageBg }}
         keyboardShouldPersistTaps="handled"
+        keyboardDismissMode={Platform.OS === 'ios' ? 'interactive' : 'on-drag'}
+        automaticallyAdjustKeyboardInsets
       >
-        {/* Main content */}
-        <View
-          className="flex-1 justify-center items-center w-full px-6"
-          style={{
-            paddingTop: 60,
-            paddingBottom: 48,
-          }}
-        >
-          {/* Container */}
-          <View
-            className="w-full"
-            style={{ maxWidth: 400 }}
+        {/* Guest browse link, top-right, initial step only. Lets a logged-out
+            user browse the app before signing up (mirrors the web version). */}
+        {authStep === 'initial' && (
+          <Pressable
+            onPress={() => { track('auth_browse_as_guest_pressed', { source: 'auth' }); router.push('/explore') }}
+            className="absolute right-5"
+            style={{ top: insets.top + 12, paddingHorizontal: 4, paddingVertical: 8 }}
           >
+            <Text className="font-sans" style={{ fontSize: 14.5, fontWeight: '500', color: '#E8862A' }}>
+              Browse as guest
+            </Text>
+          </Pressable>
+        )}
+
+        {/* Main content */}
+        <View className="w-full items-center">
+          {/* Container */}
+          <View className="w-full" style={{ maxWidth: 400 }}>
             {/* Back Button */}
             {authStep !== 'initial' && (
               <TouchableOpacity
@@ -243,92 +147,89 @@ export default function AuthScreen() {
                 className="flex-row items-center gap-2 mb-6 rounded-xl px-3 py-2 self-start"
                 style={{ alignSelf: 'flex-start' }}
               >
-                <ArrowLeft
-                  size={20}
-                  className={isDark ? 'text-white' : 'text-content'}
-                />
-                <Text className="font-inter font-medium text-content dark:text-content-dark">
-                  Back
-                </Text>
+                <ArrowLeft size={20} className={isDark ? 'text-white' : 'text-content'} />
+                <Text className="font-sans font-medium text-content dark:text-content-dark">Back</Text>
               </TouchableOpacity>
             )}
 
             {/* Janata Wordmark */}
-            <Pressable onPress={() => router.push('/landing')}>
-              <Logo size={32} style={{ marginBottom: 32 }} />
+            <Pressable
+              onPress={() => { track('auth_logo_pressed', { source: 'auth' }); router.push('/landing') }}
+              onLongPress={isDev ? () => setShowDevPanel(true) : undefined}
+            >
+              <Logo size={30} style={{ marginBottom: 42 }} />
             </Pressable>
 
             {/* Heading & Subtitle */}
-            <View className="mb-6">
+            <View style={{ marginBottom: 26 }}>
               <Text
-                style={{ fontFamily: '"Inclusive Sans"', fontSize: 36, fontWeight: '400' }}
-                className="text-content dark:text-content-dark"
+                style={{ fontFamily: '"Inclusive Sans"', fontSize: 36, lineHeight: 43, fontWeight: '400', color: textColor }}
               >
-                {authStep === 'login'
-                  ? 'Welcome back.'
-                  : authStep === 'invite-code'
-                  ? 'Enter invite code.'
-                  : authStep === 'signup'
-                  ? 'Join the community.'
-                  : 'Welcome.'}
+                {heading}
               </Text>
 
-              <Text
-                className="text-base font-inter mt-2"
-                style={{ color: '#78716C' }}
-              >
-                {authStep === 'login'
-                  ? 'Enter your password to continue'
-                  : authStep === 'invite-code'
-                  ? 'Enter your beta invite code to proceed'
-                  : authStep === 'signup'
-                  ? 'Create your account to get started'
-                  : 'Enter your email to get started'}
+              <Text className="text-base font-sans" style={{ color: mutedColor, lineHeight: 24, marginTop: 10 }}>
+                {subtitle}
               </Text>
             </View>
 
-            {/* Form */}
+            {/* Applied-invite bar (#403): the vouch carries into account
+                creation, and is "held" when an email collision flips to login. */}
+            {hasInvite && (authStep === 'signup' || authStep === 'login') && (
+              <View
+                style={{
+                  flexDirection: 'row',
+                  alignItems: 'center',
+                  gap: 8,
+                  backgroundColor: 'rgba(232,134,42,0.1)',
+                  borderRadius: 12,
+                  paddingVertical: 12,
+                  paddingHorizontal: 14,
+                  marginBottom: 16,
+                }}
+              >
+                <Text style={{ fontSize: 15 }}>🪔</Text>
+                <Text className="font-sans" style={{ flex: 1, fontSize: 14, lineHeight: 20, color: '#B05A12' }}>
+                  <Text style={{ fontWeight: '700', color: '#E8862A' }}>
+                    {inviterName ? `${inviterName}'s invite applied.` : 'Invite applied.'}
+                  </Text>
+                  {authStep === 'signup'
+                    ? " You're a member the moment you finish."
+                    : ' Held while you log in.'}
+                </Text>
+              </View>
+            )}
+
+            {/* Errors */}
             {errorMessages.length > 0 && (
-              <View className="w-full font-inter bg-red-50 dark:bg-red-900/20 rounded-xl px-4 py-3 mb-4">
+              <View className="w-full font-sans bg-red-50 dark:bg-red-900/20 rounded-xl px-4 py-3 mb-4">
                 {errorMessages.map((msg, idx) => (
-                  <Text key={idx} className="text-red-500 text-sm font-inter">
+                  <Text key={idx} className="text-red-500 text-sm font-sans">
                     {msg}
                   </Text>
                 ))}
               </View>
             )}
 
-            <View className="gap-4">
+            {/* Form */}
+            <View style={{ gap: showInviteField ? 8 : 16 }}>
               <View>
                 <AuthInput
                   placeholder="Email"
-                  onChangeText={handleUsernameChange}
+                  onChangeText={changeUsername}
                   value={username}
                   secureTextEntry={false}
-                  editable={authStep === 'initial'}
+                  editable={emailEditable}
                 />
               </View>
               {authStep === 'login' && (
                 <View>
                   <AuthInput
                     placeholder="Password"
-                    onChangeText={handlePasswordChange}
+                    onChangeText={changePassword}
                     value={password}
                     secureTextEntry
                     autoComplete="password"
-                    style={{}}
-                  />
-                </View>
-              )}
-
-              {authStep === 'invite-code' && (
-                <View>
-                  <AuthInput
-                    placeholder="Invite Code"
-                    onChangeText={handleInviteCodeChange}
-                    value={inviteCode}
-                    secureTextEntry={false}
-                    autoComplete="off"
                     style={{}}
                   />
                 </View>
@@ -340,7 +241,7 @@ export default function AuthScreen() {
                     <PasswordStrength password={password} show={password.length > 0} />
                     <AuthInput
                       placeholder="Password"
-                      onChangeText={handlePasswordChange}
+                      onChangeText={changePassword}
                       value={password}
                       secureTextEntry
                       autoComplete="password-new"
@@ -350,7 +251,7 @@ export default function AuthScreen() {
                   <View>
                     <AuthInput
                       placeholder="Confirm password"
-                      onChangeText={handleConfirmPasswordChange}
+                      onChangeText={changeConfirm}
                       value={confirmPassword}
                       secureTextEntry
                       autoComplete="password-new"
@@ -360,71 +261,84 @@ export default function AuthScreen() {
                 </>
               )}
 
+              {authStep === 'initial' && !hasInvite && showInviteField && (
+                <InviteCodeInput
+                  compact
+                  value={inviteValue}
+                  onChangeText={(next) => {
+                    setInviteValue(next)
+                    if (inviteError) setInviteError('')
+                  }}
+                  error={inviteError}
+                  onSubmitEditing={submitInvite}
+                />
+              )}
+
               {/* Submit Button */}
               <PrimaryButton
-                onPress={handleSubmit}
-                disabled={isButtonDisabled}
+                onPress={handlePrimaryPress}
+                disabled={primaryDisabled}
                 loading={loading}
-                style={{ marginTop: 8 }}
+                style={{ marginTop: showInviteField ? 0 : 8 }}
               >
-               {authStep === 'login'
-                   ? 'Log In'
-                   : authStep === 'invite-code'
-                   ? 'Verify Code'
-                   : authStep === 'signup'
-                   ? 'Sign Up'
-                  : 'Continue'}
+                {authStep === 'login'
+                  ? 'Log In'
+                  : authStep === 'signup'
+                    ? hasInvite
+                      ? 'Accept Invite'
+                      : 'Sign Up'
+                    : 'Continue'}
               </PrimaryButton>
+
+              {authStep === 'initial' && !hasInvite && showInviteField && (
+                <Pressable
+                  className="items-center"
+                  onPress={hideInviteField}
+                >
+                  <Text className="font-sans" style={{ fontSize: 14, color: mutedColor }}>
+                    No invite? <Text style={{ color: '#E8862A', fontWeight: '600' }}>Use email instead</Text>
+                  </Text>
+                </Pressable>
+              )}
 
               {/* Forgot Password (only on login) */}
               {authStep === 'login' && (
                 <Pressable
                   className="items-center mt-2"
-                  onPress={() =>
-                    Alert.alert(
-                      'Reset Password',
-                      'Please contact info@chinmayajanata.org to reset your password.'
-                    )
-                  }
+                  onPress={() => { track('auth_forgot_password_pressed', { source: 'auth' }); router.push('/auth/forgot') }}
                 >
-                  <Text className="text-primary font-inter font-medium">Forgot password?</Text>
+                  <Text className="text-primary font-sans font-medium">Forgot password?</Text>
                 </Pressable>
+              )}
+
+              {/* Have an invite? — reveal the same paste field used by /join and the modal. */}
+              {authStep === 'initial' && !hasInvite && (
+                !showInviteField && (
+                  <Pressable
+                    className="items-center mt-4"
+                    onPress={revealInviteField}
+                  >
+                    <Text className="font-sans" style={{ fontSize: 14, color: mutedColor }}>
+                      Have an invite? <Text style={{ color: '#E8862A', fontWeight: '600' }}>Paste it</Text>
+                    </Text>
+                  </Pressable>
+                )
               )}
             </View>
 
-            {/* Dev Mode Button -- dev only */}
-            {isDev && (
-              <View className="mt-8 pt-6 border-t border-borderColor dark:border-borderColor-dark">
-                <Pressable
-                  onPress={() => setShowDevPanel(true)}
-                  className="flex-row items-center justify-center bg-slate-100 dark:bg-slate-800 px-4 py-3 rounded-xl active:opacity-70"
-                >
-                  <Code size={18} className={isDark ? 'text-white' : 'text-black'} />
-                  <Text className="ml-2 text-content dark:text-content-dark font-inter font-semibold">
-                    Developer Mode
-                  </Text>
-                </Pressable>
-              </View>
-            )}
-
-            {/* Show DevPanel when Developer Mode is clicked */}
-            {isDev && showDevPanel && (
-              <DevPanel visible={showDevPanel} onClose={() => setShowDevPanel(false)} />
-            )}
-
             {/* Footer Text */}
-            <Text className="text-content dark:text-content-dark opacity-50 text-sm font-inter mt-8 text-center px-4">
+            <Text className="text-sm font-sans mt-8 text-center px-4" style={{ color: mutedColor, opacity: 0.78, lineHeight: 20 }}>
               By continuing, you agree to our{' '}
               <Text
-                className="text-primary font-inter-semibold"
-                onPress={() => router.push('/terms')}
+                className="text-primary font-sans"
+                onPress={() => { track('terms_viewed', { source: 'auth' }); router.push('/terms') }}
               >
                 Terms of Service
               </Text>
               {' '}and{' '}
               <Text
-                className="text-primary font-inter-semibold"
-                onPress={() => router.push('/privacy')}
+                className="text-primary font-sans"
+                onPress={() => { track('privacy_policy_viewed', { source: 'auth' }); router.push('/privacy') }}
               >
                 Privacy Policy
               </Text>
@@ -432,6 +346,9 @@ export default function AuthScreen() {
           </View>
         </View>
       </ScrollView>
-    </KeyboardAvoidingView>
+      {isDev && showDevPanel && (
+        <DevPanel visible={showDevPanel} onClose={() => setShowDevPanel(false)} />
+      )}
+    </View>
   )
 }

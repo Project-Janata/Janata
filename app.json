@@ -1,10 +1,10 @@
 {
   "expo": {
     "ios": {
-      "bundleIdentifier": "com.theabhiramr.project-janatha"
+      "bundleIdentifier": "com.theabhiramr.project-janata"
     },
     "android": {
-      "package": "com.theabhiramr.projectjanatha"
+      "package": "com.theabhiramr.projectjanata"
     }
   }
 }

@@ -1,0 +1,48 @@
+appId: ${APP_ID}
+name: Native member smoke
+---
+- launchApp:
+    clearState: true
+- openLink: janata://auth
+- extendedWaitUntil:
+    visible: "Welcome."
+    timeout: 15000
+- tapOn: "Email"
+- inputText: ${E2E_MEMBER_EMAIL}
+- tapOn: "Continue"
+- extendedWaitUntil:
+    visible: "Welcome back."
+    timeout: 20000
+- tapOn: "Password"
+- inputText: ${E2E_MEMBER_PASSWORD}
+- tapOn: "Log In"
+- extendedWaitUntil:
+    visible: "Namaste"
+    timeout: 30000
+- takeScreenshot: member-home
+
+- openLink: janata://explore
+- extendedWaitUntil:
+    visible: "Chinmaya"
+    timeout: 20000
+- takeScreenshot: member-explore
+
+- openLink: janata://feed
+- extendedWaitUntil:
+    visible: "Public"
+    timeout: 30000
+- takeScreenshot: member-feed
+
+- openLink: janata://settings
+- extendedWaitUntil:
+    visible: "Profile"
+    timeout: 20000
+- assertVisible: "Notification preferences"
+- takeScreenshot: member-settings
+
+- openLink: janata://settings/notifications
+- extendedWaitUntil:
+    visible: "Notification Channels"
+    timeout: 20000
+- assertVisible: "Event Reminders"
+- takeScreenshot: member-notifications

@@ -22,21 +22,25 @@ import React, {
   useCallback,
 } from 'react'
 import { usePostHog } from 'posthog-react-native'
-import { getStoredToken, removeStoredToken } from '../utils/tokenStorage'
+import { buildUserTraits } from '../../utils/analyticsIdentity'
+import { getStoredToken, removeStoredToken } from '../../src/storage/tokenStorage'
 import {
   clearOnboardingComplete,
   getOnboardingComplete,
   setOnboardingComplete,
-} from '../utils/onboardingStorage'
+} from '../../utils/onboardingStorage'
 import { authService } from '../../src/auth/authService'
 import { API_BASE_URL, API_TIMEOUTS } from '../../src/config/api'
 import type { AuthStatus, User, UpdateProfileRequest } from '../../src/auth/types'
+import { unregisterPushToken } from '../../utils/notificationService'
+import { getActivePushToken, setActivePushToken } from '../../utils/pushTokenRef'
 
 interface UserContextType {
   user: User | null
   loading: boolean
   authStatus: AuthStatus
   onboardingComplete: boolean
+  refreshUser: () => Promise<void>
   login: (username: string, password: string) => Promise<{ success: boolean; message?: string }>
   signup: (username: string, password: string, inviteCode?: string) => Promise<{ success: boolean; message?: string }>
   logout: () => Promise<void>
@@ -90,13 +94,13 @@ const resolveEndpointUrl = (endpoint: string): string => {
   return `${normalizedBase}/${normalizedEndpoint}`
 }
 
-/** Helper to build the PostHog person properties from a User object */
-const userTraits = (u: User) => ({
-  email: u.email,
-  firstName: u.firstName,
-  lastName: u.lastName,
-  profileComplete: u.profileComplete,
-})
+/**
+ * PostHog person properties for a User. Delegates to the shared builder in
+ * utils/analyticsIdentity so login, signup, and session-restore all set an
+ * identical, complete trait set (incl. $internal_or_test_user and first-touch
+ * $set_once facts).
+ */
+const userTraits = (u: User) => buildUserTraits(u)
 
 export const UserProvider = ({ children }: { children: ReactNode }) => {
   const posthog = usePostHog()
@@ -108,7 +112,7 @@ export const UserProvider = ({ children }: { children: ReactNode }) => {
   const login = useCallback(async (username: string, password: string) => {
     const result = await authService.login(username, password)
     if (!result.success) {
-      posthog?.capture('login_failed', { reason: result.message })
+      posthog?.capture('login_failed', { reason: result.message ?? null })
       return { success: false, message: result.message }
     }
 
@@ -124,7 +128,7 @@ export const UserProvider = ({ children }: { children: ReactNode }) => {
   const signup = useCallback(async (username: string, password: string, inviteCode?: string) => {
     const result = await authService.signup(username, password, inviteCode)
     if (!result.success || !result.user) {
-      posthog?.capture('signup_failed', { reason: result.message })
+      posthog?.capture('signup_failed', { reason: result.message ?? null })
       return { success: false, message: result.message || 'Signup failed. Please try again.' }
     }
 
@@ -138,6 +142,17 @@ export const UserProvider = ({ children }: { children: ReactNode }) => {
   const logout = useCallback(async () => {
     posthog?.capture('logout')
     posthog?.reset()
+    // Unregister this device's push token while we still hold a valid JWT, so
+    // a logged-out (or shared) device stops receiving this account's pushes.
+    const pushToken = getActivePushToken()
+    if (pushToken) {
+      try {
+        await unregisterPushToken(pushToken)
+      } catch {
+        // Best-effort — never block logout on a push cleanup failure.
+      }
+      setActivePushToken(null)
+    }
     await authService.logout()
     await clearOnboardingComplete()
     setUser(null)
@@ -197,7 +212,7 @@ export const UserProvider = ({ children }: { children: ReactNode }) => {
   const deleteAccount = useCallback(async () => {
     const result = await authService.deleteAccount()
     if (!result.success) {
-      posthog?.capture('delete_account_failed', { reason: result.message })
+      posthog?.capture('delete_account_failed', { reason: result.message ?? null })
       return { success: false, message: result.message || 'Failed to delete account' }
     }
 
@@ -213,8 +228,10 @@ export const UserProvider = ({ children }: { children: ReactNode }) => {
   const updateProfile = useCallback(async (updates: UpdateProfileRequest) => {
     // Save previous user state for rollback on failure
     let previousUser: User | null = null
+    let wasComplete = false
     setUser((prev) => {
       previousUser = prev
+      wasComplete = !!prev?.profileComplete
       return prev ? { ...prev, ...updates } : null
     })
 
@@ -222,12 +239,22 @@ export const UserProvider = ({ children }: { children: ReactNode }) => {
     if (!result.success || !result.user) {
       // Rollback optimistic update on failure
       setUser(previousUser)
-      posthog?.capture('profile_update_failed', { reason: result.message })
+      posthog?.capture('profile_update_failed', { reason: result.message ?? null })
       return { success: false, message: result.message || 'Failed to update profile' }
     }
 
     setUser(result.user)
     posthog?.capture('profile_updated', { fields: Object.keys(updates) })
+    // Fire profile_completed exactly once, on the first false→true transition.
+    // (The onboarding flow has its own completion path and fires it there.)
+    if (!wasComplete && result.user.profileComplete) {
+      posthog?.capture('profile_completed', {
+        source: 'profile_update',
+        has_photo: !!result.user.profileImage,
+        interests_count: result.user.interests?.length ?? 0,
+        looking_for_count: result.user.lookingFor?.length ?? 0,
+      })
+    }
     if (updates.profileComplete || result.user.profileComplete) {
       await setOnboardingComplete(true)
       setOnboardingCompleteState(true)
@@ -296,12 +323,20 @@ export const UserProvider = ({ children }: { children: ReactNode }) => {
     }
   }, [posthog])
 
+  const refreshUser = useCallback(async () => {
+    const session = await authService.bootstrapSession()
+    if (session.authStatus === 'authenticated' && session.user) {
+      setUser(session.user)
+    }
+  }, [])
+
   const contextValue = useMemo(
     () => ({
       user,
       loading,
       authStatus,
       onboardingComplete,
+      refreshUser,
       login,
       signup,
       logout,
@@ -319,6 +354,7 @@ export const UserProvider = ({ children }: { children: ReactNode }) => {
       loading,
       authStatus,
       onboardingComplete,
+      refreshUser,
       login,
       signup,
       logout,

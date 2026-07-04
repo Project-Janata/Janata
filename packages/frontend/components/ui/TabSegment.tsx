@@ -1,15 +1,7 @@
-/**
- * TabSegment.tsx
- *
- * A reusable tab segment component for consistent tab styling across the app
- *
- * Author: Generated for Project Janatha
- * Date: September 21, 2025
- */
-
 import React, { useEffect, useRef } from 'react'
-import { TouchableOpacity, Text, View, Animated } from 'react-native'
-import { useTheme } from '../contexts'
+import { Animated, Pressable, Text, View } from 'react-native'
+import { useColors } from '../../hooks/useColors'
+import { supportsNativeDriver } from '../../utils/animation'
 
 export interface TabOption {
   value: string
@@ -20,75 +12,58 @@ export interface TabSegmentProps {
   options: TabOption[]
   value: string
   onValueChange: (value: string) => void
-  variant?: 'primary' | 'subtle'
 }
 
-export function TabSegment({
-  options,
-  value,
-  onValueChange,
-  variant = 'primary',
-}: TabSegmentProps) {
-  const { isDark } = useTheme()
-  const selectedIndex = options.findIndex((opt) => opt.value === value)
-  const optionWidth = 80
-  const indicatorPadding = 8
-  const slideAnim = useRef(new Animated.Value(selectedIndex * optionWidth)).current
+const OPTION_WIDTH = 80
+const PADDING = 4
+
+export function TabSegment({ options, value, onValueChange }: TabSegmentProps) {
+  const c = useColors()
+  const selectedIndex = options.findIndex((o) => o.value === value)
+  const slideAnim = useRef(new Animated.Value(selectedIndex * OPTION_WIDTH)).current
 
   useEffect(() => {
     Animated.timing(slideAnim, {
-      toValue: selectedIndex * optionWidth,
+      toValue: selectedIndex * OPTION_WIDTH,
       duration: 200,
-      useNativeDriver: true,
+      useNativeDriver: supportsNativeDriver,
     }).start()
   }, [selectedIndex, slideAnim])
 
-  const containerClass =
-    variant === 'primary'
-      ? 'bg-gray-100 dark:bg-neutral-800'
-      : 'bg-gray-100 dark:bg-neutral-800'
-
   return (
     <View
-      className={`relative flex-row ${containerClass} rounded-lg p-1`}
       style={{
-        width: optionWidth * options.length + indicatorPadding,
+        flexDirection: 'row',
+        backgroundColor: c.surface,
+        borderRadius: 10,
+        padding: PADDING,
+        width: OPTION_WIDTH * options.length + PADDING * 2,
       }}
     >
-      {/* Sliding indicator */}
       <Animated.View
         style={{
           position: 'absolute',
-          top: 4,
-          left: 4,
-          width: optionWidth - 8 + indicatorPadding,
+          top: PADDING,
+          left: PADDING,
+          width: OPTION_WIDTH,
           height: 32,
-          borderRadius: 6,
-          backgroundColor: isDark ? '#3f3f46' : '#e5e7eb',
+          borderRadius: 7,
+          backgroundColor: c.card,
           transform: [{ translateX: slideAnim }],
         }}
       />
-      {/* Tab options */}
-      {options.map((option, idx) => {
+      {options.map((option) => {
         const isActive = value === option.value
         return (
-          <TouchableOpacity
+          <Pressable
             key={option.value}
             onPress={() => onValueChange(option.value)}
-            className="flex-row items-center justify-center py-2 px-3 rounded-md z-10"
-            style={{ width: optionWidth }}
-            activeOpacity={0.8}
+            style={{ width: OPTION_WIDTH, alignItems: 'center', justifyContent: 'center', paddingVertical: 6, zIndex: 1 }}
           >
-            <Text
-              className={`text-center text-xs font-inter ${
-                isActive
-                  ? 'text-primary font-inter-semibold'
-                  : 'text-gray-700 dark:text-white'
-              }`}
-            >
+            <Text style={{ fontWeight: '500', fontSize: 13, lineHeight: 18, color: isActive ? c.accent : c.textMuted }}>
               {option.label}
             </Text>
-          </TouchableOpacity>
+          </Pressable>
         )
       })}
     </View>

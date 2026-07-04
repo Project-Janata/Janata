@@ -1,4 +1,4 @@
-import { getStoredToken } from '../components/utils/tokenStorage'
+import { getStoredToken } from '../src/storage/tokenStorage'
 import { API_BASE_URL } from '../src/config/api'
 
 export const API_URL = API_BASE_URL
@@ -16,6 +16,7 @@ export interface CenterData {
   image: string | null
   acharya: string | null
   pointOfContact: string | null
+  description?: string | null
   memberCount: number
   isVerified: boolean
   createdAt?: string
@@ -42,6 +43,8 @@ export interface EventData {
   externalUrl?: string | null
   signupUrl?: string | null
   allowJanataSignup?: boolean
+  // #192 — true when creator was at SEVAK level or higher at create time.
+  isOfficial?: boolean
   createdAt?: string
   updatedAt?: string
 }
@@ -62,8 +65,31 @@ export interface UserData {
   isActive: boolean
   profileComplete: boolean
   interests: string[] | null
+  // Minimal profile fields (#210)
+  school?: string | null
+  work?: string | null
+  region?: string | null
+  lookingFor?: string[] | null
   createdAt?: string
   updatedAt?: string
+}
+
+export interface PublicProfileData {
+  id: string
+  firstName: string
+  lastName: string
+  profileImage: string | null
+  bio: string | null
+  centerID: string | null
+  centerName: string | null
+  verificationLevel: number
+  isVerified: boolean
+  interests: string[] | null
+  school: string | null
+  work: string | null
+  region: string | null
+  hostedEvents: EventData[]
+  createdAt: string
 }
 
 export interface MapPoint {
@@ -72,6 +98,37 @@ export interface MapPoint {
   name: string
   latitude: number
   longitude: number
+}
+
+export type BoardType = 'center' | 'event'
+export type PostVisibility = 'board' | 'public_signed_in' | 'public_open'
+
+export interface BoardData {
+  id: string
+  type: BoardType
+  parentId: string
+  createdAt: string
+}
+
+export interface BoardPostData {
+  id: string
+  boardId: string | null
+  visibility: PostVisibility
+  body: string
+  imageUrl: string | null
+  createdAt: string
+  updatedAt: string
+  deletedAt: string | null
+  author: UserData
+  reactions: Array<{ emoji: string; count: number }>
+  replyCount: number
+  // #205 boards enhancements — present once the post has been pinned (#249).
+  pinnedAt?: string | null
+  pinnedBy?: string | null
+  // Only on the aggregated /feed response: the post's board source so the
+  // Home peek can label it ("Public" / center name / event title).
+  sourceKind?: 'public' | 'center' | 'event'
+  sourceLabel?: string | null
 }
 
 // ── Discover-specific types ─────────────────────────────────────────────
@@ -106,6 +163,8 @@ export interface EventDisplay {
   externalUrl?: string | null
   signupUrl?: string | null
   allowJanataSignup?: boolean
+  // #192 — true when creator was at SEVAK level or higher at create time.
+  isOfficial?: boolean
 }
 
 export interface DiscoverCenter {
@@ -126,7 +185,7 @@ export type DiscoverItem =
   | { type: 'center'; data: DiscoverCenter }
   | { type: 'section'; data: { label: string } }
 
-export type DiscoverFilter = 'Events' | 'Centers' | 'Seva'
+export type DiscoverFilter = 'Events' | 'Centers'
 
 // ── Fetch helpers ──────────────────────────────────────────────────────
 
@@ -215,6 +274,44 @@ export function invalidateCentersCache(): void {
   _centersTimestamp = 0
 }
 
+/**
+ * Paginated centers result (#107). `total` is the count BEFORE the page slice,
+ * useful for "showing N of M" and for knowing when to stop calling for more.
+ */
+export interface PaginatedResult<T> {
+  data: T[]
+  total: number
+  limit: number
+  offset: number
+}
+
+/**
+ * Paginated centers fetch (#107). Use for infinite scroll: start at offset=0
+ * and call again with `offset += limit` until `data.length === 0` OR
+ * `offset >= total`. Returns an empty page (not an error) on network failure
+ * so the UI can fall back gracefully.
+ */
+export async function fetchCentersPage(
+  limit: number,
+  offset = 0,
+): Promise<PaginatedResult<CenterData>> {
+  const url = `/centers?limit=${Math.max(1, Math.floor(limit))}&offset=${Math.max(0, Math.floor(offset))}`
+  try {
+    const response = await apiFetch(url)
+    if (!response.ok) return { data: [], total: 0, limit, offset }
+    const data = await response.json()
+    return {
+      data: data.centers || [],
+      total: typeof data.total === 'number' ? data.total : 0,
+      limit: typeof data.limit === 'number' ? data.limit : limit,
+      offset: typeof data.offset === 'number' ? data.offset : offset,
+    }
+  } catch (err: any) {
+    if (__DEV__) console.warn('[fetchCentersPage]', err?.message || err)
+    return { data: [], total: 0, limit, offset }
+  }
+}
+
 // ── API methods ────────────────────────────────────────────────────────
 
 export async function fetchCenter(centerID: string): Promise<CenterData | null> {
@@ -286,9 +383,40 @@ export async function fetchAllEvents(): Promise<EventData[]> {
   }
 }
 
+/**
+ * Paginated events fetch (#107). Sort order is date DESC (matches the
+ * unpaginated /fetchAllEvents). Image URLs are normalized to absolute,
+ * same as the unpaginated path.
+ */
+export async function fetchEventsPage(
+  limit: number,
+  offset = 0,
+): Promise<PaginatedResult<EventData>> {
+  const url = `/fetchAllEvents?limit=${Math.max(1, Math.floor(limit))}&offset=${Math.max(0, Math.floor(offset))}`
+  try {
+    const response = await apiFetch(url)
+    if (!response.ok) return { data: [], total: 0, limit, offset }
+    const data = await response.json()
+    const events = ((data.events || []) as EventData[]).map((e) =>
+      e.image && e.image.startsWith('/') ? { ...e, image: `${API_BASE_URL}${e.image}` } : e,
+    )
+    return {
+      data: events,
+      total: typeof data.total === 'number' ? data.total : 0,
+      limit: typeof data.limit === 'number' ? data.limit : limit,
+      offset: typeof data.offset === 'number' ? data.offset : offset,
+    }
+  } catch (err: any) {
+    if (__DEV__) console.warn('[fetchEventsPage]', err?.message || err)
+    return { data: [], total: 0, limit, offset }
+  }
+}
+
 export async function fetchEventUsers(eventID: string): Promise<UserData[]> {
   try {
-    const response = await apiFetch('/getEventUsers', {
+    // Must be authed — /getEventUsers is gated (attendee/creator/admin). apiFetch
+    // sends no token, so it 401'd and the attendee names list never loaded.
+    const response = await authFetch('/getEventUsers', {
       method: 'POST',
       body: JSON.stringify({ id: eventID }),
     })
@@ -310,6 +438,100 @@ export async function fetchEventUsers(eventID: string): Promise<UserData[]> {
     if (__DEV__) console.warn('[fetchEventUsers]', err?.message || err)
     return []
   }
+}
+
+/**
+ * Authed per-user registration state + live (guest-inclusive) attendee count
+ * for an event (GET /events/:id/registration). Reliable source of truth for the
+ * RSVP CTA + count — unlike the public/cached /fetchEvent or the gated roster.
+ */
+export async function fetchEventRegistration(
+  eventID: string
+): Promise<{ isRegistered: boolean; attendeeCount: number } | null> {
+  try {
+    const response = await authFetch(`/events/${eventID}/registration`)
+    if (!response.ok) return null
+    return await response.json()
+  } catch (err: any) {
+    if (__DEV__) console.warn('[fetchEventRegistration]', err?.message || err)
+    return null
+  }
+}
+
+/**
+ * Event IDs the authed user is registered for (GET /events/registered). Lets
+ * event LISTS mark "Going" reliably without a per-event roster fetch.
+ */
+export async function fetchMyRegisteredEventIds(): Promise<string[]> {
+  try {
+    const response = await authFetch('/events/registered')
+    if (!response.ok) return []
+    const data = await response.json()
+    return data.eventIds ?? []
+  } catch (err: any) {
+    if (__DEV__) console.warn('[fetchMyRegisteredEventIds]', err?.message || err)
+    return []
+  }
+}
+
+// Coordinator-only attendee roster (creator or admin). Returns emails + guest
+// RSVPs for the "manage attendees / export" panel on the event page.
+export interface EventRosterEntry {
+  id?: string
+  name: string
+  email: string | null
+  image?: string | null
+  joinedAt?: string
+  rsvpedAt?: string
+}
+
+export interface EventRoster {
+  registered: EventRosterEntry[]
+  guests: EventRosterEntry[]
+  counts: { registered: number; guests: number; total: number }
+}
+
+export async function getEventRoster(eventID: string): Promise<EventRoster> {
+  const response = await authFetch(`/events/${encodeURIComponent(eventID)}/roster`, {
+    method: 'GET',
+  })
+  if (!response.ok) {
+    const err: any = new Error('Failed to load attendee roster')
+    err.status = response.status
+    throw err
+  }
+  const data = await response.json()
+  const normalize = (e: EventRosterEntry): EventRosterEntry =>
+    e.image && e.image.startsWith('/') ? { ...e, image: `${API_BASE_URL}${e.image}` } : e
+  return {
+    registered: (data.registered || []).map(normalize),
+    guests: data.guests || [],
+    counts: data.counts || { registered: 0, guests: 0, total: 0 },
+  }
+}
+
+/**
+ * Account-less RSVP (new-11): name + email, no auth. Returns `alreadyRsvped`
+ * so the sheet can show the dedupe state (new-11b). Throws with `.status` set
+ * so callers can special-case 403 (event requires a verified account).
+ */
+export async function attendEventGuest(
+  eventID: string,
+  name: string,
+  email: string,
+): Promise<{ alreadyRsvped: boolean }> {
+  const response = await apiFetch('/attendEventGuest', {
+    method: 'POST',
+    body: JSON.stringify({ eventID, name, email }),
+  })
+  if (!response.ok) {
+    const err = await response.json().catch(() => ({ message: 'Failed to RSVP' }))
+    const e = new Error(err.message || 'Failed to RSVP') as Error & { status?: number }
+    e.status = response.status
+    throw e
+  }
+  const data = await response.json()
+  return { alreadyRsvped: data.alreadyRsvped === true }
 }
 
 export async function attendEvent(eventID: string): Promise<{ peopleAttending: number }> {
@@ -402,6 +624,259 @@ export async function getUserEvents(username: string): Promise<EventData[]> {
   }
 }
 
+// ── Boards endpoints ──────────────────────────────────────────────────
+
+export async function fetchBoard(
+  type: BoardType,
+  parentId: string
+): Promise<{ board: BoardData | null; posts: BoardPostData[] }> {
+  try {
+    const response = await authFetch(`/boards/${type}/${encodeURIComponent(parentId)}`)
+    if (!response.ok) return { board: null, posts: [] }
+    const data = await response.json()
+    return {
+      board: data.board ?? null,
+      posts: data.posts ?? [],
+    }
+  } catch (err: any) {
+    if (__DEV__) console.warn('[fetchBoard]', err?.message || err)
+    return { board: null, posts: [] }
+  }
+}
+
+export async function createBoardPost(
+  type: BoardType,
+  parentId: string,
+  body: string,
+  imageUrl?: string | null
+): Promise<BoardPostData> {
+  const response = await authFetch(`/boards/${type}/${encodeURIComponent(parentId)}/posts`, {
+    method: 'POST',
+    body: JSON.stringify({ body, imageUrl: imageUrl ?? null }),
+  })
+  if (!response.ok) {
+    const err = await response.json().catch(() => ({ message: 'Failed to create board post' }))
+    throw new Error(err.message || 'Failed to create board post')
+  }
+  const data = await response.json()
+  return data.post
+}
+
+export async function createPublicPost(
+  body: string,
+  imageUrl?: string | null
+): Promise<BoardPostData> {
+  const response = await authFetch('/feed/public', {
+    method: 'POST',
+    body: JSON.stringify({ body, imageUrl: imageUrl ?? null }),
+  })
+  if (!response.ok) {
+    const err = await response.json().catch(() => ({ message: 'Failed to create public post' }))
+    throw new Error(err.message || 'Failed to create public post')
+  }
+  const data = await response.json()
+  return data.post
+}
+
+// Upload an image for a board post (#283) and return its hosted URL. Pass the
+// URL to createBoardPost as `imageUrl`. Multipart, so it does not go through the
+// JSON apiFetch wrapper.
+export async function uploadBoardImage(
+  file: File | Blob | { uri: string; name: string; type: string }
+): Promise<string> {
+  const token = await getStoredToken()
+  const form = new FormData()
+  // Web passes a File/Blob; native passes a { uri, name, type } descriptor,
+  // which React Native's FormData accepts directly.
+  form.append('file', file as any)
+  const response = await fetch(`${API_BASE_URL}/board/uploadImage`, {
+    method: 'POST',
+    headers: token ? { Authorization: `Bearer ${token}` } : undefined,
+    body: form,
+  })
+  if (!response.ok) {
+    const err = await response.json().catch(() => ({ message: 'Upload failed' }))
+    throw new Error(err.message || 'Upload failed')
+  }
+  const data = await response.json()
+  return data.imageUrl as string
+}
+
+export async function toggleBoardPostReaction(
+  postId: string,
+  emoji: string
+): Promise<{ active: boolean; reactions: Array<{ emoji: string; count: number }> }> {
+  const response = await authFetch(`/boards/posts/${encodeURIComponent(postId)}/reactions`, {
+    method: 'POST',
+    body: JSON.stringify({ emoji }),
+  })
+  if (!response.ok) {
+    const err = await response.json().catch(() => ({ message: 'Failed to update reaction' }))
+    throw new Error(err.message || 'Failed to update reaction')
+  }
+  return response.json()
+}
+
+/**
+ * Aggregated cross-board feed (#205 / GET /feed). Server-side aggregation of
+ * every top-level post on a board the user can access, reverse-chronological.
+ * Returns [] on failure so the Feed tab degrades gracefully.
+ */
+export async function fetchAggregatedFeed(
+  opts: { limit?: number; offset?: number } = {}
+): Promise<BoardPostData[]> {
+  const limit = Math.max(1, Math.min(100, Math.floor(opts.limit ?? 50)))
+  const offset = Math.max(0, Math.floor(opts.offset ?? 0))
+  try {
+    const response = await authFetch(`/feed?limit=${limit}&offset=${offset}`)
+    if (!response.ok) return []
+    const data = await response.json()
+    return data.posts ?? []
+  } catch (err: any) {
+    if (__DEV__) console.warn('[fetchAggregatedFeed]', err?.message || err)
+    return []
+  }
+}
+
+/** Create a single-level reply to a board post (#205 / POST /replies). */
+export async function createBoardPostReply(
+  postId: string,
+  body: string
+): Promise<BoardPostData> {
+  const response = await authFetch(`/boards/posts/${encodeURIComponent(postId)}/replies`, {
+    method: 'POST',
+    body: JSON.stringify({ body }),
+  })
+  if (!response.ok) {
+    const err = await response.json().catch(() => ({ message: 'Failed to post reply' }))
+    throw new Error(err.message || 'Failed to post reply')
+  }
+  const data = await response.json()
+  return data.reply
+}
+
+/**
+ * List replies under a board post, oldest first (#205 / GET /replies).
+ * Throws on failure so the post-detail thread can show a retryable error
+ * state (rather than masking a network/auth failure as an empty thread).
+ */
+export async function fetchBoardPostReplies(postId: string): Promise<BoardPostData[]> {
+  const response = await authFetch(`/boards/posts/${encodeURIComponent(postId)}/replies`)
+  if (!response.ok) {
+    const err = await response.json().catch(() => ({ message: 'Failed to load replies' }))
+    throw new Error(err.message || 'Failed to load replies')
+  }
+  const data = await response.json()
+  return data.replies ?? []
+}
+
+/** Edit a board post body — author only, within the edit window (#205 / PATCH). */
+export async function editBoardPost(postId: string, body: string): Promise<BoardPostData> {
+  const response = await authFetch(`/boards/posts/${encodeURIComponent(postId)}`, {
+    method: 'PATCH',
+    body: JSON.stringify({ body }),
+  })
+  if (!response.ok) {
+    const err = await response.json().catch(() => ({ message: 'Failed to edit post' }))
+    throw new Error(err.message || 'Failed to edit post')
+  }
+  const data = await response.json()
+  return data.post
+}
+
+/** Soft-delete a board post — author or admin (#205 / DELETE). */
+export async function deleteBoardPost(postId: string): Promise<void> {
+  const response = await authFetch(`/boards/posts/${encodeURIComponent(postId)}`, {
+    method: 'DELETE',
+  })
+  if (!response.ok) {
+    const err = await response.json().catch(() => ({ message: 'Failed to delete post' }))
+    throw new Error(err.message || 'Failed to delete post')
+  }
+}
+
+/**
+ * Pin / unpin a board post — sevak+ or admin only (#205 / POST pin|unpin).
+ * Returns the new pinned state.
+ */
+export async function setBoardPostPinned(
+  postId: string,
+  pinned: boolean
+): Promise<boolean> {
+  const action = pinned ? 'pin' : 'unpin'
+  const response = await authFetch(`/boards/posts/${encodeURIComponent(postId)}/${action}`, {
+    method: 'POST',
+  })
+  if (!response.ok) {
+    const err = await response.json().catch(() => ({ message: `Failed to ${action} post` }))
+    throw new Error(err.message || `Failed to ${action} post`)
+  }
+  const data = await response.json()
+  return data.pinned ?? pinned
+}
+
+// ── Profile endpoints ─────────────────────────────────────────────────
+
+export async function fetchUserEvents(username: string): Promise<EventData[]> {
+  try {
+    const response = await authFetch(`/profile/${encodeURIComponent(username)}/events`)
+    if (!response.ok) return []
+    const data = await response.json()
+    return data.events || []
+  } catch (err: any) {
+    if (__DEV__) console.warn('[fetchUserEvents]', err?.message || err)
+    return []
+  }
+}
+
+export async function fetchUserPosts(username: string): Promise<EventData[]> {
+  try {
+    const response = await authFetch(`/profile/${encodeURIComponent(username)}/posts`)
+    if (!response.ok) return []
+    const data = await response.json()
+    return data.posts || []
+  } catch (err: any) {
+    if (__DEV__) console.warn('[fetchUserPosts]', err?.message || err)
+    return []
+  }
+}
+
+export async function fetchPublicProfile(userId: string): Promise<PublicProfileData | null> {
+  try {
+    const response = await authFetch(`/public-profiles/${encodeURIComponent(userId)}`)
+    if (!response.ok) return null
+    const data = await response.json()
+    return data.profile || null
+  } catch (err: any) {
+    if (__DEV__) console.warn('[fetchPublicProfile]', err?.message || err)
+    return null
+  }
+}
+
+export async function fetchUserGroups(username: string): Promise<CenterData[]> {
+  try {
+    const response = await authFetch(`/profile/${encodeURIComponent(username)}/groups`)
+    if (!response.ok) return []
+    const data = await response.json()
+    return data.groups || []
+  } catch (err: any) {
+    if (__DEV__) console.warn('[fetchUserGroups]', err?.message || err)
+    return []
+  }
+}
+
+export async function fetchUserMessages(username: string): Promise<[]> {
+  try {
+    const response = await authFetch(`/profile/${encodeURIComponent(username)}/messages`)
+    if (!response.ok) return []
+    const data = await response.json()
+    return data.messages || []
+  } catch (err: any) {
+    if (__DEV__) console.warn('[fetchUserMessages]', err?.message || err)
+    return []
+  }
+}
+
 // ── Data normalization (flat fields) ──────────────────────────────────
 
 export function centersToMapPoints(centers: CenterData[]): MapPoint[] {
@@ -442,9 +917,85 @@ export function centersToDiscoverCenters(centers: CenterData[]): DiscoverCenter[
     }))
 }
 
-// ── Discover sample data (empty since we fetch from API) ──────────────────────────
-
-export const DISCOVER_SAMPLE_EVENTS: EventDisplay[] = []
+// ── Discover sample data — scraped from Chinmaya chapter sites (2026-04-30) ──────
+export const DISCOVER_SAMPLE_EVENTS: EventDisplay[] = [
+  {
+    id: 'sample-hanuman-havan',
+    title: 'Hanuman Chalisa Havan',
+    date: '2026-05-16',
+    time: '8:30 AM',
+    location: 'Hillsboro, OR',
+    address: 'Chinmaya Haridwar, 3551 NE John Olsen Ave, Hillsboro, OR 97124',
+    attendees: 18,
+    likes: 0,
+    comments: 0,
+    description: 'Sacred Vedic fire offering opening with Shodasha Upachara Puja followed by chanting verses of the Hanuman Chalisa.',
+    pointOfContact: 'contact@cmportland.org',
+    image: 'https://cmportland.org/images/HanumanChalisaHavan.jpg',
+    centerName: 'Chinmaya Portland',
+    category: null,
+    externalUrl: 'https://cmportland.org/havan/',
+  },
+  {
+    id: 'sample-gcc-state-finals',
+    title: 'GCC State Finals',
+    date: '2026-05-16',
+    time: 'TBD',
+    location: 'Dallas, TX',
+    address: 'Chinmaya Mangalam, Dallas, TX',
+    attendees: 42,
+    likes: 0,
+    comments: 0,
+    description: 'Texas state finals of the Gita Chanting Competition.',
+    pointOfContact: '(972) 250-2470',
+    centerName: 'Chinmaya Mission Dallas Fort-Worth',
+    category: null,
+    externalUrl: 'https://cmdfw.org/upcoming-cmdfw-events/',
+  },
+  {
+    id: 'sample-chyk-memorial-day-camp',
+    title: 'ChYK Memorial Day Camp',
+    date: '2026-05-23',
+    time: 'All day',
+    location: 'Chicago area, IL',
+    address: 'Abhyudaya Retreat Center',
+    attendees: 31,
+    likes: 0,
+    comments: 0,
+    description: 'West Central Zone retreat for Chinmaya Yuva Kendra (CHYK) members at Abhyudaya Retreat Center.',
+    pointOfContact: '847-740-1215',
+    centerName: 'ChYK West Central Zone',
+    category: null,
+  },
+  {
+    id: 'sample-summer-camp-give-me-five',
+    title: 'Summer Camp 2026 – Give Me Five',
+    date: '2026-06-15',
+    time: '9:00 AM – 3:00 PM',
+    location: 'Orlando, FL',
+    attendees: 87,
+    likes: 0,
+    comments: 0,
+    description: '34th annual summer camp for children ages 5-13, themed on the Gita Panchamrit.',
+    image: 'https://res.cloudinary.com/chinmayaorlando/image/upload/q_auto/cmo/2026/summercamp.jpg',
+    centerName: 'Chinmaya Mission Orlando',
+    category: null,
+    externalUrl: 'https://www.chinmayaorlando.org/index.php/upcoming-events/476-summer-camp-2026',
+  },
+  {
+    id: 'sample-aradhana-camp',
+    title: '33rd Mahasamadhi Aradhana Camp',
+    date: '2026-07-30',
+    time: '5:00 PM',
+    location: 'Parsippany, NJ',
+    attendees: 24,
+    likes: 0,
+    comments: 0,
+    description: 'Annual Mahasamadhi Aradhana Camp celebrating Pujya Gurudev.',
+    centerName: 'Chinmaya Mission Tri-State',
+    category: null,
+  },
+]
 
 export const DISCOVER_SAMPLE_CENTERS: DiscoverCenter[] = []
 
@@ -626,6 +1177,122 @@ export async function fetchAdminInviteCodeUsers(code: string): Promise<UserData[
   if (!response.ok) throw new Error('Failed to fetch invite code users')
   const data = await response.json()
   return data.data
+}
+
+// ── Moderation (#209) ─────────────────────────────────────────────────
+
+/**
+ * Report a board post for moderation. Any signed-in user may report; one
+ * report per (post, reporter) — re-reporting updates the reason. Member-side
+ * "report" button (Lane B) calls this.
+ */
+export async function reportBoardPost(postId: string, reason?: string): Promise<void> {
+  const response = await authFetch(`/boards/posts/${encodeURIComponent(postId)}/report`, {
+    method: 'POST',
+    body: JSON.stringify(reason ? { reason } : {}),
+  })
+  if (!response.ok) {
+    const err = await response.json().catch(() => ({ message: 'Failed to submit report' }))
+    throw new Error(err.message)
+  }
+}
+
+export interface ModerationQueuePost {
+  id: string
+  boardId: string | null
+  visibility?: PostVisibility
+  body: string
+  imageUrl: string | null
+  createdAt: string
+  deletedAt: string | null
+  author: { id: string; username: string; firstName: string; lastName: string }
+}
+
+export interface ModerationQueueItem {
+  post: ModerationQueuePost
+  reportCount: number
+  openReportCount: number
+  latestReportAt: string
+  latestReason: string | null
+  status: 'open' | 'actioned'
+}
+
+export interface ModerationAuditEntry {
+  id: string
+  actorId: string | null
+  action: string
+  targetPostId: string | null
+  targetUserId: string | null
+  reason: string | null
+  metadata: unknown
+  createdAt: string
+}
+
+export async function fetchAdminModerationQueue(params?: {
+  limit?: number
+  offset?: number
+  includeResolved?: boolean
+}): Promise<AdminPaginatedResponse<ModerationQueueItem>> {
+  const searchParams = new URLSearchParams()
+  if (params?.limit) searchParams.set('limit', String(params.limit))
+  if (params?.offset) searchParams.set('offset', String(params.offset))
+  if (params?.includeResolved) searchParams.set('includeResolved', 'true')
+  const qs = searchParams.toString()
+  const response = await authFetch(`/admin/moderation/queue${qs ? `?${qs}` : ''}`)
+  if (!response.ok) throw new Error('Failed to fetch moderation queue')
+  return response.json()
+}
+
+export async function adminDeleteReportedPost(
+  postId: string,
+): Promise<{ message: string; alreadyDeleted: boolean }> {
+  const response = await authFetch(
+    `/admin/moderation/posts/${encodeURIComponent(postId)}/delete`,
+    { method: 'POST', body: '{}' },
+  )
+  if (!response.ok) {
+    const err = await response.json().catch(() => ({ message: 'Failed to remove post' }))
+    throw new Error(err.message)
+  }
+  return response.json()
+}
+
+export async function adminSuspendUser(
+  userId: string,
+  opts: { reason?: string; durationDays?: number } = {},
+): Promise<void> {
+  const response = await authFetch(
+    `/admin/moderation/users/${encodeURIComponent(userId)}/suspend`,
+    { method: 'POST', body: JSON.stringify(opts) },
+  )
+  if (!response.ok) {
+    const err = await response.json().catch(() => ({ message: 'Failed to suspend user' }))
+    throw new Error(err.message)
+  }
+}
+
+export async function adminUnsuspendUser(userId: string): Promise<void> {
+  const response = await authFetch(
+    `/admin/moderation/users/${encodeURIComponent(userId)}/unsuspend`,
+    { method: 'POST', body: '{}' },
+  )
+  if (!response.ok) {
+    const err = await response.json().catch(() => ({ message: 'Failed to lift suspension' }))
+    throw new Error(err.message)
+  }
+}
+
+export async function fetchAdminModerationAudit(params?: {
+  limit?: number
+  offset?: number
+}): Promise<AdminPaginatedResponse<ModerationAuditEntry>> {
+  const searchParams = new URLSearchParams()
+  if (params?.limit) searchParams.set('limit', String(params.limit))
+  if (params?.offset) searchParams.set('offset', String(params.offset))
+  const qs = searchParams.toString()
+  const response = await authFetch(`/admin/moderation/audit${qs ? `?${qs}` : ''}`)
+  if (!response.ok) throw new Error('Failed to fetch moderation audit log')
+  return response.json()
 }
 
 // ── Admin Notifications API ──────────────────────────────────────────

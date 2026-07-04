@@ -15,6 +15,7 @@ import {
 import { useDetailColors } from '../../hooks/useDetailColors'
 import { useTheme } from '../contexts'
 import { Avatar } from '../ui'
+import { useAnalytics } from '../../utils/analytics'
 
 // ---------------------------------------------------------------------------
 // Helpers
@@ -33,6 +34,7 @@ function formatDate(iso?: string): string {
 export default function InviteCodesTab() {
   const colors = useDetailColors()
   const { isDark } = useTheme()
+  const { track } = useAnalytics()
 
   const [codes, setCodes] = useState<InviteCodeData[]>([])
   const [loading, setLoading] = useState(true)
@@ -99,7 +101,7 @@ export default function InviteCodesTab() {
         flex: 2,
         render: (item: InviteCodeData) => (
           <Text
-            style={{ fontFamily: 'Inter-SemiBold', fontSize: 13, color: colors.text, letterSpacing: 0.5 }}
+            style={{ fontFamily: 'Inclusive Sans', fontSize: 13, color: colors.text, letterSpacing: 0.5 }}
             numberOfLines={1}
           >
             {item.code}
@@ -112,7 +114,7 @@ export default function InviteCodesTab() {
         flex: 2,
         render: (item: InviteCodeData) => (
           <Text
-            style={{ fontFamily: 'Inter-Regular', fontSize: 13, color: colors.textSecondary }}
+            style={{ fontFamily: 'Inclusive Sans', fontSize: 13, color: colors.textSecondary }}
             numberOfLines={1}
           >
             {item.label}
@@ -124,7 +126,7 @@ export default function InviteCodesTab() {
         header: 'Signups',
         flex: 1,
         render: (item: InviteCodeData) => (
-          <Text style={{ fontFamily: 'Inter-Medium', fontSize: 13, color: colors.textMuted }}>
+          <Text style={{ fontFamily: 'Inclusive Sans', fontSize: 13, color: colors.textMuted }}>
             {item.usageCount}
           </Text>
         ),
@@ -147,7 +149,7 @@ export default function InviteCodesTab() {
             >
               <Text
                 style={{
-                  fontFamily: 'Inter-SemiBold',
+                  fontFamily: 'Inclusive Sans',
                   fontSize: 10,
                   color: active ? '#22c55e' : '#ef4444',
                 }}
@@ -168,13 +170,14 @@ export default function InviteCodesTab() {
     if (!selectedCode) return
     try {
       await adminToggleInviteCode(selectedCode.code)
+      track('admin_invite_code_toggled', { code: selectedCode.code, source: 'admin' })
       // Refresh
       const result = await fetchAdminInviteCodes()
       setCodes(result.data)
       const updated = result.data.find((c) => c.code === selectedCode.code)
       if (updated) setSelectedCode(updated)
     } catch (err) {
-      console.error('Failed to toggle invite code:', err)
+      if (__DEV__) console.error('Failed to toggle invite code:', err)
     }
   }
 
@@ -201,6 +204,7 @@ export default function InviteCodesTab() {
         label: newLabel.trim(),
         verificationLevel: verLevel,
       })
+      track('admin_invite_code_created', { source: 'admin' })
       setNewCode('')
       setNewLabel('')
       setNewVerLevel('45')
@@ -255,7 +259,7 @@ export default function InviteCodesTab() {
             </Text>
           </View>
           <View style={infoStyles.row}>
-            <Text style={{ fontFamily: 'Inter-Regular', fontSize: 12, color: colors.textMuted }}>
+            <Text style={{ fontFamily: 'Inclusive Sans', fontSize: 12, color: colors.textMuted }}>
               Verification Level: {c.verificationLevel} &middot; Created {formatDate(c.createdAt)}
             </Text>
           </View>
@@ -281,13 +285,13 @@ export default function InviteCodesTab() {
 
         {/* Users who used this code */}
         <View style={{ marginTop: 20 }}>
-          <Text style={{ fontFamily: 'Inter-SemiBold', fontSize: 12, color: colors.textMuted, textTransform: 'uppercase', letterSpacing: 0.5, marginBottom: 8 }}>
+          <Text style={{ fontFamily: 'Inclusive Sans', fontSize: 12, color: colors.textMuted, textTransform: 'uppercase', letterSpacing: 0.5, marginBottom: 8 }}>
             Signups ({codeUsers.length})
           </Text>
           {loadingUsers ? (
             <ActivityIndicator size="small" color="#E8862A" />
           ) : codeUsers.length === 0 ? (
-            <Text style={{ fontFamily: 'Inter-Regular', fontSize: 13, color: colors.textMuted }}>
+            <Text style={{ fontFamily: 'Inclusive Sans', fontSize: 13, color: colors.textMuted }}>
               No signups yet
             </Text>
           ) : (
@@ -300,10 +304,10 @@ export default function InviteCodesTab() {
                   style={{ marginRight: 8 }}
                 />
                 <View style={{ flex: 1 }}>
-                  <Text style={{ fontFamily: 'Inter-Medium', fontSize: 13, color: colors.text }} numberOfLines={1}>
+                  <Text style={{ fontFamily: 'Inclusive Sans', fontSize: 13, color: colors.text }} numberOfLines={1}>
                     {user.firstName} {user.lastName}
                   </Text>
-                  <Text style={{ fontFamily: 'Inter-Regular', fontSize: 11, color: colors.textMuted }} numberOfLines={1}>
+                  <Text style={{ fontFamily: 'Inclusive Sans', fontSize: 11, color: colors.textMuted }} numberOfLines={1}>
                     {user.email || user.username}
                   </Text>
                 </View>
@@ -320,7 +324,7 @@ export default function InviteCodesTab() {
     if (!showCreate) return null
 
     const inputStyle = {
-      fontFamily: 'Inter-Regular' as const,
+      fontFamily: 'Inclusive Sans' as const,
       fontSize: 14,
       color: colors.text,
       backgroundColor: colors.iconBoxBg,
@@ -336,7 +340,7 @@ export default function InviteCodesTab() {
       <View style={[createStyles.overlay, { backgroundColor: 'rgba(0,0,0,0.5)' }]}>
         <View style={[createStyles.modal, { backgroundColor: colors.panelBg, borderColor: colors.border }]}>
           <View style={createStyles.modalHeader}>
-            <Text style={[createStyles.modalTitle, { color: colors.text }]}>Create Invite Code</Text>
+            <Text style={[createStyles.modalTitle, { color: colors.text }]}>Create Invite Link</Text>
             <Pressable onPress={() => { setShowCreate(false); setCreateError('') }}>
               <X size={18} color={colors.textMuted} />
             </Pressable>
@@ -367,7 +371,7 @@ export default function InviteCodesTab() {
           />
 
           {createError ? (
-            <Text style={{ fontFamily: 'Inter-Regular', fontSize: 13, color: '#ef4444', marginBottom: 8 }}>
+            <Text style={{ fontFamily: 'Inclusive Sans', fontSize: 13, color: '#ef4444', marginBottom: 8 }}>
               {createError}
             </Text>
           ) : null}
@@ -378,7 +382,7 @@ export default function InviteCodesTab() {
             style={[createStyles.createBtn, creating && { opacity: 0.6 }]}
           >
             <Text style={createStyles.createBtnText}>
-              {creating ? 'Creating...' : 'Create Code'}
+              {creating ? 'Creating...' : 'Create Link'}
             </Text>
           </Pressable>
         </View>
@@ -397,11 +401,11 @@ export default function InviteCodesTab() {
   if (error && codes.length === 0) {
     return (
       <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center', padding: 40 }}>
-        <Text style={{ fontFamily: 'Inter-Medium', fontSize: 14, color: '#DC2626', textAlign: 'center' }}>
+        <Text style={{ fontFamily: 'Inclusive Sans', fontSize: 14, color: '#DC2626', textAlign: 'center' }}>
           {error}
         </Text>
         <Pressable onPress={loadCodes} style={{ marginTop: 12, paddingHorizontal: 16, paddingVertical: 8, backgroundColor: '#E8862A', borderRadius: 8 }}>
-          <Text style={{ fontFamily: 'Inter-SemiBold', fontSize: 13, color: '#fff' }}>Retry</Text>
+          <Text style={{ fontFamily: 'Inclusive Sans', fontSize: 13, color: '#fff' }}>Retry</Text>
         </Pressable>
       </View>
     )
@@ -411,13 +415,13 @@ export default function InviteCodesTab() {
     <View style={styles.container}>
       <View style={styles.tablePanel}>
         <View style={styles.header}>
-          <Text style={[styles.title, { color: colors.text }]}>Invite Codes ({codes.length})</Text>
+          <Text style={[styles.title, { color: colors.text }]}>Invite Links ({codes.length})</Text>
           <Pressable
             onPress={() => setShowCreate(true)}
             style={styles.addBtn}
           >
             <Plus size={14} color="#fff" />
-            <Text style={styles.addBtnText}>New Code</Text>
+            <Text style={styles.addBtnText}>New Link</Text>
           </Pressable>
         </View>
 
@@ -433,14 +437,14 @@ export default function InviteCodesTab() {
       </View>
 
       {selectedCode && (
-        <AdminDetailPanel title="Invite Code" onClose={() => setSelectedCode(null)}>
+        <AdminDetailPanel title="Invite Link" onClose={() => setSelectedCode(null)}>
           {renderDetailContent()}
         </AdminDetailPanel>
       )}
 
       <ConfirmDialog
         visible={confirmToggleVisible}
-        title={selectedCode?.isActive ? 'Deactivate Code' : 'Activate Code'}
+        title={selectedCode?.isActive ? 'Deactivate Link' : 'Activate Link'}
         message={
           selectedCode?.isActive
             ? `Deactivating "${selectedCode?.code}" will prevent new signups with this code. Existing users are unaffected.`
@@ -470,7 +474,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: 16,
     paddingVertical: 12,
   },
-  title: { fontFamily: 'Inter-Bold', fontSize: 16 },
+  title: { fontFamily: 'Inclusive Sans', fontSize: 16 },
   addBtn: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -480,23 +484,23 @@ const styles = StyleSheet.create({
     borderRadius: 8,
     gap: 6,
   },
-  addBtnText: { fontFamily: 'Inter-SemiBold', fontSize: 13, color: '#fff' },
+  addBtnText: { fontFamily: 'Inclusive Sans', fontSize: 13, color: '#fff' },
 })
 
 const detailStyles = StyleSheet.create({
   header: { alignItems: 'center', marginBottom: 8 },
   iconCircle: { width: 48, height: 48, borderRadius: 24, alignItems: 'center', justifyContent: 'center' },
-  codeName: { fontFamily: 'Inter-Bold', fontSize: 16, marginTop: 8, letterSpacing: 0.5 },
-  codeLabel: { fontFamily: 'Inter-Regular', fontSize: 13, marginTop: 2 },
+  codeName: { fontFamily: 'Inclusive Sans', fontSize: 16, marginTop: 8, letterSpacing: 0.5 },
+  codeLabel: { fontFamily: 'Inclusive Sans', fontSize: 13, marginTop: 2 },
   actions: { flexDirection: 'row', gap: 8, marginTop: 16 },
   actionBtn: { flex: 1, flexDirection: 'row', paddingVertical: 10, borderRadius: 8, alignItems: 'center', justifyContent: 'center' },
-  actionBtnText: { fontFamily: 'Inter-SemiBold', fontSize: 13 },
+  actionBtnText: { fontFamily: 'Inclusive Sans', fontSize: 13 },
 })
 
 const infoStyles = StyleSheet.create({
   row: { flexDirection: 'row', alignItems: 'center', marginBottom: 10 },
   iconBox: { width: 28, height: 28, borderRadius: 6, alignItems: 'center', justifyContent: 'center', marginRight: 10 },
-  text: { fontFamily: 'Inter-Regular', fontSize: 13, flex: 1 },
+  text: { fontFamily: 'Inclusive Sans', fontSize: 13, flex: 1 },
 })
 
 const createStyles = StyleSheet.create({
@@ -522,7 +526,7 @@ const createStyles = StyleSheet.create({
     justifyContent: 'space-between',
     marginBottom: 16,
   },
-  modalTitle: { fontFamily: 'Inter-Bold', fontSize: 16 },
+  modalTitle: { fontFamily: 'Inclusive Sans', fontSize: 16 },
   createBtn: {
     backgroundColor: '#E8862A',
     paddingVertical: 10,
@@ -530,5 +534,5 @@ const createStyles = StyleSheet.create({
     alignItems: 'center',
     marginTop: 4,
   },
-  createBtnText: { fontFamily: 'Inter-SemiBold', fontSize: 14, color: '#fff' },
+  createBtnText: { fontFamily: 'Inclusive Sans', fontSize: 14, color: '#fff' },
 })

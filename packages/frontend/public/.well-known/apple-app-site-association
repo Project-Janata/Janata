@@ -1,0 +1,17 @@
+{
+  "applinks": {
+    "apps": [],
+    "details": [
+      {
+        "appID": "GN3TH9WD6W.org.chinmayamission.janata",
+        "paths": [
+          "/center/*",
+          "/events/*",
+          "/feed/*",
+          "/i/*",
+          "/auth/*"
+        ]
+      }
+    ]
+  }
+}

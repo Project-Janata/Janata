@@ -323,6 +323,149 @@ export const authClient = {
     }
   },
 
+  /**
+   * Request a new verification email be sent. The user must already be
+   * authenticated (signup auto-sends one; this is the resend path).
+   * Rate-limited server-side to 3/hour per user.
+   */
+  async sendVerificationEmail(token: string): AsyncResult<GenericSuccessResponse> {
+    try {
+      const response = await withTimeout(
+        buildUrl('/auth/send-verification-email'),
+        {
+          method: 'POST',
+          headers: { Authorization: `Bearer ${token}` },
+        },
+        API_TIMEOUTS.standard,
+      )
+
+      const data = await safeJson<GenericSuccessResponse>(response)
+
+      if (!response.ok) {
+        return {
+          success: false,
+          error: toError(data?.message || 'Failed to send verification email', response.status),
+        }
+      }
+
+      return { success: true, data: { success: true, message: data?.message } }
+    } catch (error: any) {
+      if (error?.name === 'AbortError') {
+        return { success: false, error: toError('Request timeout. Please check your connection.') }
+      }
+      return { success: false, error: toError('Network error. Please try again.') }
+    }
+  },
+
+  /**
+   * Consume an email-verification token. Called by the /verify-email
+   * frontend route after the user clicks the link in their inbox. No
+   * auth required — the token itself is the credential.
+   */
+  async verifyEmail(verificationToken: string): AsyncResult<{ user: User }> {
+    try {
+      const response = await withTimeout(
+        buildUrl(`/auth/verify-email?token=${encodeURIComponent(verificationToken)}`),
+        { method: 'GET' },
+        API_TIMEOUTS.standard,
+      )
+
+      const data = await safeJson<{ user: User; message?: string }>(response)
+
+      if (!response.ok || !data?.user) {
+        return {
+          success: false,
+          error: toError(data?.message || 'Email verification failed', response.status),
+        }
+      }
+
+      return { success: true, data: { user: data.user } }
+    } catch (error: any) {
+      if (error?.name === 'AbortError') {
+        return { success: false, error: toError('Request timeout. Please check your connection.') }
+      }
+      return { success: false, error: toError('Network error. Please try again.') }
+    }
+  },
+
+  /**
+   * Start the password-reset flow. Always returns success from the
+   * server's perspective — we don't reveal whether the email is on file
+   * (anti-enumeration). Rate-limited 5/min per IP server-side.
+   */
+  async requestPasswordReset(email: string): AsyncResult<GenericSuccessResponse> {
+    try {
+      const username = normalizeUsername(email)
+      const response = await withTimeout(
+        buildUrl('/auth/password-reset/request'),
+        {
+          method: 'POST',
+          body: JSON.stringify({ username }),
+        },
+        API_TIMEOUTS.auth,
+      )
+
+      const data = await safeJson<GenericSuccessResponse & { ok?: boolean }>(response)
+
+      if (!response.ok) {
+        return {
+          success: false,
+          error: toError(data?.message || 'Failed to send reset code', response.status),
+        }
+      }
+
+      return { success: true, data: { success: true, message: data?.message } }
+    } catch (error: any) {
+      if (error?.name === 'AbortError') {
+        return { success: false, error: toError('Request timeout. Please check your connection.') }
+      }
+      return { success: false, error: toError('Network error. Please try again.') }
+    }
+  },
+
+  /**
+   * Submit the 6-digit code and the new password. On success the server
+   * rotates users.password, which kills every live JWT for the user via
+   * the tv-claim mechanism. Caller should treat that as a sign-out and
+   * redirect to login.
+   */
+  async confirmPasswordReset(
+    email: string,
+    code: string,
+    newPassword: string,
+  ): AsyncResult<GenericSuccessResponse> {
+    try {
+      const username = normalizeUsername(email)
+      const response = await withTimeout(
+        buildUrl('/auth/password-reset/verify'),
+        {
+          method: 'POST',
+          body: JSON.stringify({ username, code: code.trim(), newPassword }),
+        },
+        API_TIMEOUTS.auth,
+      )
+
+      const data = await safeJson<{ ok?: boolean; error?: string; message?: string }>(response)
+
+      if (!response.ok || data?.ok === false) {
+        return {
+          success: false,
+          error: toError(
+            data?.error || data?.message || 'Code invalid or expired',
+            response.status,
+          ),
+        }
+      }
+
+      return { success: true, data: { success: true, message: data?.message } }
+    } catch (error: any) {
+      if (error?.name === 'AbortError') {
+        return { success: false, error: toError('Request timeout. Please check your connection.') }
+      }
+      return { success: false, error: toError('Network error. Please try again.') }
+    }
+  },
+
   async deleteAccount(token: string): AsyncResult<GenericSuccessResponse> {
     try {
       const response = await withTimeout(

@@ -8,21 +8,30 @@ import {
   ActivityIndicator,
   Platform,
   Switch,
+  Image,
 } from 'react-native'
 import { SafeAreaView } from 'react-native-safe-area-context'
 import { useLocalSearchParams, useRouter } from 'expo-router'
-import { ChevronLeft, ChevronDown } from 'lucide-react-native'
+import { ChevronLeft, ChevronDown, ImagePlus } from 'lucide-react-native'
 import DateTimePicker from '@react-native-community/datetimepicker'
-import { usePostHog } from 'posthog-react-native'
+import { useAnalytics } from '../../utils/analytics'
+import { useUser } from '../../components/contexts'
 import { PrimaryButton } from '../../components/ui'
+import EventAttendeeRoster from '../../components/events/EventAttendeeRoster'
 import { useDetailColors, type DetailColors } from '../../hooks/useDetailColors'
 import {
   fetchEvent,
   fetchCenters,
   createEvent,
   updateEvent,
+  uploadBoardImage,
   type CenterData,
 } from '../../utils/api'
+
+let ImagePicker: typeof import('expo-image-picker') | null = null
+if (Platform.OS !== 'web') {
+  ImagePicker = require('expo-image-picker')
+}
 
 const todayLocalISODate = (): string => {
   const d = new Date()
@@ -51,6 +60,13 @@ const formatTimeLabel = (hhmm: string): string => {
   const period = h >= 12 ? 'PM' : 'AM'
   const hour12 = h % 12 === 0 ? 12 : h % 12
   return `${hour12}:${String(m).padStart(2, '0')} ${period}`
+}
+
+const formatDateTimeLabel = (date: string, time: string): string => {
+  if (!date && !time) return ''
+  const dateLabel = date ? formatDateLabel(date) : ''
+  const timeLabel = time ? formatTimeLabel(time) : ''
+  return [dateLabel, timeLabel].filter(Boolean).join(' · ')
 }
 
 
@@ -88,7 +104,7 @@ function HeaderBar({
           style={{ flexDirection: 'row', alignItems: 'center', gap: 4, padding: 8, minHeight: 44, minWidth: 44 }}
         >
           <ChevronLeft size={20} color={colors.iconHeader} />
-          <Text style={{ fontFamily: 'Inter-Regular', fontSize: 14, color: colors.iconHeader }}>
+          <Text style={{ fontFamily: 'Inclusive Sans', fontSize: 14, color: colors.iconHeader }}>
             Back
           </Text>
         </Pressable>
@@ -96,7 +112,7 @@ function HeaderBar({
 
       <Text
         style={{
-          fontFamily: 'Inter-Bold',
+          fontFamily: 'Inclusive Sans',
           fontSize: 20,
           color: colors.text,
           lineHeight: 26,
@@ -129,7 +145,7 @@ function FieldRow({
     <View style={{ gap: 6 }}>
       <Text
         style={{
-          fontFamily: 'Inter-Medium',
+          fontFamily: 'Inclusive Sans',
           fontSize: 11,
           color: colors.textMuted,
           letterSpacing: 0.5,
@@ -140,13 +156,13 @@ function FieldRow({
         {required ? <Text style={{ color: '#E8862A' }}> *</Text> : null}
       </Text>
       {hint && !error ? (
-        <Text style={{ fontFamily: 'Inter-Regular', fontSize: 12, color: colors.textMuted }}>
+        <Text style={{ fontFamily: 'Inclusive Sans', fontSize: 12, color: colors.textMuted }}>
           {hint}
         </Text>
       ) : null}
       {children}
       {error ? (
-        <Text style={{ fontFamily: 'Inter-Regular', fontSize: 12, color: '#DC2626' }}>
+        <Text style={{ fontFamily: 'Inclusive Sans', fontSize: 12, color: '#DC2626' }}>
           {error}
         </Text>
       ) : null}
@@ -162,8 +178,14 @@ export default function EventFormPage() {
   const isEdit = !!eventId
   const router = useRouter()
   const colors = useDetailColors()
-  const posthog = usePostHog()
+  const { track } = useAnalytics()
+  const { user, loading: userLoading } = useUser()
   const today = todayLocalISODate()
+
+  // Creating/editing an event is members-only — bounce guests to sign-in.
+  useEffect(() => {
+    if (Platform.OS !== 'web' && !userLoading && !user) router.replace('/auth')
+  }, [user, userLoading])
 
   const [loading, setLoading] = useState(isEdit)
   const [saving, setSaving] = useState(false)
@@ -190,6 +212,7 @@ export default function EventFormPage() {
   const [showAdvanced, setShowAdvanced] = useState(false)
   const [showDatePicker, setShowDatePicker] = useState(false)
   const [showTimePicker, setShowTimePicker] = useState(false)
+  const [uploadingImage, setUploadingImage] = useState(false)
 
 
   // Load centers + event data (if editing)
@@ -309,16 +332,16 @@ export default function EventFormPage() {
       let savedId = eventId
       if (isEdit && eventId) {
         await updateEvent({ id: eventId, ...sharedFields })
-        posthog?.capture('event_updated', { eventId, title: title.trim() })
+        track('event_updated', { eventId, title: title.trim(), source: 'event_form' })
       } else {
         const created = await createEvent(sharedFields)
         savedId = created.id
-        posthog?.capture('event_created', { title: title.trim(), centerID })
+        track('event_created', { title: title.trim(), centerID, source: 'event_form' })
       }
       if (savedId) router.replace(`/events/${savedId}`)
     } catch (err: any) {
       const msg = err?.message || 'Something went wrong. Please try again.'
-      posthog?.capture('event_create_failed', { error: msg, isEdit })
+      track('event_create_failed', { error: msg, isEdit, source: 'event_form' })
       setErrors({ submit: msg })
     } finally {
       setSaving(false)
@@ -332,12 +355,40 @@ export default function EventFormPage() {
     if (!longitude && center.longitude) setLongitude(String(center.longitude))
     if (!address && center.address) setAddress(center.address)
     setShowCenterPicker(false)
+    track('event_form_center_selected', { centerID: center.centerID, centerName: center.name, source: 'event_form' })
+  }
+
+  const pickEventImage = async () => {
+    if (!ImagePicker) return
+    const perm = await ImagePicker.requestMediaLibraryPermissionsAsync()
+    if (!perm.granted) return
+    const result = await ImagePicker.launchImageLibraryAsync({
+      mediaTypes: 'images',
+      quality: 0.85,
+    })
+    if (result.canceled || !result.assets.length) return
+
+    const asset = result.assets[0]
+    try {
+      setUploadingImage(true)
+      const url = await uploadBoardImage({
+        uri: asset.uri,
+        name: asset.fileName || `event-${asset.assetId ?? Date.now()}.jpg`,
+        type: asset.mimeType || 'image/jpeg',
+      })
+      setImage(url)
+      track('event_form_image_uploaded', { source: 'event_form' })
+    } catch {
+      setErrors((e) => ({ ...e, image: 'Upload failed. Please try again.' }))
+    } finally {
+      setUploadingImage(false)
+    }
   }
 
   // ── Input styling helper ────────────────────────────────────────────
 
   const inputStyle = (hasError?: boolean) => ({
-    fontFamily: 'Inter-Regular' as const,
+    fontFamily: 'Inclusive Sans' as const,
     fontSize: 15,
     color: colors.text,
     paddingHorizontal: 14,
@@ -373,7 +424,10 @@ export default function EventFormPage() {
     <SafeAreaView style={{ flex: 1, backgroundColor: colors.panelBg }}>
       <HeaderBar
         title={isEdit ? 'Edit Event' : 'Create Event'}
-        onBack={() => router.back()}
+        onBack={() => {
+          track('event_form_back_pressed', { isEdit, source: 'event_form' })
+          router.back()
+        }}
         colors={colors}
       />
 
@@ -394,7 +448,7 @@ export default function EventFormPage() {
               backgroundColor: 'rgba(220,38,38,0.08)',
             }}
           >
-            <Text style={{ fontFamily: 'Inter-Medium', fontSize: 13, color: '#DC2626' }}>
+            <Text style={{ fontFamily: 'Inclusive Sans', fontSize: 13, color: '#DC2626' }}>
               {errors.submit}
             </Text>
           </View>
@@ -426,28 +480,28 @@ export default function EventFormPage() {
           />
         </FieldRow>
 
-        {/* Date */}
-        <FieldRow label="Date" colors={colors} error={errors.date} required>
+        {/* Date & time */}
+        <FieldRow label="Date & time" colors={colors} error={errors.date || errors.time} required>
           <Pressable
-            onPress={() => setShowDatePicker(true)}
-            style={pickerFieldStyle(!!errors.date)}
-            accessibilityLabel="Pick a date"
+            onPress={() => { setShowDatePicker(true); track('event_form_date_picker_opened', { source: 'event_form' }) }}
+            style={pickerFieldStyle(!!errors.date || !!errors.time)}
+            accessibilityLabel="Pick date and time"
           >
             <Text
               style={{
-                fontFamily: 'Inter-Regular',
+                fontFamily: 'Inclusive Sans',
                 fontSize: 15,
                 color: date ? colors.text : colors.textMuted,
               }}
             >
-              {date ? formatDateLabel(date) : 'Select a date'}
+              {date ? formatDateTimeLabel(date, time) : 'Select date and time'}
             </Text>
             <ChevronDown size={16} color={colors.textMuted} />
           </Pressable>
           {showDatePicker && (
             <DateTimePicker
-              value={date ? new Date(`${date}T12:00:00`) : new Date()}
-              mode="date"
+              value={date ? new Date(`${date}T${time || '12:00'}:00`) : new Date()}
+              mode={Platform.OS === 'ios' ? 'datetime' : 'date'}
               display={Platform.OS === 'ios' ? 'inline' : 'default'}
               minimumDate={new Date()}
               themeVariant={colors.text === '#FAFAFA' ? 'dark' : 'light'}
@@ -458,7 +512,14 @@ export default function EventFormPage() {
                   const yyyy = picked.getFullYear()
                   const mm = String(picked.getMonth() + 1).padStart(2, '0')
                   const dd = String(picked.getDate()).padStart(2, '0')
+                  const hh = String(picked.getHours()).padStart(2, '0')
+                  const mi = String(picked.getMinutes()).padStart(2, '0')
                   setDate(`${yyyy}-${mm}-${dd}`)
+                  if (Platform.OS === 'ios') {
+                    setTime(`${hh}:${mi}`)
+                  } else {
+                    setShowTimePicker(true)
+                  }
                 }
               }}
             />
@@ -468,36 +529,16 @@ export default function EventFormPage() {
               onPress={() => setShowDatePicker(false)}
               style={{ alignSelf: 'flex-end', paddingHorizontal: 8, paddingVertical: 6 }}
             >
-              <Text style={{ fontFamily: 'Inter-SemiBold', fontSize: 14, color: '#E8862A' }}>
+              <Text style={{ fontFamily: 'Inclusive Sans', fontSize: 14, color: '#E8862A' }}>
                 Done
               </Text>
             </Pressable>
           )}
-        </FieldRow>
-
-        {/* Time */}
-        <FieldRow label="Time" colors={colors} error={errors.time}>
-          <Pressable
-            onPress={() => setShowTimePicker(true)}
-            style={pickerFieldStyle(!!errors.time)}
-            accessibilityLabel="Pick a time"
-          >
-            <Text
-              style={{
-                fontFamily: 'Inter-Regular',
-                fontSize: 15,
-                color: time ? colors.text : colors.textMuted,
-              }}
-            >
-              {time ? formatTimeLabel(time) : 'Select a time'}
-            </Text>
-            <ChevronDown size={16} color={colors.textMuted} />
-          </Pressable>
-          {showTimePicker && (
+          {showTimePicker && Platform.OS !== 'ios' && (
             <DateTimePicker
               value={time ? new Date(`2000-01-01T${time}:00`) : new Date()}
               mode="time"
-              display={Platform.OS === 'ios' ? 'spinner' : 'default'}
+              display="default"
               themeVariant={colors.text === '#FAFAFA' ? 'dark' : 'light'}
               onChange={(event, picked) => {
                 if (Platform.OS === 'android') setShowTimePicker(false)
@@ -510,27 +551,17 @@ export default function EventFormPage() {
               }}
             />
           )}
-          {Platform.OS === 'ios' && showTimePicker && (
-            <Pressable
-              onPress={() => setShowTimePicker(false)}
-              style={{ alignSelf: 'flex-end', paddingHorizontal: 8, paddingVertical: 6 }}
-            >
-              <Text style={{ fontFamily: 'Inter-SemiBold', fontSize: 14, color: '#E8862A' }}>
-                Done
-              </Text>
-            </Pressable>
-          )}
         </FieldRow>
 
         {/* Center selection */}
         <FieldRow label="Center" colors={colors} error={errors.center} required hint="Picking a center auto-fills address & coordinates.">
           <Pressable
-            onPress={() => setShowCenterPicker(!showCenterPicker)}
+            onPress={() => { const next = !showCenterPicker; setShowCenterPicker(next); if (next) track('event_form_center_picker_opened', { source: 'event_form' }) }}
             style={pickerFieldStyle(!!errors.center)}
           >
             <Text
               style={{
-                fontFamily: 'Inter-Regular',
+                fontFamily: 'Inclusive Sans',
                 fontSize: 15,
                 color: centerName ? colors.text : colors.textMuted,
               }}
@@ -570,7 +601,7 @@ export default function EventFormPage() {
                   >
                     <Text
                       style={{
-                        fontFamily: center.centerID === centerID ? 'Inter-Medium' : 'Inter-Regular',
+                        fontFamily: center.centerID === centerID ? 'Inclusive Sans' : 'Inclusive Sans',
                         fontSize: 14,
                         color: center.centerID === centerID ? '#E8862A' : colors.text,
                       }}
@@ -580,7 +611,7 @@ export default function EventFormPage() {
                     {center.address ? (
                       <Text
                         style={{
-                          fontFamily: 'Inter-Regular',
+                          fontFamily: 'Inclusive Sans',
                           fontSize: 12,
                           color: colors.textSecondary,
                           marginTop: 2,
@@ -593,7 +624,7 @@ export default function EventFormPage() {
                 ))}
                 {centers.length === 0 && (
                   <View style={{ paddingHorizontal: 14, paddingVertical: 16, alignItems: 'center' }}>
-                    <Text style={{ fontFamily: 'Inter-Regular', fontSize: 13, color: colors.textMuted }}>
+                    <Text style={{ fontFamily: 'Inclusive Sans', fontSize: 13, color: colors.textMuted }}>
                       No centers available
                     </Text>
                   </View>
@@ -603,170 +634,44 @@ export default function EventFormPage() {
           )}
         </FieldRow>
 
-        {/* Address */}
-        <FieldRow label="Address" colors={colors} hint="Auto-filled from center if blank.">
-          <TextInput
-            value={address}
-            onChangeText={setAddress}
-            placeholder="123 Main St, City, ST 12345"
-            placeholderTextColor={colors.textMuted}
-            style={inputStyle()}
-          />
-        </FieldRow>
-
-        {/* Point of contact */}
-        <FieldRow label="Point of Contact" colors={colors} hint="Optional. Email or name.">
-          <TextInput
-            value={pointOfContact}
-            onChangeText={setPointOfContact}
-            placeholder="contact@example.org"
-            placeholderTextColor={colors.textMuted}
-            style={inputStyle()}
-          />
-        </FieldRow>
-
-        {/* Image URL */}
-        <FieldRow label="Image URL" colors={colors} hint="Optional. Direct link to a JPG/PNG.">
-          <TextInput
-            value={image}
-            onChangeText={setImage}
-            placeholder="https://..."
-            placeholderTextColor={colors.textMuted}
-            autoCapitalize="none"
-            keyboardType="url"
-            style={inputStyle()}
-          />
-        </FieldRow>
-
-        {/* External info link */}
-        <FieldRow
-          label="External info link"
-          colors={colors}
-          hint="Optional. Page about the event on another site (e.g., chinmayamission.com)."
-        >
-          <TextInput
-            value={externalUrl}
-            onChangeText={setExternalUrl}
-            placeholder="https://..."
-            placeholderTextColor={colors.textMuted}
-            autoCapitalize="none"
-            keyboardType="url"
-            style={inputStyle()}
-          />
-        </FieldRow>
-
-        {/* External signup URL + Janata toggle */}
-        <FieldRow
-          label="External signup URL"
-          colors={colors}
-          hint="Optional. If attendees register on another site (Eventbrite, Google Form, etc.)."
-        >
-          <TextInput
-            value={signupUrl}
-            onChangeText={setSignupUrl}
-            placeholder="https://..."
-            placeholderTextColor={colors.textMuted}
-            autoCapitalize="none"
-            keyboardType="url"
-            style={inputStyle()}
-          />
-          {signupUrl.trim() ? (
-            <View
+        {/* Image */}
+        <FieldRow label="Image" colors={colors} error={errors.image} hint="Optional. Upload a photo or paste a direct link.">
+          {image.trim() ? (
+            <Image
+              source={{ uri: image }}
+              style={{ width: '100%', height: 160, borderRadius: 12, backgroundColor: colors.iconBoxBg }}
+              resizeMode="cover"
+            />
+          ) : null}
+          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>
+            <Pressable
+              onPress={pickEventImage}
+              disabled={uploadingImage}
+              accessibilityRole="button"
               style={{
-                marginTop: 10,
-                padding: 14,
+                flexDirection: 'row',
+                alignItems: 'center',
+                gap: 8,
+                paddingVertical: 10,
+                paddingHorizontal: 14,
                 borderRadius: 10,
                 borderWidth: 1,
                 borderColor: colors.border,
                 backgroundColor: colors.cardBg,
-                flexDirection: 'row',
-                alignItems: 'center',
-                gap: 12,
               }}
             >
-              <View style={{ flex: 1 }}>
-                <Text style={{ fontFamily: 'Inter-Medium', fontSize: 14, color: colors.text }}>
-                  Also accept Janata RSVPs
-                </Text>
-                <Text
-                  style={{
-                    fontFamily: 'Inter-Regular',
-                    fontSize: 12,
-                    color: colors.textMuted,
-                    marginTop: 2,
-                  }}
-                >
-                  When off, the only signup option is the link above.
-                </Text>
-              </View>
-              <Switch
-                value={allowJanataSignup}
-                onValueChange={setAllowJanataSignup}
-                trackColor={{ true: '#E8862A', false: colors.border }}
-                thumbColor="#FFFFFF"
-                ios_backgroundColor={colors.border}
-              />
-            </View>
-          ) : null}
-        </FieldRow>
-
-        {/* Advanced: coordinates (auto-filled from center) */}
-        <View style={{ gap: 10 }}>
-          <Pressable
-            onPress={() => setShowAdvanced((v) => !v)}
-            style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}
-            accessibilityLabel="Toggle advanced location options"
-          >
-            <ChevronDown
-              size={12}
-              color={colors.textMuted}
-              style={{ transform: [{ rotate: showAdvanced ? '0deg' : '-90deg' }] }}
-            />
-            <Text
-              style={{
-                fontFamily: 'Inter-Medium',
-                fontSize: 11,
-                color: colors.textMuted,
-                letterSpacing: 0.4,
-                textTransform: 'uppercase',
-              }}
-            >
-              Advanced location
-            </Text>
-            {(errors.latitude || errors.longitude) ? (
-              <Text style={{ fontFamily: 'Inter-Regular', fontSize: 11, color: '#DC2626' }}>
-                · check coordinates
+              {uploadingImage ? <ActivityIndicator size="small" color="#E8862A" /> : <ImagePlus size={16} color="#E8862A" />}
+              <Text style={{ fontFamily: 'Inclusive Sans', fontSize: 13, color: colors.text }}>
+                {uploadingImage ? 'Uploading...' : image ? 'Replace photo' : 'Upload photo'}
               </Text>
+            </Pressable>
+            {image ? (
+              <Pressable onPress={() => setImage('')} accessibilityRole="button" style={{ paddingVertical: 10, paddingHorizontal: 6 }}>
+                <Text style={{ fontFamily: 'Inclusive Sans', fontSize: 13, color: colors.textMuted }}>Remove</Text>
+              </Pressable>
             ) : null}
-          </Pressable>
-          {showAdvanced && (
-            <FieldRow
-              label="Coordinates"
-              colors={colors}
-              error={errors.latitude || errors.longitude}
-              hint="Override only if the center's pin is wrong."
-            >
-              <View style={{ flexDirection: 'row', gap: 10 }}>
-                <TextInput
-                  value={latitude}
-                  onChangeText={setLatitude}
-                  placeholder="Latitude"
-                  placeholderTextColor={colors.textMuted}
-                  keyboardType="numeric"
-                  style={{ ...inputStyle(!!errors.latitude), flex: 1 }}
-                />
-                <TextInput
-                  value={longitude}
-                  onChangeText={setLongitude}
-                  placeholder="Longitude"
-                  placeholderTextColor={colors.textMuted}
-                  keyboardType="numeric"
-                  style={{ ...inputStyle(!!errors.longitude), flex: 1 }}
-                />
-              </View>
-            </FieldRow>
-          )}
-        </View>
+          </View>
+        </FieldRow>
 
         {/* Category */}
         <FieldRow label="Category" colors={colors}>
@@ -776,7 +681,7 @@ export default function EventFormPage() {
               return (
                 <Pressable
                   key={opt.label}
-                  onPress={() => setCategory(opt.value)}
+                  onPress={() => { setCategory(opt.value); track('event_form_category_selected', { category: opt.label, value: opt.value ?? null, source: 'event_form' }) }}
                   style={{
                     paddingHorizontal: 16,
                     paddingVertical: 10,
@@ -788,7 +693,7 @@ export default function EventFormPage() {
                 >
                   <Text
                     style={{
-                      fontFamily: selected ? 'Inter-SemiBold' : 'Inter-Regular',
+                      fontFamily: selected ? 'Inclusive Sans' : 'Inclusive Sans',
                       fontSize: 13,
                       color: selected ? '#FFFFFF' : colors.textSecondary,
                     }}
@@ -800,6 +705,144 @@ export default function EventFormPage() {
             })}
           </View>
         </FieldRow>
+
+        {/* Advanced options */}
+        <View style={{ gap: 10 }}>
+          <Pressable
+            onPress={() => setShowAdvanced((v) => { const next = !v; track('event_form_advanced_toggled', { expanded: next, source: 'event_form' }); return next })}
+            style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}
+            accessibilityLabel="Toggle advanced options"
+          >
+            <ChevronDown
+              size={12}
+              color={colors.textMuted}
+              style={{ transform: [{ rotate: showAdvanced ? '0deg' : '-90deg' }] }}
+            />
+            <Text
+              style={{
+                fontFamily: 'Inclusive Sans',
+                fontSize: 11,
+                color: colors.textMuted,
+                letterSpacing: 0.4,
+                textTransform: 'uppercase',
+              }}
+            >
+              Advanced options
+            </Text>
+            {(errors.latitude || errors.longitude) ? (
+              <Text style={{ fontFamily: 'Inclusive Sans', fontSize: 11, color: '#DC2626' }}>
+                · check coordinates
+              </Text>
+            ) : null}
+          </Pressable>
+          {showAdvanced && (
+            <View style={{ gap: 18 }}>
+              <FieldRow label="Address" colors={colors} hint="Auto-filled from center if blank.">
+                <TextInput
+                  value={address}
+                  onChangeText={setAddress}
+                  placeholder="123 Main St, City, ST 12345"
+                  placeholderTextColor={colors.textMuted}
+                  style={inputStyle()}
+                />
+              </FieldRow>
+
+              <FieldRow label="Point of Contact" colors={colors} hint="Optional. Email or name.">
+                <TextInput
+                  value={pointOfContact}
+                  onChangeText={setPointOfContact}
+                  placeholder="contact@example.org"
+                  placeholderTextColor={colors.textMuted}
+                  style={inputStyle()}
+                />
+              </FieldRow>
+
+              <FieldRow label="External info link" colors={colors} hint="Optional. Page about the event on another site.">
+                <TextInput
+                  value={externalUrl}
+                  onChangeText={setExternalUrl}
+                  placeholder="https://..."
+                  placeholderTextColor={colors.textMuted}
+                  autoCapitalize="none"
+                  keyboardType="url"
+                  style={inputStyle()}
+                />
+              </FieldRow>
+
+              <FieldRow label="External signup URL" colors={colors} hint="Optional. If attendees register on another site.">
+                <TextInput
+                  value={signupUrl}
+                  onChangeText={setSignupUrl}
+                  placeholder="https://..."
+                  placeholderTextColor={colors.textMuted}
+                  autoCapitalize="none"
+                  keyboardType="url"
+                  style={inputStyle()}
+                />
+                {signupUrl.trim() ? (
+                  <View
+                    style={{
+                      marginTop: 10,
+                      padding: 14,
+                      borderRadius: 10,
+                      borderWidth: 1,
+                      borderColor: colors.border,
+                      backgroundColor: colors.cardBg,
+                      flexDirection: 'row',
+                      alignItems: 'center',
+                      gap: 12,
+                    }}
+                  >
+                    <View style={{ flex: 1 }}>
+                      <Text style={{ fontFamily: 'Inclusive Sans', fontSize: 14, color: colors.text }}>
+                        Also accept Janata RSVPs
+                      </Text>
+                      <Text style={{ fontFamily: 'Inclusive Sans', fontSize: 12, color: colors.textMuted, marginTop: 2 }}>
+                        When off, the only signup option is the link above.
+                      </Text>
+                    </View>
+                    <Switch
+                      value={allowJanataSignup}
+                      onValueChange={(v) => { setAllowJanataSignup(v); track('event_form_janata_signup_toggled', { enabled: v, source: 'event_form' }) }}
+                      trackColor={{ true: '#E8862A', false: colors.border }}
+                      thumbColor="#FFFFFF"
+                      ios_backgroundColor={colors.border}
+                    />
+                  </View>
+                ) : null}
+              </FieldRow>
+
+              <FieldRow label="Coordinates" colors={colors} error={errors.latitude || errors.longitude} hint="Override only if the center's pin is wrong.">
+                <View style={{ flexDirection: 'row', gap: 10 }}>
+                  <TextInput
+                    value={latitude}
+                    onChangeText={setLatitude}
+                    placeholder="Latitude"
+                    placeholderTextColor={colors.textMuted}
+                    keyboardType="numeric"
+                    style={{ ...inputStyle(!!errors.latitude), flex: 1 }}
+                  />
+                  <TextInput
+                    value={longitude}
+                    onChangeText={setLongitude}
+                    placeholder="Longitude"
+                    placeholderTextColor={colors.textMuted}
+                    keyboardType="numeric"
+                    style={{ ...inputStyle(!!errors.longitude), flex: 1 }}
+                  />
+                </View>
+              </FieldRow>
+            </View>
+          )}
+        </View>
+
+        {/* Manage attendees — edit only; the detail view already shows the
+            public attendee list, so the full roster + CSV export lives here. */}
+        {isEdit && eventId && (
+          <View style={{ paddingHorizontal: 20, marginTop: 8, marginBottom: 24 }}>
+            <EventAttendeeRoster eventId={eventId} eventTitle={title} />
+          </View>
+        )}
       </ScrollView>
 
       {/* Sticky action bar */}

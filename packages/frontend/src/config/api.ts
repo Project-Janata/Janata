@@ -28,6 +28,13 @@ export const API_ENDPOINTS = {
     verify: '/auth/verify',
     logout: '/auth/deauthenticate',
     deleteAccount: '/auth/delete-account',
+    sendVerificationEmail: '/auth/send-verification-email',
+    verifyEmail: '/auth/verify-email',
+  },
+  invites: {
+    mint: '/auth/invite-codes',
+    listMine: '/auth/invite-codes/mine',
+    redeem: '/auth/redeem-invite',
   },
   users: {
     exists: '/userExistence',

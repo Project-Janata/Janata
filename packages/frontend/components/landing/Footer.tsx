@@ -29,7 +29,7 @@ export function Footer() {
           <Logo size={32} style={{ marginBottom: 12 }} />
           <Text
             style={{
-              fontFamily: 'Inter, sans-serif',
+              fontFamily: 'Inclusive Sans, sans-serif',
               fontWeight: '400',
               fontSize: 14,
               lineHeight: 22,
@@ -43,17 +43,17 @@ export function Footer() {
         {/* Right: Links */}
         <View style={{ flexDirection: 'row', gap: isMobile ? 20 : 32, alignItems: 'center' }}>
           <Pressable onPress={() => Linking.openURL('https://chinmayamission.com')}>
-            <Text style={{ fontFamily: 'Inter, sans-serif', fontSize: 14, color: '#78716C' }}>
+            <Text style={{ fontFamily: 'Inclusive Sans, sans-serif', fontSize: 14, color: '#78716C' }}>
               Chinmaya Mission
             </Text>
           </Pressable>
           <Pressable onPress={() => router.push('/privacy')}>
-            <Text style={{ fontFamily: 'Inter, sans-serif', fontSize: 14, color: '#78716C' }}>
+            <Text style={{ fontFamily: 'Inclusive Sans, sans-serif', fontSize: 14, color: '#78716C' }}>
               Privacy Policy
             </Text>
           </Pressable>
           <Pressable onPress={() => router.push('/terms')}>
-            <Text style={{ fontFamily: 'Inter, sans-serif', fontSize: 14, color: '#78716C' }}>
+            <Text style={{ fontFamily: 'Inclusive Sans, sans-serif', fontSize: 14, color: '#78716C' }}>
               Terms of Service
             </Text>
           </Pressable>
@@ -69,7 +69,7 @@ export function Footer() {
       >
         <Text
           style={{
-            fontFamily: 'Inter, sans-serif',
+            fontFamily: 'Inclusive Sans, sans-serif',
             fontWeight: '400',
             fontSize: 13,
             color: '#A8A29E',

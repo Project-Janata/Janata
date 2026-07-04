@@ -86,12 +86,12 @@ const styles = StyleSheet.create({
     elevation: 8,
   },
   title: {
-    fontFamily: 'Inter-Bold',
+    fontFamily: 'Inclusive Sans',
     fontSize: 16,
     marginBottom: 8,
   },
   message: {
-    fontFamily: 'Inter-Regular',
+    fontFamily: 'Inclusive Sans',
     fontSize: 14,
     lineHeight: 20,
     marginBottom: 24,
@@ -110,7 +110,7 @@ const styles = StyleSheet.create({
     backgroundColor: '#ef4444',
   },
   buttonText: {
-    fontFamily: 'Inter-SemiBold',
+    fontFamily: 'Inclusive Sans',
     fontSize: 14,
   },
 })

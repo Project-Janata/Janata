@@ -1,685 +1,671 @@
-// Discover tab — mobile / native layout
-import React, { useState, Suspense, useRef, useCallback, useMemo } from 'react'
-import { EmptyState } from '../../components/ui/EmptyState'
-import { DiscoverListSkeleton } from '../../components/ui/Skeleton'
-import {
-  View,
-  Text,
-  ScrollView,
-  Pressable,
-  ActivityIndicator,
-  TextInput,
-  Animated,
-  PanResponder,
-  StyleSheet,
-  Image,
-} from 'react-native'
-import {
-  MapPin,
-  Search,
-  Building2,
-  ChevronUp,
-  ChevronDown,
-} from 'lucide-react-native'
-import { useRouter, useFocusEffect, useNavigation } from 'expo-router'
-import { usePostHog } from 'posthog-react-native'
-import { useTheme } from '../../components/contexts'
-import { Badge, UnderlineTabBar, Avatar, FilterChip } from '../../components/ui'
-import FilterPickerModal, { type FilterPickerOption } from '../../components/ui/FilterPickerModal'
-import { useUser } from '../../components/contexts/UserContext'
-import { useDiscoverData, type DiscoverFilter } from '../../hooks/useApiData'
-import type { EventDisplay, DiscoverCenter, AttendeeInfo } from '../../utils/api'
+import React, { useCallback, useMemo, useState } from 'react'
+import { ActivityIndicator, Image, Platform, Pressable, RefreshControl, ScrollView, Text, View, useWindowDimensions } from 'react-native'
+import { ChevronRight, MapPin } from 'lucide-react-native'
+import { useFocusEffect, useRouter } from 'expo-router'
+import { useAnalytics } from '../../utils/analytics'
+import { useUser } from '../../components/contexts'
+import { useColors } from '../../hooks/useColors'
+import { useDiscoverData, useMyEvents, useAggregatedFeed } from '../../hooks/useApiData'
+import type { EventDisplay } from '../../utils/api'
 import { extractCityState } from '../../utils/addressParsing'
+import { FeaturedEventCard, type FeaturedSource } from '../../components/home/FeaturedEventCard'
+import { MiniEventRow, type WeekItem } from '../../components/home/MiniEventRow'
+import { boardPostToMessage } from '../../components/boards'
+import { FeedPostCard, type FeedPost } from '../../components/feed'
+import { DesktopColumns, desktopScrollContent, useDesktopLayout } from '../../components/layout/DesktopColumns'
+import AuthPromptModal from '../../components/ui/AuthPromptModal'
+import type { AppColors } from '../../tokens'
 
+// 3D compass emoji for the guest welcome card — distinct from the feed's diya,
+// matching the centered setup-card styling used on the Feed.
+const welcomeArtwork = require('../../assets/images/onboarding/compass.png')
 
-// Lazy load Map to avoid loading heavy web dependencies on mobile web
-const Map = React.lazy(() => import('../../components/Map'))
-
-const FILTERS: { label: DiscoverFilter }[] = [
-  { label: 'Events' },
-  { label: 'Centers' },
-  { label: 'Seva' },
-]
-
-/**
- * Format a date string into a short display like "FEB 26"
- */
 function formatDatePill(dateStr: string): { month: string; day: string } {
-  const d = new Date(dateStr + 'T00:00:00')
-  if (isNaN(d.getTime())) return { month: '', day: '' }
-  const month = d.toLocaleDateString('en-US', { month: 'short' }).toUpperCase()
-  const day = String(d.getDate())
-  return { month, day }
+  const parsed = new Date(`${dateStr}T00:00:00`)
+  if (Number.isNaN(parsed.getTime())) return { month: '', day: '' }
+  return {
+    month: parsed.toLocaleDateString('en-US', { month: 'short' }).toUpperCase(),
+    day: String(parsed.getDate()),
+  }
 }
 
 function isToday(dateStr: string): boolean {
-  const today = new Date()
-  return dateStr === today.toISOString().split('T')[0]
+  return dateStr === new Date().toISOString().split('T')[0]
 }
 
-// ── Placeholder avatar dots for attendee count ──────────
-
-const AVATAR_COLORS = ['#E8862A', '#78716C', '#A8A29E', '#D6D3D1']
-
-function AttendeeAvatars({ count, attendees }: { count: number; attendees?: AttendeeInfo[] }) {
-  if (count <= 0) return null
-  const shown = Math.min(count, 4)
-
-  return (
-    <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4, marginTop: 2 }}>
-      <View style={{ flexDirection: 'row' }}>
-        {attendees && attendees.length > 0 ? (
-          attendees.slice(0, shown).map((attendee, i) => (
-            <Avatar
-              key={i}
-              image={attendee.image}
-              initials={attendee.initials}
-              name={attendee.name}
-              size={18}
-              style={{
-                marginLeft: i === 0 ? 0 : -6,
-                borderWidth: 1.5,
-                borderColor: 'white',
-              }}
-            />
-          ))
-        ) : (
-          Array.from({ length: shown }).map((_, i) => (
-            <View
-              key={i}
-              style={{
-                width: 18,
-                height: 18,
-                borderRadius: 9,
-                backgroundColor: AVATAR_COLORS[i % AVATAR_COLORS.length],
-                marginLeft: i === 0 ? 0 : -6,
-                borderWidth: 1.5,
-                borderColor: 'white',
-              }}
-            />
-          ))
-        )}
-      </View>
-      <Text className="text-stone-400 dark:text-stone-500 font-inter text-xs">
-        {count} going
-      </Text>
-    </View>
-  )
+function sortUpcomingEvents(events: EventDisplay[]) {
+  const today = new Date().toISOString().split('T')[0]
+  return [...events]
+    .filter((e) => !e.date || e.date >= today)
+    .sort((a, b) => {
+      if (!a.date && !b.date) return 0
+      if (!a.date) return 1
+      if (!b.date) return -1
+      return a.date.localeCompare(b.date)
+    })
 }
 
-// ─── Event Item ─────────────────────────────────────────
-
-function EventItem({
-  event,
-  onPress,
-  centerName,
-}: {
-  event: EventDisplay
-  onPress: () => void
-  centerName?: string
-}) {
+function liveEventToWeekItem(event: EventDisplay, onPress: () => void, isHosting = false): WeekItem {
   const { month, day } = event.date ? formatDatePill(event.date) : { month: '', day: '' }
-  const todayLabel = event.date ? isToday(event.date) : false
-
-  return (
-    <Pressable
-      onPress={onPress}
-      className={`flex-row gap-3 p-3 rounded-2xl active:opacity-70 ${
-        event.isRegistered
-          ? 'bg-orange-50 dark:bg-orange-950/20'
-          : 'bg-white dark:bg-neutral-900'
-      }`}
-    >
-      {/* Date pill */}
-      <View className="w-12 h-14 rounded-xl items-center justify-center bg-stone-100 dark:bg-neutral-800">
-        <Text className="text-[10px] font-inter-semibold" style={{ color: '#E8862A' }}>
-          {month}
-        </Text>
-        <Text className="text-base font-inter-bold text-content dark:text-content-dark">
-          {day}
-        </Text>
-      </View>
-
-      {/* Content */}
-      <View className="flex-1 gap-0.5">
-        <View className="flex-row items-center gap-1.5">
-          <Text className="text-content dark:text-content-dark font-inter-semibold text-base leading-tight flex-1" numberOfLines={2}>
-            {event.title}
-          </Text>
-          {event.isRegistered && <Badge label="Going" variant="going" />}
-        </View>
-        <Text className="text-stone-500 dark:text-stone-400 font-inter text-sm">
-          {todayLabel ? 'Today · ' : ''}{event.time || ''}
-        </Text>
-        {centerName && (
-          <Text className="text-stone-500 dark:text-stone-400 font-inter text-xs" numberOfLines={1}>
-            By {centerName}
-          </Text>
-        )}
-        <View className="flex-row items-center gap-1 mt-0.5">
-          <MapPin size={12} color="#E8862A" />
-          <Text className="text-stone-500 dark:text-stone-400 font-inter text-xs flex-1" numberOfLines={1}>
-            {event.location}
-          </Text>
-        </View>
-        {event.attendees > 0 && <AttendeeAvatars count={event.attendees} attendees={event.attendeesList} />}
-      </View>
-
-      {/* Hero thumbnail */}
-      {event.image && (
-        <Image
-          source={{ uri: event.image }}
-          style={{ width: 72, height: 72, borderRadius: 10 }}
-          resizeMode="cover"
-        />
-      )}
-    </Pressable>
-  )
+  const today = event.date ? isToday(event.date) : false
+  return {
+    id: event.id,
+    month,
+    day,
+    title: event.title,
+    subtitle: [today ? 'Today' : event.time || 'TBD', event.location || event.address].filter(Boolean).join(' · '),
+    highlight: today,
+    hosting: isHosting,
+    onPress,
+  }
 }
 
-// ─── Center Item ────────────────────────────────────────
+// The single source of truth for what Home shows. Every slot reads this one
+// value and swaps its CONTENT — the slot set itself never changes.
+//   guest      = no user
+//   unverified = signed in but below the verification gate (vl < 45)
+//   new        = verified member who hasn't joined any event yet
+//   returning  = verified member with at least one personal event
+type HomeState = 'guest' | 'unverified' | 'new' | 'returning'
 
-function CenterItem({ center, onPress, isMyCenter }: { center: DiscoverCenter; onPress: () => void; isMyCenter?: boolean }) {
-  return (
-    <Pressable
-      onPress={onPress}
-      className={`flex-row gap-3 p-3 rounded-2xl active:opacity-70 ${
-        center.isMember || isMyCenter
-          ? 'bg-orange-50 dark:bg-orange-950/20'
-          : 'bg-white dark:bg-neutral-900'
-      }`}
-    >
-      {/* Icon pill */}
-      <View className="w-12 h-14 rounded-xl bg-orange-100 dark:bg-orange-900/30 items-center justify-center overflow-hidden">
-        {center.image ? (
-          <Image source={{ uri: center.image }} style={{ width: 48, height: 56 }} resizeMode="cover" />
-        ) : (
-          <Building2 size={20} color="#9A3412" />
-        )}
-      </View>
-
-      {/* Content */}
-      <View className="flex-1 gap-0.5">
-        <View className="flex-row items-center gap-1.5">
-          <Text className="text-content dark:text-content-dark font-inter-semibold text-base leading-tight flex-1" numberOfLines={1}>
-            {center.name}
-          </Text>
-          {isMyCenter && <Badge label="My Center" variant="going" />}
-          {!isMyCenter && center.isMember && <Badge label="Member" variant="member" />}
-        </View>
-        <Text className="text-stone-500 dark:text-stone-400 font-inter text-sm">
-          {extractCityState(center.address) || 'Center'}{center.distanceMi != null ? ` · ${center.distanceMi} mi` : ''}
-        </Text>
-        {center.eventCount != null && center.eventCount > 0 && (
-          <Text className="text-primary font-inter text-xs mt-0.5">
-            {center.eventCount} events this week
-          </Text>
-        )}
-      </View>
-    </Pressable>
-  )
-}
-
-// ─── Discover Screen ────────────────────────────────────
-
-export default function DiscoverScreen() {
+export default function HomeScreen() {
   const router = useRouter()
-  const { isDark } = useTheme()
-  const posthog = usePostHog()
-  const [activeFilter, setActiveFilter] = useState<DiscoverFilter>('Events')
-  const [searchQuery, setSearchQuery] = useState('')
-  const [selectedDate, setSelectedDate] = useState<string | null>(null)
-  const [showGoingOnly, setShowGoingOnly] = useState(false)
-  const [showPastEvents, setShowPastEvents] = useState(false)
-  const [selectedCenter, setSelectedCenter] = useState<string | null>(null)
-  const [showCenterModal, setShowCenterModal] = useState(false)
-    const { user } = useUser()
-    const {
-    items,
-    filteredPoints,
-    loading,
-    allEvents,
-    allCenters,
-    refresh,
-  } = useDiscoverData(activeFilter, searchQuery, user?.id, showPastEvents, showGoingOnly, user?.interests ?? undefined, user?.centerID)
+  const { width } = useWindowDimensions()
+  const { track } = useAnalytics()
+  const { user } = useUser()
+  const [showAuthPrompt, setShowAuthPrompt] = useState(false)
+  const [refreshing, setRefreshing] = useState(false)
+  const c = useColors()
+  const { events: myEvents, loading: myEventsLoading, refetch: refetchMyEvents } = useMyEvents(user?.username)
+  const { allEvents, allCenters, loading: discoverLoading, refresh: refreshDiscover } = useDiscoverData(
+    'Events', '', user?.id, false, false, false, user?.interests ?? undefined, user?.centerID
+  )
+
+  // Boards peek (#199): surface the 1-2 latest posts from the user's ACTUAL
+  // activity — the aggregated feed (public + their center board + boards for
+  // events they've joined), not just the center board. Matches the "your
+  // center and events you've joined" promise in the slot copy.
+  const { posts: feedPosts, refetch: refetchFeed } = useAggregatedFeed(!!user)
+  const userCenter = useMemo(
+    () => allCenters.find((item) => item.id === user?.centerID),
+    [allCenters, user?.centerID]
+  )
+  const centerName = userCenter?.name
+  const boardPeek = useMemo<FeedPost[]>(
+    () =>
+      feedPosts.slice(0, 3).map((post) => {
+        const message = boardPostToMessage(post)
+        const kind = post.sourceKind ?? 'center'
+        const label = post.sourceLabel ?? centerName ?? 'Your center'
+        return {
+          ...message,
+          sourceKind: kind,
+          sourceLabel: label,
+          sourceTitle: label,
+          sourceSubtitle: '',
+          groupKind: kind,
+          groupId: post.id,
+          groupParentId: post.boardId ?? '',
+          postId: post.id,
+        }
+      }),
+    [feedPosts, centerName]
+  )
 
   useFocusEffect(
     useCallback(() => {
-      refresh()
-    }, [refresh])
+      refetchMyEvents()
+      refreshDiscover()
+      refetchFeed()
+    }, [refetchMyEvents, refreshDiscover, refetchFeed])
   )
 
-  // ── Sheet snap points ──────────────────────────────────
-  // Four positions (as translateY values from the expanded state):
-  //   expanded  = 0           → 100% sheet visible (full screen, header hidden)
-  //   mid       = sheet * 0.2 → ~80% sheet visible (most content, map peeking)
-  //   collapsed = sheet * 0.6 → ~40% sheet visible (peek + a few rows)
-  //   peek      = sheet - 100 → just handle + search bar visible (100px)
-
-  const EXPANDED_TOP = 60 // px from top of container when fully expanded
-
-  const [containerHeight, setContainerHeight] = useState(0)
-  const sheetHeight = containerHeight - EXPANDED_TOP // total sheet height
-
-  const SNAP_EXPANDED = 0
-  const SNAP_MID = Math.max(0, sheetHeight * 0.2)        // ~80% sheet visible
-  const SNAP_COLLAPSED = Math.max(0, sheetHeight * 0.6)  // ~40% sheet visible
-  const SNAP_PEEK = Math.max(0, sheetHeight - 100)       // 100px sheet visible (handle + search)
-
-  const snapsRef = useRef({ expanded: SNAP_EXPANDED, mid: SNAP_MID, collapsed: SNAP_COLLAPSED, peek: SNAP_PEEK })
-  snapsRef.current = { expanded: SNAP_EXPANDED, mid: SNAP_MID, collapsed: SNAP_COLLAPSED, peek: SNAP_PEEK }
-
-  const sheetY = useRef(new Animated.Value(0)).current
-  const offsetRef = useRef(0)
-  const initializedRef = useRef(false)
-
-  // Track expansion state for scroll behavior
-  const [isSheetExpanded, setIsSheetExpanded] = useState(false)
-
-  // Hide the nav header (with the profile-pic button) when the sheet is at
-  // expanded snap so the sheet covers the full screen, including over where
-  // the profile button sits. Restore when sheet leaves expanded.
-  const navigation = useNavigation()
-  React.useEffect(() => {
-    navigation.setOptions({ headerShown: !isSheetExpanded })
-  }, [navigation, isSheetExpanded])
-
-  // Set initial sheet position to mid once we know the container height
-  React.useEffect(() => {
-    if (containerHeight > 0 && !initializedRef.current) {
-      const mid = Math.max(0, (containerHeight - EXPANDED_TOP) * 0.2)
-      sheetY.setValue(mid)
-      offsetRef.current = mid
-      initializedRef.current = true
+  const handleRefresh = useCallback(async () => {
+    setRefreshing(true)
+    try {
+      await Promise.all([refetchMyEvents(), refreshDiscover({ force: true }), refetchFeed()])
+    } finally {
+      setRefreshing(false)
     }
-  }, [containerHeight, sheetY])
+  }, [refetchMyEvents, refreshDiscover, refetchFeed])
 
-  const panResponder = useRef(
-    PanResponder.create({
-      onStartShouldSetPanResponder: () => false,
-      onMoveShouldSetPanResponder: (_, gs) => Math.abs(gs.dy) > 8,
-      onPanResponderGrant: () => {},
-      onPanResponderMove: (_, gs) => {
-        const max = snapsRef.current.peek
-        const next = Math.max(0, Math.min(max, offsetRef.current + gs.dy))
-        sheetY.setValue(next)
-      },
-      onPanResponderRelease: (_, gs) => {
-        const { expanded, mid, collapsed, peek } = snapsRef.current
-        const current = Math.max(0, Math.min(peek, offsetRef.current + gs.dy))
+  // Desktop two-column composition is web-only and gated on a wide breakpoint.
+  // Mobile web and native use a single centered column.
+  const isWideDesktop = useDesktopLayout(width)
+  const isDesktop = width >= 860
 
-        // Find nearest snap, biased by velocity
-        let snapTo: number
-        if (gs.vy > 1) {
-          // Fast swipe down — jump one stop down from current
-          if (offsetRef.current <= expanded + 10) snapTo = mid
-          else if (offsetRef.current <= mid + 10) snapTo = collapsed
-          else snapTo = peek
-        } else if (gs.vy < -1) {
-          // Fast swipe up — jump one stop up from current
-          if (offsetRef.current >= peek - 10) snapTo = collapsed
-          else if (offsetRef.current >= collapsed - 10) snapTo = mid
-          else snapTo = expanded
-        } else {
-          // Position-based: snap to nearest of 4
-          const dExp = Math.abs(current - expanded)
-          const dMid = Math.abs(current - mid)
-          const dCol = Math.abs(current - collapsed)
-          const dPeek = Math.abs(current - peek)
-          const minD = Math.min(dExp, dMid, dCol, dPeek)
-          snapTo =
-            minD === dExp ? expanded : minD === dMid ? mid : minD === dCol ? collapsed : peek
-        }
+  // "Up next for you" — the personal slate: events you're going to (RSVP'd,
+  // upcoming) PLUS events you created (upcoming, or ended within the last 3
+  // days so an organizer still sees a just-passed event). Deduped, soonest
+  // first.
+  const signedUpEvents = useMemo(() => {
+    if (!user) return [] // guests have no personal events (avoids createdBy===undefined matches)
+    const todayStr = new Date().toISOString().split('T')[0]
+    const recentCutoff = new Date()
+    recentCutoff.setDate(recentCutoff.getDate() - 3)
+    const recentStr = recentCutoff.toISOString().split('T')[0]
 
-        offsetRef.current = snapTo
-        setIsSheetExpanded(snapTo === expanded)
-        Animated.spring(sheetY, {
-          toValue: snapTo,
-          useNativeDriver: false,
-          damping: 28,
-          stiffness: 220,
-          mass: 0.8,
-        }).start()
-      },
-    })
-  ).current
-
-  // ── Data ──────────────────────────────────────────────
-  const displayItems = React.useMemo(() => {
-    let result = items
-    if (selectedDate) {
-      result = result.filter(
-        (item) => item.type === 'event' && (item.data as EventDisplay).date === selectedDate
-      )
-    }
-    if (selectedCenter) {
-      result = result.filter((item) => {
-        if (item.type !== 'event') return true
-        return (item.data as EventDisplay).centerId === selectedCenter
+    const byId = new Map<string, EventDisplay>()
+    // Going to (upcoming only)
+    allEvents
+      .filter((e) => e.isRegistered && (!e.date || e.date >= todayStr))
+      .forEach((e) => byId.set(e.id, e))
+    // Created by me — from the discover window and the authoritative my-events
+    // list; keep upcoming or up to 3 days past.
+    ;[...allEvents.filter((e) => e.createdBy === user?.id), ...myEvents]
+      .filter((e) => !e.date || e.date >= recentStr)
+      .forEach((e) => {
+        if (!byId.has(e.id)) byId.set(e.id, e)
       })
-    }
-    return result
-  }, [items, selectedDate, selectedCenter])
 
-  // Filter chip helpers — counts over upcoming events
-  const todayStr = new Date().toISOString().split('T')[0]
-  const eventsForCounts = useMemo(
-    () => (showPastEvents ? allEvents : allEvents.filter((e) => !e.date || e.date >= todayStr)),
-    [allEvents, showPastEvents, todayStr]
-  )
-  const centerOptions = useMemo<FilterPickerOption<string>[]>(() => {
-    const counts: Record<string, number> = {}
-    for (const e of eventsForCounts) {
-      if (e.centerId) counts[e.centerId] = (counts[e.centerId] ?? 0) + 1
-    }
-    return [...allCenters]
-      .map((c) => ({ value: c.id, label: c.name, sublabel: c.address, count: counts[c.id] ?? 0 }))
-      .filter((o) => (o.count ?? 0) > 0)
-      .sort((a, b) => {
-        if (user?.centerID && a.value === user.centerID) return -1
-        if (user?.centerID && b.value === user.centerID) return 1
-        return a.label.localeCompare(b.label)
-      })
-  }, [allCenters, eventsForCounts, user?.centerID])
-  const centerChipLabel = selectedCenter
-    ? centerOptions.find((o) => o.value === selectedCenter)?.label ?? 'Center'
-    : 'Center'
-
-  const [collapsedSections, setCollapsedSections] = useState<Set<string>>(new Set())
-  const toggleSection = useCallback((label: string) => {
-    setCollapsedSections((prev) => {
-      const next = new Set(prev)
-      if (next.has(label)) next.delete(label)
-      else next.add(label)
-      return next
+    return [...byId.values()].sort((a, b) => {
+      if (!a.date && !b.date) return 0
+      if (!a.date) return 1
+      if (!b.date) return -1
+      return a.date.localeCompare(b.date)
     })
-  }, [])
+  }, [allEvents, myEvents, user?.id])
 
-  // Default Centers list to fully collapsed on first visit (90+ centers,
-  // an all-expanded view is overwhelming).
-  const collapsedInitFor = useRef<DiscoverFilter | null>(null)
-  React.useEffect(() => {
-    if (activeFilter !== 'Centers') {
-      collapsedInitFor.current = null
-      return
+  // "Coming up" — center-scoped for members (upcoming events at their OWN center
+  // they aren't already part of), but falling back to ALL upcoming events when
+  // their center has none. That keeps the column populated like the logged-out
+  // Explore list instead of going blank for a member at a quiet center.
+  const upcomingExploreEvents = useMemo(() => {
+    // Guests: every upcoming event (nothing to scope by).
+    if (!user) return sortUpcomingEvents(allEvents)
+    const notMine = (e: EventDisplay) => !e.isRegistered && e.createdBy !== user.id
+    const centerScoped = sortUpcomingEvents(
+      allEvents.filter((e) => notMine(e) && (!user.centerID || e.centerId === user.centerID))
+    )
+    if (centerScoped.length > 0) return centerScoped
+    // No events at the member's center → show the broader upcoming list.
+    return sortUpcomingEvents(allEvents.filter(notMine))
+  }, [allEvents, user?.id, user?.centerID])
+
+  const vl = user?.verificationLevel ?? 0
+  const roleLabel =
+    vl >= 1000008 ? 'Global Head'
+      : vl >= 1008 ? 'Swami'
+      : vl >= 108 ? 'Brahmachari'
+      : vl >= 54 ? 'Sevak'
+      : vl >= 45 ? 'Verified member'
+      : null
+
+  // One derived state drives every slot's content.
+  const homeState: HomeState = !user
+    ? 'guest'
+    : vl < 45
+      ? 'unverified'
+      : signedUpEvents.length === 0
+        ? 'new'
+        : 'returning'
+
+  const greetingName = user?.firstName || user?.username || 'friend'
+  const todayLabel = new Date().toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric' })
+  const greetingSubline = user ? [roleLabel, centerName].filter(Boolean).join('  ·  ') : ''
+
+  // ── Slot 3 source: the personal featured event (members) — guests don't
+  // see a "your events" featured card; their slot shows a sign-in nudge.
+  const featured = useMemo<FeaturedSource | null>(() => {
+    const source = signedUpEvents[0]
+    if (source) {
+      const fcName = allCenters.find((item) => item.id === source.centerId)?.name
+      return { kind: 'live', event: source, centerName: fcName }
     }
-    if (collapsedInitFor.current === 'Centers') return
-    if (items.length === 0) return
-    const labels = new Set<string>()
-    let isFirst = true
-    for (const item of items) {
-      if (item.type === 'section') {
-        if (!isFirst) labels.add(item.data.label)
-        isFirst = false
-      }
-    }
-    setCollapsedSections(labels)
-    collapsedInitFor.current = 'Centers'
-  }, [activeFilter, items])
+    return null
+  }, [allCenters, signedUpEvents])
 
-  const stickyHeaderIndices = useMemo(
-    () =>
-      displayItems.reduce<number[]>((acc, item, idx) => {
-        if (item.type === 'section') acc.push(idx)
-        return acc
-      }, []),
-    [displayItems]
-  )
+  // ── Slot 4 rows: events near you (center-scoped for members, general list
+  // for guests/no-center members).
+  const weekItems = useMemo<WeekItem[]>(() => {
+    const pool = upcomingExploreEvents
+    if (pool.length === 0) return []
+    return pool.slice(0, 4).map((event) =>
+      liveEventToWeekItem(event, () => {
+        track('home_event_pressed', { eventId: event.id, source: 'events_near_you' })
+        router.push(`/events/${event.id}`)
+      }, !!user && event.createdBy === user?.id)
+    )
+  }, [track, router, upcomingExploreEvents, user?.id])
 
-  const handleFilterPress = (f: DiscoverFilter) => {
-    posthog?.capture('discover_filter_changed', { filter: f })
-    setActiveFilter(f)
-    setSelectedDate(null)
-  }
-
-  const handlePointPress = (point: { id: string; type: 'center' | 'event' }) => {
-    posthog?.capture('map_point_pressed', { type: point.type, id: point.id })
-    if (point.type === 'center') {
-      router.push(`/center/${point.id}`)
-    } else {
-      router.push(`/events/${point.id}`)
-    }
-  }
-
-  return (
-    <View
-      style={styles.container}
-      onLayout={(e) => setContainerHeight(e.nativeEvent.layout.height)}
-    >
-      {/* Map — full bleed behind the sheet */}
-      <View style={StyleSheet.absoluteFill}>
-        <Suspense
-          fallback={
-            <View className="flex-1 justify-center items-center bg-stone-100 dark:bg-neutral-800">
-              <ActivityIndicator size="large" color="#9A3412" />
-            </View>
-          }
-        >
-          <Map points={filteredPoints} onPointPress={handlePointPress} userCenterID={user?.centerID} bottomPadding={90} />
-        </Suspense>
+  const shouldWaitForHomeData = user ? (discoverLoading || myEventsLoading) : false
+  if (shouldWaitForHomeData) {
+    return (
+      <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center', backgroundColor: c.bg }}>
+        <ActivityIndicator size="large" color={c.accent} />
       </View>
+    )
+  }
 
-      {/* Bottom Sheet — hidden until we measure the container */}
-      {containerHeight > 0 && (
-      <Animated.View
-        style={[
-          styles.sheet,
-          { top: EXPANDED_TOP, transform: [{ translateY: sheetY }] },
-        ]}
-      >
-        <View
-          style={[
-            styles.sheetInner,
-            {
-              backgroundColor: isDark ? '#171717' : '#fff',
-              borderTopColor: isDark ? '#262626' : '#E5E7EB',
-            },
-          ]}
-        >
-          {/* ─── Draggable Header Zone ─── */}
-          <View {...panResponder.panHandlers}>
-            {/* Drag Handle */}
-            <View style={styles.handleRow}>
-              <View
-                style={[
-                  styles.handle,
-                  { backgroundColor: isDark ? '#525252' : '#D1D5DB' },
-                ]}
-              />
-            </View>
+  // ── Slot 1: Greeting ────────────────────────────────────────────────────
+  const greeting = (
+    <View style={{ gap: 4 }}>
+      <Text style={{ fontSize: 12.5, color: c.textFaint, letterSpacing: 0.2 }}>{todayLabel}</Text>
+      <Text style={{ fontFamily: 'Inclusive Sans', fontSize: 30, lineHeight: 34, letterSpacing: -0.5, color: c.text }} numberOfLines={1}>
+        {homeState === 'guest' ? 'Welcome to Janata' : `Namaste, ${greetingName}`}
+      </Text>
+      {greetingSubline ? (
+        <Text style={{ fontSize: 13.5, color: c.textMuted, marginTop: 1 }} numberOfLines={1}>
+          {greetingSubline}
+        </Text>
+      ) : null}
+    </View>
+  )
 
-            {/* Search Input */}
-            <View
-              className="flex-row items-center mx-4 mb-3 px-3 rounded-xl"
-              style={{
-                minHeight: 44,
-                backgroundColor: isDark ? '#262626' : '#F3F4F6',
-              }}
-            >
-              <Search size={16} color="#9CA3AF" />
-              <TextInput
-                className="flex-1 ml-2 text-sm font-inter"
-                style={{ color: isDark ? '#E5E7EB' : '#1F2937', paddingVertical: 8 }}
-                placeholder="Search events and centers..."
-                placeholderTextColor="#9CA3AF"
-                value={searchQuery}
-                onChangeText={setSearchQuery}
-                onEndEditing={() => {
-                  if (searchQuery.trim()) {
-                    posthog?.capture('discover_search', { query: searchQuery.trim() })
-                  }
-                }}
-              />
-            </View>
+  const authPrompt = (
+    <AuthPromptModal
+      visible={showAuthPrompt}
+      onClose={() => setShowAuthPrompt(false)}
+      returnTo="/"
+      title="Make Janata yours."
+      subtitle="Janata is invite-only — members join through a friend's invite. Log in, or paste one to get in."
+      bullets={[
+        'Follow your local center and see what is coming up',
+        'RSVP to events and keep details handy',
+        'Join boards for your center and gatherings',
+      ]}
+    />
+  )
 
-            {/* Filter tabs — underline style */}
-            <View style={{ marginBottom: 4 }}>
-              <UnderlineTabBar
-                tabs={FILTERS.map((f) => f.label)}
-                activeTab={selectedDate ? '' : activeFilter}
-                onTabChange={(tab) => handleFilterPress(tab as DiscoverFilter)}
-                counts={{ Events: allEvents.length, Centers: allCenters.length }}
-              />
-            </View>
+  // ── Slot 2: AnchorCard ──────────────────────────────────────────────────
+  const anchorCard = (
+    <AnchorCard
+      c={c}
+      state={homeState}
+      centerName={centerName || undefined}
+      centerMeta={(userCenter?.address ? extractCityState(userCenter.address) : undefined) || undefined}
+      onLogin={() => {
+        track('home_signin_pressed', { source: 'home_anchor' })
+        setShowAuthPrompt(true)
+      }}
+      onPasteInvite={() => {
+        track('home_paste_invite_pressed', { source: 'home_anchor' })
+        router.push('/auth?invite=1' as never)
+      }}
+      onChooseCenter={() => {
+        track('home_first_run_center_pressed', { source: 'home_anchor' })
+        router.push('/center-picker' as never)
+      }}
+      onOpenCenter={
+        userCenter
+          ? () => {
+              track('home_first_run_center_opened', { centerId: userCenter.id })
+              router.push(`/center/${userCenter.id}`)
+            }
+          : undefined
+      }
+      onExplore={() => {
+        track('home_first_run_explore_pressed')
+        router.push('/explore' as never)
+      }}
+    />
+  )
 
-            {/* Filter chips — Today / Center / Going (max 4) */}
-            {activeFilter === 'Events' && (
-              <View className="flex-row flex-wrap items-center px-4 py-2 gap-2">
-                <FilterChip
-                  label="Today"
-                  variant="outline"
-                  active={selectedDate === todayStr}
-                  onPress={() => {
-                    setSelectedDate((prev) => {
-                      const next = prev === todayStr ? null : todayStr
-                      if (next) posthog?.capture('discover_date_selected', { date: next })
-                      return next
-                    })
-                  }}
-                />
-                <FilterChip
-                  label={centerChipLabel}
-                  variant="outline"
-                  active={selectedCenter !== null}
-                  onPress={() => setShowCenterModal(true)}
-                />
-                {user && (
-                  <FilterChip
-                    label="Going"
-                    variant="outline"
-                    active={showGoingOnly}
-                    onPress={() => setShowGoingOnly((prev) => !prev)}
-                  />
-                )}
-              </View>
-            )}
-          </View>
-
-          {/* Loading skeleton */}
-          {loading && (
-            <View style={{ paddingHorizontal: 16 }}>
-              <DiscoverListSkeleton count={4} />
-            </View>
-          )}
-
-          {/* Unified List */}
-          <ScrollView
-            style={{ flex: 1 }}
-            contentContainerStyle={{ paddingHorizontal: 4, paddingTop: 12, paddingBottom: 40, gap: 4 }}
-            showsVerticalScrollIndicator={false}
-            scrollEnabled={true}
-            stickyHeaderIndices={stickyHeaderIndices}
-          >
-            {!loading && activeFilter === 'Seva' && (
-              <EmptyState message="Seva — coming soon" subtitle="Service opportunities will be listed here." />
-            )}
-            {!loading && activeFilter !== 'Seva' && displayItems.length === 0 && (
-              <EmptyState variant={selectedDate ? 'date' : searchQuery ? 'search' : 'events'} />
-            )}
-            {activeFilter !== 'Seva' && displayItems.map((item, idx) => {
-              if (item.type === 'section') {
-                const label = item.data.label
-                const isCollapsed = collapsedSections.has(label)
-                return (
-                  <Pressable
-                    key={`section-${idx}`}
-                    onPress={() => toggleSection(label)}
-                    className={`bg-white dark:bg-neutral-900 ${idx > 0 ? 'border-t border-stone-200 dark:border-neutral-800' : ''}`}
-                  >
-                    <View
-                      style={{
-                        paddingHorizontal: 12,
-                        paddingVertical: 14,
-                        flexDirection: 'row',
-                        alignItems: 'center',
-                        justifyContent: 'space-between',
-                      }}
-                    >
-                      <Text className="text-xs font-inter-semibold text-stone-500 dark:text-stone-400 uppercase" style={{ letterSpacing: 0.6 }}>
-                        {label}
-                      </Text>
-                      {isCollapsed ? <ChevronDown size={16} color="#a8a29e" /> : <ChevronUp size={16} color="#a8a29e" />}
-                    </View>
-                  </Pressable>
-                )
-              }
-              if (item.type === 'event') {
-                return (
-                  <EventItem
-                    key={`event-${item.data.id}`}
-                    event={item.data as EventDisplay}
-                    centerName={allCenters.find((c) => c.id === (item.data as EventDisplay).centerId)?.name}
-                    onPress={() => {
-                      posthog?.capture('event_list_item_pressed', { eventId: item.data.id, source: 'discover' })
-                      router.push(`/events/${item.data.id}`)
-                    }}
-                  />
-                )
-              }
-              const sectionLabel = displayItems.slice(0, idx).reverse().find((i) => i.type === 'section')?.data?.label
-              if (sectionLabel && collapsedSections.has(sectionLabel)) return null
-              return (
-                <CenterItem
-                  key={`center-${item.data.id}`}
-                  center={item.data as DiscoverCenter}
-                  isMyCenter={!!user?.centerID && item.data.id === user.centerID}
-                  onPress={() => {
-                    posthog?.capture('center_list_item_pressed', { centerId: item.data.id, source: 'discover' })
-                    router.push(`/center/${item.data.id}`)
-                  }}
-                />
-              )
-            })}
-          </ScrollView>
-        </View>
-      </Animated.View>
-      )}
-
-      <FilterPickerModal
-        visible={showCenterModal}
-        title="Center"
-        options={centerOptions}
-        selected={selectedCenter}
-        onSelect={setSelectedCenter}
-        onClear={() => setSelectedCenter(null)}
-        onClose={() => setShowCenterModal(false)}
+  // ── Slot 3: Your events ("UP NEXT FOR YOU") — only when there's an actual
+  // upcoming personal event. For a brand-new member the "nothing yet" nudge
+  // already lives in the AnchorCard, so we don't repeat an empty card (and a
+  // second Explore button) here.
+  const yourEventsSlot = featured ? (
+    <SectionHeader
+      eyebrow="UP NEXT FOR YOU"
+      trailing="See all"
+      accentColor={c.accent}
+      faintColor={c.textFaint}
+      onTrailingPress={() => {
+        track('home_see_all_pressed', { section: 'up_next' })
+        router.push('/explore?going=1' as never)
+      }}
+    >
+      <FeaturedEventCard
+        featured={featured}
+        isHosting={!!user && featured.kind === 'live' && featured.event.createdBy === user?.id}
+        onPress={() => {
+          track('home_featured_event_pressed', { eventId: featured.event.id })
+          router.push(`/events/${featured.event.id}`)
+        }}
       />
+    </SectionHeader>
+  ) : null
+
+  // ── Slot 4: Events near you — only when there are upcoming events to list.
+  // With nothing nearby, the AnchorCard's "Explore events" already carries the
+  // call to action, so we skip an empty "find events" card (and its redundant
+  // Explore button) entirely.
+  const eventsNearYouSlot = weekItems.length > 0 ? (
+    <SectionHeader
+      eyebrow={homeState === 'guest' ? 'EXPLORE EVENTS' : 'COMING UP'}
+      trailing="See all"
+      accentColor={c.accent}
+      faintColor={c.textFaint}
+      onTrailingPress={() => {
+        track('home_see_all_pressed', { section: 'coming_up' })
+        router.push('/explore' as never)
+      }}
+    >
+      <View style={{ gap: 8 }}>
+        {weekItems.map((item) => <MiniEventRow key={item.id} item={item} />)}
+      </View>
+    </SectionHeader>
+  ) : null
+
+  // ── Slot 5: Your community ("LATEST ON YOUR BOARD") ─────────────────────
+  const gated = homeState === 'guest' || homeState === 'unverified'
+  const yourCommunitySlot = (
+    <SectionHeader
+      eyebrow="LATEST ON YOUR BOARD"
+      trailing="Open Feed"
+      accentColor={c.accent}
+      faintColor={c.textFaint}
+      onTrailingPress={() => {
+        if (gated) {
+          track('home_signin_pressed', { source: 'community_header' })
+          setShowAuthPrompt(true)
+        } else {
+          track('home_open_feed_pressed', { source: 'community_header' })
+          router.push('/feed' as never)
+        }
+      }}
+    >
+      {gated ? (
+        <Pressable
+          onPress={() => {
+            track('home_signin_pressed', { source: 'community_gated' })
+            setShowAuthPrompt(true)
+          }}
+          style={{ borderRadius: 16, borderWidth: 1, borderColor: c.border, backgroundColor: c.card, padding: 16, gap: 6 }}
+        >
+          <Text style={{ fontFamily: 'Inclusive Sans', fontSize: 16, color: c.text }}>
+            Sign in to see your center’s board
+          </Text>
+          <Text style={{ fontSize: 14, lineHeight: 20, color: c.textMuted }}>
+            Conversations from your center and the events you join show up here.
+          </Text>
+        </Pressable>
+      ) : boardPeek.length > 0 ? (
+        <View style={{ borderRadius: 16, borderWidth: 1, borderColor: c.border, backgroundColor: c.card, paddingHorizontal: 16 }}>
+          {boardPeek.map((post) => (
+            <FeedPostCard
+              key={post.id}
+              post={post}
+              colors={c}
+              onPress={() => {
+                track('home_board_peek_pressed', { postId: post.postId, source: 'community_slot' })
+                router.push(`/feed?post=${encodeURIComponent(post.postId)}` as never)
+              }}
+              onAuthorPress={(authorId) => router.push(`/members/${authorId}` as never)}
+            />
+          ))}
+        </View>
+      ) : (
+        <View style={{ borderRadius: 16, borderWidth: 1, borderColor: c.border, backgroundColor: c.card, padding: 16, gap: 6 }}>
+          <Text style={{ fontFamily: 'Inclusive Sans', fontSize: 16, color: c.text }}>
+            Your board will fill in
+          </Text>
+          <Text style={{ fontSize: 14, lineHeight: 20, color: c.textMuted }}>
+            Conversations from your center and events you’ve joined will appear here. Head to the Feed to see what’s new across the network.
+          </Text>
+        </View>
+      )}
+    </SectionHeader>
+  )
+
+  // Guests have nothing personal to show: the home collapses to the focused
+  // AnchorCard (log in / paste invite) + a plain Explore-events list. The
+  // personalized "Up next" and "Your community" slots are members-only.
+  const isGuest = homeState === 'guest'
+
+  // ── Wide desktop: two-column composition reusing the SAME slots ──────────
+  // Greeting anchors the full-width header; the AnchorCard (the "Your Center"
+  // CTA card with its icon) sits at the TOP of the right rail; Your events +
+  // Events near you fill the primary column. With no events those two slots
+  // simply render nothing — the left column stays sparse rather than redundant.
+  if (isWideDesktop) {
+    return (
+      <>
+        <ScrollView
+          style={{ flex: 1, backgroundColor: c.bg }}
+          contentContainerStyle={desktopScrollContent}
+          showsVerticalScrollIndicator={false}
+        >
+          <DesktopColumns
+            header={greeting}
+            main={
+              <>
+                {!isGuest && yourEventsSlot}
+                {eventsNearYouSlot}
+              </>
+            }
+            rail={
+              <View style={{ gap: 22 }}>
+                {anchorCard}
+                {!isGuest && yourCommunitySlot}
+              </View>
+            }
+          />
+        </ScrollView>
+        {authPrompt}
+      </>
+    )
+  }
+
+  // ── Mobile web + native + narrow web: one centered column, fixed slot order
+  return (
+    <>
+      <ScrollView
+        style={{ flex: 1, backgroundColor: c.bg }}
+        contentContainerStyle={{
+          paddingHorizontal: isDesktop ? 24 : 16,
+          paddingTop: Platform.OS === 'web' ? 20 : 24,
+          paddingBottom: Platform.OS === 'web' ? 40 : 112,
+        }}
+        showsVerticalScrollIndicator={false}
+        refreshControl={
+          <RefreshControl
+            refreshing={refreshing}
+            onRefresh={handleRefresh}
+            tintColor={c.accent}
+            colors={[c.accent]}
+          />
+        }
+      >
+        <View style={{ width: '100%', maxWidth: 640, alignSelf: 'center', gap: 22 }}>
+          {greeting}
+          {anchorCard}
+          {!isGuest && yourEventsSlot}
+          {eventsNearYouSlot}
+          {!isGuest && yourCommunitySlot}
+        </View>
+      </ScrollView>
+      {authPrompt}
+    </>
+  )
+}
+
+// Slot 2 — the always-present anchor under the greeting. One component, four
+// content variants keyed off homeState:
+//   guest               → welcome + Log in + "Have an invite? Paste it"
+//   unverified / no ctr → "Choose your home center" CTA
+//   new (with center)   → combined center card + first-event nudge + Explore
+//   returning           → a slim one-line center chip (tap to open)
+function AnchorCard({
+  c,
+  state,
+  centerName,
+  centerMeta,
+  onLogin,
+  onPasteInvite,
+  onChooseCenter,
+  onOpenCenter,
+  onExplore,
+}: {
+  c: AppColors
+  state: HomeState
+  centerName?: string
+  centerMeta?: string
+  onLogin: () => void
+  onPasteInvite: () => void
+  onChooseCenter: () => void
+  onOpenCenter?: () => void
+  onExplore: () => void
+}) {
+  const cardBase = { borderRadius: 18, borderWidth: 1, borderColor: c.border, backgroundColor: c.card } as const
+
+  // Guest: centered welcome card matching the Feed's signed-out CTA — emoji on
+  // top, centered title + subtitle, plain full-width Log in, "Paste it" link.
+  if (state === 'guest') {
+    return (
+      <View style={[cardBase, { paddingHorizontal: 20, paddingTop: 24, paddingBottom: 20, gap: 20 }]}>
+        <View style={{ alignItems: 'center', gap: 12 }}>
+          <Image
+            source={welcomeArtwork}
+            accessibilityIgnoresInvertColors
+            style={{ width: 72, height: 72 }}
+            resizeMode="contain"
+          />
+          <Text style={{ fontFamily: 'Inclusive Sans', fontSize: 22, lineHeight: 28, color: c.text, textAlign: 'center' }}>
+            Make Janata yours
+          </Text>
+          <Text style={{ fontSize: 14, lineHeight: 20, color: c.textMuted, textAlign: 'center' }}>
+            Your center, events, and community will show up here.
+          </Text>
+        </View>
+
+        <View style={{ gap: 10 }}>
+          <Pressable
+            onPress={onLogin}
+            accessibilityRole="button"
+            accessibilityLabel="Log in"
+            style={{
+              width: '100%',
+              minHeight: 48,
+              borderRadius: 12,
+              borderWidth: 1,
+              borderColor: c.accent,
+              backgroundColor: c.accent,
+              paddingHorizontal: 16,
+              alignItems: 'center',
+              justifyContent: 'center',
+            }}
+          >
+            <Text style={{ fontFamily: 'Inclusive Sans', fontSize: 15, fontWeight: '600', color: c.textInverse }}>
+              Log in
+            </Text>
+          </Pressable>
+
+          <Pressable
+            onPress={onPasteInvite}
+            accessibilityRole="button"
+            style={{ minHeight: 44, alignItems: 'center', justifyContent: 'center' }}
+          >
+            <Text style={{ fontSize: 14, color: c.textMuted }}>
+              Have an invite? <Text style={{ color: c.accent, fontWeight: '600' }}>Paste it</Text>
+            </Text>
+          </Pressable>
+        </View>
+      </View>
+    )
+  }
+
+  // Unverified, or a member with no home center yet: choose-center CTA.
+  if (state === 'unverified' || !centerName) {
+    return (
+      <Pressable
+        onPress={onChooseCenter}
+        accessibilityRole="button"
+        accessibilityLabel="Choose your home center"
+        style={[cardBase, { padding: 16, gap: 8 }]}
+      >
+        <Text style={{ fontFamily: 'Inclusive Sans', fontSize: 16, color: c.text }}>Choose your home center</Text>
+        <Text style={{ fontSize: 14, lineHeight: 20, color: c.textMuted }}>
+          Pick your center to follow its board and see its upcoming events.
+        </Text>
+        <Text style={{ fontSize: 13.5, color: c.accent }}>Choose your center →</Text>
+      </Pressable>
+    )
+  }
+
+  // Returning member with a center: slim one-line chip.
+  if (state === 'returning') {
+    return (
+      <Pressable
+        onPress={onOpenCenter}
+        disabled={!onOpenCenter}
+        accessibilityRole={onOpenCenter ? 'button' : undefined}
+        accessibilityLabel={onOpenCenter ? `Open ${centerName}` : undefined}
+        style={[cardBase, { flexDirection: 'row', alignItems: 'center', gap: 12, paddingVertical: 12, paddingHorizontal: 14 }]}
+      >
+        <MapPin size={17} color={c.accent} />
+        <Text style={{ flex: 1, fontFamily: 'Inclusive Sans', fontSize: 15, color: c.text }} numberOfLines={1}>
+          {centerName}
+        </Text>
+        {onOpenCenter ? <ChevronRight size={17} color={c.textFaint} /> : null}
+      </Pressable>
+    )
+  }
+
+  // New member WITH a center: the combined center card + first-event nudge.
+  return (
+    <View style={[cardBase, { padding: 16, gap: 14 }]}>
+      <Pressable
+        onPress={onOpenCenter}
+        disabled={!onOpenCenter}
+        accessibilityRole={onOpenCenter ? 'button' : undefined}
+        accessibilityLabel={onOpenCenter ? `Open ${centerName}` : undefined}
+        style={{ flexDirection: 'row', alignItems: 'center', gap: 14 }}
+      >
+        <View style={{ width: 44, height: 44, borderRadius: 13, backgroundColor: c.accentSoft, alignItems: 'center', justifyContent: 'center' }}>
+          <MapPin size={21} color={c.accent} />
+        </View>
+        <View style={{ flex: 1, gap: 2 }}>
+          <Text style={{ fontSize: 11, letterSpacing: 0.9, color: c.textFaint }}>YOUR CENTER</Text>
+          <Text style={{ fontFamily: 'Inclusive Sans', fontSize: 17, color: c.text }} numberOfLines={1}>{centerName}</Text>
+          {centerMeta ? (
+            <Text style={{ fontSize: 13, color: c.textMuted }} numberOfLines={1}>{centerMeta}</Text>
+          ) : null}
+        </View>
+        {onOpenCenter ? <ChevronRight size={18} color={c.textFaint} /> : null}
+      </Pressable>
+      <Text style={{ fontSize: 13.5, lineHeight: 19, color: c.textMuted }}>
+        RSVP to your first event, then say hello on your center board.
+      </Text>
+      <Pressable
+        onPress={onExplore}
+        accessibilityRole="button"
+        accessibilityLabel="Explore events"
+        style={{ paddingVertical: 11, borderRadius: 12, backgroundColor: c.accent, alignItems: 'center' }}
+      >
+        <Text style={{ fontFamily: 'Inclusive Sans', fontSize: 14, color: c.textInverse }}>Explore events</Text>
+      </Pressable>
     </View>
   )
 }
 
-const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-  },
-  sheet: {
-    position: 'absolute',
-    left: 0,
-    right: 0,
-    bottom: 0,
-    // top is set dynamically via style prop
-  },
-  sheetInner: {
-    flex: 1,
-    borderTopLeftRadius: 24,
-    borderTopRightRadius: 24,
-    borderTopWidth: 1,
-    overflow: 'hidden',
-    // Shadow for visibility over the map
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: -3 },
-    shadowOpacity: 0.1,
-    shadowRadius: 8,
-    elevation: 16,
-  },
-  handleRow: {
-    alignItems: 'center',
-    paddingTop: 10,
-    paddingBottom: 8,
-  },
-  handle: {
-    width: 36,
-    height: 5,
-    borderRadius: 2.5,
-  },
-})
+function SectionHeader({
+  eyebrow,
+  trailing,
+  accentColor,
+  faintColor,
+  onTrailingPress,
+  children,
+}: {
+  eyebrow: string
+  trailing?: string
+  accentColor: string
+  faintColor: string
+  onTrailingPress?: () => void
+  children: React.ReactNode
+}) {
+  return (
+    <View style={{ gap: 10 }}>
+      <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: 4 }}>
+        <Text style={{ fontSize: 11, letterSpacing: 0.9, color: faintColor }}>{eyebrow}</Text>
+        {trailing && (
+          <Pressable onPress={onTrailingPress} hitSlop={8}>
+            <Text style={{ fontWeight: '500', fontSize: 13, color: accentColor }}>{trailing}</Text>
+          </Pressable>
+        )}
+      </View>
+      {children}
+    </View>
+  )
+}

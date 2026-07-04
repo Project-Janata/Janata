@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback, useMemo } from 'react'
+import { useState, useEffect, useCallback, useMemo, useRef } from 'react'
 import { API_BASE_URL } from '../src/config/api'
 import {
   fetchCenters,
@@ -7,6 +7,10 @@ import {
   fetchEventsByCenter,
   fetchAllEvents,
   fetchEventUsers,
+  fetchEventRegistration,
+  fetchMyRegisteredEventIds,
+  fetchBoard,
+  fetchAggregatedFeed,
   attendEvent,
   unattendEvent,
   getUserEvents,
@@ -20,6 +24,8 @@ import {
   DiscoverCenter,
   DiscoverItem,
   DiscoverFilter,
+  BoardPostData,
+  BoardType,
   DISCOVER_SAMPLE_EVENTS,
   DISCOVER_SAMPLE_CENTERS,
   AttendeeInfo,
@@ -28,6 +34,55 @@ import { extractCountryAndState } from '../utils/addressParsing'
 
 export type { DiscoverFilter }
 export type { EventDisplay } from '../utils/api'
+
+// ── Simple cache (module-level, persists across mounts) ──────────────
+
+const CACHE_TTL = 15_000 // 15 seconds
+
+type CacheEntry<T> = { data: T; ts: number }
+
+const cache = new Map<string, CacheEntry<any>>()
+const inflight = new Map<string, Promise<any>>()
+
+function cacheGet<T>(key: string): T | null {
+  const entry = cache.get(key)
+  if (!entry) return null
+  if (Date.now() - entry.ts > CACHE_TTL) {
+    cache.delete(key)
+    return null
+  }
+  return entry.data as T
+}
+
+function cacheSet<T>(key: string, data: T) {
+  cache.set(key, { data, ts: Date.now() })
+}
+
+async function cachedFetch<T>(
+  key: string,
+  fetcher: () => Promise<T>,
+  options?: { force?: boolean }
+): Promise<T> {
+  const cached = options?.force ? null : cacheGet<T>(key)
+  if (cached !== null) return cached
+
+  const existing = inflight.get(key) as Promise<T> | undefined
+  if (existing) return existing
+
+  const promise = fetcher().then(
+    (data) => {
+      cacheSet(key, data)
+      inflight.delete(key)
+      return data
+    },
+    (err) => {
+      inflight.delete(key)
+      throw err
+    }
+  )
+  inflight.set(key, promise)
+  return promise
+}
 
 // ── Sample data (empty since we fetch from API) ────────────
 
@@ -78,6 +133,7 @@ function apiEventToDisplay(e: EventData, _username?: string): EventDisplay {
     externalUrl: e.externalUrl ?? null,
     signupUrl: e.signupUrl ?? null,
     allowJanataSignup: e.allowJanataSignup ?? false,
+    isOfficial: e.isOfficial ?? false,
   }
 
   // If we have an image URL for the event, ensure it's absolute
@@ -222,23 +278,41 @@ export function useEventDetail(eventId: string, username?: string, userId?: stri
           setIsCreator(userIsCreator)
           setIsLive(true)
 
-          // Fetch attendees and check if current user is registered
-          const users = await fetchEventUsers(eventId)
-          if (mounted) {
-            setAttendees(
-              users.map((u) => ({
-                name: u.firstName ? `${u.firstName} ${u.lastName || ''}`.trim() : u.username,
-                subtitle: '',
-                image: u.profileImage ?? undefined,
-                initials: u.firstName
-                  ? `${u.firstName[0]}${u.lastName?.[0] || ''}`.toUpperCase()
-                  : u.username.slice(0, 2).toUpperCase(),
-              }))
-            )
-            // Check if current user is in attendees list
-            const userIsRegistered = userId ? users.some((u) => u.id === userId) : false
-            setIsRegistered(userIsRegistered)
-            setEvent((prev) => (prev ? { ...prev, isRegistered: userIsRegistered } : null))
+          // Source of truth for the RSVP CTA + count: the authed registration
+          // endpoint (the public /fetchEvent is cached + user-agnostic, and the
+          // roster is gated, so neither can answer reliably). Derived isRegistered
+          // from the gated roster used to leave registered users on "Attend" and
+          // show a 0 count.
+          if (userId) {
+            const reg = await fetchEventRegistration(eventId)
+            if (mounted && reg) {
+              setIsRegistered(reg.isRegistered)
+              setEvent((prev) =>
+                prev ? { ...prev, isRegistered: reg.isRegistered, attendees: reg.attendeeCount } : null
+              )
+            }
+          }
+
+          // Attendee LIST (names/avatars) is gated to coordinators — used ONLY
+          // for the roster display, never to decide isRegistered. A gated/failed
+          // list must not error the screen or zero out the count.
+          try {
+            const users = await fetchEventUsers(eventId)
+            if (mounted) {
+              setAttendees(
+                users.map((u) => ({
+                  name: u.firstName ? `${u.firstName} ${u.lastName || ''}`.trim() : (u.username ?? 'Member'),
+                  subtitle: '',
+                  image: u.profileImage ?? undefined,
+                  initials: u.firstName
+                    ? `${u.firstName[0]}${u.lastName?.[0] || ''}`.toUpperCase()
+                    : (u.username?.slice(0, 2).toUpperCase() ?? 'M'),
+                }))
+              )
+            }
+          } catch (listErr: any) {
+            if (mounted) setAttendees([])
+            if (__DEV__) console.warn('[useEventDetail] attendee list gated/unavailable', listErr?.message)
           }
         }
       } catch (err: any) {
@@ -264,78 +338,93 @@ export function useEventDetail(eventId: string, username?: string, userId?: stri
       setIsToggling(true)
 
       try {
-        // Check current registration status directly from API
-        const users = await fetchEventUsers(eventId)
-        const currentUserInAttendees = users.some((u) => u.id === userId)
+        // Use the current registration state (the attendee LIST is gated, so a
+        // non-attendee can't fetch it to decide). The public count comes from
+        // the event object and is updated OPTIMISTICALLY (+1 attend / -1
+        // unattend), never derived from the account-list length.
+        const currentlyRegistered = isRegistered
 
-        if (currentUserInAttendees) {
+        if (currentlyRegistered) {
           // Already registered - unattend
           await unattendEvent(eventId)
           setIsRegistered(false)
-          // Re-fetch attendees after unregistering
-          const updatedUsers = await fetchEventUsers(eventId)
-          const newAttendeesList = updatedUsers.map((u) => ({
-            name: u.firstName ? `${u.firstName} ${u.lastName || ''}`.trim() : u.username,
-            image: u.profileImage || undefined,
-            initials: u.firstName
-              ? `${u.firstName[0]}${u.lastName?.[0] || ''}`.toUpperCase()
-              : u.username.slice(0, 2).toUpperCase(),
-          }))
           setEvent((prev) =>
             prev
               ? {
                   ...prev,
                   isRegistered: false,
-                  attendees: updatedUsers.length,
-                  attendeesList: newAttendeesList.slice(0, 4),
+                  attendees: Math.max(0, (prev.attendees ?? 0) - 1),
                 }
               : null
           )
-          // Also update attendees state
-          setAttendees(
-            updatedUsers.map((u) => ({
-              name: u.firstName ? `${u.firstName} ${u.lastName || ''}`.trim() : u.username,
-              subtitle: '',
-              image: u.profileImage ?? undefined,
+          // Refresh the list, but a hiccup/gating must not break the toggle.
+          try {
+            const updatedUsers = await fetchEventUsers(eventId)
+            const newAttendeesList = updatedUsers.map((u) => ({
+              name: u.firstName ? `${u.firstName} ${u.lastName || ''}`.trim() : (u.username ?? 'Member'),
+              image: u.profileImage || undefined,
               initials: u.firstName
                 ? `${u.firstName[0]}${u.lastName?.[0] || ''}`.toUpperCase()
-                : u.username.slice(0, 2).toUpperCase(),
+                : (u.username?.slice(0, 2).toUpperCase() ?? 'M'),
             }))
-          )
+            setEvent((prev) =>
+              prev ? { ...prev, attendeesList: newAttendeesList.slice(0, 4) } : null
+            )
+            setAttendees(
+              updatedUsers.map((u) => ({
+                name: u.firstName ? `${u.firstName} ${u.lastName || ''}`.trim() : (u.username ?? 'Member'),
+                subtitle: '',
+                image: u.profileImage ?? undefined,
+                initials: u.firstName
+                  ? `${u.firstName[0]}${u.lastName?.[0] || ''}`.toUpperCase()
+                  : (u.username?.slice(0, 2).toUpperCase() ?? 'M'),
+              }))
+            )
+          } catch {
+            // No longer an attendee → list is gated. Clear it.
+            setAttendees([])
+            setEvent((prev) => (prev ? { ...prev, attendeesList: [] } : null))
+          }
         } else {
           // Not registered - attend
           await attendEvent(eventId)
           setIsRegistered(true)
-          // Re-fetch attendees after registering
-          const updatedUsers = await fetchEventUsers(eventId)
-          const newAttendeesList = updatedUsers.map((u) => ({
-            name: u.firstName ? `${u.firstName} ${u.lastName || ''}`.trim() : u.username,
-            image: u.profileImage || undefined,
-            initials: u.firstName
-              ? `${u.firstName[0]}${u.lastName?.[0] || ''}`.toUpperCase()
-              : u.username.slice(0, 2).toUpperCase(),
-          }))
           setEvent((prev) =>
             prev
               ? {
                   ...prev,
                   isRegistered: true,
-                  attendees: updatedUsers.length,
-                  attendeesList: newAttendeesList.slice(0, 4),
+                  attendees: Math.max(0, (prev.attendees ?? 0) + 1),
                 }
               : null
           )
-          // Also update attendees state
-          setAttendees(
-            updatedUsers.map((u) => ({
-              name: u.firstName ? `${u.firstName} ${u.lastName || ''}`.trim() : u.username,
-              subtitle: '',
-              image: u.profileImage ?? undefined,
+          // The user is now an attendee, so the gated list fetch works. Wrap it
+          // anyway so a hiccup doesn't break the toggle.
+          try {
+            const updatedUsers = await fetchEventUsers(eventId)
+            const newAttendeesList = updatedUsers.map((u) => ({
+              name: u.firstName ? `${u.firstName} ${u.lastName || ''}`.trim() : (u.username ?? 'Member'),
+              image: u.profileImage || undefined,
               initials: u.firstName
                 ? `${u.firstName[0]}${u.lastName?.[0] || ''}`.toUpperCase()
-                : u.username.slice(0, 2).toUpperCase(),
+                : (u.username?.slice(0, 2).toUpperCase() ?? 'M'),
             }))
-          )
+            setEvent((prev) =>
+              prev ? { ...prev, attendeesList: newAttendeesList.slice(0, 4) } : null
+            )
+            setAttendees(
+              updatedUsers.map((u) => ({
+                name: u.firstName ? `${u.firstName} ${u.lastName || ''}`.trim() : (u.username ?? 'Member'),
+                subtitle: '',
+                image: u.profileImage ?? undefined,
+                initials: u.firstName
+                  ? `${u.firstName[0]}${u.lastName?.[0] || ''}`.toUpperCase()
+                  : (u.username?.slice(0, 2).toUpperCase() ?? 'M'),
+              }))
+            )
+          } catch {
+            // Ignore — the optimistic count + isRegistered already reflect the toggle.
+          }
         }
       } catch (error: any) {
         // If error says already registered, update UI
@@ -348,7 +437,7 @@ export function useEventDetail(eventId: string, username?: string, userId?: stri
         setIsToggling(false)
       }
     },
-    [event, eventId, userId]
+    [event, eventId, userId, isRegistered]
   )
 
   return {
@@ -392,6 +481,7 @@ export interface CenterDisplay {
   phone: string
   upcomingEvents: number
   pointOfContact: string
+  description?: string | null
   acharya: string
   latitude?: number
   longitude?: number
@@ -439,6 +529,7 @@ export function useCenterDetail(centerId: string) {
             phone: apiCenter.phone || '',
             upcomingEvents: apiEvents.length,
             pointOfContact: apiCenter.pointOfContact || '',
+            description: apiCenter.description ?? null,
             acharya: apiCenter.acharya || '',
             latitude: apiCenter.latitude,
             longitude: apiCenter.longitude,
@@ -475,30 +566,29 @@ export function useCenterDetail(centerId: string) {
 
 export function useMyEvents(username: string | undefined) {
   const [events, setEvents] = useState<EventDisplay[]>([])
-  const [loading, setLoading] = useState(true)
+  const [loading, setLoading] = useState(!!username)
   const [isLive, setIsLive] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
   const load = useCallback(async () => {
     if (!username) {
+      setEvents([])
+      setIsLive(false)
       setLoading(false)
       return
     }
-    setLoading(true)
 
     try {
       setError(null)
+      setLoading(true)
       const apiEvents = await getUserEvents(username)
-
-      if (apiEvents.length > 0) {
-        setEvents(
-          apiEvents.map((e) => ({
-            ...apiEventToDisplay(e, username),
-            isRegistered: true,
-          }))
-        )
-        setIsLive(true)
-      }
+      setEvents(
+        apiEvents.map((e) => ({
+          ...apiEventToDisplay(e, username),
+          isRegistered: true,
+        }))
+      )
+      setIsLive(apiEvents.length > 0)
     } catch (err: any) {
       const message = err?.message || 'Failed to load your events'
       setError(message)
@@ -515,6 +605,72 @@ export function useMyEvents(username: string | undefined) {
   return { events, loading, isLive, error, refetch: load }
 }
 
+// ── Board hook ────────────────────────────────────────────────────────
+
+export function useBoard(type: BoardType, parentId: string | undefined, enabled = true) {
+  const [posts, setPosts] = useState<BoardPostData[]>([])
+  const [loading, setLoading] = useState(!!parentId && enabled)
+  const [error, setError] = useState<string | null>(null)
+
+  const load = useCallback(async () => {
+    if (!parentId || !enabled) {
+      setPosts([])
+      setLoading(false)
+      return
+    }
+
+    try {
+      setError(null)
+      setLoading(true)
+      const data = await fetchBoard(type, parentId)
+      setPosts(data.posts)
+    } catch (err: any) {
+      const message = err?.message || 'Failed to load board'
+      setError(message)
+      if (__DEV__) console.warn('[useBoard]', message)
+      setPosts([])
+    } finally {
+      setLoading(false)
+    }
+  }, [enabled, parentId, type])
+
+  useEffect(() => {
+    load()
+  }, [load])
+
+  return { posts, loading, error, refetch: load }
+}
+
+// Aggregated cross-board feed (#205 / GET /feed): public + the user's center
+// board + boards for events they've joined, reverse-chronological. Used by the
+// Home "Latest on your board" peek so it reflects real activity, not just the
+// center board. Each post carries sourceKind/sourceLabel for display.
+export function useAggregatedFeed(enabled = true, limit = 20) {
+  const [posts, setPosts] = useState<BoardPostData[]>([])
+  const [loading, setLoading] = useState(enabled)
+
+  const load = useCallback(async () => {
+    if (!enabled) {
+      setPosts([])
+      setLoading(false)
+      return
+    }
+    try {
+      setLoading(true)
+      const data = await fetchAggregatedFeed({ limit })
+      setPosts(data)
+    } finally {
+      setLoading(false)
+    }
+  }, [enabled, limit])
+
+  useEffect(() => {
+    load()
+  }, [load])
+
+  return { posts, loading, refetch: load }
+}
+
 // ── Discover hooks ──────────────────────────────────────────────────
 
 export function useCenterList() {
@@ -523,36 +679,29 @@ export function useCenterList() {
   const [isLive, setIsLive] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
-  useEffect(() => {
-    let mounted = true
-    const load = async () => {
-      try {
-        setError(null)
-        const apiCenters = await fetchCenters()
-        if (!mounted) return
-
-        const discoverCenters = centersToDiscoverCenters(apiCenters)
-        if (discoverCenters.length > 0) {
-          setCenters(discoverCenters)
-          setIsLive(true)
-        }
-      } catch (err: any) {
-        if (mounted) {
-          const message = err?.message || 'Failed to load centers'
-          setError(message)
-          if (__DEV__) console.warn('[useCenterList]', message)
-        }
-      } finally {
-        if (mounted) setLoading(false)
+  const load = useCallback(async (options?: { force?: boolean }) => {
+    try {
+      setError(null)
+      const apiCenters = await cachedFetch('centers', fetchCenters, options)
+      const discoverCenters = centersToDiscoverCenters(apiCenters)
+      if (discoverCenters.length > 0) {
+        setCenters(discoverCenters)
+        setIsLive(true)
       }
-    }
-    load()
-    return () => {
-      mounted = false
+    } catch (err: any) {
+      const message = err?.message || 'Failed to load centers'
+      setError(message)
+      if (__DEV__) console.warn('[useCenterList]', message)
+    } finally {
+      setLoading(false)
     }
   }, [])
 
-  return { centers, loading, isLive, error }
+  useEffect(() => {
+    load()
+  }, [load])
+
+  return { centers, loading, isLive, error, refetch: load }
 }
 
 // Maps event category IDs to user interest strings
@@ -632,52 +781,87 @@ function groupCenterItems(centers: DiscoverCenter[], userCenterID?: string | nul
   return result
 }
 
-export function useDiscoverData(filter: DiscoverFilter, searchQuery: string, userId?: string, showPastEvents = false, showGoingOnly = false, userInterests?: string[], userCenterID?: string | null) {
-  const [allEvents, setAllEvents] = useState<EventDisplay[]>([])
+type UseDiscoverOptions = {
+  fetchAttendees?: boolean
+}
+
+export function useDiscoverData(
+  filter: DiscoverFilter,
+  searchQuery: string,
+  userId?: string,
+  showPastEvents = false,
+  showGoingOnly = false,
+  showMineOnly = false,
+  userInterests?: string[],
+  userCenterID?: string | null,
+  options?: UseDiscoverOptions,
+) {
+  const fetchAttendees = options?.fetchAttendees ?? false
+  const [allEvents, setAllEvents] = useState<EventDisplay[]>(DISCOVER_SAMPLE_EVENTS)
   const [allCenters, setAllCenters] = useState<DiscoverCenter[]>([])
   const [loading, setLoading] = useState(true)
   const [isLive, setIsLive] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
-  const refresh = useCallback(async () => {
+  const refresh = useCallback(async (options?: { force?: boolean }) => {
     // Note: We don't set loading(true) here to avoid jarring UI flickers on focus
     try {
-      const apiCenters = await fetchCenters()
+      const apiCenters = await cachedFetch('centers', fetchCenters, options)
       const discoverCenters = centersToDiscoverCenters(apiCenters)
       if (discoverCenters.length > 0) {
         setAllCenters(discoverCenters)
       }
 
-      const allApiEvents = await fetchAllEvents()
+      const allApiEvents = await cachedFetch('allEvents', fetchAllEvents, options)
 
-      const eventsWithAttendees = await Promise.all(
-        allApiEvents.map(async (e) => {
-          const users = await fetchEventUsers(e.eventID)
-          const attendeesList = users.map((u) => ({
-            name: u.firstName ? `${u.firstName} ${u.lastName || ''}`.trim() : u.username,
-            image: u.profileImage || undefined,
-            initials: u.firstName
-              ? `${u.firstName[0]}${u.lastName?.[0] || ''}`.toUpperCase()
-              : u.username.slice(0, 2).toUpperCase(),
-          }))
-          const userIsRegistered = userId ? users.some((u) => u.id === userId) : false
-          return {
-            ...e,
-            attendeesList: attendeesList.slice(0, 4),
-            isRegistered: userIsRegistered,
-            peopleAttending: users.length,
-          }
+      let fetchedEvents: EventDisplay[]
+
+      if (fetchAttendees) {
+        const eventsWithAttendees = await Promise.all(
+          allApiEvents.map(async (e) => {
+            const users = await fetchEventUsers(e.eventID)
+            const attendeesList = users.map((u) => ({
+              name: u.firstName ? `${u.firstName} ${u.lastName || ''}`.trim() : (u.username ?? 'Member'),
+              image: u.profileImage || undefined,
+              initials: u.firstName
+                ? `${u.firstName[0]}${u.lastName?.[0] || ''}`.toUpperCase()
+                : (u.username?.slice(0, 2).toUpperCase() ?? 'M'),
+            }))
+            const userIsRegistered = userId ? users.some((u) => u.id === userId) : false
+            return {
+              ...e,
+              attendeesList: attendeesList.slice(0, 4),
+              isRegistered: userIsRegistered,
+              // Keep the event's real (guest-inclusive) count — the gated roster
+              // length is 0 for events you can't read, which zeroed the card.
+              peopleAttending: e.peopleAttending,
+            }
+          })
+        )
+
+        fetchedEvents = eventsWithAttendees.map((e) => {
+          const display = apiEventToDisplay(e)
+          display.attendeesList = e.attendeesList
+          display.isRegistered = e.isRegistered
+          display.attendees = e.peopleAttending
+          return display
         })
-      )
+      } else {
+        fetchedEvents = allApiEvents.map((e) => apiEventToDisplay(e))
+      }
 
-      const fetchedEvents = eventsWithAttendees.map((e) => {
-        const display = apiEventToDisplay(e)
-        display.attendeesList = e.attendeesList
-        display.isRegistered = e.isRegistered
-        display.attendees = e.peopleAttending
-        return display
-      })
-      if (fetchedEvents.length > 0) {
+      // Reliable "Going" on list cards: mark events the user has an account RSVP
+      // for, from the authed registered-IDs set. The public events list can't
+      // carry per-user state, and the gated roster can't be read for events the
+      // user isn't in — so neither could drive the badge before.
+      if (userId) {
+        const registeredSet = new Set(await fetchMyRegisteredEventIds())
+        fetchedEvents = fetchedEvents.map((e) => ({ ...e, isRegistered: registeredSet.has(e.id) }))
+      }
+
+      const todayStr = new Date().toISOString().split('T')[0]
+      const hasFutureEvents = fetchedEvents.some((e) => !e.date || e.date >= todayStr)
+      if (hasFutureEvents) {
         setAllEvents(fetchedEvents)
         setIsLive(true)
       }
@@ -687,13 +871,17 @@ export function useDiscoverData(filter: DiscoverFilter, searchQuery: string, use
     } finally {
       setLoading(false)
     }
-  }, [userId])
+  }, [userId, fetchAttendees])
 
   useEffect(() => {
     refresh()
   }, [refresh])
 
-  const items = useMemo<DiscoverItem[]>(() => {
+  // Single source of truth for "what passes the active filters" — both the
+  // list (`items`) and the map (`filteredPoints`) derive from these, so the
+  // two can never drift out of sync (searching/Going/interests/past-events
+  // used to narrow the list while the map kept showing every pin).
+  const { filteredEventList, filteredCenterList } = useMemo(() => {
     const query = searchQuery.toLowerCase().trim()
     const todayStr = new Date().toISOString().split('T')[0]
 
@@ -703,7 +891,7 @@ export function useDiscoverData(filter: DiscoverFilter, searchQuery: string, use
       : allEvents.filter((e) => !e.date || e.date >= todayStr)
 
     // Filter events by user interests if set
-    const filteredEvents = userInterests && userInterests.length > 0
+    const interestEvents = userInterests && userInterests.length > 0
       ? visibleEvents.filter((e) => {
           if (e.category == null) return true
           const interestName = CATEGORY_TO_INTEREST[e.category]
@@ -711,66 +899,62 @@ export function useDiscoverData(filter: DiscoverFilter, searchQuery: string, use
         })
       : visibleEvents
 
-    let result: DiscoverItem[] = []
+    // Going-only toggle
+    const goingEvents = showGoingOnly
+      ? interestEvents.filter((e) => e.isRegistered)
+      : interestEvents
 
-    if (filter === 'Centers') {
-      result = groupCenterItems(allCenters, userCenterID)
-    } else {
-      const eventsToShow = showGoingOnly
-        ? filteredEvents.filter((e) => e.isRegistered)
-        : filteredEvents
-      const sortByDate = (a: EventDisplay, b: EventDisplay) =>
-        b.date.localeCompare(a.date)
-      const registered = eventsToShow.filter((e) => e.isRegistered).sort(sortByDate)
-      const unregistered = eventsToShow.filter((e) => !e.isRegistered).sort(sortByDate)
+    // Mine-only toggle (events the current user created)
+    const mineEvents = showMineOnly
+      ? goingEvents.filter((e) => e.createdBy === userId)
+      : goingEvents
 
-      result = [
-        ...registered.map((e) => ({ type: 'event' as const, data: e })),
-        ...unregistered.map((e) => ({ type: 'event' as const, data: e })),
-      ]
-    }
-
-    // Apply search query
-    if (query) {
-      if (filter === 'Centers') {
-        const matchingCenters = allCenters.filter(
+    // Search query (events: title/location, centers: name/address)
+    const events = query
+      ? mineEvents.filter(
+          (e) =>
+            e.title.toLowerCase().includes(query) ||
+            e.location.toLowerCase().includes(query)
+        )
+      : mineEvents
+    const centers = query
+      ? allCenters.filter(
           (c) =>
             c.name.toLowerCase().includes(query) ||
             (c.address?.toLowerCase().includes(query) ?? false)
         )
-        result = groupCenterItems(matchingCenters, userCenterID)
-      } else {
-        result = result.filter((item) => {
-          if (item.type === 'event') {
-            return (
-              item.data.title.toLowerCase().includes(query) ||
-              item.data.location.toLowerCase().includes(query)
-            )
-          }
-          if (item.type === 'center') {
-            return (
-              item.data.name.toLowerCase().includes(query) ||
-              (item.data.address?.toLowerCase().includes(query) ?? false)
-            )
-          }
-          return false
-        })
-      }
+      : allCenters
+
+    return { filteredEventList: events, filteredCenterList: centers }
+  }, [allEvents, allCenters, searchQuery, showPastEvents, showGoingOnly, showMineOnly, userId, userInterests])
+
+  const items = useMemo<DiscoverItem[]>(() => {
+    if (filter === 'Centers') {
+      return groupCenterItems(filteredCenterList, userCenterID)
     }
+    const sortByDate = (a: EventDisplay, b: EventDisplay) =>
+      a.date.localeCompare(b.date)
+    const registered = filteredEventList.filter((e) => e.isRegistered).sort(sortByDate)
+    const unregistered = filteredEventList.filter((e) => !e.isRegistered).sort(sortByDate)
+    return [
+      ...registered.map((e) => ({ type: 'event' as const, data: e })),
+      ...unregistered.map((e) => ({ type: 'event' as const, data: e })),
+    ]
+  }, [filter, filteredEventList, filteredCenterList, userCenterID])
 
-    return result
-  }, [allEvents, allCenters, filter, searchQuery, showPastEvents, showGoingOnly, userInterests, userCenterID])
-
-  // Map points from current data
+  // Map points — derived from the same filtered sets as the list above.
   const filteredPoints = useMemo<MapPoint[]>(() => {
-    const centerPoints: MapPoint[] = allCenters.map((c) => ({
+    const centerPoints: MapPoint[] = filteredCenterList.map((c) => ({
       id: c.id,
       type: 'center' as const,
       name: c.name,
       latitude: c.latitude,
       longitude: c.longitude,
     }))
-    const eventPoints: MapPoint[] = allEvents
+    if (filter === 'Centers') {
+      return centerPoints
+    }
+    const eventPoints: MapPoint[] = filteredEventList
       .filter((e) => e.latitude != null && e.longitude != null)
       .map((e) => ({
         id: e.id,
@@ -779,14 +963,8 @@ export function useDiscoverData(filter: DiscoverFilter, searchQuery: string, use
         latitude: e.latitude!,
         longitude: e.longitude!,
       }))
-
-    const allPoints = [...centerPoints, ...eventPoints]
-
-    if (filter === 'Centers') {
-      return allPoints.filter((p) => p.type === 'center')
-    }
-    return allPoints
-  }, [allCenters, allEvents, filter])
+    return [...centerPoints, ...eventPoints]
+  }, [filteredCenterList, filteredEventList, filter])
 
   const updateEventStatus = useCallback(
     (

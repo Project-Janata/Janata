@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useCallback } from 'react'
-import { View, Text, Pressable, ActivityIndicator, TextInput, ScrollView } from 'react-native'
+import { View, Text, Pressable, ActivityIndicator, TextInput, ScrollView, useWindowDimensions } from 'react-native'
 import { Bell, Send, Trash2, ChevronDown } from 'lucide-react-native'
 import AdminTable, { type Column } from './AdminTable'
 import AdminSearchInput from './AdminSearchInput'
@@ -14,6 +14,7 @@ import {
 } from '../../utils/api'
 import { useDetailColors } from '../../hooks/useDetailColors'
 import { useTheme } from '../contexts'
+import { useAnalytics } from '../../utils/analytics'
 
 const NOTIFICATION_TYPE_NAMES: Record<number, string> = {
   1: 'Event Reminder',
@@ -28,6 +29,9 @@ const NOTIFICATION_TYPE_NAMES: Record<number, string> = {
 export default function NotificationsTab() {
   const colors = useDetailColors()
   const { isDark } = useTheme()
+  const { width } = useWindowDimensions()
+  const { track } = useAnalytics()
+  const isCompact = width < 640
   const [notifications, setNotifications] = useState<AdminNotification[]>([])
   const [stats, setStats] = useState<AdminNotificationStats | null>(null)
   const [total, setTotal] = useState(0)
@@ -79,12 +83,13 @@ export default function NotificationsTab() {
     if (!deleteTarget) return
     try {
       await adminDeleteNotification(deleteTarget.id)
+      track('admin_notification_deleted', { notificationId: deleteTarget.id, source: 'admin' })
       setDeleteTarget(null)
       setSelectedId(null)
       loadNotifications()
       loadStats()
     } catch (err) {
-      console.error('Failed to delete notification:', err)
+      if (__DEV__) console.error('Failed to delete notification:', err)
     }
   }
 
@@ -100,6 +105,7 @@ export default function NotificationsTab() {
         broadcast: sendBroadcast,
         userId: sendBroadcast ? undefined : sendUserId.trim() || undefined,
       })
+      track('admin_notification_sent', { source: 'admin' })
       setSendResult(result.message)
       setSendTitle('')
       setSendMessage('')
@@ -127,7 +133,7 @@ export default function NotificationsTab() {
 
     return (
       <View style={{ alignSelf: 'flex-start', backgroundColor: bg, paddingHorizontal: 8, paddingVertical: 2, borderRadius: 99 }}>
-        <Text style={{ fontFamily: 'Inter-SemiBold', fontSize: 10, color: textColor }}>{name}</Text>
+        <Text style={{ fontFamily: 'Inclusive Sans', fontSize: 10, color: textColor }}>{name}</Text>
       </View>
     )
   }
@@ -142,7 +148,7 @@ export default function NotificationsTab() {
 
     return (
       <View style={{ alignSelf: 'flex-start', backgroundColor: bg, paddingHorizontal: 8, paddingVertical: 2, borderRadius: 99 }}>
-        <Text style={{ fontFamily: 'Inter-SemiBold', fontSize: 10, color: textColor }}>
+        <Text style={{ fontFamily: 'Inclusive Sans', fontSize: 10, color: textColor }}>
           {isRead ? 'Read' : 'Unread'}
         </Text>
       </View>
@@ -155,7 +161,7 @@ export default function NotificationsTab() {
       header: 'Title',
       flex: 2,
       render: (item) => (
-        <Text style={{ fontFamily: 'Inter-Medium', fontSize: 13, color: colors.text }} numberOfLines={1}>
+        <Text style={{ fontFamily: 'Inclusive Sans', fontSize: 13, color: colors.text }} numberOfLines={1}>
           {item.title}
         </Text>
       ),
@@ -165,7 +171,7 @@ export default function NotificationsTab() {
       header: 'Recipient',
       flex: 1.5,
       render: (item) => (
-        <Text style={{ fontFamily: 'Inter-Regular', fontSize: 13, color: colors.textSecondary }} numberOfLines={1}>
+        <Text style={{ fontFamily: 'Inclusive Sans', fontSize: 13, color: colors.textSecondary }} numberOfLines={1}>
           {item.recipientName}
         </Text>
       ),
@@ -187,7 +193,7 @@ export default function NotificationsTab() {
       header: 'Date',
       flex: 1,
       render: (item) => (
-        <Text style={{ fontFamily: 'Inter-Regular', fontSize: 12, color: colors.textMuted }}>
+        <Text style={{ fontFamily: 'Inclusive Sans', fontSize: 12, color: colors.textMuted }}>
           {new Date(item.createdAt).toLocaleDateString()}
         </Text>
       ),
@@ -205,11 +211,11 @@ export default function NotificationsTab() {
   if (error && notifications.length === 0) {
     return (
       <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center', padding: 40 }}>
-        <Text style={{ fontFamily: 'Inter-Medium', fontSize: 14, color: '#DC2626', textAlign: 'center' }}>
+        <Text style={{ fontFamily: 'Inclusive Sans', fontSize: 14, color: '#DC2626', textAlign: 'center' }}>
           {error}
         </Text>
         <Pressable onPress={() => loadNotifications()} style={{ marginTop: 12, paddingHorizontal: 16, paddingVertical: 8, backgroundColor: '#E8862A', borderRadius: 8 }}>
-          <Text style={{ fontFamily: 'Inter-SemiBold', fontSize: 13, color: '#fff' }}>Retry</Text>
+          <Text style={{ fontFamily: 'Inclusive Sans', fontSize: 13, color: '#fff' }}>Retry</Text>
         </Pressable>
       </View>
     )
@@ -221,10 +227,10 @@ export default function NotificationsTab() {
 
   return (
     <View style={{ flex: 1, flexDirection: 'row' }}>
-      <View style={{ flex: 1, padding: 20 }}>
+      <View style={{ flex: 1, padding: isCompact ? 14 : 20 }}>
         {/* Stats bar */}
         {stats && (
-          <View style={{ flexDirection: 'row', gap: 16, marginBottom: 16 }}>
+          <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: isCompact ? 8 : 16, marginBottom: 16 }}>
             {[
               { label: 'Total', value: stats.total },
               { label: 'Unread', value: stats.unread },
@@ -241,10 +247,10 @@ export default function NotificationsTab() {
                   borderColor: isDark ? '#262626' : '#E7E5E4',
                 }}
               >
-                <Text style={{ fontFamily: 'Inter-Regular', fontSize: 11, color: colors.textMuted, marginBottom: 2 }}>
+                <Text style={{ fontFamily: 'Inclusive Sans', fontSize: 11, color: colors.textMuted, marginBottom: 2 }}>
                   {s.label}
                 </Text>
-                <Text style={{ fontFamily: 'Inter-Bold', fontSize: 20, color: colors.text }}>
+                <Text style={{ fontFamily: 'Inclusive Sans', fontSize: 20, color: colors.text }}>
                   {s.value}
                 </Text>
               </View>
@@ -253,14 +259,22 @@ export default function NotificationsTab() {
         )}
 
         {/* Header row */}
-        <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
-          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12 }}>
-            <Text style={{ fontFamily: 'Inter-Bold', fontSize: 18, color: colors.text }}>
+        <View
+          style={{
+            flexDirection: isCompact ? 'column' : 'row',
+            justifyContent: 'space-between',
+            alignItems: isCompact ? 'stretch' : 'center',
+            gap: 10,
+            marginBottom: 16,
+          }}
+        >
+          <View style={{ flexDirection: 'row', alignItems: 'center', flexWrap: 'wrap', gap: 12 }}>
+            <Text style={{ fontFamily: 'Inclusive Sans', fontSize: 18, color: colors.text }}>
               Notifications ({total})
             </Text>
 
             {/* Type filter */}
-            <View style={{ flexDirection: 'row', gap: 4 }}>
+            <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 4 }}>
               <Pressable
                 onPress={() => setFilterType(undefined)}
                 style={{
@@ -271,7 +285,7 @@ export default function NotificationsTab() {
                 }}
               >
                 <Text style={{
-                  fontFamily: 'Inter-Medium',
+                  fontFamily: 'Inclusive Sans',
                   fontSize: 11,
                   color: filterType === undefined ? '#fff' : colors.textSecondary,
                 }}>
@@ -290,7 +304,7 @@ export default function NotificationsTab() {
                   }}
                 >
                   <Text style={{
-                    fontFamily: 'Inter-Medium',
+                    fontFamily: 'Inclusive Sans',
                     fontSize: 11,
                     color: filterType === tid ? '#fff' : colors.textSecondary,
                   }}>
@@ -311,10 +325,11 @@ export default function NotificationsTab() {
               paddingHorizontal: 14,
               paddingVertical: 8,
               borderRadius: 8,
+              alignSelf: isCompact ? 'flex-start' : 'auto',
             }}
           >
             <Send size={14} color="#fff" />
-            <Text style={{ fontFamily: 'Inter-SemiBold', fontSize: 13, color: '#fff' }}>Send</Text>
+            <Text style={{ fontFamily: 'Inclusive Sans', fontSize: 13, color: '#fff' }}>Send</Text>
           </Pressable>
         </View>
 
@@ -328,20 +343,20 @@ export default function NotificationsTab() {
             borderWidth: 1,
             borderColor: isDark ? '#262626' : '#E7E5E4',
           }}>
-            <Text style={{ fontFamily: 'Inter-SemiBold', fontSize: 14, color: colors.text, marginBottom: 12 }}>
+            <Text style={{ fontFamily: 'Inclusive Sans', fontSize: 14, color: colors.text, marginBottom: 12 }}>
               Send Notification
             </Text>
 
-            <View style={{ flexDirection: 'row', gap: 12, marginBottom: 10 }}>
+            <View style={{ flexDirection: isCompact ? 'column' : 'row', gap: 12, marginBottom: 10 }}>
               <View style={{ flex: 1 }}>
-                <Text style={{ fontFamily: 'Inter-Medium', fontSize: 11, color: colors.textMuted, marginBottom: 4 }}>Title</Text>
+                <Text style={{ fontFamily: 'Inclusive Sans', fontSize: 11, color: colors.textMuted, marginBottom: 4 }}>Title</Text>
                 <TextInput
                   value={sendTitle}
                   onChangeText={setSendTitle}
                   placeholder="Notification title"
                   placeholderTextColor={colors.textMuted}
                   style={{
-                    fontFamily: 'Inter-Regular',
+                    fontFamily: 'Inclusive Sans',
                     fontSize: 13,
                     color: inputColor,
                     backgroundColor: inputBg,
@@ -353,8 +368,8 @@ export default function NotificationsTab() {
                   }}
                 />
               </View>
-              <View style={{ width: 160 }}>
-                <Text style={{ fontFamily: 'Inter-Medium', fontSize: 11, color: colors.textMuted, marginBottom: 4 }}>Type</Text>
+              <View style={{ width: isCompact ? '100%' : 160 }}>
+                <Text style={{ fontFamily: 'Inclusive Sans', fontSize: 11, color: colors.textMuted, marginBottom: 4 }}>Type</Text>
                 <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 4 }}>
                   {[7, 6].map((tid) => (
                     <Pressable
@@ -368,7 +383,7 @@ export default function NotificationsTab() {
                       }}
                     >
                       <Text style={{
-                        fontFamily: 'Inter-Medium',
+                        fontFamily: 'Inclusive Sans',
                         fontSize: 11,
                         color: sendTypeId === tid ? '#fff' : colors.textSecondary,
                       }}>
@@ -381,7 +396,7 @@ export default function NotificationsTab() {
             </View>
 
             <View style={{ marginBottom: 10 }}>
-              <Text style={{ fontFamily: 'Inter-Medium', fontSize: 11, color: colors.textMuted, marginBottom: 4 }}>Message</Text>
+              <Text style={{ fontFamily: 'Inclusive Sans', fontSize: 11, color: colors.textMuted, marginBottom: 4 }}>Message</Text>
               <TextInput
                 value={sendMessage}
                 onChangeText={setSendMessage}
@@ -390,7 +405,7 @@ export default function NotificationsTab() {
                 multiline
                 numberOfLines={2}
                 style={{
-                  fontFamily: 'Inter-Regular',
+                  fontFamily: 'Inclusive Sans',
                   fontSize: 13,
                   color: inputColor,
                   backgroundColor: inputBg,
@@ -404,7 +419,7 @@ export default function NotificationsTab() {
               />
             </View>
 
-            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12, marginBottom: 12 }}>
+            <View style={{ flexDirection: 'row', alignItems: 'center', flexWrap: 'wrap', gap: 12, marginBottom: 12 }}>
               <Pressable
                 onPress={() => setSendBroadcast(true)}
                 style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}
@@ -420,7 +435,7 @@ export default function NotificationsTab() {
                 }}>
                   {sendBroadcast && <View style={{ width: 8, height: 8, borderRadius: 4, backgroundColor: '#E8862A' }} />}
                 </View>
-                <Text style={{ fontFamily: 'Inter-Medium', fontSize: 12, color: colors.text }}>Broadcast to all</Text>
+                <Text style={{ fontFamily: 'Inclusive Sans', fontSize: 12, color: colors.text }}>Broadcast to all</Text>
               </Pressable>
 
               <Pressable
@@ -438,7 +453,7 @@ export default function NotificationsTab() {
                 }}>
                   {!sendBroadcast && <View style={{ width: 8, height: 8, borderRadius: 4, backgroundColor: '#E8862A' }} />}
                 </View>
-                <Text style={{ fontFamily: 'Inter-Medium', fontSize: 12, color: colors.text }}>Specific user</Text>
+                <Text style={{ fontFamily: 'Inclusive Sans', fontSize: 12, color: colors.text }}>Specific user</Text>
               </Pressable>
 
               {!sendBroadcast && (
@@ -448,7 +463,7 @@ export default function NotificationsTab() {
                   placeholder="User ID"
                   placeholderTextColor={colors.textMuted}
                   style={{
-                    fontFamily: 'Inter-Regular',
+                    fontFamily: 'Inclusive Sans',
                     fontSize: 12,
                     color: inputColor,
                     backgroundColor: inputBg,
@@ -457,7 +472,7 @@ export default function NotificationsTab() {
                     borderRadius: 6,
                     paddingHorizontal: 10,
                     paddingVertical: 6,
-                    width: 200,
+                    width: isCompact ? '100%' : 200,
                   }}
                 />
               )}
@@ -482,13 +497,13 @@ export default function NotificationsTab() {
                 ) : (
                   <Send size={14} color="#fff" />
                 )}
-                <Text style={{ fontFamily: 'Inter-SemiBold', fontSize: 13, color: '#fff' }}>
+                <Text style={{ fontFamily: 'Inclusive Sans', fontSize: 13, color: '#fff' }}>
                   {sending ? 'Sending...' : sendBroadcast ? 'Send to All' : 'Send'}
                 </Text>
               </Pressable>
               {sendResult && (
                 <Text style={{
-                  fontFamily: 'Inter-Regular',
+                  fontFamily: 'Inclusive Sans',
                   fontSize: 12,
                   color: sendResult.startsWith('Error') ? '#DC2626' : (isDark ? '#4ADE80' : '#16A34A'),
                 }}>
@@ -511,10 +526,10 @@ export default function NotificationsTab() {
         {notifications.length === 0 && !loading && (
           <View style={{ padding: 40, alignItems: 'center' }}>
             <Bell size={32} color={colors.textMuted} />
-            <Text style={{ fontFamily: 'Inter-Medium', fontSize: 14, color: colors.textMuted, marginTop: 12 }}>
+            <Text style={{ fontFamily: 'Inclusive Sans', fontSize: 14, color: colors.textMuted, marginTop: 12 }}>
               No notifications yet
             </Text>
-            <Text style={{ fontFamily: 'Inter-Regular', fontSize: 12, color: colors.textMuted, marginTop: 4 }}>
+            <Text style={{ fontFamily: 'Inclusive Sans', fontSize: 12, color: colors.textMuted, marginTop: 4 }}>
               Send a notification or wire up triggers to see them here
             </Text>
           </View>
@@ -524,10 +539,20 @@ export default function NotificationsTab() {
       {/* Detail panel */}
       {selected && (
         <View style={{
-          width: 320,
-          borderLeftWidth: 1,
+          width: isCompact ? '100%' : 320,
+          borderLeftWidth: isCompact ? 0 : 1,
           borderLeftColor: colors.border,
           backgroundColor: colors.panelBg,
+          ...(isCompact
+            ? {
+                position: 'absolute' as const,
+                top: 0,
+                right: 0,
+                bottom: 0,
+                left: 0,
+                zIndex: 20,
+              }
+            : null),
         }}>
           <View style={{
             flexDirection: 'row',
@@ -538,11 +563,11 @@ export default function NotificationsTab() {
             borderBottomWidth: 1,
             borderBottomColor: colors.border,
           }}>
-            <Text style={{ fontFamily: 'Inter-Bold', fontSize: 15, color: colors.text }} numberOfLines={1}>
+            <Text style={{ fontFamily: 'Inclusive Sans', fontSize: 15, color: colors.text }} numberOfLines={1}>
               {selected.title}
             </Text>
             <Pressable onPress={() => setSelectedId(null)} hitSlop={8}>
-              <Text style={{ fontFamily: 'Inter-Medium', fontSize: 18, color: colors.textMuted }}>x</Text>
+              <Text style={{ fontFamily: 'Inclusive Sans', fontSize: 18, color: colors.textMuted }}>x</Text>
             </Pressable>
           </View>
 
@@ -550,23 +575,23 @@ export default function NotificationsTab() {
             <View style={{ gap: 14 }}>
               {/* Message */}
               <View>
-                <Text style={{ fontFamily: 'Inter-SemiBold', fontSize: 11, color: colors.textMuted, marginBottom: 4, textTransform: 'uppercase', letterSpacing: 0.5 }}>
+                <Text style={{ fontFamily: 'Inclusive Sans', fontSize: 11, color: colors.textMuted, marginBottom: 4, textTransform: 'uppercase', letterSpacing: 0.5 }}>
                   Message
                 </Text>
-                <Text style={{ fontFamily: 'Inter-Regular', fontSize: 13, color: colors.text, lineHeight: 20 }}>
+                <Text style={{ fontFamily: 'Inclusive Sans', fontSize: 13, color: colors.text, lineHeight: 20 }}>
                   {selected.message}
                 </Text>
               </View>
 
               {/* Recipient */}
               <View>
-                <Text style={{ fontFamily: 'Inter-SemiBold', fontSize: 11, color: colors.textMuted, marginBottom: 4, textTransform: 'uppercase', letterSpacing: 0.5 }}>
+                <Text style={{ fontFamily: 'Inclusive Sans', fontSize: 11, color: colors.textMuted, marginBottom: 4, textTransform: 'uppercase', letterSpacing: 0.5 }}>
                   Recipient
                 </Text>
-                <Text style={{ fontFamily: 'Inter-Medium', fontSize: 13, color: colors.text }}>
+                <Text style={{ fontFamily: 'Inclusive Sans', fontSize: 13, color: colors.text }}>
                   {selected.recipientName}
                 </Text>
-                <Text style={{ fontFamily: 'Inter-Regular', fontSize: 11, color: colors.textMuted }}>
+                <Text style={{ fontFamily: 'Inclusive Sans', fontSize: 11, color: colors.textMuted }}>
                   @{selected.recipientUsername} / {selected.userId}
                 </Text>
               </View>
@@ -579,20 +604,20 @@ export default function NotificationsTab() {
 
               {/* Timestamps */}
               <View>
-                <Text style={{ fontFamily: 'Inter-SemiBold', fontSize: 11, color: colors.textMuted, marginBottom: 4, textTransform: 'uppercase', letterSpacing: 0.5 }}>
+                <Text style={{ fontFamily: 'Inclusive Sans', fontSize: 11, color: colors.textMuted, marginBottom: 4, textTransform: 'uppercase', letterSpacing: 0.5 }}>
                   Created
                 </Text>
-                <Text style={{ fontFamily: 'Inter-Regular', fontSize: 12, color: colors.textSecondary }}>
+                <Text style={{ fontFamily: 'Inclusive Sans', fontSize: 12, color: colors.textSecondary }}>
                   {new Date(selected.createdAt).toLocaleString()}
                 </Text>
               </View>
 
               {selected.readAt && (
                 <View>
-                  <Text style={{ fontFamily: 'Inter-SemiBold', fontSize: 11, color: colors.textMuted, marginBottom: 4, textTransform: 'uppercase', letterSpacing: 0.5 }}>
+                  <Text style={{ fontFamily: 'Inclusive Sans', fontSize: 11, color: colors.textMuted, marginBottom: 4, textTransform: 'uppercase', letterSpacing: 0.5 }}>
                     Read At
                   </Text>
-                  <Text style={{ fontFamily: 'Inter-Regular', fontSize: 12, color: colors.textSecondary }}>
+                  <Text style={{ fontFamily: 'Inclusive Sans', fontSize: 12, color: colors.textSecondary }}>
                     {new Date(selected.readAt).toLocaleString()}
                   </Text>
                 </View>
@@ -600,10 +625,10 @@ export default function NotificationsTab() {
 
               {selected.actionUrl && (
                 <View>
-                  <Text style={{ fontFamily: 'Inter-SemiBold', fontSize: 11, color: colors.textMuted, marginBottom: 4, textTransform: 'uppercase', letterSpacing: 0.5 }}>
+                  <Text style={{ fontFamily: 'Inclusive Sans', fontSize: 11, color: colors.textMuted, marginBottom: 4, textTransform: 'uppercase', letterSpacing: 0.5 }}>
                     Action URL
                   </Text>
-                  <Text style={{ fontFamily: 'Inter-Regular', fontSize: 12, color: '#E8862A' }}>
+                  <Text style={{ fontFamily: 'Inclusive Sans', fontSize: 12, color: '#E8862A' }}>
                     {selected.actionUrl}
                   </Text>
                 </View>
@@ -624,7 +649,7 @@ export default function NotificationsTab() {
                   }}
                 >
                   <Trash2 size={14} color={isDark ? '#F87171' : '#DC2626'} />
-                  <Text style={{ fontFamily: 'Inter-SemiBold', fontSize: 12, color: isDark ? '#F87171' : '#DC2626' }}>
+                  <Text style={{ fontFamily: 'Inclusive Sans', fontSize: 12, color: isDark ? '#F87171' : '#DC2626' }}>
                     Delete
                   </Text>
                 </Pressable>

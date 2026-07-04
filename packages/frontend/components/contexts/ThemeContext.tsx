@@ -1,8 +1,9 @@
 // theme.tsx
 import { useColorScheme as useNativeWindColorScheme } from 'nativewind'
 import { useCallback, useContext, useEffect, useMemo, useRef, useState, createContext } from 'react'
-import { Appearance, Platform, View } from 'react-native'
+import { Appearance, Platform, View, Animated } from 'react-native'
 import AsyncStorage from '@react-native-async-storage/async-storage'
+import { supportsNativeDriver } from '../../utils/animation'
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -51,8 +52,16 @@ function storageWrite(pref: ThemePreference): void {
 function applyToDOM(theme: ResolvedTheme): void {
   if (!isWeb || typeof document === 'undefined') return
   const root = document.documentElement
+
+  // Add transition class for smooth theme changes
+  root.classList.add('theme-transitioning')
   root.classList.toggle('dark', theme === 'dark')
   root.style.colorScheme = theme
+
+  // Remove transition class after animation completes
+  setTimeout(() => {
+    root.classList.remove('theme-transitioning')
+  }, 300)
 }
 
 // ─── System-theme hook ────────────────────────────────────────────────────────
@@ -95,6 +104,8 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
   const system = useSystemTheme()
   const [preference, setPreferenceState] = useState<ThemePreference>(storageRead)
   const preferenceRef = useRef(preference)
+  const fadeAnim = useRef(new Animated.Value(0)).current
+  const previousTheme = useRef<ResolvedTheme | null>(null)
 
   // Keep ref current so async callbacks always see the latest value
   useEffect(() => {
@@ -116,12 +127,31 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
 
   // ── Apply to NativeWind + DOM on every change ──────────────────────────────
   useEffect(() => {
-    setColorScheme(preference)
+    // On native we now pass "system" through to NativeWind so it keeps tracking
+    // the OS color scheme (otherwise it locks to the last resolved light/dark
+    // value and "Auto" stops following the system — see #509). Concrete
+    // light/dark preferences still apply directly.
+    // NOTE: this reverses a prior workaround that always passed a concrete value
+    // to avoid an Android startup crash — that concern must be re-verified on a
+    // device before relying on this in production.
+    setColorScheme(isWeb ? preference : preference === 'system' ? 'system' : theme)
     if (isWeb) {
-      document.documentElement.classList.toggle('dark', theme === 'dark')
-      document.documentElement.style.colorScheme = theme
+      applyToDOM(theme)
+    } else {
+      // Native: Smooth crossfade transition (X/Twitter style)
+      if (previousTheme.current !== null && previousTheme.current !== theme) {
+        // Start at full opacity (showing old theme)
+        fadeAnim.setValue(1)
+        // Smoothly fade out to reveal new theme underneath
+        Animated.timing(fadeAnim, {
+          toValue: 0,
+          duration: 300,
+          useNativeDriver: supportsNativeDriver,
+        }).start()
+      }
+      previousTheme.current = theme
     }
-  }, [theme, preference, setColorScheme])
+  }, [theme, preference, setColorScheme, fadeAnim])
 
   // ── Public setter: update state + persist ─────────────────────────────────
   const setPreference = useCallback((pref: ThemePreference) => {
@@ -144,6 +174,19 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
       ) : (
         <View className={`flex-1${theme === 'dark' ? ' dark' : ''}`} style={{ flex: 1 }}>
           {children}
+          {/* Smooth crossfade overlay (X/Twitter style) - shows previous theme color */}
+          <Animated.View
+            pointerEvents="none"
+            style={{
+              position: 'absolute',
+              top: 0,
+              left: 0,
+              right: 0,
+              bottom: 0,
+              backgroundColor: theme === 'dark' ? '#F5F5F4' : '#1A1A1A',
+              opacity: fadeAnim,
+            }}
+          />
         </View>
       )}
     </ThemeContext.Provider>

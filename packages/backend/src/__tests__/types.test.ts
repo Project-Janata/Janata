@@ -22,6 +22,7 @@ const mockUserRow: UserRow = {
   date_of_birth: '2000-01-01',
   phone_number: '+1234567890',
   profile_image: 'https://img.example.com/pic.jpg',
+  bio: null,
   center_id: 'c-1',
   points: 100,
   is_verified: 1,
@@ -29,6 +30,14 @@ const mockUserRow: UserRow = {
   is_active: 1,
   profile_complete: 1,
   interests: '["yoga","vedanta"]',
+  invite_code: null,
+  invited_by_user_id: null,
+  email_verified_at: null,
+  // Minimal profile fields (#210)
+  school: 'UC Berkeley',
+  work: 'Software Engineer',
+  region: 'San Francisco Bay Area',
+  looking_for: '["Mentorship","Study partner"]',
   created_at: '2025-01-01T00:00:00Z',
   updated_at: '2025-06-01T00:00:00Z',
 }
@@ -59,6 +68,8 @@ const mockEventRow: EventRow = {
   point_of_contact: 'Ramesh Ji',
   image: 'https://img.example.com/event.jpg',
   category: 91,
+  is_official: 0,
+  requires_verified: 0,
   created_at: '2025-01-01T00:00:00Z',
   updated_at: '2025-06-01T00:00:00Z',
 }
@@ -91,8 +102,16 @@ describe('userRowToApi', () => {
     expect(api.profileComplete).toBe(true)
   })
 
-  it('converts is_verified=0, is_active=0, profile_complete=0 to false', () => {
-    const row = { ...mockUserRow, is_verified: 0, is_active: 0, profile_complete: 0 }
+  it('converts integer booleans to false; derives isVerified from verification_level', () => {
+    // isVerified is now derived from verification_level >= NORMAL_USER (45),
+    // not the legacy is_verified column. Use UNVERIFIED_USER (30) here.
+    const row = {
+      ...mockUserRow,
+      is_verified: 0,
+      is_active: 0,
+      profile_complete: 0,
+      verification_level: 30,
+    }
     const api = userRowToApi(row)
     expect(api.isVerified).toBe(false)
     expect(api.isActive).toBe(false)
@@ -130,6 +149,29 @@ describe('userRowToApi', () => {
     expect(api.phoneNumber).toBeNull()
     expect(api.profileImage).toBeNull()
     expect(api.centerID).toBeNull()
+  })
+
+  it('surfaces minimal profile fields (#210)', () => {
+    const api = userRowToApi(mockUserRow)
+    expect(api.school).toBe('UC Berkeley')
+    expect(api.work).toBe('Software Engineer')
+    expect(api.region).toBe('San Francisco Bay Area')
+    expect(api.lookingFor).toEqual(['Mentorship', 'Study partner'])
+  })
+
+  it('returns null for unset minimal profile fields', () => {
+    const row: UserRow = {
+      ...mockUserRow,
+      school: null,
+      work: null,
+      region: null,
+      looking_for: null,
+    }
+    const api = userRowToApi(row)
+    expect(api.school).toBeNull()
+    expect(api.work).toBeNull()
+    expect(api.region).toBeNull()
+    expect(api.lookingFor).toBeNull()
   })
 })
 

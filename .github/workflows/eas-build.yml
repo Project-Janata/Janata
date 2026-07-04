@@ -1,0 +1,102 @@
+name: EAS Build
+
+# Triggers a production build via EAS — NEVER auto-submits to App Store /
+# TestFlight / Play Store. The human runs `eas submit` after reviewing the
+# build artifact. See docs/eas-build-runbook.md.
+#
+# Setup (one-time, see runbook):
+#   1. expo.dev → Account → Access Tokens → Create token
+#   2. GitHub → Settings → Secrets → Actions → Add EXPO_TOKEN
+
+on:
+  # Tag pushes are the canonical trigger. Use `ios-v0.2.0` or
+  # `android-v0.2.0` patterns. Each tag scopes the build to one platform
+  # so we don't waste credits when only one is needed.
+  push:
+    tags:
+      - 'ios-v*'
+      - 'android-v*'
+
+  # Manual trigger for ad-hoc internal builds, dry-runs, or rebuilding
+  # an existing version after fixing a build-time issue.
+  workflow_dispatch:
+    inputs:
+      platform:
+        description: 'Platform to build'
+        required: true
+        type: choice
+        options:
+          - ios
+          - android
+          - all
+        default: 'ios'
+      profile:
+        description: 'EAS build profile (matches a key under build.* in eas.json)'
+        required: true
+        type: choice
+        options:
+          - development
+          - preview
+          - production
+        default: 'preview'
+
+jobs:
+  build:
+    name: Build via EAS
+    runs-on: ubuntu-latest
+
+    # The build itself runs on Expo's macOS hosts; this runner only kicks
+    # off the EAS job. Keeping it ubuntu means we don't burn macOS minutes.
+    timeout-minutes: 30
+
+    steps:
+      - uses: actions/checkout@v5
+
+      - name: Resolve platform + profile
+        id: resolve
+        run: |
+          if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
+            echo "platform=${{ github.event.inputs.platform }}" >> "$GITHUB_OUTPUT"
+            echo "profile=${{ github.event.inputs.profile }}" >> "$GITHUB_OUTPUT"
+          else
+            # Tag-triggered. Pattern: ios-v0.2.0 / android-v0.2.0
+            tag="${{ github.ref_name }}"
+            case "$tag" in
+              ios-v*)     echo "platform=ios" >> "$GITHUB_OUTPUT" ;;
+              android-v*) echo "platform=android" >> "$GITHUB_OUTPUT" ;;
+              *) echo "::error::Unrecognized tag pattern: $tag"; exit 1 ;;
+            esac
+            echo "profile=production" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Use Node.js
+        uses: actions/setup-node@v5
+        with:
+          node-version: '22'
+          cache: 'npm'
+
+      - name: Install dependencies (root + workspace)
+        run: npm ci
+
+      - name: Setup EAS CLI
+        uses: expo/expo-github-action@v8
+        with:
+          eas-version: latest
+          token: ${{ secrets.EXPO_TOKEN }}
+
+      - name: Build
+        working-directory: packages/frontend
+        env:
+          EXPO_NO_TELEMETRY: '1'
+          EXPO_TOKEN: ${{ secrets.EXPO_TOKEN }}
+        run: |
+          echo "::notice::Building platform=${{ steps.resolve.outputs.platform }} profile=${{ steps.resolve.outputs.profile }}"
+          eas build \
+            --platform "${{ steps.resolve.outputs.platform }}" \
+            --profile "${{ steps.resolve.outputs.profile }}" \
+            --non-interactive \
+            --no-wait
+
+      - name: Note about submit
+        run: |
+          echo "::notice::This workflow builds only. Human runs 'eas submit' after reviewing the artifact in the EAS dashboard. See docs/eas-build-runbook.md."

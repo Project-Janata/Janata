@@ -1,19 +1,26 @@
-import React, { useState, useCallback, useEffect } from 'react'
-import { useRouter } from 'expo-router'
-import { useUser } from '../components/contexts'
-import { validateEmail, validatePassword } from '../utils'
-import PasswordStrength from '../components/PasswordStrength'
+import React, { useCallback, useState, useEffect } from 'react'
+import { useRouter, useLocalSearchParams } from 'expo-router'
+import { useAnalytics } from '../utils/analytics'
+import PasswordStrength from '../components/auth/PasswordStrength'
 import { ImageCarousel } from '../components/auth/ImageCarousel'
+import { useAuthFlow } from '../components/auth/useAuthFlow'
+import { InviteCodeInput } from '../components/invite/InviteCodeField'
+import { extractInviteCode } from '../utils/validation'
 // eslint-disable-next-line @typescript-eslint/no-var-requires
 const swamiChinmayanandaJpg = require('../assets/images/landing/Swami Chinmayananda.jpg')
 const swamiChinmayanandaAlt = require('../assets/images/landing/Swami Chinmayananda (1).jpg')
 const swamiChinmayanandaOption2 = require('../assets/images/landing/Swami Chinmayananda Option 2.jpeg')
 import DevPanel from '../components/DevPanel'
 import Logo from '../components/ui/Logo'
-import { API_BASE_URL } from '../src/config/api'
+import { useColors } from '../hooks/useColors'
+import { useTheme } from '../components/contexts'
 
-// __DEV__ is a React Native/Expo global — always false in production builds
-const isDev = typeof __DEV__ !== 'undefined' && __DEV__
+// __DEV__ is a React Native/Expo global — always false in production builds.
+// EXPO_PUBLIC_SHOW_DEV_TOOLS=1 also enables the dev/demo tools (set on the
+// isolated v2 preview build) so role-switching works for demos there too.
+const isDev =
+  (typeof __DEV__ !== 'undefined' && __DEV__) ||
+  process.env.EXPO_PUBLIC_SHOW_DEV_TOOLS === '1'
 
 // Inject CSS for placeholder, hover, and mobile-specific styles (web only)
 if (typeof document !== 'undefined') {
@@ -22,10 +29,10 @@ if (typeof document !== 'undefined') {
     const style = document.createElement('style')
     style.id = id
     style.textContent = `
-      .auth-input::placeholder { color: #9CA3AF; }
+      .auth-input::placeholder { color: var(--auth-placeholder, #78716C); }
       .auth-input:disabled { opacity: 0.6; cursor: not-allowed; }
       .auth-input { font-size: 16px !important; } /* Prevent iOS zoom on focus */
-      .auth-submit:hover:not(:disabled) { background-color: #B91C1C !important; }
+      .auth-submit:hover:not(:disabled) { background-color: var(--auth-submit-hover, #D97520) !important; }
       @supports (min-height: 100dvh) {
         .auth-root { min-height: 100dvh !important; }
       }
@@ -33,8 +40,6 @@ if (typeof document !== 'undefined') {
     document.head.appendChild(style)
   }
 }
-
-type AuthStep = 'initial' | 'login' | 'invite-code' | 'signup'
 
 const AUTH_CAROUSEL_IMAGES = [
   swamiChinmayanandaJpg,
@@ -44,199 +49,52 @@ const AUTH_CAROUSEL_IMAGES = [
 
 export default function AuthScreen() {
   const router = useRouter()
-  const { checkUserExists, login, signup, loading } = useUser()
+  const { track } = useAnalytics()
+  const c = useColors()
+  const { isDark } = useTheme()
 
-  // Read mode, returnTo, and inviteCode from URL params
-  const urlParams = typeof window !== 'undefined' ? new URLSearchParams(window.location.search) : null
-  const initialMode = urlParams?.get('mode')
-  const returnTo = urlParams?.get('returnTo')
-  const urlInviteCode = urlParams?.get('inviteCode')
+  // Shared auth state machine (see auth.tsx — same logic, RN presentation).
+  const {
+    authStep,
+    username,
+    password,
+    confirmPassword,
+    errorMessages,
+    loading,
+    inviterName,
+    hasInvite,
+    isInviteWallEntry,
+    emailEditable,
+    isButtonDisabled,
+    heading,
+    subtitle,
+    changeUsername,
+    changePassword,
+    changeConfirm,
+    handleSubmit,
+    handleBack,
+  } = useAuthFlow()
 
-  // When inviteCode is provided via URL (e.g. from public explore flow),
-  // skip the invite-code step and go straight to signup
-  const [authStep, setAuthStep] = useState<AuthStep>(
-    initialMode === 'login' ? 'login'
-      : initialMode === 'signup' && urlInviteCode ? 'signup'
-      : 'initial'
-  )
-  const [username, setUsername] = useState('')
-  const [password, setPassword] = useState('')
-  const [confirmPassword, setConfirmPassword] = useState('')
-  const [inviteCode, setInviteCode] = useState(urlInviteCode || '')
-  const [errors, setErrors] = useState<{ [key: string]: string }>({})
+  // Web-only presentation state.
   const [showDevPanel, setShowDevPanel] = useState(false)
-  // Focus state for input styling
   const [emailFocused, setEmailFocused] = useState(false)
   const [passwordFocused, setPasswordFocused] = useState(false)
   const [confirmPasswordFocused, setConfirmPasswordFocused] = useState(false)
-  const [inviteCodeFocused, setInviteCodeFocused] = useState(false)
+  // `?invite=1` opens straight to the paste-invite field (shared with native).
+  const { invite: inviteParam } = useLocalSearchParams<{ invite?: string }>()
+  const [showInviteField, setShowInviteField] = useState(inviteParam === '1')
+  const [inviteValue, setInviteValue] = useState('')
+  const [inviteError, setInviteError] = useState('')
   const [viewportWidth, setViewportWidth] = useState(() =>
-    typeof window !== 'undefined' ? window.innerWidth : 1280
+    typeof window !== 'undefined' ? window.innerWidth : 1280,
   )
 
   useEffect(() => {
     if (typeof window === 'undefined') return
-
     const onResize = () => setViewportWidth(window.innerWidth)
     window.addEventListener('resize', onResize)
     return () => window.removeEventListener('resize', onResize)
   }, [])
-
-  // --- Auth Handlers (same logic as auth.tsx) ---
-
-  const handleContinue = useCallback(async () => {
-    setErrors({})
-    if (!username) {
-      setErrors({ username: 'Please enter a username.' })
-      return
-    }
-    if (!validateEmail(username)) {
-      setErrors({ username: 'You must enter a valid email address.' })
-      return
-    }
-    try {
-      const exists = await checkUserExists(username)
-      if (exists) {
-        setAuthStep('login')
-      } else {
-        setAuthStep('invite-code')
-      }
-    } catch (e: any) {
-      setErrors({ form: e.message || 'Failed to connect to server.' })
-    }
-  }, [username, checkUserExists])
-
-  const handleLogin = useCallback(async () => {
-    setErrors({})
-    if (!username) {
-      setErrors({ username: 'Please enter a username.' })
-      return
-    }
-    if (!password) {
-      setErrors({ password: 'Please enter your password.' })
-      return
-    }
-    try {
-      const result = await login(username, password)
-      if (result.success) {
-        router.replace(returnTo || '/(tabs)')
-      } else {
-        setErrors({ form: result.message || 'Username or password is incorrect.' })
-      }
-    } catch (e: any) {
-      setErrors({ form: 'Failed to connect to server. Please try again.' })
-    }
-  }, [username, password, login, router])
-
-  const handleSignup = useCallback(async () => {
-    setErrors({})
-    if (!username) {
-      setErrors({ username: 'Please enter a username.' })
-      return
-    }
-    if (!password) {
-      setErrors({ password: 'Please enter a password.' })
-      return
-    }
-    if (!validatePassword(password).isValid) {
-      setErrors({ password: 'Password does not meet complexity requirements.' })
-      return
-    }
-    if (password !== confirmPassword) {
-      setErrors({ confirmPassword: 'Passwords do not match.' })
-      return
-    }
-    try {
-      const result = await signup(username, password, inviteCode)
-      if (result.success) {
-        router.replace(returnTo ? `/onboarding?returnTo=${encodeURIComponent(returnTo)}` : '/onboarding')
-      } else {
-        setErrors({ form: result.message || 'Failed to sign up. Please try again.' })
-      }
-    } catch (e: any) {
-      setErrors({ form: 'Failed to connect to server. Please try again.' })
-    }
-  }, [username, password, confirmPassword, inviteCode, signup, router])
-
-  const handleInviteCodeContinue = useCallback(async () => {
-    setErrors({})
-    if (!inviteCode) {
-      setErrors({ inviteCode: 'Please enter your invite code.' })
-      return
-    }
-    try {
-      // Validate the invite code with the backend
-      const response = await fetch(`${API_BASE_URL}/auth/validate-invite-code`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ code: inviteCode }),
-      })
-      const data = await response.json()
-      if (data.valid) {
-        setAuthStep('signup')
-      } else {
-        setErrors({ form: data.error || 'Invalid or inactive invite code.' })
-      }
-    } catch (e: any) {
-      setErrors({ form: 'Failed to validate invite code. Please try again.' })
-    }
-  }, [inviteCode])
-
-  const handleSubmit = useCallback(
-    (e?: any) => {
-      if (e) {
-        e.preventDefault?.()
-        e.stopPropagation?.()
-      }
-      if (authStep === 'login') {
-        handleLogin()
-      } else if (authStep === 'invite-code') {
-        handleInviteCodeContinue()
-      } else if (authStep === 'signup') {
-        handleSignup()
-      } else {
-        handleContinue()
-      }
-    },
-    [authStep, handleLogin, handleInviteCodeContinue, handleSignup, handleContinue]
-  )
-
-  const handleBack = useCallback(() => {
-    setAuthStep('initial')
-    setPassword('')
-    setConfirmPassword('')
-    setInviteCode('')
-    setErrors({})
-  }, [])
-
-  const handleUsernameChange = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
-    setUsername(e.target.value)
-    setErrors((prev) => ({ ...prev, username: '' }))
-  }, [])
-
-  const handlePasswordChange = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
-    setPassword(e.target.value)
-    setErrors((prev) => ({ ...prev, password: '' }))
-  }, [])
-
-  const handleConfirmPasswordChange = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
-    setConfirmPassword(e.target.value)
-    setErrors((prev) => ({ ...prev, confirmPassword: '' }))
-  }, [])
-
-  const handleInviteCodeChange = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
-    setInviteCode(e.target.value)
-    setErrors((prev) => ({ ...prev, inviteCode: '' }))
-  }, [])
-
-  const isButtonDisabled =
-    loading ||
-    (authStep === 'initial' && !username) ||
-    (authStep === 'invite-code' && !inviteCode) ||
-    (authStep !== 'initial' && authStep !== 'invite-code' && !password) ||
-    (authStep === 'signup' && !confirmPassword)
-
-  const errorMessages = Object.values(errors).filter(Boolean)
 
   // --- Input style helpers ---
 
@@ -246,60 +104,73 @@ export default function AuthScreen() {
     minHeight: 44,
     borderWidth: 1,
     borderStyle: 'solid',
-    borderColor: '#D6D3D1',
-    borderRadius: 8,
+    borderColor: c.border,
+    borderRadius: 12,
     padding: '0 16px',
     fontSize: 16,
-    fontFamily: 'Inter, sans-serif',
-    color: '#1C1917',
-    backgroundColor: '#FAFAF7',
+    fontFamily: 'Inclusive Sans, sans-serif',
+    color: c.text,
+    backgroundColor: c.surface,
     outline: 'none',
     boxSizing: 'border-box' as const,
     WebkitAppearance: 'none' as const,
+    colorScheme: isDark ? 'dark' : 'light',
   }
-
   const focusInputStyle: React.CSSProperties = {
-    borderColor: '#C2410C',
+    borderColor: c.accent,
     boxShadow: '0 0 0 3px rgba(194,65,12,0.1)',
-    backgroundColor: '#FFFFFF',
+    backgroundColor: c.card,
   }
-
   const getInputStyle = (focused: boolean): React.CSSProperties => ({
     ...baseInputStyle,
     ...(focused ? focusInputStyle : {}),
   })
 
-  // --- Heading and subtitle per step ---
-
-  const heading =
-    authStep === 'login'
-      ? 'Welcome back.'
-      : authStep === 'invite-code'
-        ? 'Enter invite code.'
-        : authStep === 'signup'
-          ? 'Join the community.'
-          : 'Welcome.'
-
-  const subtitle =
-    authStep === 'login'
-      ? 'Enter your password to continue'
-      : authStep === 'invite-code'
-        ? 'Enter your beta invite code to proceed'
-        : authStep === 'signup'
-          ? 'Create your account to get started'
-          : 'Enter your email to get started'
-
   const buttonText = loading
     ? 'Please wait...'
     : authStep === 'login'
       ? 'Sign In'
-      : authStep === 'invite-code'
-        ? 'Verify Code'
-        : authStep === 'signup'
-          ? 'Create Account'
-          : 'Continue'
+      : authStep === 'signup'
+        ? hasInvite
+          ? 'Accept invite and create account'
+          : 'Create Account'
+        : 'Continue'
   const isNarrowWeb = viewportWidth < 1024
   const isMobile = viewportWidth < 640
+  const revealInviteField = useCallback(() => {
+    track('auth_have_invite_pressed', { source: 'auth' })
+    setShowInviteField(true)
+  }, [track])
+  const hideInviteField = useCallback(() => {
+    track('auth_invite_entry_cancelled', { source: 'auth' })
+    setShowInviteField(false)
+    setInviteValue('')
+    setInviteError('')
+  }, [track])
+  const openInvite = useCallback((code: string) => {
+    track('auth_invite_code_submitted', { source: 'auth' })
+    router.push(`/i/${encodeURIComponent(code)}` as never)
+  }, [router, track])
+  const submitInvite = useCallback(() => {
+    const code = extractInviteCode(inviteValue)
+    if (!code) {
+      setInviteError('Paste a valid invite link or code.')
+      return
+    }
+    setInviteError('')
+    openInvite(code)
+  }, [inviteValue, openInvite])
+  const handlePrimarySubmit = useCallback((event: React.FormEvent<HTMLFormElement>) => {
+    if (showInviteField && inviteValue.trim()) {
+      event.preventDefault()
+      event.stopPropagation()
+      submitInvite()
+      return
+    }
+    handleSubmit(event)
+  }, [handleSubmit, inviteValue, showInviteField, submitInvite])
+  const inviteHasText = showInviteField && inviteValue.trim().length > 0
+  const primaryDisabled = inviteHasText ? loading : isButtonDisabled
 
   return (
     <div
@@ -308,7 +179,9 @@ export default function AuthScreen() {
         display: 'flex',
         flexDirection: isNarrowWeb ? 'column' : 'row',
         minHeight: '100vh',
-        backgroundColor: '#FAFAF7',
+        backgroundColor: c.bg,
+        ['--auth-placeholder' as any]: c.textFaint,
+        ['--auth-submit-hover' as any]: c.accentPress,
       }}
     >
       {/* Left: Image Carousel */}
@@ -322,7 +195,7 @@ export default function AuthScreen() {
       <div
         style={{
           width: isNarrowWeb ? '100%' : '50%',
-          backgroundColor: '#FAFAF7',
+          backgroundColor: c.bg,
           display: 'flex',
           flexDirection: 'column',
           overflow: 'auto',
@@ -330,7 +203,7 @@ export default function AuthScreen() {
           flex: 1,
         }}
       >
-        {/* Top nav: back to landing (left) + Discover (right) */}
+        {/* Top nav: home mark (left) + guest browse (right) */}
         <nav
           style={{
             display: 'flex',
@@ -341,41 +214,41 @@ export default function AuthScreen() {
           }}
         >
           <button
-            onClick={() => router.push('/landing')}
+            onClick={() => { track('auth_logo_pressed', { source: 'auth' }); router.push('/landing') }}
+            onDoubleClick={isDev ? () => setShowDevPanel(true) : undefined}
+            aria-label="Go to Janata home"
             style={{
               background: 'none',
               border: 'none',
               cursor: 'pointer',
-              padding: '8px 4px',
-              margin: '-8px -4px',
-              fontSize: 14,
-              fontFamily: 'Inter, sans-serif',
-              color: '#78716C',
+              padding: 0,
+              margin: 0,
               minHeight: 44,
               display: 'flex',
               alignItems: 'center',
             }}
           >
-            &larr; Back to home
+            <Logo size={isMobile ? 28 : 32} />
           </button>
           <button
-            onClick={() => router.push('/(tabs)')}
+            onClick={() => { track('auth_browse_as_guest_pressed', { source: 'auth' }); router.push('/explore') }}
             style={{
-              background: 'none',
-              border: 'none',
+              backgroundColor: c.card,
+              border: `1px solid ${c.borderStrong}`,
+              borderRadius: 12,
               cursor: 'pointer',
-              padding: '8px 4px',
-              margin: '-8px -4px',
+              padding: '0 16px',
               fontSize: 14,
-              fontFamily: 'Inter, sans-serif',
+              fontFamily: 'Inclusive Sans, sans-serif',
               fontWeight: '500',
-              color: '#C2410C',
+              color: c.textSecondary,
+              height: 44,
               minHeight: 44,
               display: 'flex',
               alignItems: 'center',
             }}
           >
-            Discover &rarr;
+            Browse as guest
           </button>
         </nav>
 
@@ -384,8 +257,8 @@ export default function AuthScreen() {
             flex: 1,
             display: 'flex',
             alignItems: isMobile ? 'flex-start' : 'center',
-            justifyContent: 'center',
-            padding: isMobile ? '8px 16px 24px' : isNarrowWeb ? '0 20px 32px' : 0,
+            justifyContent: isMobile ? 'flex-start' : 'center',
+            padding: isMobile ? '44px 24px 28px' : isNarrowWeb ? '40px 20px 32px' : 0,
           }}
         >
         <div style={{ maxWidth: 400, width: '100%', padding: isNarrowWeb ? 0 : '0 48px' }}>
@@ -394,9 +267,9 @@ export default function AuthScreen() {
             <button
               onClick={handleBack}
               style={{
-                color: '#78716C',
+                color: c.textMuted,
                 fontSize: 14,
-                fontFamily: 'Inter, sans-serif',
+                fontFamily: 'Inclusive Sans, sans-serif',
                 cursor: 'pointer',
                 background: 'none',
                 border: 'none',
@@ -413,24 +286,16 @@ export default function AuthScreen() {
             </button>
           )}
 
-          {/* Janata logo */}
-          <div
-            onClick={() => router.push('/landing')}
-            role="link"
-            style={{ marginBottom: isMobile ? 32 : 48, cursor: 'pointer' }}
-          >
-            <Logo size={isMobile ? 28 : 32} />
-          </div>
-
           {/* Heading */}
           <h1
             style={{
               fontFamily: '"Inclusive Sans", sans-serif',
               fontSize: isMobile ? 28 : isNarrowWeb ? 32 : 36,
               fontWeight: '400',
-              color: '#1C1917',
-              marginBottom: 8,
+              color: c.text,
+              marginBottom: 10,
               marginTop: 0,
+              lineHeight: isMobile ? '34px' : isNarrowWeb ? '38px' : '43px',
             }}
           >
             {heading}
@@ -439,21 +304,55 @@ export default function AuthScreen() {
           {/* Subtitle */}
           <p
             style={{
-              fontFamily: 'Inter, sans-serif',
+              fontFamily: 'Inclusive Sans, sans-serif',
               fontSize: 16,
-              color: '#78716C',
-              marginBottom: 32,
+              color: c.textMuted,
+              marginBottom: 26,
               marginTop: 0,
+              lineHeight: '24px',
             }}
           >
             {subtitle}
           </p>
 
+          {/* Applied-invite bar (#403): the vouch carries into account creation,
+              and is "held" when an email collision flips to login. */}
+          {hasInvite && (authStep === 'signup' || authStep === 'login') && (
+            <div
+              style={{
+                display: 'flex',
+                alignItems: 'center',
+                gap: 8,
+                backgroundColor: c.accentSoft,
+                borderRadius: 12,
+                padding: '12px 14px',
+                marginBottom: 16,
+              }}
+            >
+              <span style={{ fontSize: 15 }}>🪔</span>
+              <span
+                style={{
+                  fontFamily: 'Inclusive Sans, sans-serif',
+                  fontSize: 14,
+                  lineHeight: '20px',
+                  color: c.textSecondary,
+                }}
+              >
+                <span style={{ fontWeight: 700, color: c.accent }}>
+                  {inviterName ? `${inviterName}'s invite applied.` : 'Invite applied.'}
+                </span>
+                {authStep === 'signup'
+                  ? " You're a member the moment you finish."
+                  : ' Held while you log in.'}
+              </span>
+            </div>
+          )}
+
           {/* Error alert box */}
           {errorMessages.length > 0 && (
             <div
               style={{
-                backgroundColor: '#FEF2F2',
+                backgroundColor: c.errorSoft,
                 borderRadius: 12,
                 padding: '12px 16px',
                 marginBottom: 16,
@@ -463,9 +362,9 @@ export default function AuthScreen() {
                 <p
                   key={idx}
                   style={{
-                    color: '#EF4444',
+                    color: c.error,
                     fontSize: 14,
-                    fontFamily: 'Inter, sans-serif',
+                    fontFamily: 'Inclusive Sans, sans-serif',
                     margin: 0,
                   }}
                 >
@@ -477,8 +376,8 @@ export default function AuthScreen() {
 
           {/* Form */}
           <form
-            onSubmit={handleSubmit}
-            style={{ display: 'flex', flexDirection: 'column', gap: 16 }}
+            onSubmit={handlePrimarySubmit}
+            style={{ display: 'flex', flexDirection: 'column', gap: showInviteField ? 8 : 16 }}
           >
             {/* Email input */}
             <input
@@ -486,8 +385,8 @@ export default function AuthScreen() {
               type="email"
               placeholder="Email"
               value={username}
-              onChange={handleUsernameChange}
-              disabled={authStep !== 'initial'}
+              onChange={(e) => changeUsername(e.target.value)}
+              disabled={!emailEditable}
               onFocus={() => setEmailFocused(true)}
               onBlur={() => setEmailFocused(false)}
               style={getInputStyle(emailFocused)}
@@ -500,26 +399,11 @@ export default function AuthScreen() {
                 type="password"
                 placeholder="Password"
                 value={password}
-                onChange={handlePasswordChange}
+                onChange={(e) => changePassword(e.target.value)}
                 autoComplete="current-password"
                 onFocus={() => setPasswordFocused(true)}
                 onBlur={() => setPasswordFocused(false)}
                 style={getInputStyle(passwordFocused)}
-              />
-            )}
-
-            {/* Invite code input (invite-code step) */}
-            {authStep === 'invite-code' && (
-              <input
-                className="auth-input"
-                type="text"
-                placeholder="Invite Code"
-                value={inviteCode}
-                onChange={handleInviteCodeChange}
-                autoComplete="off"
-                onFocus={() => setInviteCodeFocused(true)}
-                onBlur={() => setInviteCodeFocused(false)}
-                style={getInputStyle(inviteCodeFocused)}
               />
             )}
 
@@ -531,7 +415,7 @@ export default function AuthScreen() {
                   type="password"
                   placeholder="Password"
                   value={password}
-                  onChange={handlePasswordChange}
+                  onChange={(e) => changePassword(e.target.value)}
                   autoComplete="new-password"
                   onFocus={() => setPasswordFocused(true)}
                   onBlur={() => setPasswordFocused(false)}
@@ -545,7 +429,7 @@ export default function AuthScreen() {
                   type="password"
                   placeholder="Confirm password"
                   value={confirmPassword}
-                  onChange={handleConfirmPasswordChange}
+                  onChange={(e) => changeConfirm(e.target.value)}
                   autoComplete="new-password"
                   onFocus={() => setConfirmPasswordFocused(true)}
                   onBlur={() => setConfirmPasswordFocused(false)}
@@ -554,25 +438,38 @@ export default function AuthScreen() {
               </>
             )}
 
+            {authStep === 'initial' && !hasInvite && showInviteField && (
+              <InviteCodeInput
+                compact
+                value={inviteValue}
+                onChangeText={(next) => {
+                  setInviteValue(next)
+                  if (inviteError) setInviteError('')
+                }}
+                error={inviteError}
+                onSubmitEditing={submitInvite}
+              />
+            )}
+
             {/* Submit button */}
             <button
               className="auth-submit"
               type="submit"
-              disabled={isButtonDisabled}
+              disabled={primaryDisabled}
               style={{
                 width: '100%',
                 height: 48,
                 minHeight: 44,
-                backgroundColor: '#C2410C',
-                color: '#FFFFFF',
+                backgroundColor: c.accent,
+                color: c.textInverse,
                 border: 'none',
-                borderRadius: 8,
+                borderRadius: 12,
                 fontSize: 16,
-                fontFamily: 'Inter, sans-serif',
+                fontFamily: 'Inclusive Sans, sans-serif',
                 fontWeight: '500',
-                cursor: isButtonDisabled ? 'not-allowed' : 'pointer',
-                marginTop: 8,
-                opacity: isButtonDisabled ? 0.4 : 1,
+                cursor: primaryDisabled ? 'not-allowed' : 'pointer',
+                marginTop: showInviteField ? 0 : 8,
+                opacity: primaryDisabled ? 0.4 : 1,
                 WebkitTapHighlightColor: 'transparent',
                 touchAction: 'manipulation',
               }}
@@ -581,105 +478,78 @@ export default function AuthScreen() {
             </button>
           </form>
 
-          {/* Toggle links */}
-          {authStep === 'initial' && (
+          {authStep === 'initial' && !hasInvite && showInviteField && (
             <p
               style={{
                 fontSize: 14,
-                color: '#78716C',
+                color: c.textMuted,
                 textAlign: 'center',
-                marginTop: 16,
-                fontFamily: 'Inter, sans-serif',
+                marginTop: 12,
+                fontFamily: 'Inclusive Sans, sans-serif',
               }}
             >
-              Don't have an account?{' '}
+              No invite?{' '}
               <span
                 role="button"
                 tabIndex={0}
-                onClick={async () => {
-                  if (!username) {
-                    setErrors({ username: 'Please enter your email first.' })
-                    return
-                  }
-                  if (!validateEmail(username)) {
-                    setErrors({ username: 'You must enter a valid email address.' })
-                    return
-                  }
-                  try {
-                    const exists = await checkUserExists(username)
-                    if (exists) {
-                      setErrors({ form: 'An account with this email already exists. Please log in.' })
-                      setAuthStep('login')
-                    } else {
-                      setAuthStep('signup')
-                    }
-                  } catch (e: any) {
-                    setErrors({ form: e.message || 'Failed to connect to server.' })
-                  }
-                }}
-                onKeyDown={async (e) => {
-                  if (e.key === 'Enter' || e.key === ' ') {
-                    e.preventDefault()
-                    if (!username) {
-                      setErrors({ username: 'Please enter your email first.' })
-                      return
-                    }
-                    if (!validateEmail(username)) {
-                      setErrors({ username: 'You must enter a valid email address.' })
-                      return
-                    }
-                    try {
-                      const exists = await checkUserExists(username)
-                      if (exists) {
-                        setErrors({ form: 'An account with this email already exists. Please log in.' })
-                        setAuthStep('login')
-                      } else {
-                        setAuthStep('signup')
-                      }
-                    } catch (e: any) {
-                      setErrors({ form: e.message || 'Failed to connect to server.' })
-                    }
-                  }
-                }}
-                style={{
-                  color: '#C2410C',
-                  cursor: 'pointer',
-                  padding: '8px 4px',
-                  margin: '-8px -4px',
-                  display: 'inline-block',
-                }}
+                onClick={hideInviteField}
+                onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); hideInviteField() } }}
+                style={{ color: c.accent, cursor: 'pointer', fontWeight: 600, padding: '8px 4px', margin: '-8px -4px', display: 'inline-block' }}
               >
-                Create one
+                Use email instead
               </span>
             </p>
+          )}
+
+          {/* Have an invite? — reveal the same paste field used by /join and the mobile modal. */}
+          {authStep === 'initial' && !hasInvite && (
+            !showInviteField && (
+              <p
+                style={{
+                  fontSize: 14,
+                  color: c.textMuted,
+                  textAlign: 'center',
+                  marginTop: 16,
+                  fontFamily: 'Inclusive Sans, sans-serif',
+                }}
+              >
+                Have an invite?{' '}
+                <span
+                  role="button"
+                  tabIndex={0}
+                  onClick={revealInviteField}
+                  onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); revealInviteField() } }}
+                  style={{ color: c.accent, cursor: 'pointer', fontWeight: 600, padding: '8px 4px', margin: '-8px -4px', display: 'inline-block' }}
+                >
+                  Paste it
+                </span>
+              </p>
+            )
           )}
 
           {authStep === 'login' && (
             <p
               style={{
                 fontSize: 14,
-                color: '#78716C',
+                color: c.textMuted,
                 textAlign: 'center',
                 marginTop: 16,
-                fontFamily: 'Inter, sans-serif',
+                fontFamily: 'Inclusive Sans, sans-serif',
               }}
             >
               <span
                 role="button"
                 tabIndex={0}
-                onClick={() =>
-                  window.alert(
-                    'Please contact info@chinmayajanata.org to reset your password.'
-                  )
-                }
+                onClick={() => { track('auth_forgot_password_pressed', { source: 'auth' }); router.push('/auth/forgot') }}
                 onKeyDown={(e) => {
-                  if (e.key === 'Enter' || e.key === ' ')
-                    window.alert(
-                      'Please contact info@chinmayajanata.org to reset your password.'
-                    )
+                  if (e.key === 'Enter' || e.key === ' ') {
+                    e.preventDefault()
+                    track('auth_forgot_password_pressed', { source: 'auth' })
+                    router.push('/auth/forgot')
+                  }
                 }}
                 style={{
-                  color: '#C2410C',
+                  color: c.accent,
                   cursor: 'pointer',
                   padding: '8px 4px',
                   margin: '-8px -4px',
@@ -691,32 +561,6 @@ export default function AuthScreen() {
             </p>
           )}
 
-          {/* Developer Mode button — dev only */}
-          {isDev && (
-            <button
-              onClick={() => setShowDevPanel(true)}
-              style={{
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                gap: 8,
-                backgroundColor: '#F5F5F4',
-                padding: '10px 16px',
-                borderRadius: 8,
-                border: 'none',
-                cursor: 'pointer',
-                marginTop: 24,
-                width: '100%',
-                fontSize: 14,
-                fontFamily: 'Inter, sans-serif',
-                color: '#57534E',
-              }}
-            >
-              <span style={{ fontFamily: 'monospace', fontSize: 16 }}>&lt;/&gt;</span>
-              Developer Mode
-            </button>
-          )}
-
           {/* DevPanel */}
           {isDev && showDevPanel && (
             <DevPanel visible={showDevPanel} onClose={() => setShowDevPanel(false)} />
@@ -726,10 +570,10 @@ export default function AuthScreen() {
           <p
             style={{
               fontSize: 13,
-              color: '#A8A29E',
+              color: c.textFaint,
               textAlign: 'center',
               marginTop: isMobile ? 24 : 32,
-              fontFamily: 'Inter, sans-serif',
+              fontFamily: 'Inclusive Sans, sans-serif',
               paddingBottom: isMobile ? 16 : 0,
             }}
           >
@@ -737,9 +581,9 @@ export default function AuthScreen() {
             <span
               role="link"
               tabIndex={0}
-              onClick={() => router.push('/terms')}
-              onKeyDown={(e) => { if (e.key === 'Enter') router.push('/terms') }}
-              style={{ color: '#C2410C', cursor: 'pointer' }}
+              onClick={() => { track('terms_viewed', { source: 'auth' }); router.push('/terms') }}
+              onKeyDown={(e) => { if (e.key === 'Enter') { track('terms_viewed', { source: 'auth' }); router.push('/terms') } }}
+              style={{ color: c.accent, cursor: 'pointer' }}
             >
               Terms of Service
             </span>
@@ -747,9 +591,9 @@ export default function AuthScreen() {
             <span
               role="link"
               tabIndex={0}
-              onClick={() => router.push('/privacy')}
-              onKeyDown={(e) => { if (e.key === 'Enter') router.push('/privacy') }}
-              style={{ color: '#C2410C', cursor: 'pointer' }}
+              onClick={() => { track('privacy_policy_viewed', { source: 'auth' }); router.push('/privacy') }}
+              onKeyDown={(e) => { if (e.key === 'Enter') { track('privacy_policy_viewed', { source: 'auth' }); router.push('/privacy') } }}
+              style={{ color: c.accent, cursor: 'pointer' }}
             >
               Privacy Policy
             </span>
