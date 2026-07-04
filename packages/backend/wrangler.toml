@@ -4,17 +4,21 @@
 # Standalone Worker for the Hono API backend.
 #
 # Deploy commands:
-#   Production: npm run deploy (from packages/backend/)
-#   Local dev:  npm run dev   (from packages/backend/)
+#   Production: bun run deploy (from packages/backend/)
+#   Local dev:  bun run dev   (from packages/backend/)
 #
 # Secrets (set via Wrangler CLI, NOT in this file):
-#   npx wrangler secret put JWT_SECRET
-#   npx wrangler secret put JWT_REFRESH_SECRET
-#   npx wrangler secret put RESEND_API_KEY
+#   bunx wrangler secret put JWT_SECRET
+#   bunx wrangler secret put JWT_REFRESH_SECRET
+#   bunx wrangler secret put RESEND_API_KEY
 
 name = "chinmaya-janata-api"
 main = "src/worker.ts"
 compatibility_date = "2026-02-26"
+
+send_email = [
+  { name = "EMAIL", allowed_sender_addresses = ["janataverify@sahasta.com"] }
+]
 
 [[d1_databases]]
 binding = "DB"
@@ -30,5 +34,6 @@ bucket_name = "chinmaya-janata-avatars"
 # dev`, values come from .dev.vars (gitignored, see .dev.vars.example).
 [vars]
 RESEND_FROM_EMAIL = "noreply@chinmayajanata.org"
+VERIFICATION_FROM_EMAIL = "janataverify@sahasta.com"
 # Invite gate ON (#342): refuse API signups without a valid invite code.
 REQUIRE_INVITE_CODE = "true"

@@ -13,6 +13,8 @@ import { NORMAL_USER } from './constants'
 export interface Env {
   DB: D1Database
   AVATARS: R2Bucket
+  /** Cloudflare Email Sending binding for Worker-native outbound email. */
+  EMAIL?: SendEmail
   JWT_SECRET: string
   JWT_REFRESH_SECRET?: string
   /**
@@ -24,8 +26,10 @@ export interface Env {
   DEV_BYPASS_ADMIN_AUTH?: string
   /** Resend API key for outbound email. Secret. */
   RESEND_API_KEY?: string
-  /** From address for outbound email. Set in wrangler.toml [vars]. */
+  /** Default from address for Resend/default transactional email. */
   RESEND_FROM_EMAIL?: string
+  /** From address for verification email sent through Cloudflare Email Sending. */
+  VERIFICATION_FROM_EMAIL?: string
   /** When "true", outbound email sends are skipped. Tests set this. */
   EMAIL_SEND_DISABLED?: string
   /**
