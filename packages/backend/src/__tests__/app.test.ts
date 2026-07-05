@@ -218,10 +218,10 @@ describe('POST /api/userExistence', () => {
     expect(body.existence).toBe(false)
   })
 
-  it('returns true for existing user', async () => {
+  it('does not reveal existing users', async () => {
     await registerAndLogin('existinguser', 'password123')
     const { body } = await jsonPost('/api/userExistence', { username: 'existinguser' })
-    expect(body.existence).toBe(true)
+    expect(body.existence).toBe(false)
   })
 
   it('returns false when username is empty', async () => {
@@ -798,6 +798,37 @@ describe('GET /api/auth/verify', () => {
   })
 })
 
+describe('POST /api/auth/send-verification-email', () => {
+  it('does not mint duplicate active verification tokens', async () => {
+    const { token, user } = await registerAndLogin('verifydedupe', 'password123')
+    const before = await env.DB.prepare(
+      `SELECT COUNT(*) as c
+       FROM email_verification_tokens
+       WHERE user_id = ? AND consumed_at IS NULL`,
+    )
+      .bind(user.id)
+      .first<{ c: number }>()
+    expect(before!.c).toBe(1)
+
+    const { res, body } = await jsonPost(
+      '/api/auth/send-verification-email',
+      {},
+      authHeader(token),
+    )
+
+    expect(res.status).toBe(200)
+    expect(body.message).toBe('Verification email sent')
+    const after = await env.DB.prepare(
+      `SELECT COUNT(*) as c
+       FROM email_verification_tokens
+       WHERE user_id = ? AND consumed_at IS NULL`,
+    )
+      .bind(user.id)
+      .first<{ c: number }>()
+    expect(after!.c).toBe(before!.c)
+  })
+})
+
 // ═══════════════════════════════════════════════════════════════════════
 // AUTH: DEAUTHENTICATE
 // ═══════════════════════════════════════════════════════════════════════
@@ -848,6 +879,39 @@ describe('POST /api/auth/complete-onboarding', () => {
     expect(body.user.centerID).toBeNull()
   })
 
+  it('rejects self-service center assignment during onboarding', async () => {
+    const { token } = await registerAndLogin('onboardcenter', 'password123')
+    await db.createCenter(env.DB, {
+      id: 'center-onboarding-lock',
+      name: 'Onboarding Lock Center',
+      latitude: 37.0,
+      longitude: -121.0,
+    })
+
+    const { res, body } = await jsonPost(
+      '/api/auth/complete-onboarding',
+      { centerID: 'center-onboarding-lock' },
+      authHeader(token)
+    )
+
+    expect(res.status).toBe(403)
+    expect(body.message).toContain('admin approval')
+    const row = await env.DB.prepare('SELECT center_id FROM users WHERE username = ?')
+      .bind('onboardcenter')
+      .first<{ center_id: string | null }>()
+    expect(row!.center_id).toBeNull()
+  })
+
+  it('rejects oversized profile fields during onboarding', async () => {
+    const { token } = await registerAndLogin('onboardoversize', 'password123')
+    const { res } = await jsonPost(
+      '/api/auth/complete-onboarding',
+      { firstName: 'a'.repeat(101) },
+      authHeader(token)
+    )
+    expect(res.status).toBe(400)
+  })
+
   it('requires authentication (401)', async () => {
     const { res } = await jsonPost('/api/auth/complete-onboarding', {
       firstName: 'Rama',
@@ -896,6 +960,46 @@ describe('PUT /api/auth/update-profile', () => {
     )
     expect(res.status).toBe(200)
     expect(body.user.centerID).toBeNull()
+  })
+
+  it('rejects self-service center changes', async () => {
+    const { token } = await registerAndLogin('updatecenter', 'password123')
+    await db.createCenter(env.DB, {
+      id: 'center-profile-lock',
+      name: 'Profile Lock Center',
+      latitude: 37.0,
+      longitude: -121.0,
+    })
+
+    const { res, body } = await jsonPut(
+      '/api/auth/update-profile',
+      { centerID: 'center-profile-lock' },
+      authHeader(token)
+    )
+
+    expect(res.status).toBe(403)
+    expect(body.message).toContain('admin approval')
+  })
+
+  it('rejects unsafe profile image URLs', async () => {
+    const { token } = await registerAndLogin('badimage', 'password123')
+    const { res, body } = await jsonPut(
+      '/api/auth/update-profile',
+      { profileImage: 'javascript:alert(1)' },
+      authHeader(token)
+    )
+    expect(res.status).toBe(400)
+    expect(body.message).toContain('Profile image URL')
+  })
+
+  it('rejects oversized profile text fields', async () => {
+    const { token } = await registerAndLogin('oversizeprofile', 'password123')
+    const { res } = await jsonPut(
+      '/api/auth/update-profile',
+      { bio: 'a'.repeat(1001) },
+      authHeader(token)
+    )
+    expect(res.status).toBe(400)
   })
 
   it('requires authentication (401)', async () => {
@@ -2953,6 +3057,29 @@ describe('event routes', () => {
     })
   })
 
+  describe('GET /api/fetchAllEvents', () => {
+    it('caps legacy unpaginated responses at 200 events', async () => {
+      for (let i = 0; i < 205; i++) {
+        await db.createEvent(env.DB, {
+          id: `bulk-event-${i}`,
+          title: `Bulk Event ${i}`,
+          date: new Date(Date.UTC(2026, 0, 1, 0, i)).toISOString(),
+          latitude: 37.0,
+          longitude: -121.0,
+          center_id: centerId,
+          created_by: 'bulk-test',
+        })
+      }
+
+      const { res, body } = await fetchJSON('/api/fetchAllEvents')
+      expect(res.status).toBe(200)
+      expect(body.events).toHaveLength(200)
+      expect(body.total).toBe(205)
+      expect(body.limit).toBe(200)
+      expect(body.offset).toBe(0)
+    })
+  })
+
   describe('POST /api/getUserEvents', () => {
     it('returns events a user is attending', async () => {
       const { body: addBody } = await jsonPost(
@@ -3071,6 +3198,57 @@ describe('GET /api/public-profiles/:userId', () => {
     })
     expect(res.status).toBe(404)
     expect(body.message).toBe('User not found')
+  })
+})
+
+describe('profile history privacy', () => {
+  it('prevents users from reading another member event history', async () => {
+    await registerAndLogin('historytarget', 'password123')
+    const viewer = await registerAndLogin('historyviewer', 'password123')
+
+    const post = await jsonPost(
+      '/api/getUserEvents',
+      { username: 'historytarget' },
+      authHeader(viewer.token),
+    )
+    expect(post.res.status).toBe(403)
+
+    const get = await fetchJSON('/api/profile/historytarget/events', {
+      headers: authHeader(viewer.token),
+    })
+    expect(get.res.status).toBe(403)
+  })
+
+  it('prevents users from reading another member group history', async () => {
+    await registerAndLogin('grouptarget', 'password123')
+    const viewer = await registerAndLogin('groupviewer', 'password123')
+
+    const { res } = await fetchJSON('/api/profile/grouptarget/groups', {
+      headers: authHeader(viewer.token),
+    })
+    expect(res.status).toBe(403)
+  })
+
+  it('allows admins to read member event history', async () => {
+    await registerAndLogin('historyadminview', 'password123')
+    const adminToken = await createAdmin()
+
+    const { res } = await fetchJSON('/api/profile/historyadminview/events', {
+      headers: authHeader(adminToken),
+    })
+    expect(res.status).toBe(200)
+  })
+})
+
+describe('GET /api/events/:id/registration', () => {
+  it('returns 404 for missing events', async () => {
+    const { token } = await registerAndLogin('missingeventregistration', 'password123')
+    const { res, body } = await fetchJSON('/api/events/missing-event/registration', {
+      headers: authHeader(token),
+    })
+
+    expect(res.status).toBe(404)
+    expect(body.message).toBe('Event not found')
   })
 })
 
@@ -3394,11 +3572,12 @@ describe('GET /api/admin/centers/:id/members', () => {
     }, authHeader(adminToken))
     const centerId = centerBody.id
 
-    // Create a user and assign them to the center
-    const { token: userToken, user } = await registerAndLogin('member1', 'password123')
-    await jsonPut('/api/auth/update-profile', {
-      centerID: centerId,
-    }, authHeader(userToken))
+    // Create a user and assign them to the center through the fixture, not the
+    // self-service profile route that is intentionally blocked.
+    await registerAndLogin('member1', 'password123')
+    await env.DB.prepare('UPDATE users SET center_id = ? WHERE username = ?')
+      .bind(centerId, 'member1')
+      .run()
 
     const { res, body } = await fetchJSON(`/api/admin/centers/${centerId}/members`, {
       headers: authHeader(adminToken),

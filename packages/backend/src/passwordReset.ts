@@ -10,7 +10,7 @@
  *   - PBKDF2-hashed in the DB (never plaintext)
  *   - Request always returns { ok: true } so attackers can't enumerate accounts
  *   - 5 verify attempts per code, then hard-invalidated
- *   - Issuing a new request invalidates all prior active codes for the user
+ *   - A new request is ignored while an unexpired active code exists
  *   - On successful reset, every live JWT for the user dies on next request
  *     (via the password-hash fingerprint in auth.ts — no token_version column
  *     needed)
@@ -71,21 +71,6 @@ async function findActiveCode(
   return row ?? null
 }
 
-/** Mark every active code for a user as used. */
-async function invalidateActiveCodes(
-  env: Env,
-  userId: string,
-): Promise<void> {
-  const nowISO = new Date().toISOString()
-  await env.DB.prepare(
-    `UPDATE password_reset_codes
-     SET used_at = ?1
-     WHERE user_id = ?2 AND used_at IS NULL`,
-  )
-    .bind(nowISO, userId)
-    .run()
-}
-
 /** Mark a single code as used. */
 async function markCodeUsed(env: Env, id: string): Promise<void> {
   const nowISO = new Date().toISOString()
@@ -130,8 +115,10 @@ async function createResetCode(env: Env, userId: string): Promise<string> {
 /**
  * Public entry point for POST /auth/password-reset/request.
  *
- * Always succeeds from the caller's perspective. If the user exists we
- * invalidate any prior codes, mint a new one, and fire the email. If the
+ * Always succeeds from the caller's perspective. If the user exists and has no
+ * active code, we mint a new one and fire the email. If an active code already
+ * exists, we silently no-op so the endpoint cannot be used to flood the user.
+ * If the
  * user doesn't exist we silently no-op so attackers can't differentiate
  * known vs unknown accounts.
  *
@@ -149,7 +136,9 @@ export async function handlePasswordResetRequest(
   const user = await db.getUserByUsername(env.DB, username)
   if (!user || !user.email) return
 
-  await invalidateActiveCodes(env, user.id)
+  const existing = await findActiveCode(env, user.id)
+  if (existing) return
+
   const code = await createResetCode(env, user.id)
 
   try {

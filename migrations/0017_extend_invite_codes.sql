@@ -1,9 +1,9 @@
 -- 0017_extend_invite_codes.sql
--- Extends invite_codes for v2 user-issued single-use links.
+-- Extends invite_codes for v2 user-issued links.
 --
 -- Why: v1 invite_codes were admin-managed cohort codes (multi-use, no
--- expiry). v2 lets any Verified user mint single-use links that expire
--- in 30 days. The same table backs both paths.
+-- expiry). v2 lets verified users mint expiring links with use caps. The same
+-- table backs both paths.
 --
 -- Backward compatibility: existing admin cohort codes have all new
 -- columns NULL/0. validateInviteCode treats NULL max_uses as unlimited

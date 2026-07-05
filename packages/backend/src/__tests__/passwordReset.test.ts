@@ -2,7 +2,7 @@
  * passwordReset.test.ts — coverage for the v2 self-serve reset flow.
  *
  * The flow is split across two endpoints. Tests against /request exercise
- * the side effects (row inserted, prior codes invalidated) since the
+ * the side effects (row inserted, active requests deduped) since the
  * plaintext code is opaque after generation. Tests against /verify use
  * manually-inserted rows with a known code so we can exercise the full
  * matching path.
@@ -144,7 +144,7 @@ describe('POST /api/auth/password-reset/request', () => {
     expect(ttl).toBeLessThan(16 * 60 * 1000)
   })
 
-  it('invalidates prior active codes when a new request comes in', async () => {
+  it('does not mint another code while one is already active', async () => {
     const user = await register('rotate@reset.test')
     await jsonPost('/api/auth/password-reset/request', {
       username: 'rotate@reset.test',
@@ -156,7 +156,7 @@ describe('POST /api/auth/password-reset/request', () => {
       username: 'rotate@reset.test',
     })
 
-    // Exactly one active row should remain, and it should be a new one.
+    // Exactly one active row should remain, and it should be the existing one.
     const activeCount = await env.DB.prepare(
       `SELECT COUNT(*) as c FROM password_reset_codes
        WHERE user_id = ? AND used_at IS NULL`,
@@ -166,15 +166,8 @@ describe('POST /api/auth/password-reset/request', () => {
     expect(activeCount!.c).toBe(1)
 
     const second = await loadActiveRow(user.id)
-    expect(second!.id).not.toBe(first!.id)
-
-    // The first row should be marked used.
-    const firstNow = await env.DB.prepare(
-      'SELECT used_at FROM password_reset_codes WHERE id = ?',
-    )
-      .bind(first!.id)
-      .first<{ used_at: string | null }>()
-    expect(firstNow!.used_at).not.toBeNull()
+    expect(second!.id).toBe(first!.id)
+    expect(second!.used_at).toBeNull()
   })
 
   it('returns ok:true even on a malformed body', async () => {

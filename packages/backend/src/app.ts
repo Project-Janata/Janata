@@ -75,6 +75,11 @@ function isAdmin(user: { verification_level: number }): boolean {
 const BOARD_REACTIONS = new Set(['🙏', '👍', '🪔', '❤️', '🚗', '🌾'])
 const EVENT_CATEGORIES = new Set([SATSANG, BHIKSHA, YAJNA, CAMP, FESTIVAL, OTHER])
 const EVENT_CONTACT_MAX = 120
+const PROFILE_BIO_MAX = 1000
+const PROFILE_TEXT_MAX = 120
+const PROFILE_LIST_ITEM_MAX = 80
+const PROFILE_LIST_MAX_ITEMS = 20
+const PUBLIC_EVENT_LIST_LIMIT = 200
 
 function isBootstrapAdminEmail(email: string): boolean {
   return email.trim().toLowerCase() === ADMIN_EMAIL
@@ -163,6 +168,28 @@ function validateOptionalBoolean(value: unknown): number | null | false {
   if (value === undefined || value === null) return null
   if (typeof value !== 'boolean') return false
   return value ? 1 : 0
+}
+
+function validateProfileList(value: unknown): string[] | null | false {
+  if (value === undefined || value === null) return null
+  if (!Array.isArray(value) || value.length > PROFILE_LIST_MAX_ITEMS) return false
+
+  const items: string[] = []
+  for (const item of value) {
+    const validItem = validateOptionalString(item, PROFILE_LIST_ITEM_MAX)
+    if (validItem === false) return false
+    if (validItem) items.push(validItem)
+  }
+  return items.length > 0 ? items : null
+}
+
+function normalizeProfileCenter(value: unknown): string | null | false {
+  if (value === undefined || value === null || value === '') return null
+  return validate.id(value)
+}
+
+function isSelfOrAdmin(user: UserRow, targetUser: UserRow): boolean {
+  return user.id === targetUser.id || isAdmin(user)
 }
 
 function validateCoordinate(value: unknown, min: number, max: number): number | null {
@@ -438,12 +465,11 @@ app.get('/health', (c) => {
 // ── User existence check ──────────────────────────────────────────────
 
 app.post('/userExistence', async (c) => {
-  const { username } = await c.req.json<{ username: string }>()
-  if (!username) {
-    return c.json({ existence: false })
-  }
-  const user = await db.getUserByUsername(c.env.DB, username)
-  return c.json({ existence: !!user })
+  await c.req.json<{ username?: string }>().catch(() => ({}))
+  // Account enumeration should not be available as a public preflight. The
+  // register/authenticate flows still return their own normal validation
+  // responses, but this endpoint no longer distinguishes real usernames.
+  return c.json({ existence: false })
 })
 
 // ═══════════════════════════════════════════════════════════════════════
@@ -480,13 +506,11 @@ app.post('/auth/validate-invite-code', rateLimit(60, 60_000), async (c) => {
     return c.json({ valid: true, inviterFirstName })
   }
 
-  const messages: Record<Exclude<inviteCodes.InviteCodeStatus, 'ok'>, string> = {
-    not_found: 'Invalid or inactive invite code',
-    inactive: 'This invite link has been deactivated',
-    expired: 'This invite link has expired',
-    exhausted: 'This invite link has reached its maximum number of uses',
-  }
-  return c.json({ valid: false, error: messages[status], reason: status })
+  return c.json({
+    valid: false,
+    error: 'Invalid or inactive invite code',
+    reason: 'invalid',
+  })
 })
 
 app.post('/auth/register', rateLimit(5, 60_000), async (c) => {
@@ -742,6 +766,26 @@ app.post('/auth/send-verification-email', rateLimit(3, 60 * 60_000), authMiddlew
   }
   if (user.email_verified_at) {
     return c.json({ message: 'Email already verified' }, 400)
+  }
+
+  const now = new Date().toISOString()
+  await c.env.DB.prepare(
+    `UPDATE email_verification_tokens
+     SET consumed_at = ?
+     WHERE user_id = ? AND consumed_at IS NULL AND expires_at <= ?`,
+  )
+    .bind(now, user.id, now)
+    .run()
+
+  const activeToken = await c.env.DB.prepare(
+    `SELECT token FROM email_verification_tokens
+     WHERE user_id = ? AND consumed_at IS NULL AND expires_at > ?
+     ORDER BY expires_at DESC LIMIT 1`,
+  )
+    .bind(user.id, now)
+    .first<{ token: string }>()
+  if (activeToken) {
+    return c.json({ message: 'Verification email sent' })
   }
 
   // 32 bytes = 64 hex chars = 256 bits entropy
@@ -1062,14 +1106,45 @@ app.post('/auth/complete-onboarding', authMiddleware, async (c) => {
     }>()
 
     const updates: Partial<UserRow> = {}
-    if (body.firstName !== undefined) updates.first_name = body.firstName
-    if (body.lastName !== undefined) updates.last_name = body.lastName
-    if (body.dateOfBirth !== undefined) updates.date_of_birth = body.dateOfBirth
-    // Skip center_id if empty string (no center selected during onboarding)
-    if (body.centerID) updates.center_id = body.centerID
-    if (body.profileComplete !== undefined) updates.profile_complete = body.profileComplete ? 1 : 0
-    if (body.phoneNumber !== undefined) updates.phone_number = body.phoneNumber
-    if (body.interests !== undefined) updates.interests = JSON.stringify(body.interests)
+    if (body.firstName !== undefined) {
+      const firstName = validate.firstName(body.firstName)
+      if (firstName === false) return c.json({ message: 'firstName is invalid' }, 400)
+      updates.first_name = firstName ?? ''
+    }
+    if (body.lastName !== undefined) {
+      const lastName = validate.lastName(body.lastName)
+      if (lastName === false) return c.json({ message: 'lastName is invalid' }, 400)
+      updates.last_name = lastName ?? ''
+    }
+    if (body.dateOfBirth !== undefined) {
+      const dateOfBirth = validateOptionalString(body.dateOfBirth, 32)
+      if (dateOfBirth === false) return c.json({ message: 'dateOfBirth is invalid' }, 400)
+      updates.date_of_birth = dateOfBirth
+    }
+    if (body.centerID !== undefined) {
+      const requestedCenter = normalizeProfileCenter(body.centerID)
+      if (requestedCenter === false) return c.json({ message: 'centerID is invalid' }, 400)
+      if (requestedCenter !== (user.center_id ?? null)) {
+        return c.json({ message: 'Center changes require admin approval' }, 403)
+      }
+    }
+    if (body.profileComplete !== undefined) {
+      const profileComplete = validateOptionalBoolean(body.profileComplete)
+      if (profileComplete === false) {
+        return c.json({ message: 'profileComplete is invalid' }, 400)
+      }
+      updates.profile_complete = profileComplete ?? 0
+    }
+    if (body.phoneNumber !== undefined) {
+      const phone = validate.phone(body.phoneNumber)
+      if (phone === false) return c.json({ message: 'phoneNumber is invalid' }, 400)
+      updates.phone_number = phone
+    }
+    if (body.interests !== undefined) {
+      const interests = validateProfileList(body.interests)
+      if (interests === false) return c.json({ message: 'interests are invalid' }, 400)
+      updates.interests = interests ? JSON.stringify(interests) : null
+    }
 
     const result = await db.updateUser(c.env.DB, user.id, updates)
 
@@ -1109,22 +1184,43 @@ app.put('/auth/update-profile', authMiddleware, async (c) => {
   }>()
 
   const updates: Partial<UserRow> = {}
-  if (body.firstName !== undefined) updates.first_name = body.firstName
-  if (body.lastName !== undefined) updates.last_name = body.lastName
-    if (body.email !== undefined) {
-      const requestedEmail = validate.email(body.email)
-      const currentEmail = user.email?.trim().toLowerCase() ?? null
-      if (requestedEmail === false || requestedEmail === null) {
-        return c.json({ message: 'Email cannot be changed here' }, 400)
-      }
-      if (requestedEmail.toLowerCase() !== currentEmail) {
-        return c.json({ message: 'Email changes require a verified email-change flow' }, 400)
-      }
+  if (body.firstName !== undefined) {
+    const firstName = validate.firstName(body.firstName)
+    if (firstName === false) return c.json({ message: 'firstName is invalid' }, 400)
+    updates.first_name = firstName ?? ''
+  }
+  if (body.lastName !== undefined) {
+    const lastName = validate.lastName(body.lastName)
+    if (lastName === false) return c.json({ message: 'lastName is invalid' }, 400)
+    updates.last_name = lastName ?? ''
+  }
+  if (body.email !== undefined) {
+    const requestedEmail = validate.email(body.email)
+    const currentEmail = user.email?.trim().toLowerCase() ?? null
+    if (requestedEmail === false || requestedEmail === null) {
+      return c.json({ message: 'Email cannot be changed here' }, 400)
     }
-  if (body.dateOfBirth !== undefined) updates.date_of_birth = body.dateOfBirth
-  // Coerce empty string to null (allowed by FK), reject non-existent center IDs naturally
-  if (body.centerID !== undefined) updates.center_id = body.centerID || null
-  if (body.profileComplete !== undefined) updates.profile_complete = body.profileComplete ? 1 : 0
+    if (requestedEmail.toLowerCase() !== currentEmail) {
+      return c.json({ message: 'Email changes require a verified email-change flow' }, 400)
+    }
+  }
+  if (body.dateOfBirth !== undefined) {
+    const dateOfBirth = validateOptionalString(body.dateOfBirth, 32)
+    if (dateOfBirth === false) return c.json({ message: 'dateOfBirth is invalid' }, 400)
+    updates.date_of_birth = dateOfBirth
+  }
+  if (body.centerID !== undefined) {
+    const requestedCenter = normalizeProfileCenter(body.centerID)
+    if (requestedCenter === false) return c.json({ message: 'centerID is invalid' }, 400)
+    if (requestedCenter !== (user.center_id ?? null)) {
+      return c.json({ message: 'Center changes require admin approval' }, 403)
+    }
+  }
+  if (body.profileComplete !== undefined) {
+    const profileComplete = validateOptionalBoolean(body.profileComplete)
+    if (profileComplete === false) return c.json({ message: 'profileComplete is invalid' }, 400)
+    updates.profile_complete = profileComplete ?? 0
+  }
   if (body.profileImage !== undefined) {
     const validProfileImage = validateHttpUrl(body.profileImage)
     if (validProfileImage === false) {
@@ -1132,16 +1228,42 @@ app.put('/auth/update-profile', authMiddleware, async (c) => {
     }
     updates.profile_image = validProfileImage
   }
-  if (body.bio !== undefined) updates.bio = body.bio || null
-  if (body.phoneNumber !== undefined) updates.phone_number = body.phoneNumber
-  if (body.interests !== undefined) updates.interests = JSON.stringify(body.interests)
+  if (body.bio !== undefined) {
+    const bio = validateOptionalString(body.bio, PROFILE_BIO_MAX)
+    if (bio === false) return c.json({ message: 'bio is invalid' }, 400)
+    updates.bio = bio
+  }
+  if (body.phoneNumber !== undefined) {
+    const phone = validate.phone(body.phoneNumber)
+    if (phone === false) return c.json({ message: 'phoneNumber is invalid' }, 400)
+    updates.phone_number = phone
+  }
+  if (body.interests !== undefined) {
+    const interests = validateProfileList(body.interests)
+    if (interests === false) return c.json({ message: 'interests are invalid' }, 400)
+    updates.interests = interests ? JSON.stringify(interests) : null
+  }
   // Minimal profile fields. Empty strings become null so the API never
   // exposes a field the user didn't fill in.
-  if (body.school !== undefined) updates.school = body.school?.trim() || null
-  if (body.work !== undefined) updates.work = body.work?.trim() || null
-  if (body.region !== undefined) updates.region = body.region?.trim() || null
+  if (body.school !== undefined) {
+    const school = validateOptionalString(body.school, PROFILE_TEXT_MAX)
+    if (school === false) return c.json({ message: 'school is invalid' }, 400)
+    updates.school = school
+  }
+  if (body.work !== undefined) {
+    const work = validateOptionalString(body.work, PROFILE_TEXT_MAX)
+    if (work === false) return c.json({ message: 'work is invalid' }, 400)
+    updates.work = work
+  }
+  if (body.region !== undefined) {
+    const region = validateOptionalString(body.region, PROFILE_TEXT_MAX)
+    if (region === false) return c.json({ message: 'region is invalid' }, 400)
+    updates.region = region
+  }
   if (body.lookingFor !== undefined) {
-    updates.looking_for = body.lookingFor.length > 0 ? JSON.stringify(body.lookingFor) : null
+    const lookingFor = validateProfileList(body.lookingFor)
+    if (lookingFor === false) return c.json({ message: 'lookingFor is invalid' }, 400)
+    updates.looking_for = lookingFor ? JSON.stringify(lookingFor) : null
   }
 
   const result = await db.updateUser(c.env.DB, user.id, updates)
@@ -1470,10 +1592,14 @@ app.post('/removeUser', authMiddleware, async (c) => {
 })
 
 app.post('/getUserEvents', authMiddleware, async (c) => {
+  const user = c.get('user')
   const { username } = await c.req.json<{ username: string }>()
   const targetUser = await db.getUserByUsername(c.env.DB, username)
   if (!targetUser) {
     return c.json({ message: 'User not found' }, 404)
+  }
+  if (!isSelfOrAdmin(user, targetUser)) {
+    return c.json({ message: 'User event history is private' }, 403)
   }
 
   const events = await db.getUserEvents(c.env.DB, targetUser.id)
@@ -1507,9 +1633,13 @@ app.get('/public-profiles/:userId', authMiddleware, async (c) => {
 })
 
 app.get('/profile/:username/events', authMiddleware, async (c) => {
+  const user = c.get('user')
   const { username } = c.req.param()
   const targetUser = await db.getUserByUsername(c.env.DB, username)
   if (!targetUser) return c.json({ message: 'User not found' }, 404)
+  if (!isSelfOrAdmin(user, targetUser)) {
+    return c.json({ message: 'User event history is private' }, 403)
+  }
   const events = await db.getUserEvents(c.env.DB, targetUser.id)
   return c.json({ events: events.map(eventRowToApi) })
 })
@@ -1523,9 +1653,13 @@ app.get('/profile/:username/posts', authMiddleware, async (c) => {
 })
 
 app.get('/profile/:username/groups', authMiddleware, async (c) => {
+  const user = c.get('user')
   const { username } = c.req.param()
   const targetUser = await db.getUserByUsername(c.env.DB, username)
   if (!targetUser) return c.json({ message: 'User not found' }, 404)
+  if (!isSelfOrAdmin(user, targetUser)) {
+    return c.json({ message: 'User group history is private' }, 403)
+  }
   const groups = targetUser.center_id
     ? [centerRowToApi(await db.getCenterById(c.env.DB, targetUser.center_id) as any)]
     : []
@@ -2533,6 +2667,10 @@ app.get('/events/registered', authMiddleware, async (c) => {
 app.get('/events/:id/registration', authMiddleware, async (c) => {
   const user = c.get('user')
   const id = c.req.param('id')
+  const event = await db.getEventById(c.env.DB, id)
+  if (!event) {
+    return c.json({ message: 'Event not found' }, 404)
+  }
   const [isRegistered, attendeeCount] = await Promise.all([
     db.isUserAttending(c.env.DB, id, user.id),
     db.getLiveAttendeeCount(c.env.DB, id),
@@ -2715,7 +2853,7 @@ app.post('/fetchEventsByCenter', async (c) => {
   const events = await db.getEventsByCenterId(c.env.DB, centerID)
   return c.json({
     message: 'Success',
-    events: events.map(eventRowToApi),
+    events: events.slice(0, PUBLIC_EVENT_LIST_LIMIT).map(eventRowToApi),
   })
 })
 
@@ -2726,20 +2864,22 @@ app.get('/fetchEventsByCenter', cacheControl(30), async (c) => {
   const events = await db.getEventsByCenterId(c.env.DB, centerID)
   return c.json({
     message: 'Success',
-    events: events.map(eventRowToApi),
+    events: events.slice(0, PUBLIC_EVENT_LIST_LIMIT).map(eventRowToApi),
   })
 })
 
 app.get('/fetchAllEvents', cacheControl(30), async (c) => {
-  // Pagination (#107). Backwards-compatible: legacy callers omit `limit`
-  // and get the full list. Paginated callers pass `?limit=&offset=` and
-  // receive `{ events, total, limit, offset }` for infinite-scroll UIs.
+  // Pagination (#107). Legacy callers that omit `limit` now receive a capped
+  // first page rather than an unbounded public read.
   const limitParam = c.req.query('limit')
   if (limitParam == null) {
-    const events = await db.getAllEvents(c.env.DB)
+    const { data, total } = await db.getEventsPaginated(c.env.DB, PUBLIC_EVENT_LIST_LIMIT, 0)
     return c.json({
       message: 'Success',
-      events: events.map(eventRowToApi),
+      events: data.map(eventRowToApi),
+      total,
+      limit: PUBLIC_EVENT_LIST_LIMIT,
+      offset: 0,
     })
   }
   const limit = Number.parseInt(limitParam, 10)
