@@ -28,6 +28,8 @@ web-build/
 # Caching
 .turbo/
 .ultra.cache.json
+__pycache__/
+*.pyc
 *.tsbuildinfo
 tsconfig.tsbuildinfo
 

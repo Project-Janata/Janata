@@ -1,0 +1,83 @@
+{
+  "inviterEmail": "me@sahastasai.com",
+  "recipientEmail": "sahanavsairamesh@gmail",
+  "screenshots": [
+    "/home/sahastasai/Development/Project-Janatha/qa-artifacts/invite-flow-2026-06-25/02-inviter-member-link.png",
+    "/home/sahastasai/Development/Project-Janatha/qa-artifacts/invite-flow-2026-06-25/03-inviter-admin-link-warning.png",
+    "/home/sahastasai/Development/Project-Janatha/qa-artifacts/invite-flow-2026-06-25/04-admin-link-copied.png",
+    "/home/sahastasai/Development/Project-Janatha/qa-artifacts/invite-flow-2026-06-25/05-recipient-member-invite-applying.png",
+    "/home/sahastasai/Development/Project-Janatha/qa-artifacts/invite-flow-2026-06-25/06-recipient-member-invite-applied.png",
+    "/home/sahastasai/Development/Project-Janatha/qa-artifacts/invite-flow-2026-06-25/07-recipient-already-member.png",
+    "/home/sahastasai/Development/Project-Janatha/qa-artifacts/invite-flow-2026-06-25/08-recipient-admin-invite-applied.png",
+    "/home/sahastasai/Development/Project-Janatha/qa-artifacts/invite-flow-2026-06-25/09-exhausted-admin-link-invalid.png",
+    "/home/sahastasai/Development/Project-Janatha/qa-artifacts/invite-flow-2026-06-25/10-api-assertions.png"
+  ],
+  "assertions": [
+    {
+      "name": "login me@sahastasai.com",
+      "ok": true,
+      "status": 200
+    },
+    {
+      "name": "login sahanavsairamesh@gmail",
+      "ok": true,
+      "status": 200
+    },
+    {
+      "name": "invite code visible",
+      "ok": true,
+      "code": "DD569F72E9B0"
+    },
+    {
+      "name": "invite code visible",
+      "ok": true,
+      "code": "73A23E21E8D1"
+    },
+    {
+      "name": "member link default cap",
+      "ok": true,
+      "maxUses": 25
+    },
+    {
+      "name": "admin link one use",
+      "ok": true,
+      "maxUses": 1
+    },
+    {
+      "name": "admin link one day expiry",
+      "ok": true,
+      "adminTtlHours": 23.999028055555556
+    },
+    {
+      "name": "elevated maxUses rejected",
+      "ok": true,
+      "status": 400,
+      "message": "Elevated invite links can have at most 5 uses"
+    },
+    {
+      "name": "verify token",
+      "ok": true,
+      "status": 200
+    },
+    {
+      "name": "recipient promoted to member",
+      "ok": true,
+      "verificationLevel": 45
+    },
+    {
+      "name": "login sahanavsairamesh@gmail",
+      "ok": true,
+      "status": 200
+    },
+    {
+      "name": "verify token",
+      "ok": true,
+      "status": 200
+    },
+    {
+      "name": "recipient promoted by admin invite",
+      "ok": true,
+      "verificationLevel": 108
+    }
+  ]
+}

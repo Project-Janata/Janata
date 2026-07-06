@@ -1,0 +1,431 @@
+{
+  "generatedAt": "2026-06-26T07:13:13.999Z",
+  "findings": [
+    {
+      "id": "RT-001",
+      "severity": "Critical",
+      "cvss": "9.8",
+      "title": "Mutable profile email grants admin access",
+      "confirmed": true,
+      "affected": "PUT /api/auth/update-profile, adminMiddleware",
+      "cwe": "CWE-266 Incorrect Privilege Assignment",
+      "reproduction": [
+        "Authenticate as any normal user.",
+        "PUT /api/auth/update-profile with email set to chinmayajanata@gmail.com.",
+        "Call any /api/admin/* endpoint with the same token."
+      ],
+      "rootCause": "isAdmin trusts mutable users.email and update-profile lets users change it.",
+      "fix": "Remove email-based admin checks or require verified immutable admin identity; block user-controlled email role changes.",
+      "screenshot": "01-email-spoof-admin.png"
+    },
+    {
+      "id": "RT-002",
+      "severity": "Critical",
+      "cvss": "9.1",
+      "title": "Developer email bypass self-provisions admin-capable role",
+      "confirmed": true,
+      "affected": "POST /api/auth/register",
+      "cwe": "CWE-287 Improper Authentication",
+      "reproduction": [
+        "Register a listed developer email without an invite.",
+        "Log in.",
+        "Call /api/admin/users."
+      ],
+      "rootCause": "Public registration grants BRAHMACHARI based only on email string membership in DEVELOPER_EMAILS.",
+      "fix": "Environment-gate or remove developer bypass; require email ownership and server-side provisioning.",
+      "screenshot": "03-developer-email-bypass.png"
+    },
+    {
+      "id": "RT-003",
+      "severity": "High",
+      "cvss": "7.5",
+      "title": "Inactive accounts are not blocked by authentication middleware",
+      "confirmed": true,
+      "affected": "authMiddleware, POST /api/auth/authenticate",
+      "cwe": "CWE-285 Improper Authorization",
+      "reproduction": [
+        "Set a user is_active=0.",
+        "Authenticate as that user.",
+        "Use an authenticated endpoint."
+      ],
+      "rootCause": "authMiddleware checks token validity but never enforces users.is_active.",
+      "fix": "Reject inactive users on login and every authenticated request.",
+      "screenshot": "04-inactive-user-auth.png"
+    },
+    {
+      "id": "RT-004",
+      "severity": "High",
+      "cvss": "7.4",
+      "title": "Authentication rate limits trust spoofable client IP headers",
+      "confirmed": true,
+      "affected": "rateLimit middleware on auth endpoints",
+      "cwe": "CWE-348 Use of Less Trusted Source",
+      "reproduction": [
+        "Send failed login attempts with one X-Forwarded-For value.",
+        "Repeat with a new X-Forwarded-For value per request."
+      ],
+      "rootCause": "rateLimit accepts CF-Connecting-IP/X-Forwarded-For request headers directly.",
+      "fix": "Use trusted platform client IP metadata only; strip/ignore client-supplied forwarding headers.",
+      "screenshot": "05-rate-limit-bypass.png"
+    },
+    {
+      "id": "RT-005",
+      "severity": "Medium",
+      "cvss": "5.3",
+      "title": "Unauthenticated user-existence endpoint enumerates accounts",
+      "confirmed": true,
+      "affected": "POST /api/userExistence",
+      "cwe": "CWE-203 Observable Discrepancy",
+      "reproduction": [
+        "POST a known username.",
+        "POST a random username.",
+        "Compare existence booleans."
+      ],
+      "rootCause": "Endpoint returns exact account existence without auth.",
+      "fix": "Remove endpoint or normalize responses and move checks behind flow-specific throttling.",
+      "screenshot": "06-user-enumeration.png"
+    },
+    {
+      "id": "RT-006",
+      "severity": "Low",
+      "cvss": "3.1",
+      "title": "Internal exception messages are returned to clients",
+      "confirmed": true,
+      "affected": "global error handler",
+      "cwe": "CWE-209 Information Exposure Through Error Message",
+      "reproduction": [
+        "Send malformed JSON to /api/auth/register.",
+        "Observe internal parser message in response body."
+      ],
+      "rootCause": "app.onError returns errorMessage to the client.",
+      "fix": "Return generic errors externally; log details server-side only.",
+      "screenshot": "07-error-detail-leak.png"
+    },
+    {
+      "id": "RT-007",
+      "severity": "High",
+      "cvss": "7.1",
+      "title": "Users can set arbitrary or duplicate email addresses without verification",
+      "confirmed": true,
+      "affected": "PUT /api/auth/update-profile",
+      "cwe": "CWE-287 Improper Authentication",
+      "reproduction": [
+        "Authenticate as user A.",
+        "Set email to user B username/email.",
+        "Query users with that email."
+      ],
+      "rootCause": "email is mutable, unverified, and not unique.",
+      "fix": "Use a verified email-change workflow and enforce unique verified email addresses.",
+      "screenshot": "08-duplicate-email.png"
+    },
+    {
+      "id": "RT-008",
+      "severity": "Critical",
+      "cvss": "9.0",
+      "title": "Self-service centerID update grants access to private center boards",
+      "confirmed": true,
+      "affected": "PUT /api/auth/update-profile, GET /api/boards/center/:id",
+      "cwe": "CWE-639 Authorization Bypass Through User-Controlled Key",
+      "reproduction": [
+        "Create/locate a center-board post in center B.",
+        "As user without center B access, GET board and see 403.",
+        "Set own centerID to center B.",
+        "GET board again and see posts."
+      ],
+      "rootCause": "Board access trusts mutable users.center_id.",
+      "fix": "Make center membership server-controlled; require admin/sevak approval or membership table.",
+      "screenshot": "09-center-self-assignment-board-read.png"
+    },
+    {
+      "id": "RT-009",
+      "severity": "High",
+      "cvss": "8.0",
+      "title": "Unverified self-assigned users can post to center boards",
+      "confirmed": true,
+      "affected": "POST /api/boards/center/:id/posts",
+      "cwe": "CWE-862 Missing Authorization",
+      "reproduction": [
+        "Use RT-008 to self-assign centerID.",
+        "POST to /api/boards/center/:id/posts as unverified account."
+      ],
+      "rootCause": "Posting gate checks only board access and suspension, not verified membership.",
+      "fix": "Require verified membership and server-controlled center membership for board writes.",
+      "screenshot": "10-unverified-center-post.png"
+    },
+    {
+      "id": "RT-010",
+      "severity": "High",
+      "cvss": "7.5",
+      "title": "Unverified users can post to the signed-in public feed",
+      "confirmed": true,
+      "affected": "POST /api/feed/public",
+      "cwe": "CWE-862 Missing Authorization",
+      "reproduction": [
+        "Authenticate as verificationLevel 30 user.",
+        "POST /api/feed/public."
+      ],
+      "rootCause": "Public feed posting does not require NORMAL_USER verification.",
+      "fix": "Gate public feed writes to verified, active, unsuspended members.",
+      "screenshot": "11-unverified-public-feed-post.png"
+    },
+    {
+      "id": "RT-011",
+      "severity": "Medium",
+      "cvss": "6.4",
+      "title": "Users can report posts from boards they cannot access",
+      "confirmed": true,
+      "affected": "POST /api/boards/posts/:postId/report",
+      "cwe": "CWE-862 Missing Authorization",
+      "reproduction": [
+        "Get a post id from a center board the attacker cannot access.",
+        "Verify board read returns 403.",
+        "POST report for that post id and see 201."
+      ],
+      "rootCause": "Report route looks up the post but does not call verifyBoardAccess.",
+      "fix": "Require the same read access for report submission.",
+      "screenshot": "12-cross-board-report.png"
+    },
+    {
+      "id": "RT-012",
+      "severity": "Medium",
+      "cvss": "6.5",
+      "title": "Any authenticated user can create center records",
+      "confirmed": true,
+      "affected": "POST /api/addCenter",
+      "cwe": "CWE-862 Missing Authorization",
+      "reproduction": [
+        "Authenticate as normal member.",
+        "POST /api/addCenter.",
+        "Fetch the created center publicly."
+      ],
+      "rootCause": "Center creation is authentication-only.",
+      "fix": "Gate center creation to admins or store submissions in a moderation queue.",
+      "screenshot": "13-member-center-create.png"
+    },
+    {
+      "id": "RT-013",
+      "severity": "High",
+      "cvss": "8.1",
+      "title": "Any member can edit legacy events with no creator",
+      "confirmed": true,
+      "affected": "POST /api/updateEvent",
+      "cwe": "CWE-862 Missing Authorization",
+      "reproduction": [
+        "Find event with created_by NULL.",
+        "POST /api/updateEvent as normal member.",
+        "Fetch event and observe modified title."
+      ],
+      "rootCause": "isEditable explicitly allows existing.created_by === null.",
+      "fix": "Backfill owners or require admin for null-owner events.",
+      "screenshot": "14-null-owner-event-edit.png"
+    },
+    {
+      "id": "RT-014",
+      "severity": "High",
+      "cvss": "7.6",
+      "title": "Sevaks can create official events for centers they do not belong to",
+      "confirmed": true,
+      "affected": "POST /api/addEvent",
+      "cwe": "CWE-863 Incorrect Authorization",
+      "reproduction": [
+        "Set sevak center to center A.",
+        "Create event with centerID for center B.",
+        "Fetch event and observe center B plus official badge flag."
+      ],
+      "rootCause": "Event creation checks role only, not center ownership/scope.",
+      "fix": "Require sevak/admin scope over the target center.",
+      "screenshot": "15-cross-center-official-event.png"
+    },
+    {
+      "id": "RT-015",
+      "severity": "High",
+      "cvss": "8.0",
+      "title": "Event creation accepts javascript: URLs used by frontend open-link actions",
+      "confirmed": true,
+      "affected": "POST /api/addEvent, event detail Linking.openURL",
+      "cwe": "CWE-79 Improper Neutralization of Input During Web Page Generation",
+      "reproduction": [
+        "Create event with signupUrl/externalUrl set to javascript:alert(...).",
+        "Fetch event and observe stored URL."
+      ],
+      "rootCause": "validate.url only checks string length; frontend opens stored URLs.",
+      "fix": "Parse URLs and allow only https/http schemes, preferably https.",
+      "screenshot": "16-event-create-javascript-url.png"
+    },
+    {
+      "id": "RT-016",
+      "severity": "High",
+      "cvss": "8.0",
+      "title": "Event update accepts javascript: URLs even when create validation should apply",
+      "confirmed": true,
+      "affected": "POST /api/updateEvent",
+      "cwe": "CWE-20 Improper Input Validation",
+      "reproduction": [
+        "As event creator, POST /api/updateEvent with javascript: URL fields.",
+        "Fetch event and observe stored values."
+      ],
+      "rootCause": "updateEvent does not validate URL fields.",
+      "fix": "Share strict event input schema between create and update.",
+      "screenshot": "17-event-update-javascript-url.png"
+    },
+    {
+      "id": "RT-017",
+      "severity": "Medium",
+      "cvss": "5.5",
+      "title": "Event update accepts impossible latitude and longitude values",
+      "confirmed": true,
+      "affected": "POST /api/updateEvent",
+      "cwe": "CWE-20 Improper Input Validation",
+      "reproduction": [
+        "As event creator, update latitude to 999 and longitude to -999.",
+        "Fetch event and observe stored invalid coordinates."
+      ],
+      "rootCause": "updateEvent parses coordinate values without range checks.",
+      "fix": "Apply create-route coordinate validation to every update path.",
+      "screenshot": "18-event-update-bad-coordinates.png"
+    },
+    {
+      "id": "RT-018",
+      "severity": "Medium",
+      "cvss": "6.5",
+      "title": "Downgraded event creators retain attendee roster PII access",
+      "confirmed": true,
+      "affected": "GET /api/events/:id/roster",
+      "cwe": "CWE-863 Incorrect Authorization",
+      "reproduction": [
+        "Create event as sevak.",
+        "Guest RSVP with email.",
+        "Downgrade creator below sevak.",
+        "GET roster as downgraded creator."
+      ],
+      "rootCause": "Roster access checks created_by or admin only, not current coordinator role/scope.",
+      "fix": "Require current event-management permission for roster access.",
+      "screenshot": "19-downgraded-creator-roster.png"
+    },
+    {
+      "id": "RT-019",
+      "severity": "High",
+      "cvss": "7.2",
+      "title": "Guest RSVP can be spammed to inflate attendee counts by spoofing IP headers",
+      "confirmed": true,
+      "affected": "POST /api/attendEventGuest, rateLimit",
+      "cwe": "CWE-770 Allocation of Resources Without Limits",
+      "reproduction": [
+        "Send guest RSVPs with one X-Forwarded-For until 429.",
+        "Repeat with varied X-Forwarded-For values.",
+        "Fetch event and observe count inflated."
+      ],
+      "rootCause": "Public RSVP relies on spoofable-IP rate limiting and no captcha/email verification.",
+      "fix": "Use trusted IP, event-level throttles, CAPTCHA or email confirmation, and anomaly limits.",
+      "screenshot": "20-guest-rsvp-spam.png"
+    },
+    {
+      "id": "RT-020",
+      "severity": "Medium",
+      "cvss": "6.8",
+      "title": "Admin user verification accepts unbounded privilege levels",
+      "confirmed": true,
+      "affected": "POST /api/admin/users/:id/verify",
+      "cwe": "CWE-269 Improper Privilege Management",
+      "reproduction": [
+        "As admin, POST verificationLevel 1000008 for a normal user.",
+        "Verify target token and observe elevated role."
+      ],
+      "rootCause": "Admin verify endpoint does not constrain verificationLevel to approved roles or prevent self-created super roles.",
+      "fix": "Validate role transitions against an allowlist and require stronger controls for high-privilege grants.",
+      "screenshot": "21-admin-unbounded-role.png"
+    },
+    {
+      "id": "RT-021",
+      "severity": "Medium",
+      "cvss": "6.5",
+      "title": "Password reset requests can be spammed and invalidate prior codes",
+      "confirmed": true,
+      "affected": "POST /api/auth/password-reset/request",
+      "cwe": "CWE-770 Allocation of Resources Without Limits",
+      "reproduction": [
+        "Send password reset requests for a known username with varied X-Forwarded-For.",
+        "Observe multiple reset-code rows and only latest active."
+      ],
+      "rootCause": "Reset request throttling depends on spoofable IP and no per-account cooldown.",
+      "fix": "Add per-account throttles, trusted-IP rate limiting, and abuse monitoring.",
+      "screenshot": "22-password-reset-spam.png"
+    },
+    {
+      "id": "RT-022",
+      "severity": "Medium",
+      "cvss": "5.9",
+      "title": "Email verification sends can be spammed by spoofing IP headers",
+      "confirmed": true,
+      "affected": "POST /api/auth/send-verification-email",
+      "cwe": "CWE-770 Allocation of Resources Without Limits",
+      "reproduction": [
+        "Make target email unverified.",
+        "Call send-verification-email repeatedly with varied X-Forwarded-For.",
+        "Observe new token rows beyond nominal rate limit."
+      ],
+      "rootCause": "Rate limit is per spoofable IP, not per account/email.",
+      "fix": "Add per-account/email cooldown and trusted-IP enforcement.",
+      "screenshot": "23-email-verification-spam.png"
+    },
+    {
+      "id": "RT-023",
+      "severity": "Medium",
+      "cvss": "6.1",
+      "title": "Admin event update endpoint lacks URL validation",
+      "confirmed": true,
+      "affected": "PUT /api/admin/events/:id",
+      "cwe": "CWE-20 Improper Input Validation",
+      "reproduction": [
+        "As admin, PUT javascript: URL fields to /api/admin/events/:id.",
+        "Fetch event and observe stored URL."
+      ],
+      "rootCause": "Admin event update duplicates update logic without strict schemas.",
+      "fix": "Use shared validated schema for all event mutations.",
+      "screenshot": "24-admin-event-url-validation.png"
+    },
+    {
+      "id": "RT-024",
+      "severity": "Medium",
+      "cvss": "6.8",
+      "title": "Legacy verifyUser endpoint accepts arbitrary privilege levels",
+      "confirmed": true,
+      "affected": "POST /api/verifyUser",
+      "cwe": "CWE-269 Improper Privilege Management",
+      "reproduction": [
+        "As admin, POST /api/verifyUser with verificationLevel 1008.",
+        "Verify target role changed."
+      ],
+      "rootCause": "Legacy endpoint has no role allowlist or upper bound.",
+      "fix": "Remove legacy endpoint or validate levels exactly like the modern admin path should.",
+      "screenshot": "25-legacy-verifyuser-unbounded-role.png"
+    }
+  ],
+  "screenshots": [
+    "/home/sahastasai/Development/Project-Janatha/qa-artifacts/security-redteam-2026-06-26/01-email-spoof-admin.png",
+    "/home/sahastasai/Development/Project-Janatha/qa-artifacts/security-redteam-2026-06-26/02-email-spoof-admin-ui.png",
+    "/home/sahastasai/Development/Project-Janatha/qa-artifacts/security-redteam-2026-06-26/03-developer-email-bypass.png",
+    "/home/sahastasai/Development/Project-Janatha/qa-artifacts/security-redteam-2026-06-26/04-inactive-user-auth.png",
+    "/home/sahastasai/Development/Project-Janatha/qa-artifacts/security-redteam-2026-06-26/05-rate-limit-bypass.png",
+    "/home/sahastasai/Development/Project-Janatha/qa-artifacts/security-redteam-2026-06-26/06-user-enumeration.png",
+    "/home/sahastasai/Development/Project-Janatha/qa-artifacts/security-redteam-2026-06-26/07-error-detail-leak.png",
+    "/home/sahastasai/Development/Project-Janatha/qa-artifacts/security-redteam-2026-06-26/08-duplicate-email.png",
+    "/home/sahastasai/Development/Project-Janatha/qa-artifacts/security-redteam-2026-06-26/09-center-self-assignment-board-read.png",
+    "/home/sahastasai/Development/Project-Janatha/qa-artifacts/security-redteam-2026-06-26/10-unverified-center-post.png",
+    "/home/sahastasai/Development/Project-Janatha/qa-artifacts/security-redteam-2026-06-26/11-unverified-public-feed-post.png",
+    "/home/sahastasai/Development/Project-Janatha/qa-artifacts/security-redteam-2026-06-26/12-cross-board-report.png",
+    "/home/sahastasai/Development/Project-Janatha/qa-artifacts/security-redteam-2026-06-26/13-member-center-create.png",
+    "/home/sahastasai/Development/Project-Janatha/qa-artifacts/security-redteam-2026-06-26/14-null-owner-event-edit.png",
+    "/home/sahastasai/Development/Project-Janatha/qa-artifacts/security-redteam-2026-06-26/15-cross-center-official-event.png",
+    "/home/sahastasai/Development/Project-Janatha/qa-artifacts/security-redteam-2026-06-26/16-event-create-javascript-url.png",
+    "/home/sahastasai/Development/Project-Janatha/qa-artifacts/security-redteam-2026-06-26/17-event-update-javascript-url.png",
+    "/home/sahastasai/Development/Project-Janatha/qa-artifacts/security-redteam-2026-06-26/18-event-update-bad-coordinates.png",
+    "/home/sahastasai/Development/Project-Janatha/qa-artifacts/security-redteam-2026-06-26/19-downgraded-creator-roster.png",
+    "/home/sahastasai/Development/Project-Janatha/qa-artifacts/security-redteam-2026-06-26/20-guest-rsvp-spam.png",
+    "/home/sahastasai/Development/Project-Janatha/qa-artifacts/security-redteam-2026-06-26/21-admin-unbounded-role.png",
+    "/home/sahastasai/Development/Project-Janatha/qa-artifacts/security-redteam-2026-06-26/22-password-reset-spam.png",
+    "/home/sahastasai/Development/Project-Janatha/qa-artifacts/security-redteam-2026-06-26/23-email-verification-spam.png",
+    "/home/sahastasai/Development/Project-Janatha/qa-artifacts/security-redteam-2026-06-26/24-admin-event-url-validation.png",
+    "/home/sahastasai/Development/Project-Janatha/qa-artifacts/security-redteam-2026-06-26/25-legacy-verifyuser-unbounded-role.png"
+  ]
+}
