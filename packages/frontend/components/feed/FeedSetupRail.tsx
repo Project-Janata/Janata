@@ -47,8 +47,8 @@ function StepDot({ index, state, colors }: { index: number; state: StepState; co
 }
 
 // State-aware setup panel for the right rail (desktop) / top of the stacked
-// empty state (mobile). Walks a first-timer through the two steps that unlock
-// the feed: sign in, then join a center. Steps collapse as they complete.
+// empty state (mobile). Walks a first-timer through sign-in and center/event
+// discovery. Center membership itself is coordinator-approved.
 export function FeedSetupRail({
   colors,
   isSignedIn,
@@ -63,7 +63,7 @@ export function FeedSetupRail({
   colors: AppColors
   isSignedIn: boolean
   onSignIn: () => void
-  /** Resolve true on success. Guest mode routes to auth and may not resolve. */
+  /** Resolve true only when the caller actually unlocks something. */
   onJoinCenter: (centerId: string) => Promise<boolean> | void
   onBrowseEvents: () => void
   /** Hard-gate path for the not-yet-invited: paste an invite link or code. */
@@ -165,11 +165,11 @@ export function FeedSetupRail({
       }}
     >
       <Text style={{ fontFamily: 'Inclusive Sans', fontSize: 17, color: colors.text }}>
-        {isSignedIn ? 'Almost there' : 'Join the conversation'}
+        {isSignedIn ? 'Find your community' : 'Join the conversation'}
       </Text>
       <Text style={{ fontSize: 13, lineHeight: 18, color: colors.textMuted, marginBottom: 14 }}>
         {isSignedIn
-          ? 'Join a center to unlock its boards.'
+          ? 'Center boards unlock after coordinator approval. Event boards unlock when you RSVP.'
           : 'Boards for your center and events. Members only.'}
       </Text>
 
@@ -217,7 +217,7 @@ export function FeedSetupRail({
         </View>
       </View>
 
-      {/* Step 2 — Join your center */}
+      {/* Step 2 — Find your center */}
       <View style={{ flexDirection: 'row', gap: 12 }}>
         <StepDot index={2} state={step2} colors={colors} />
         <View style={{ flex: 1 }}>
@@ -228,7 +228,7 @@ export function FeedSetupRail({
               fontWeight: step2 === 'active' ? '600' : '400',
             }}
           >
-            Join your center
+            Find your center
           </Text>
 
           {step2 === 'active' ? (
@@ -242,13 +242,13 @@ export function FeedSetupRail({
               />
               <Pressable onPress={onBrowseEvents} accessibilityRole="button" style={{ paddingTop: 2 }}>
                 <Text style={{ fontSize: 12.5, color: colors.textMuted }}>
-                  Or RSVP to an event to see its board.
+                  RSVP to an event to see its board.
                 </Text>
               </Pressable>
             </View>
           ) : (
             <Text style={{ fontSize: 12.5, lineHeight: 17, color: colors.textFaint, marginTop: 2 }}>
-              Your home center's board lands here once you join.
+              Your home center's board lands here after coordinator approval.
             </Text>
           )}
         </View>

@@ -10,8 +10,7 @@ import {
   KeyboardAvoidingView,
   Platform,
 } from 'react-native'
-import { useRouter, useFocusEffect } from 'expo-router'
-import { useCallback } from 'react'
+import { useRouter } from 'expo-router'
 let ImagePicker: typeof import('expo-image-picker') | null = null
 try {
   ImagePicker = require('expo-image-picker')
@@ -21,13 +20,12 @@ let ImageManipulator: typeof import('expo-image-manipulator') | null = null
 try {
   ImageManipulator = require('expo-image-manipulator')
 } catch {}
-import { Camera, ChevronRight } from 'lucide-react-native'
+import { Camera } from 'lucide-react-native'
 import { useUser, useTheme } from '../components/contexts'
 import { useAnalytics } from '../utils/analytics'
 import { Text, Section, StackHeader } from '../components/ui'
 import BirthdatePicker from '../components/profile/BirthdatePicker'
 import { fetchCenters, CenterData } from '../utils/api'
-import { centerPickerStore } from '../utils/centerPickerStore'
 
 const INTEREST_OPTIONS = [
   'Satsangs',
@@ -67,13 +65,6 @@ export default function EditProfileScreen() {
   const [imageChanged, setImageChanged] = useState(false)
 
   const [allCenters, setAllCenters] = useState<CenterData[]>([])
-
-  useFocusEffect(useCallback(() => {
-    if (centerPickerStore.result !== null) {
-      setCenterID(centerPickerStore.result)
-      centerPickerStore.result = null
-    }
-  }, []))
 
   const [isSaving, setIsSaving] = useState(false)
   const [errors, setErrors] = useState<Record<string, string>>({})
@@ -168,7 +159,6 @@ export default function EditProfileScreen() {
         work: work.trim(),
         region: region.trim(),
         lookingFor,
-        ...(centerID ? { centerID } : {}),
         ...(birthday ? { dateOfBirth: birthday.toISOString().split('T')[0] } : {}),
         ...(imageChanged && profileImageBase64 ? { profileImage: profileImageBase64 } : {}),
       })
@@ -356,21 +346,17 @@ export default function EditProfileScreen() {
                 <Text style={fieldLabelStyle}>BIRTHDAY</Text>
                 <BirthdatePicker value={birthday ?? undefined} onChange={setBirthday} />
               </View>
-              <Pressable
-                style={rowStyle}
-                onPress={() => {
-                  track('profile_center_picker_opened', { source: 'edit_profile', current_center_id: centerID || null })
-                  router.push({ pathname: '/center-picker', params: { currentCenterID: centerID || '' } })
-                }}
-              >
+              <View style={rowStyle}>
                 <Text style={fieldLabelStyle}>CENTER</Text>
-                <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingTop: 6 }}>
+                <View style={{ gap: 3, paddingTop: 6 }}>
                   <Text style={{ fontSize: 15, color: selectedCenterName ? textColor : faintColor, flex: 1 }}>
-                    {selectedCenterName || 'Select a center'}
+                    {selectedCenterName || 'No center assigned'}
                   </Text>
-                  <ChevronRight size={18} color={faintColor} />
+                  <Text style={{ fontSize: 12.5, color: faintColor }}>
+                    Center changes require coordinator approval.
+                  </Text>
                 </View>
-              </Pressable>
+              </View>
             </View>
           </Section>
 

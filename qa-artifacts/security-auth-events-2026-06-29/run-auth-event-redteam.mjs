@@ -19,7 +19,7 @@ const createdEventIds = new Set()
 
 function sql(command) {
   execFileSync(
-    'npx',
+    'bunx',
     [
       'wrangler',
       'd1',
@@ -37,7 +37,7 @@ function sql(command) {
 
 function sqlJson(command) {
   const raw = execFileSync(
-    'npx',
+    'bunx',
     [
       'wrangler',
       'd1',

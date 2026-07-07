@@ -331,6 +331,16 @@ describe('POST /api/auth/register', () => {
     expect(body.message).toContain('invite is required')
   })
 
+  it('invite gate ON: no-invite signup does not reveal existing usernames', async () => {
+    await registerAndLogin('existing-gated-user', 'password123')
+    const { res, body } = await registerGated({
+      username: 'existing-gated-user',
+      password: 'password123',
+    })
+    expect(res.status).toBe(403)
+    expect(body.message).toContain('invite is required')
+  })
+
   it('invite gate ON: allows a signup with a valid invite (201)', async () => {
     const { res, body } = await registerGated({
       username: 'gated-withinvite',
@@ -1327,6 +1337,29 @@ describe('POST /api/updateRegistration (auth + self/admin)', () => {
     )
     expect(res.status).toBe(200)
     expect(body.message).toBe('User updated')
+  })
+
+  it('blocks self-service center changes through the legacy registration route', async () => {
+    const { token } = await registerAndLogin('legacycenter', 'password123')
+    await db.createCenter(env.DB, {
+      id: 'legacy-center-lock',
+      name: 'Legacy Center Lock',
+      latitude: 37.0,
+      longitude: -121.0,
+    })
+
+    const { res, body } = await jsonPost(
+      '/api/updateRegistration',
+      { username: 'legacycenter', userJSON: { center: 'legacy-center-lock' } },
+      authHeader(token)
+    )
+
+    expect(res.status).toBe(403)
+    expect(body.message).toContain('admin approval')
+    const row = await env.DB.prepare('SELECT center_id FROM users WHERE username = ?')
+      .bind('legacycenter')
+      .first<{ center_id: string | null }>()
+    expect(row!.center_id).toBeNull()
   })
 
   it('user cannot update another user (401)', async () => {
@@ -3054,6 +3087,24 @@ describe('event routes', () => {
       const { body } = await jsonPost('/api/fetchEventsByCenter', { centerID: centerId })
       expect(body.events).toHaveLength(1)
       expect(body.events[0].title).toBe('Center Event')
+    })
+
+    it('caps public center event responses at 200 events', async () => {
+      for (let i = 0; i < 205; i++) {
+        await db.createEvent(env.DB, {
+          id: `center-bulk-event-${i}`,
+          title: `Center Bulk Event ${i}`,
+          date: new Date(Date.UTC(2026, 1, 1, 0, i)).toISOString(),
+          latitude: 37.0,
+          longitude: -121.0,
+          center_id: centerId,
+          created_by: 'center-bulk-test',
+        })
+      }
+
+      const { res, body } = await jsonPost('/api/fetchEventsByCenter', { centerID: centerId })
+      expect(res.status).toBe(200)
+      expect(body.events).toHaveLength(200)
     })
   })
 

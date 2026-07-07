@@ -417,7 +417,17 @@ export async function getEventsPaginated(
 export async function getEventsByCenterId(
   db: D1Database,
   centerId: string,
+  limit?: number,
 ): Promise<EventRow[]> {
+  if (limit !== undefined) {
+    const safeLimit = Math.max(1, Math.min(200, Math.floor(limit)))
+    const result = await db
+      .prepare('SELECT * FROM events WHERE center_id = ?1 ORDER BY date DESC LIMIT ?2')
+      .bind(centerId, safeLimit)
+      .all<EventRow>()
+    return result.results ?? []
+  }
+
   const result = await db
     .prepare('SELECT * FROM events WHERE center_id = ?1 ORDER BY date DESC')
     .bind(centerId)

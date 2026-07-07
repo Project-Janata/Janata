@@ -531,11 +531,6 @@ app.post('/auth/register', rateLimit(5, 60_000), async (c) => {
     return c.json({ message: 'Password must be at least 8 characters long' }, 400)
   }
 
-  const existingUser = await db.getUserByUsername(c.env.DB, normalizedUsername.toLowerCase())
-  if (existingUser) {
-    return c.json({ message: 'Username already exists' }, 409)
-  }
-
   // v2 invite-links model (#342): the invite link is the door. An account
   // created through a valid invite link is VERIFIED at inception (Bluesky/
   // Clubhouse), so we promote to NORMAL_USER immediately at register rather
@@ -552,6 +547,21 @@ app.post('/auth/register', rateLimit(5, 60_000), async (c) => {
   const requireInvite = c.env.REQUIRE_INVITE_CODE === 'true'
   const hasInviteCode =
     typeof body.inviteCode === 'string' && body.inviteCode.trim().length > 0
+
+  if (!hasInviteCode && requireInvite) {
+    // Invite-only: no code -> no account, including developer/bootstrap emails.
+    // Return before duplicate lookup so the gate cannot be used to enumerate
+    // existing usernames.
+    return c.json(
+      { message: 'An invite is required to join Janata. Ask a member for an invite link.' },
+      403,
+    )
+  }
+
+  const existingUser = await db.getUserByUsername(c.env.DB, normalizedEmail)
+  if (existingUser) {
+    return c.json({ message: 'Username already exists' }, 409)
+  }
 
   let verificationLevel = UNVERIFIED_USER
   let inviteCodeUsed: string | null = null
@@ -579,12 +589,6 @@ app.post('/auth/register', rateLimit(5, 60_000), async (c) => {
     if (isBootstrapAdmin || isDeveloper) {
       verificationLevel = Math.max(verificationLevel, BRAHMACHARI)
     }
-  } else if (requireInvite) {
-    // Invite-only: no code -> no account, including developer/bootstrap emails.
-    return c.json(
-      { message: 'An invite is required to join Janata. Ask a member for an invite link.' },
-      403,
-    )
   } else if (isBootstrapAdmin || isDeveloper) {
     verificationLevel = BRAHMACHARI
   }
@@ -1525,8 +1529,19 @@ app.post('/userUpdate', authMiddleware, async (c) => {
   if (userJSON.lastName !== undefined) updates.last_name = userJSON.lastName
   if (userJSON.dateOfBirth !== undefined) updates.date_of_birth = userJSON.dateOfBirth
   if (userJSON.profilePictureURL !== undefined) updates.profile_image = userJSON.profilePictureURL
-  if (userJSON.center !== undefined)
-    updates.center_id = userJSON.center === -1 ? null : String(userJSON.center)
+  if (userJSON.center !== undefined) {
+    let requestedCenter: string | null = null
+    if (userJSON.center !== -1 && userJSON.center !== null && userJSON.center !== '') {
+      requestedCenter = validate.id(userJSON.center)
+      if (!requestedCenter) {
+        return c.json({ message: 'center is invalid' }, 400)
+      }
+    }
+    if (!isAdmin(user) && requestedCenter !== (targetUser.center_id ?? null)) {
+      return c.json({ message: 'Center changes require admin approval' }, 403)
+    }
+    updates.center_id = requestedCenter
+  }
   if (userJSON.points !== undefined) updates.points = userJSON.points
   if (userJSON.isVerified !== undefined) updates.is_verified = userJSON.isVerified ? 1 : 0
   if (userJSON.verificationLevel !== undefined)
@@ -1561,8 +1576,19 @@ app.post('/updateRegistration', authMiddleware, async (c) => {
   if (userJSON.firstName !== undefined) updates.first_name = userJSON.firstName
   if (userJSON.lastName !== undefined) updates.last_name = userJSON.lastName
   if (userJSON.dateOfBirth !== undefined) updates.date_of_birth = userJSON.dateOfBirth
-  if (userJSON.center !== undefined)
-    updates.center_id = userJSON.center === -1 ? null : String(userJSON.center)
+  if (userJSON.center !== undefined) {
+    let requestedCenter: string | null = null
+    if (userJSON.center !== -1 && userJSON.center !== null && userJSON.center !== '') {
+      requestedCenter = validate.id(userJSON.center)
+      if (!requestedCenter) {
+        return c.json({ message: 'center is invalid' }, 400)
+      }
+    }
+    if (!isAdmin(user) && requestedCenter !== (targetUser.center_id ?? null)) {
+      return c.json({ message: 'Center changes require admin approval' }, 403)
+    }
+    updates.center_id = requestedCenter
+  }
 
   const result = await db.updateUser(c.env.DB, targetUser.id, updates)
 
@@ -2850,10 +2876,10 @@ app.post('/unattendEvent', authMiddleware, async (c) => {
 
 app.post('/fetchEventsByCenter', async (c) => {
   const { centerID } = await c.req.json<{ centerID: string }>()
-  const events = await db.getEventsByCenterId(c.env.DB, centerID)
+  const events = await db.getEventsByCenterId(c.env.DB, centerID, PUBLIC_EVENT_LIST_LIMIT)
   return c.json({
     message: 'Success',
-    events: events.slice(0, PUBLIC_EVENT_LIST_LIMIT).map(eventRowToApi),
+    events: events.map(eventRowToApi),
   })
 })
 
@@ -2861,10 +2887,10 @@ app.post('/fetchEventsByCenter', async (c) => {
 app.get('/fetchEventsByCenter', cacheControl(30), async (c) => {
   const centerID = c.req.query('centerID')
   if (!centerID) return c.json({ message: 'Malformed centerID' }, 400)
-  const events = await db.getEventsByCenterId(c.env.DB, centerID)
+  const events = await db.getEventsByCenterId(c.env.DB, centerID, PUBLIC_EVENT_LIST_LIMIT)
   return c.json({
     message: 'Success',
-    events: events.slice(0, PUBLIC_EVENT_LIST_LIMIT).map(eventRowToApi),
+    events: events.map(eventRowToApi),
   })
 })
 

@@ -54,8 +54,8 @@ REMEDIATION = {
     },
     "AE-F006": {
         "status": "Fixed",
-        "fix": "Profile mutation now blocks email changes, rejects self-service center reassignment, validates profile image URLs as http(s), bounds text fields, validates list fields, and rejects malformed profileComplete values.",
-        "tests": "New app.test.ts coverage rejects center self-assignment, oversized fields, and unsafe image URLs.",
+        "fix": "Profile mutation now blocks email changes, rejects self-service center reassignment across auth and legacy profile routes, validates profile image URLs as http(s), bounds text fields, validates list fields, and rejects malformed profileComplete values. Frontend onboarding/profile/feed flows no longer send self-service center mutations.",
+        "tests": "New app.test.ts coverage rejects auth and legacy center self-assignment, oversized fields, and unsafe image URLs. Frontend typecheck/tests/export verify the UI fallout.",
     },
     "AE-F007": {
         "status": "Partially fixed",
@@ -64,8 +64,8 @@ REMEDIATION = {
     },
     "AE-F008": {
         "status": "Fixed",
-        "fix": "Public userExistence now returns a generic false response, and public invite validation now returns a generic invalid response for inactive, expired, exhausted, or nonexistent codes.",
-        "tests": "New app.test.ts coverage asserts existing usernames are not disclosed.",
+        "fix": "Public userExistence now returns a generic false response, public invite validation now returns a generic invalid response for inactive, expired, exhausted, or nonexistent codes, and invite-gated registration rejects missing invites before duplicate-user lookup.",
+        "tests": "New app.test.ts coverage asserts existing usernames are not disclosed through userExistence or no-invite gated registration.",
     },
     "AE-F009": {
         "status": "Fixed",
@@ -114,12 +114,17 @@ REMEDIATION = {
     },
     "AE-F018": {
         "status": "Partially fixed",
-        "fix": "Legacy unpaginated event reads are capped at 200, and event registration state now returns 404 for missing events. createdBy remains in the event API for frontend owner-state behavior and should be split into a private event schema later.",
-        "tests": "New app.test.ts coverage verifies the event-list cap and missing-event registration 404.",
+        "fix": "Legacy unpaginated event reads and center-specific public event reads are capped at 200 with SQL-level limits, and event registration state now returns 404 for missing events. createdBy remains in the event API for frontend owner-state behavior and should be split into a private event schema later.",
+        "tests": "New app.test.ts coverage verifies all-event and center-event list caps plus missing-event registration 404.",
     },
 }
 
 TEST_RESULTS = [
+    {
+        "command": "repo: git fetch --all --prune && git merge origin/main --no-edit",
+        "result": "Passed",
+        "details": "origin/main merged cleanly into v2 before validation.",
+    },
     {
         "command": "packages/backend: bun run typecheck",
         "result": "Passed",
@@ -128,17 +133,32 @@ TEST_RESULTS = [
     {
         "command": "packages/backend: bunx vitest run src/__tests__/app.test.ts src/__tests__/passwordReset.test.ts src/__tests__/email.test.ts",
         "result": "Passed",
-        "details": "3 test files passed, 265 tests passed.",
+        "details": "3 test files passed, 268 tests passed.",
     },
     {
         "command": "packages/backend: bun run test",
         "result": "Passed",
-        "details": "12 test files passed, 476 tests passed.",
+        "details": "12 test files passed, 479 tests passed.",
     },
     {
         "command": "packages/frontend: bun run typecheck",
         "result": "Passed",
         "details": "tsc --noEmit completed without errors.",
+    },
+    {
+        "command": "packages/frontend: bun run test",
+        "result": "Passed",
+        "details": "12 test files passed, 201 tests passed.",
+    },
+    {
+        "command": "packages/frontend: bunx expo export --platform web",
+        "result": "Passed",
+        "details": "Expo web export completed; dist generated.",
+    },
+    {
+        "command": "repo: SITEMAP_SKIP_NETWORK=1 bun scripts/generate-sitemap.cjs",
+        "result": "Passed",
+        "details": "Generated dist/sitemap.xml with 5 static URLs.",
     },
 ]
 
@@ -363,7 +383,7 @@ def build_pdf():
     story.append(Spacer(1, 0.18 * inch))
     story.append(Paragraph("Exact Reproduction", styles["Heading2"]))
     story.append(para("Start the local backend, then run the harness below. It creates local-only fixtures, records observed API responses, captures proof screenshots, and writes the JSON source of truth.", styles["Small"]))
-    story.append(Paragraph("QA_PASSWORD='PreviewTest2026!' node qa-artifacts/security-auth-events-2026-06-29/run-auth-event-redteam.mjs", styles["MonoSmall"]))
+    story.append(Paragraph("QA_PASSWORD='PreviewTest2026!' bun qa-artifacts/security-auth-events-2026-06-29/run-auth-event-redteam.mjs", styles["MonoSmall"]))
     story.append(Spacer(1, 0.08 * inch))
     story.append(para("Source evidence: qa-artifacts/security-auth-events-2026-06-29/auth-event-findings.json. Screenshots are PNG files in the same directory.", styles["Small"]))
 

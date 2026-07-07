@@ -21,7 +21,6 @@ import { useCenterList, useMyEvents } from '../../hooks/useApiData'
 import { extractCityState } from '../../utils/addressParsing'
 import { CreatePostSheet, boardPostToMessage, type BoardMessage } from '../../components/boards'
 import AuthPromptModal from '../../components/ui/AuthPromptModal'
-import { centerPickerStore } from '../../utils/centerPickerStore'
 import { createBoardPost, createPublicPost, fetchAggregatedFeed, fetchBoard } from '../../utils/api'
 import {
   FeedHeader,
@@ -174,7 +173,7 @@ function matchesQuery(value: string, query: string) {
 export default function FeedScreen() {
   const router = useRouter()
   const navigation = useNavigation()
-  const { user, updateProfile } = useUser()
+  const { user } = useUser()
   const colors = useColors()
   const { width } = useWindowDimensions()
   const insets = useSafeAreaInsets()
@@ -216,25 +215,6 @@ export default function FeedScreen() {
 
   const canAccessBoards = !!user
   const userCenter = allCenters.find((item) => item.id === user?.centerID)
-
-  useEffect(() => {
-    if (!user || !centerPickerStore.result) return
-
-    const centerId = centerPickerStore.result
-    centerPickerStore.result = null
-    updateProfile({ centerID: centerId })
-      .then((result) => {
-        if (result.success) {
-          track('feed_setup_center_joined', { center_id: centerId, source: 'feed_empty_auth_return' })
-          refetchCenters()
-        } else {
-          track('feed_setup_center_join_failed', { center_id: centerId, source: 'feed_empty_auth_return' })
-        }
-      })
-      .catch(() => {
-        track('feed_setup_center_join_failed', { center_id: centerId, source: 'feed_empty_auth_return' })
-      })
-  }, [user, updateProfile, track, refetchCenters])
 
   const groups = useMemo<GroupBoard[]>(() => {
     const nextGroups: GroupBoard[] = []
@@ -448,28 +428,19 @@ export default function FeedScreen() {
     router.push('/auth?invite=1' as never)
   }, [router, track])
 
-  // Inline "join your center" from the empty-state rail. A guest can't persist a
-  // center yet, so we stash the pick and route to auth (it survives sign-in via
-  // centerPickerStore). A signed-in member joins immediately via updateProfile,
-  // which optimistically updates user.centerID and reflows the feed.
+  // Inline center discovery from the empty-state rail. Center membership is now
+  // coordinator-approved, so selecting a center never mutates the user's profile.
   const handleJoinCenter = useCallback(
     async (centerId: string): Promise<boolean> => {
       if (!user) {
-        centerPickerStore.result = centerId
         track('feed_setup_center_pick_guest', { center_id: centerId, source: 'feed_empty' })
         setAuthPromptOpen(true)
         return false
       }
-      const result = await updateProfile({ centerID: centerId })
-      if (result.success) {
-        track('feed_setup_center_joined', { center_id: centerId, source: 'feed_empty' })
-        refetchCenters()
-        return true
-      }
-      track('feed_setup_center_join_failed', { center_id: centerId, source: 'feed_empty' })
+      track('feed_setup_center_request_needed', { center_id: centerId, source: 'feed_empty' })
       return false
     },
-    [user, updateProfile, track, refetchCenters]
+    [user, track]
   )
 
   const closeDetail = () => {

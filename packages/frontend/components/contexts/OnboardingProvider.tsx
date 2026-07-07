@@ -98,7 +98,6 @@ export default function OnboardingProvider({ children }: { children: React.React
           firstName,
           lastName,
           dateOfBirth: birthdate?.toISOString() || null,
-          centerID,
           phoneNumber: phoneNumber || undefined,
           interests: interests.length > 0 ? interests : undefined,
           profileComplete: true,
