@@ -1,0 +1,26 @@
+{
+  "status": 200,
+  "ok": true,
+  "attempt": 1,
+  "sent_at": "2026-07-04T17:56:19.673Z",
+  "endpoint": "/client/v4/accounts/<redacted>/email/sending/send",
+  "from": "me@sahastasai.com",
+  "to": "sahanavsairamesh@gmail.com",
+  "subject": "Project Janatha Auth/Event Red-Team PDF Report - 2026-06-29",
+  "attachment": {
+    "filename": "janata-auth-event-redteam-report-2026-06-29.pdf",
+    "raw_bytes": 2101741,
+    "base64_bytes": 2802324
+  },
+  "body": {
+    "success": true,
+    "errors": [],
+    "messages": [],
+    "result": {
+      "message_id": "<rnO3plKd0aETsDUx1FOqHLafyqp6yap6S9Mc@sahastasai.com>",
+      "delivered": [],
+      "queued": [],
+      "permanent_bounces": []
+    }
+  }
+}

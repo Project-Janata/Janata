@@ -1,0 +1,85 @@
+{
+  "findings": [
+    {
+      "id": "RT-001",
+      "severity": "Critical",
+      "title": "Any authenticated user can become admin by changing their own email to the hard-coded admin email",
+      "confirmed": true,
+      "evidence": {
+        "beforeStatus": 403,
+        "updateStatus": 200,
+        "afterStatus": 200
+      },
+      "screenshot": "01-email-spoof-admin-escalation.png"
+    },
+    {
+      "id": "RT-002",
+      "severity": "Critical",
+      "title": "Unverified ownership of a listed developer email self-provisions admin-capable access",
+      "confirmed": true,
+      "evidence": {
+        "registerStatus": 201,
+        "verificationLevel": 108,
+        "adminStatus": 200
+      },
+      "screenshot": "03-developer-email-self-provision.png"
+    },
+    {
+      "id": "RT-003",
+      "severity": "High",
+      "title": "Any authenticated user can edit legacy events whose created_by is NULL",
+      "confirmed": true,
+      "evidence": {
+        "updateStatus": 200,
+        "eventId": "e0000001-0000-0000-0000-000000000001"
+      },
+      "screenshot": "04-legacy-event-takeover.png"
+    },
+    {
+      "id": "RT-004",
+      "severity": "Medium",
+      "title": "Any authenticated user can create center records",
+      "confirmed": true,
+      "evidence": {
+        "createStatus": 200,
+        "centerId": "c7c46c00-d920-49c9-82eb-9e5845d2b0f6"
+      },
+      "screenshot": "05-member-center-creation.png"
+    },
+    {
+      "id": "RT-005",
+      "severity": "Low",
+      "title": "Unauthenticated endpoint reveals whether an email account exists",
+      "confirmed": true,
+      "evidence": {
+        "known": {
+          "existence": true
+        },
+        "unknown": {
+          "existence": false
+        }
+      },
+      "screenshot": "06-unauthenticated-user-enumeration.png"
+    },
+    {
+      "id": "RT-006",
+      "severity": "Low",
+      "title": "Global error handler returns internal exception messages to clients",
+      "confirmed": true,
+      "evidence": {
+        "status": 500,
+        "error": "Unexpected end of JSON input"
+      },
+      "screenshot": "07-error-detail-leak.png"
+    }
+  ],
+  "screenshots": [
+    "/home/sahastasai/Development/Project-Janatha/qa-artifacts/security-redteam-2026-06-25/01-email-spoof-admin-escalation.png",
+    "/home/sahastasai/Development/Project-Janatha/qa-artifacts/security-redteam-2026-06-25/02-admin-ui-after-email-spoof.png",
+    "/home/sahastasai/Development/Project-Janatha/qa-artifacts/security-redteam-2026-06-25/03-developer-email-self-provision.png",
+    "/home/sahastasai/Development/Project-Janatha/qa-artifacts/security-redteam-2026-06-25/04-legacy-event-takeover.png",
+    "/home/sahastasai/Development/Project-Janatha/qa-artifacts/security-redteam-2026-06-25/05-member-center-creation.png",
+    "/home/sahastasai/Development/Project-Janatha/qa-artifacts/security-redteam-2026-06-25/06-unauthenticated-user-enumeration.png",
+    "/home/sahastasai/Development/Project-Janatha/qa-artifacts/security-redteam-2026-06-25/07-error-detail-leak.png"
+  ]
+}

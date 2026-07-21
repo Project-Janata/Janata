@@ -4,11 +4,11 @@
 # test writes never touch production data. (wrangler.staging.toml is likewise
 # isolated now, its own chinmaya-janata-db-staging, see issue #406.)
 #
-# Deploy: npx wrangler deploy --config packages/backend/wrangler.preview.toml
+# Deploy: bunx wrangler deploy --config packages/backend/wrangler.preview.toml
 # URL:    https://chinmaya-janata-api-v2preview.<account>.workers.dev
 #
 # SETUP — the database_id below is a placeholder. Before first deploy:
-#   1. npx wrangler d1 create chinmaya-janata-db-v2preview
+#   1. bunx wrangler d1 create chinmaya-janata-db-v2preview
 #   2. Paste the returned database_id over PASTE_PREVIEW_DB_ID_HERE
 #   3. bash scripts/db/setup-preview-db.sh
 
@@ -33,11 +33,15 @@ bucket_name = "chinmaya-janata-avatars"
 # can read the repo could otherwise mint valid preview tokens.
 [vars]
 RESEND_FROM_EMAIL = "noreply@chinmayajanata.org"
+MAIL_APP_BASE_URL = "https://mail.sahasta.com"
+VERIFICATION_FROM_EMAIL = "janataverify@sahasta.com"
 # Invite gate ON (#342): preview exercises the real invite-only flow. The seed
 # script registers its role users with a valid code (see seed-preview-roles.sh).
 REQUIRE_INVITE_CODE = "true"
 
 # Secrets (set once per worker, NOT in this file):
-#   npx wrangler secret put JWT_SECRET         --config packages/backend/wrangler.preview.toml
-#   npx wrangler secret put JWT_REFRESH_SECRET --config packages/backend/wrangler.preview.toml
-#   npx wrangler secret put RESEND_API_KEY     --config packages/backend/wrangler.preview.toml  (email verification only)
+#   bunx wrangler secret put JWT_SECRET         --config packages/backend/wrangler.preview.toml
+#   bunx wrangler secret put JWT_REFRESH_SECRET --config packages/backend/wrangler.preview.toml
+#   bunx wrangler secret put RESEND_API_KEY     --config packages/backend/wrangler.preview.toml
+#   bunx wrangler secret put MAIL_APP_EMAIL     --config packages/backend/wrangler.preview.toml
+#   bunx wrangler secret put MAIL_APP_PASSWORD  --config packages/backend/wrangler.preview.toml

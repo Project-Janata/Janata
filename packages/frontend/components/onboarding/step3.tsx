@@ -21,7 +21,7 @@ export default function Step3() {
                 Enter your city or town to see nearby centers.
               </Text>
               <Text className="text-sm font-sans text-stone-400 dark:text-stone-500 text-center">
-                Optional. You can choose one later.
+                Optional. Center membership is confirmed by a coordinator.
               </Text>
             </View>
 
@@ -44,7 +44,7 @@ export default function Step3() {
                       No centers near you yet
                     </Text>
                     <Text className="text-sm font-sans text-stone-500 dark:text-stone-400 text-center">
-                      Janata is growing. Skip for now, you can join any center later.
+                    Janata is growing. Skip for now, then RSVP to events nearby.
                     </Text>
                   </View>
                 }

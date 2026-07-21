@@ -1,0 +1,15 @@
+{
+  "status": 400,
+  "ok": false,
+  "body": {
+    "success": false,
+    "messages": [],
+    "errors": [
+      {
+        "code": 10202,
+        "message": "email.sending.error.email.invalid"
+      }
+    ],
+    "result": null
+  }
+}

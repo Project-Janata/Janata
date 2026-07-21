@@ -191,11 +191,27 @@ export const UserProvider = ({ children }: { children: ReactNode }) => {
         credentials: 'include',
       })
 
-      if (response.status === 401 || response.status === 403) {
+      if (response.status === 401) {
         await removeStoredToken()
         setUser(null)
         setAuthStatus('unauthenticated')
         throw new Error('Session expired. Please login again.')
+      }
+
+      if (response.status === 403) {
+        const data = await response.clone().json().catch(() => ({}))
+        const message = typeof data.message === 'string' ? data.message : ''
+        const reason = typeof data.reason === 'string' ? data.reason : ''
+        const authFailure =
+          reason === 'inactive' ||
+          reason === 'suspended' ||
+          /invalid or expired token/i.test(message)
+        if (authFailure) {
+          await removeStoredToken()
+          setUser(null)
+          setAuthStatus('unauthenticated')
+          throw new Error('Session expired. Please login again.')
+        }
       }
 
       return response

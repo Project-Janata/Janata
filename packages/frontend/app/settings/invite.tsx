@@ -26,6 +26,31 @@ const ROLE_PHRASE: Record<InviteRole, string> = {
   admin: 'an admin',
 }
 
+type InviteLinkState = {
+  code: string
+  expiresAt: string | null
+  maxUses: number | null
+  usesCount: number
+}
+
+const elevatedInviteOptions = { maxUses: 1, expiresInDays: 1 } as const
+
+function formatExpiry(iso: string | null): string {
+  if (!iso) return 'No expiry'
+  const expires = new Date(iso)
+  if (Number.isNaN(expires.getTime())) return 'Expiry unknown'
+  const now = Date.now()
+  const diffHours = Math.ceil((expires.getTime() - now) / (60 * 60 * 1000))
+  if (diffHours <= 0) return 'Expired'
+  if (diffHours < 24) return `Expires in ${diffHours}h`
+  return `Expires in ${Math.ceil(diffHours / 24)}d`
+}
+
+function formatUsage(maxUses: number | null, usesCount: number): string {
+  if (maxUses === null) return `${usesCount} used`
+  return `${Math.max(maxUses - usesCount, 0)} of ${maxUses} left`
+}
+
 // Copy text to the clipboard on web. Tries the async Clipboard API first
 // (HTTPS / modern browsers), then falls back to a hidden-textarea +
 // execCommand('copy') so copy still works on http:// or older browsers where
@@ -78,12 +103,13 @@ export default function InviteScreen() {
   ]
 
   const [role, setRole] = useState<InviteRole>('member')
-  const [code, setCode] = useState<string | null>(null)
+  const [link, setLink] = useState<InviteLinkState | null>(null)
   const [loading, setLoading] = useState(true)
   const [failed, setFailed] = useState(false)
   const [copied, setCopied] = useState(false)
   const [pressing, setPressing] = useState(false)
 
+  const code = link?.code ?? null
   const inviteUrl = code ? linkForCode(code) : null
 
   // One ready link per role: reuse the first usable code of that role, else mint
@@ -104,16 +130,26 @@ export default function InviteScreen() {
             (e) => e.isUsable && e.verificationLevel === ROLE_LEVEL[forRole],
           )
           if (usable?.code) {
-            setCode(usable.code)
+            setLink({
+              code: usable.code,
+              expiresAt: usable.expiresAt,
+              maxUses: usable.maxUses,
+              usesCount: usable.usesCount,
+            })
             return
           }
         }
         const minted = await inviteClient.mintCode(
           token,
-          forRole === 'member' ? {} : { role: forRole },
+          forRole === 'member' ? {} : { role: forRole, ...elevatedInviteOptions },
         )
         if (minted.success) {
-          setCode(minted.data.code)
+          setLink({
+            code: minted.data.code,
+            expiresAt: minted.data.expiresAt,
+            maxUses: minted.data.maxUses,
+            usesCount: 0,
+          })
         } else {
           setFailed(true)
         }
@@ -163,6 +199,7 @@ export default function InviteScreen() {
       source: 'invite_screen',
       method: isWeb ? 'copy' : 'share_sheet',
       invite_code: code,
+      role,
       ...(isWeb ? { copy_succeeded: copySucceeded } : {}),
     })
   }
@@ -201,6 +238,19 @@ export default function InviteScreen() {
               ? 'They get in instantly.'
               : `They join as ${ROLE_PHRASE[role]}, instantly.`}
           </Text>
+          {role !== 'member' && (
+            <Text
+              style={{
+                fontSize: 13,
+                color: c.error,
+                marginTop: 8,
+                textAlign: 'center',
+                lineHeight: 19,
+              }}
+            >
+              Share this only with someone you trust. Elevated links are one use and expire quickly.
+            </Text>
+          )}
 
           {/* Role picker (#451) — only shown to sevaks/admins, who can mint a
               link that lands the recipient at that role. */}
@@ -297,6 +347,24 @@ export default function InviteScreen() {
                     janata.app/i/{code}
                   </Text>
                 </View>
+                {link && (
+                  <View
+                    style={{
+                      marginTop: 8,
+                      flexDirection: 'row',
+                      alignItems: 'center',
+                      justifyContent: 'space-between',
+                      gap: 8,
+                    }}
+                  >
+                    <Text style={{ fontSize: 12, color: c.textMuted, fontFamily: 'Inclusive Sans' }}>
+                      {ROLE_LABEL[role]} link
+                    </Text>
+                    <Text style={{ fontSize: 12, color: c.textMuted, fontFamily: 'Inclusive Sans' }}>
+                      {formatUsage(link.maxUses, link.usesCount)} - {formatExpiry(link.expiresAt)}
+                    </Text>
+                  </View>
+                )}
 
                 <Pressable
                   onPress={handleShare}

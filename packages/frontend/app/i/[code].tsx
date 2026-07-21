@@ -21,17 +21,18 @@ import { useAnalytics } from '../../utils/analytics'
  *
  *   - valid + logged out → Door 1 vouch + Accept           (new-01/01b/02/03)
  *   - dead/expired code  → recovery, paste a fresh link     (new-04)
- *   - already logged in  → "you're already a member"        (new-05)
+ *   - logged in + useful invite → apply it                  (new-05b)
+ *   - logged in + no needed upgrade → already a member      (new-05)
  */
 
-type Phase = 'resolving' | 'valid' | 'invalid' | 'member' | 'error'
+type Phase = 'resolving' | 'valid' | 'invalid' | 'applying' | 'applied' | 'member' | 'error'
 
 export default function InviteLinkScreen() {
   const router = useRouter()
   const c = useColors()
   const { track } = useAnalytics()
   const { width } = useWindowDimensions()
-  const { authStatus, loading } = useUser()
+  const { authStatus, loading, getToken, refreshUser } = useUser()
   const isAuthenticated = authStatus === 'authenticated'
   const { code: raw } = useLocalSearchParams<{ code: string }>()
   const code = extractInviteCode(typeof raw === 'string' ? raw : '')
@@ -43,10 +44,47 @@ export default function InviteLinkScreen() {
 
   useEffect(() => {
     if (loading) return
-    // Already a member: no signup ever (new-05).
     if (isAuthenticated) {
-      setPhase('member')
-      return
+      if (!code) {
+        setPhase('member')
+        return
+      }
+      let cancelled = false
+      setPhase('applying')
+      getToken()
+        .then(async (token) => {
+          if (!token) return { kind: 'member' as const }
+          const result = await inviteClient.redeem(token, code)
+          if (result.success) {
+            await refreshUser()
+            return { kind: 'applied' as const }
+          }
+          if (
+            result.error.status === 400 &&
+            /already verified/i.test(result.error.message)
+          ) {
+            return { kind: 'member' as const }
+          }
+          if ([401, 403, 409, 410].includes(result.error.status ?? 0)) {
+            return { kind: 'invalid' as const }
+          }
+          return { kind: 'error' as const }
+        })
+        .then((result) => {
+          if (cancelled) return
+          if (result.kind === 'applied') {
+            track('invite_applied_logged_in', { invite_code: code })
+            setPhase('applied')
+          } else {
+            setPhase(result.kind)
+          }
+        })
+        .catch(() => {
+          if (!cancelled) setPhase('error')
+        })
+      return () => {
+        cancelled = true
+      }
     }
     if (!code) {
       setPhase('invalid')
@@ -74,7 +112,7 @@ export default function InviteLinkScreen() {
     // `track` is intentionally excluded — including the (unstable) analytics fn
     // re-runs this effect every render, which storms the lookup endpoint.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [loading, code, isAuthenticated, reloadKey])
+  }, [loading, code, isAuthenticated, reloadKey, getToken, refreshUser])
 
   // Carry the resolved inviter name forward so /auth shows the vouch without a
   // second lookup. Encoded; empty when nameless.
@@ -104,6 +142,13 @@ export default function InviteLinkScreen() {
           <View style={{ alignItems: 'center', gap: 12 }}>
             <ActivityIndicator color={c.accent} />
             <Text style={{ color: c.textMuted, fontSize: 14 }}>Opening your invite…</Text>
+          </View>
+        )}
+
+        {phase === 'applying' && (
+          <View style={{ alignItems: 'center', gap: 12 }}>
+            <ActivityIndicator color={c.accent} />
+            <Text style={{ color: c.textMuted, fontSize: 14 }}>Applying your invite…</Text>
           </View>
         )}
 
@@ -165,6 +210,36 @@ export default function InviteLinkScreen() {
               </Text>
               <Text style={{ fontSize: 15, color: c.textMuted, textAlign: 'center' }}>
                 No need to sign up again.
+              </Text>
+            </View>
+            <Pressable
+              onPress={() => router.replace('/(tabs)')}
+              style={{
+                backgroundColor: c.accent,
+                borderRadius: 12,
+                paddingVertical: 15,
+                paddingHorizontal: 48,
+                alignItems: 'center',
+              }}
+            >
+              <Text style={{ color: c.textInverse, fontSize: 16, fontWeight: '600' }}>Open Janata</Text>
+            </Pressable>
+          </View>
+        )}
+
+        {phase === 'applied' && (
+          <View style={{ alignItems: 'center', gap: 16 }}>
+            <Image
+              source={INTRO_STEPS[2].image}
+              style={{ width: 120, height: 120 }}
+              resizeMode="contain"
+            />
+            <View style={{ gap: 6, alignItems: 'center' }}>
+              <Text style={{ fontFamily: 'Inclusive Sans', fontSize: 26, color: c.text }}>
+                Invite applied
+              </Text>
+              <Text style={{ fontSize: 15, color: c.textMuted, textAlign: 'center' }}>
+                Your account is ready.
               </Text>
             </View>
             <Pressable

@@ -24,8 +24,16 @@ export interface Env {
   DEV_BYPASS_ADMIN_AUTH?: string
   /** Resend API key for outbound email. Secret. */
   RESEND_API_KEY?: string
-  /** From address for outbound email. Set in wrangler.toml [vars]. */
+  /** Default from address for Resend/default transactional email. */
   RESEND_FROM_EMAIL?: string
+  /** Base URL for the Sahasta Mail App verification sender API. */
+  MAIL_APP_BASE_URL?: string
+  /** Mail App account used to send verification email. Secret. */
+  MAIL_APP_EMAIL?: string
+  /** Mail App password used to send verification email. Secret. */
+  MAIL_APP_PASSWORD?: string
+  /** From address for verification email sent through the Sahasta Mail App. */
+  VERIFICATION_FROM_EMAIL?: string
   /** When "true", outbound email sends are skipped. Tests set this. */
   EMAIL_SEND_DISABLED?: string
   /**
@@ -153,7 +161,7 @@ export interface InviteCodeRow {
   verification_level: number
   is_active: number // 0 | 1
   created_at: string
-  // v2 extensions for user-issued single-use links. Admin cohort codes
+  // v2 extensions for user-issued links. Admin cohort codes
   // leave these NULL/0 and behave as before (multi-use, no expiry).
   created_by_user_id: string | null
   expires_at: string | null

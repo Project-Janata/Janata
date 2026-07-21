@@ -65,7 +65,7 @@ export function rateLimit(
 
     const ip =
       c.req.header('CF-Connecting-IP') ||
-      c.req.header('X-Forwarded-For')?.split(',')[0]?.trim() ||
+      new URL(c.req.url).host ||
       'unknown'
 
     const key = `${ip}:${c.req.path}`

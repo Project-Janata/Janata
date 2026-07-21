@@ -23,7 +23,7 @@ let ImageManipulator: typeof import('expo-image-manipulator') | null = null
 try {
   ImageManipulator = require('expo-image-manipulator')
 } catch {}
-import { Camera, Check } from 'lucide-react-native'
+import { Camera } from 'lucide-react-native'
 import { useUser, useTheme } from '../contexts'
 import { Text } from '../ui'
 import BirthdatePicker from './BirthdatePicker'
@@ -57,8 +57,6 @@ export default function EditProfileSheet({ visible, onClose }: Props) {
   const [imageChanged, setImageChanged] = useState(false)
 
   const [allCenters, setAllCenters] = useState<CenterData[]>([])
-  const [centerSearch, setCenterSearch] = useState('')
-  const [showCenterResults, setShowCenterResults] = useState(false)
 
   const [isSaving, setIsSaving] = useState(false)
   const [errors, setErrors] = useState<Record<string, string>>({})
@@ -77,8 +75,6 @@ export default function EditProfileSheet({ visible, onClose }: Props) {
       setProfileImage(user.profileImage || null)
       setProfileImageBase64(null)
       setImageChanged(false)
-      setCenterSearch('')
-      setShowCenterResults(false)
       setErrors({})
     }
   }, [visible])
@@ -88,13 +84,6 @@ export default function EditProfileSheet({ visible, onClose }: Props) {
       .then(setAllCenters)
       .catch(() => {})
   }, [])
-
-  const filteredCenters =
-    centerSearch.length >= 2
-      ? allCenters
-          .filter((c) => c.name.toLowerCase().includes(centerSearch.toLowerCase()))
-          .slice(0, 6)
-      : []
 
   const selectedCenterName = allCenters.find((c) => c.centerID === centerID)?.name
 
@@ -152,7 +141,6 @@ export default function EditProfileSheet({ visible, onClose }: Props) {
         lastName: nameParts.slice(1).join(' '),
         bio,
         interests,
-        ...(centerID ? { centerID } : {}),
         ...(birthday ? { dateOfBirth: birthday.toISOString().split('T')[0] } : {}),
         ...(imageChanged && profileImageBase64 ? { profileImage: profileImageBase64 } : {}),
       })
@@ -396,65 +384,14 @@ export default function EditProfileSheet({ visible, onClose }: Props) {
             {/* Center */}
             <View>
               <Text style={fieldLabelStyle}>Center</Text>
-              <TextInput
-                value={centerSearch || selectedCenterName || ''}
-                onChangeText={(text) => {
-                  setCenterSearch(text)
-                  setShowCenterResults(true)
-                  if (text === '') setCenterID(null)
-                }}
-                onFocus={() => {
-                  if (filteredCenters.length > 0) setShowCenterResults(true)
-                }}
-                onBlur={() => setTimeout(() => setShowCenterResults(false), 150)}
-                placeholder="Search centers"
-                placeholderTextColor={mutedColor}
-                style={inputStyle}
-              />
-              {showCenterResults && filteredCenters.length > 0 && (
-                <View
-                  style={{
-                    backgroundColor: cardBg,
-                    borderRadius: 12,
-                    borderWidth: 1,
-                    borderColor,
-                    marginTop: 4,
-                    overflow: 'hidden',
-                  }}
-                >
-                  {filteredCenters.map((center, i) => (
-                    <Pressable
-                      key={center.centerID}
-                      onPress={() => {
-                        setCenterID(center.centerID)
-                        setCenterSearch('')
-                        setShowCenterResults(false)
-                      }}
-                      style={{
-                        flexDirection: 'row',
-                        alignItems: 'center',
-                        justifyContent: 'space-between',
-                        paddingHorizontal: 16,
-                        paddingVertical: 12,
-                        borderBottomWidth: i < filteredCenters.length - 1 ? 1 : 0,
-                        borderBottomColor: borderColor,
-                        backgroundColor: centerID === center.centerID ? '#C2410C10' : 'transparent',
-                      }}
-                    >
-                      <Text
-                        style={{
-                          fontFamily: 'Inclusive Sans',
-                          fontSize: 14,
-                          color: centerID === center.centerID ? '#C2410C' : textColor,
-                        }}
-                      >
-                        {center.name}
-                      </Text>
-                      {centerID === center.centerID && <Check size={16} color="#C2410C" />}
-                    </Pressable>
-                  ))}
-                </View>
-              )}
+              <View style={[inputStyle, { justifyContent: 'center', minHeight: 48 }]}>
+                <Text style={{ color: selectedCenterName ? textColor : mutedColor, fontSize: 15 }}>
+                  {selectedCenterName || 'No center assigned'}
+                </Text>
+                <Text style={{ color: mutedColor, fontSize: 12, marginTop: 3 }}>
+                  Center changes require coordinator approval.
+                </Text>
+              </View>
             </View>
 
             {/* Interests */}

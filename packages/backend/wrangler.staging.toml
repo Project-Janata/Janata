@@ -20,10 +20,14 @@ bucket_name = "chinmaya-janata-avatars"
 # Non-secret vars only. Secrets come from `wrangler secret put`.
 [vars]
 RESEND_FROM_EMAIL = "noreply@chinmayajanata.org"
+MAIL_APP_BASE_URL = "https://mail.sahasta.com"
+VERIFICATION_FROM_EMAIL = "janataverify@sahasta.com"
 # Invite gate ON (#342): refuse API signups without a valid invite code.
 REQUIRE_INVITE_CODE = "true"
 
 # Secrets set via:
-#   npx wrangler secret put JWT_SECRET         --config wrangler.staging.toml
-#   npx wrangler secret put JWT_REFRESH_SECRET --config wrangler.staging.toml
-#   npx wrangler secret put RESEND_API_KEY     --config wrangler.staging.toml
+#   bunx wrangler secret put JWT_SECRET         --config wrangler.staging.toml
+#   bunx wrangler secret put JWT_REFRESH_SECRET --config wrangler.staging.toml
+#   bunx wrangler secret put RESEND_API_KEY     --config wrangler.staging.toml
+#   bunx wrangler secret put MAIL_APP_EMAIL     --config wrangler.staging.toml
+#   bunx wrangler secret put MAIL_APP_PASSWORD  --config wrangler.staging.toml

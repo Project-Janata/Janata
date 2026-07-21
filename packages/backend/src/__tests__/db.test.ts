@@ -60,7 +60,7 @@ describe('users', () => {
       expect(user!.points).toBe(0)
       expect(user!.is_verified).toBe(0)
       expect(user!.verification_level).toBe(45)
-      expect(user!.is_active).toBe(0)
+      expect(user!.is_active).toBe(1)
       expect(user!.profile_complete).toBe(0)
       expect(user!.email).toBeNull()
       expect(user!.center_id).toBeNull()

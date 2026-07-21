@@ -1,0 +1,15 @@
+{
+  "status": 500,
+  "ok": false,
+  "body": {
+    "success": false,
+    "messages": [],
+    "errors": [
+      {
+        "code": 10002,
+        "message": "email.sending.error.internal_server"
+      }
+    ],
+    "result": null
+  }
+}

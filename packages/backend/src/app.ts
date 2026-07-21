@@ -37,8 +37,23 @@ import * as notifications from './notifications'
 import * as push from './push'
 import * as passwordReset from './passwordReset'
 import { sendVerificationEmail } from './email'
-import { ADMIN_EMAIL, NORMAL_USER, SEVAK, BRAHMACHARI, TIER_DESCALE, ADMIN_CUTOFF, DEVELOPER_EMAILS, UNVERIFIED_USER } from './constants'
-import { rateLimit, cacheControl, securityHeaders, validate } from './middleware'
+import {
+  ADMIN_EMAIL,
+  NORMAL_USER,
+  SEVAK,
+  BRAHMACHARI,
+  TIER_DESCALE,
+  ADMIN_CUTOFF,
+  DEVELOPER_EMAILS,
+  UNVERIFIED_USER,
+  SATSANG,
+  BHIKSHA,
+  YAJNA,
+  CAMP,
+  FESTIVAL,
+  OTHER,
+} from './constants'
+import { rateLimit, cacheControl, securityHeaders, validate, validateOptionalString } from './middleware'
 
 // ── Hono app type with CF bindings ────────────────────────────────────
 
@@ -53,11 +68,150 @@ export const app = new Hono<HonoEnv>().basePath('/api')
 
 // ── Helper: Check if user is admin ─────────────────────────────────────
 
-function isAdmin(user: { email: string | null; verification_level: number }): boolean {
-  return user.email === ADMIN_EMAIL || user.verification_level >= ADMIN_CUTOFF
+function isAdmin(user: { verification_level: number }): boolean {
+  return user.verification_level >= ADMIN_CUTOFF
 }
 
 const BOARD_REACTIONS = new Set(['🙏', '👍', '🪔', '❤️', '🚗', '🌾'])
+const EVENT_CATEGORIES = new Set([SATSANG, BHIKSHA, YAJNA, CAMP, FESTIVAL, OTHER])
+const EVENT_CONTACT_MAX = 120
+const PROFILE_BIO_MAX = 1000
+const PROFILE_TEXT_MAX = 120
+const PROFILE_LIST_ITEM_MAX = 80
+const PROFILE_LIST_MAX_ITEMS = 20
+const PUBLIC_EVENT_LIST_LIMIT = 200
+
+function isBootstrapAdminEmail(email: string): boolean {
+  return email.trim().toLowerCase() === ADMIN_EMAIL
+}
+
+function accountAccessResponse(c: any, user: UserRow): Response | null {
+  if (user.is_active !== 1) {
+    return c.json({ message: 'Account is inactive', reason: 'inactive' }, 403)
+  }
+  if (isUserSuspended(user)) {
+    return c.json(
+      {
+        message: user.suspended_until
+          ? 'Your account is suspended until ' + user.suspended_until
+          : 'Your account is suspended',
+        reason: 'suspended',
+        suspendedUntil: user.suspended_until,
+      },
+      403,
+    )
+  }
+  return null
+}
+
+function validateIsoDateTime(value: unknown): string | null {
+  if (typeof value !== 'string') return null
+  const raw = value.trim()
+  const match = raw.match(
+    /^(\d{4})-(\d{2})-(\d{2})T(\d{2}):(\d{2})(?::(\d{2})(\.\d{1,3})?)?(Z|[+-]\d{2}:\d{2})$/,
+  )
+  if (!match) return null
+
+  const [, y, mo, d, h, mi, s = '0', fraction = ''] = match
+  const parts = {
+    year: Number(y),
+    month: Number(mo),
+    day: Number(d),
+    hour: Number(h),
+    minute: Number(mi),
+    second: Number(s),
+    millisecond: fraction ? Number(fraction.slice(1).padEnd(3, '0')) : 0,
+  }
+  const probe = new Date(Date.UTC(
+    parts.year,
+    parts.month - 1,
+    parts.day,
+    parts.hour,
+    parts.minute,
+    parts.second,
+    parts.millisecond,
+  ))
+  if (
+    probe.getUTCFullYear() !== parts.year ||
+    probe.getUTCMonth() !== parts.month - 1 ||
+    probe.getUTCDate() !== parts.day ||
+    probe.getUTCHours() !== parts.hour ||
+    probe.getUTCMinutes() !== parts.minute ||
+    probe.getUTCSeconds() !== parts.second
+  ) {
+    return null
+  }
+  if (!Number.isFinite(new Date(raw).getTime())) return null
+  return raw
+}
+
+function validateHttpUrl(value: unknown): string | null | false {
+  const normalized = validate.url(value)
+  if (normalized === null || normalized === false) return normalized
+  try {
+    const url = new URL(normalized)
+    if (url.protocol !== 'https:' && url.protocol !== 'http:') return false
+    return url.toString()
+  } catch {
+    return false
+  }
+}
+
+function validateOptionalInteger(value: unknown, allowed?: Set<number>): number | null | false {
+  if (value === undefined || value === null || value === '') return null
+  if (typeof value !== 'number' || !Number.isInteger(value)) return false
+  if (allowed && !allowed.has(value)) return false
+  return value
+}
+
+function validateOptionalBoolean(value: unknown): number | null | false {
+  if (value === undefined || value === null) return null
+  if (typeof value !== 'boolean') return false
+  return value ? 1 : 0
+}
+
+function validateProfileList(value: unknown): string[] | null | false {
+  if (value === undefined || value === null) return null
+  if (!Array.isArray(value) || value.length > PROFILE_LIST_MAX_ITEMS) return false
+
+  const items: string[] = []
+  for (const item of value) {
+    const validItem = validateOptionalString(item, PROFILE_LIST_ITEM_MAX)
+    if (validItem === false) return false
+    if (validItem) items.push(validItem)
+  }
+  return items.length > 0 ? items : null
+}
+
+function normalizeProfileCenter(value: unknown): string | null | false {
+  if (value === undefined || value === null || value === '') return null
+  return validate.id(value)
+}
+
+function isSelfOrAdmin(user: UserRow, targetUser: UserRow): boolean {
+  return user.id === targetUser.id || isAdmin(user)
+}
+
+function validateCoordinate(value: unknown, min: number, max: number): number | null {
+  const n =
+    typeof value === 'number'
+      ? value
+      : typeof value === 'string' && value.trim() !== ''
+        ? Number(value)
+        : NaN
+  if (!Number.isFinite(n) || n < min || n > max) return null
+  return n
+}
+
+function canManageEvent(user: UserRow, event: EventRow): boolean {
+  if (isAdmin(user)) return true
+  return (
+    user.verification_level >= SEVAK &&
+    event.created_by === user.id &&
+    !!user.center_id &&
+    event.center_id === user.center_id
+  )
+}
 
 function isBoardType(value: string): value is BoardType {
   return value === 'center' || value === 'event'
@@ -147,6 +301,9 @@ async function verifyBoardAccess(
     if (!center) {
       return c.json({ message: 'Center not found' }, 404)
     }
+    if (user.verification_level < NORMAL_USER) {
+      return c.json({ message: 'Only verified members can access center boards' }, 403)
+    }
     if (!userIsAdmin && user.center_id !== parentId) {
       return c.json({ message: 'You do not have access to this center board' }, 403)
     }
@@ -211,10 +368,9 @@ function moderationScopeFor(user: UserRow): db.ModerationScope {
 
 app.onError((err, c) => {
   console.error(`[${c.req.method}] ${c.req.path} — Unhandled error:`, err)
-  const errorMessage = err instanceof Error ? err.message : String(err)
   const stack = err instanceof Error ? err.stack : ''
   console.error('Stack:', stack)
-  return c.json({ message: 'Internal server error', error: errorMessage }, 500)
+  return c.json({ message: 'Internal server error' }, 500)
 })
 
 // ── Global middleware ─────────────────────────────────────────────────
@@ -276,6 +432,9 @@ async function authMiddleware(c: any, next: () => Promise<void>): Promise<Respon
     return c.json({ message: 'User not found' }, 403)
   }
 
+  const accountError = accountAccessResponse(c, userData)
+  if (accountError) return accountError
+
   // Session-kill on password change: tokens minted after the rollout carry a
   // `tv` claim fingerprinting the password hash at issue time. If the password
   // has rotated since (reset flow), the fingerprints diverge and the token
@@ -306,12 +465,11 @@ app.get('/health', (c) => {
 // ── User existence check ──────────────────────────────────────────────
 
 app.post('/userExistence', async (c) => {
-  const { username } = await c.req.json<{ username: string }>()
-  if (!username) {
-    return c.json({ existence: false })
-  }
-  const user = await db.getUserByUsername(c.env.DB, username)
-  return c.json({ existence: !!user })
+  await c.req.json<{ username?: string }>().catch(() => ({}))
+  // Account enumeration should not be available as a public preflight. The
+  // register/authenticate flows still return their own normal validation
+  // responses, but this endpoint no longer distinguishes real usernames.
+  return c.json({ existence: false })
 })
 
 // ═══════════════════════════════════════════════════════════════════════
@@ -348,13 +506,11 @@ app.post('/auth/validate-invite-code', rateLimit(60, 60_000), async (c) => {
     return c.json({ valid: true, inviterFirstName })
   }
 
-  const messages: Record<Exclude<inviteCodes.InviteCodeStatus, 'ok'>, string> = {
-    not_found: 'Invalid or inactive invite code',
-    inactive: 'This invite link has been deactivated',
-    expired: 'This invite link has expired',
-    exhausted: 'This invite link has reached its maximum number of uses',
-  }
-  return c.json({ valid: false, error: messages[status], reason: status })
+  return c.json({
+    valid: false,
+    error: 'Invalid or inactive invite code',
+    reason: 'invalid',
+  })
 })
 
 app.post('/auth/register', rateLimit(5, 60_000), async (c) => {
@@ -375,35 +531,43 @@ app.post('/auth/register', rateLimit(5, 60_000), async (c) => {
     return c.json({ message: 'Password must be at least 8 characters long' }, 400)
   }
 
-  const existingUser = await db.getUserByUsername(c.env.DB, normalizedUsername.toLowerCase())
-  if (existingUser) {
-    return c.json({ message: 'Username already exists' }, 409)
-  }
-
   // v2 invite-links model (#342): the invite link is the door. An account
   // created through a valid invite link is VERIFIED at inception (Bluesky/
   // Clubhouse), so we promote to NORMAL_USER immediately at register rather
-  // than deferring the bump to email-verify. Developer emails bypass to
-  // BRAHMACHARI.
+  // than deferring the bump to email-verify.
   //
   // Hard gate (#342 follow-up): when REQUIRE_INVITE_CODE is "true" Janata is
   // invite-only at the API — a non-developer signup with no valid invite is
   // refused (403), matching the invite-wall UI (#458). Existing accounts are
-  // grandfathered automatically (the gate only guards new registrations); the
-  // seed script and developers pass by presenting a code / bypassing. When the
-  // flag is off, the legacy soft path stands: no invite → UNVERIFIED_USER.
-  const isDeveloper = DEVELOPER_EMAILS.includes(normalizedUsername.toLowerCase())
+  // grandfathered automatically (the gate only guards new registrations). When
+  // the flag is off, the legacy soft path stands: no invite -> UNVERIFIED_USER.
+  const normalizedEmail = normalizedUsername.toLowerCase()
+  const isBootstrapAdmin = isBootstrapAdminEmail(normalizedEmail)
+  const isDeveloper = DEVELOPER_EMAILS.includes(normalizedEmail)
   const requireInvite = c.env.REQUIRE_INVITE_CODE === 'true'
   const hasInviteCode =
     typeof body.inviteCode === 'string' && body.inviteCode.trim().length > 0
+
+  if (!hasInviteCode && requireInvite) {
+    // Invite-only: no code -> no account, including developer/bootstrap emails.
+    // Return before duplicate lookup so the gate cannot be used to enumerate
+    // existing usernames.
+    return c.json(
+      { message: 'An invite is required to join Janata. Ask a member for an invite link.' },
+      403,
+    )
+  }
+
+  const existingUser = await db.getUserByUsername(c.env.DB, normalizedEmail)
+  if (existingUser) {
+    return c.json({ message: 'Username already exists' }, 409)
+  }
 
   let verificationLevel = UNVERIFIED_USER
   let inviteCodeUsed: string | null = null
   let invitedByUserId: string | null = null
 
-  if (isDeveloper) {
-    verificationLevel = BRAHMACHARI
-  } else if (hasInviteCode) {
+  if (hasInviteCode) {
     const inviteCodeData = await inviteCodes.validateInviteCode(c.env, body.inviteCode!)
     if (!inviteCodeData) {
       return c.json({ message: 'Invalid or inactive invite code' }, 401)
@@ -422,12 +586,11 @@ app.post('/auth/register', rateLimit(5, 60_000), async (c) => {
     // role. Floored at NORMAL_USER so a link never downgrades. Email
     // confirmation stays quiet and non-blocking (used only for password recovery).
     verificationLevel = Math.max(NORMAL_USER, inviteCodeData.verification_level)
-  } else if (requireInvite) {
-    // Invite-only: no developer bypass, no code → no account.
-    return c.json(
-      { message: 'An invite is required to join Janata. Ask a member for an invite link.' },
-      403,
-    )
+    if (isBootstrapAdmin || isDeveloper) {
+      verificationLevel = Math.max(verificationLevel, BRAHMACHARI)
+    }
+  } else if (isBootstrapAdmin || isDeveloper) {
+    verificationLevel = BRAHMACHARI
   }
 
   const hashedPassword = await hashPassword(validPassword)
@@ -461,7 +624,7 @@ app.post('/auth/register', rateLimit(5, 60_000), async (c) => {
     // since they're already at BRAHMACHARI and don't need to verify. If the
     // send fails (Resend down, etc.) the user can request a resend via
     // POST /auth/send-verification-email.
-    if (!isDeveloper) {
+    if (!isDeveloper && !isBootstrapAdmin) {
       try {
         const bytes = new Uint8Array(32)
         crypto.getRandomValues(bytes)
@@ -517,6 +680,9 @@ app.post('/auth/authenticate', rateLimit(5, 60_000), async (c) => {
     return c.json({ message: 'Invalid credentials' }, 401)
   }
 
+  const accountError = accountAccessResponse(c, user)
+  if (accountError) return accountError
+
   const jwtSecret = c.env.JWT_SECRET
   const refreshSecret = c.env.JWT_REFRESH_SECRET || jwtSecret
 
@@ -554,6 +720,9 @@ app.post('/auth/refresh', async (c) => {
     if (!user) {
       return c.json({ message: 'User not found' }, 401)
     }
+
+    const accountError = accountAccessResponse(c, user)
+    if (accountError) return accountError
 
     // Match authMiddleware: refresh tokens minted after the tv rollout should
     // die after a password reset, while legacy no-tv tokens remain valid.
@@ -601,6 +770,26 @@ app.post('/auth/send-verification-email', rateLimit(3, 60 * 60_000), authMiddlew
   }
   if (user.email_verified_at) {
     return c.json({ message: 'Email already verified' }, 400)
+  }
+
+  const now = new Date().toISOString()
+  await c.env.DB.prepare(
+    `UPDATE email_verification_tokens
+     SET consumed_at = ?
+     WHERE user_id = ? AND consumed_at IS NULL AND expires_at <= ?`,
+  )
+    .bind(now, user.id, now)
+    .run()
+
+  const activeToken = await c.env.DB.prepare(
+    `SELECT token FROM email_verification_tokens
+     WHERE user_id = ? AND consumed_at IS NULL AND expires_at > ?
+     ORDER BY expires_at DESC LIMIT 1`,
+  )
+    .bind(user.id, now)
+    .first<{ token: string }>()
+  if (activeToken) {
+    return c.json({ message: 'Verification email sent' })
   }
 
   // 32 bytes = 64 hex chars = 256 bits entropy
@@ -732,12 +921,17 @@ app.post('/auth/password-reset/verify', rateLimit(10, 60_000), async (c) => {
 
 // ── User-issued invite codes (v2) ─────────────────────────────────────
 //
-// Verified users can mint single-use, 30-day-expiry links and share them.
+// Verified users can mint member links; sevaks/admins can mint elevated links
+// with tighter use/expiry limits.
 // Recipients redeem either at signup (handled in /auth/register) or
 // post-signup via /auth/redeem-invite. See
 // docs/plans/2026-05-05-v2-roles-invites-messaging.md §5.A.
 
 const INVITE_SHARE_URL_BASE = 'https://janata.app/i'
+const ELEVATED_INVITE_DEFAULT_MAX_USES = 1
+const ELEVATED_INVITE_DEFAULT_TTL_DAYS = 1
+const ELEVATED_INVITE_MAX_USES_LIMIT = 5
+const ELEVATED_INVITE_MAX_TTL_DAYS = 7
 
 app.post('/auth/invite-codes', authMiddleware, async (c) => {
   const user = c.get('user')
@@ -778,10 +972,35 @@ app.post('/auth/invite-codes', authMiddleware, async (c) => {
     verificationLevel = level
     grantedRole = body.role as inviteCodes.InviteRole
   }
+  const isElevatedInvite = grantedRole !== 'member'
+  if (isElevatedInvite) {
+    if (
+      body.maxUses !== undefined &&
+      (body.maxUses < 1 || body.maxUses > ELEVATED_INVITE_MAX_USES_LIMIT)
+    ) {
+      return c.json(
+        { message: `Elevated invite links can have at most ${ELEVATED_INVITE_MAX_USES_LIMIT} uses` },
+        400,
+      )
+    }
+    if (
+      body.expiresInDays !== undefined &&
+      (body.expiresInDays < 1 || body.expiresInDays > ELEVATED_INVITE_MAX_TTL_DAYS)
+    ) {
+      return c.json(
+        { message: `Elevated invite links can last at most ${ELEVATED_INVITE_MAX_TTL_DAYS} days` },
+        400,
+      )
+    }
+  }
 
   const result = await inviteCodes.mintUserInviteCode(c.env, user.id, {
-    maxUses: body.maxUses,
-    expiresInDays: body.expiresInDays,
+    maxUses:
+      body.maxUses ??
+      (isElevatedInvite ? ELEVATED_INVITE_DEFAULT_MAX_USES : undefined),
+    expiresInDays:
+      body.expiresInDays ??
+      (isElevatedInvite ? ELEVATED_INVITE_DEFAULT_TTL_DAYS : undefined),
     verificationLevel,
   })
   if (!result.success) {
@@ -853,14 +1072,16 @@ app.post('/auth/redeem-invite', rateLimit(5, 60_000), authMiddleware, async (c) 
     )
   }
 
-  // Record the code on the user. If email is already verified, apply the
-  // promotion now. Otherwise the bump happens at email-verify.
+  // Record the code on the user and promote immediately. In the hard-gate
+  // model, the invite is the trust decision; email verification remains useful
+  // for account recovery but should not block a valid invite from granting
+  // access.
   const updates: Partial<UserRow> = {
     invite_code: codeRow.code,
     invited_by_user_id: codeRow.created_by_user_id,
   }
   let promoted = false
-  if (user.email_verified_at && user.verification_level < codeRow.verification_level) {
+  if (user.verification_level < codeRow.verification_level) {
     updates.verification_level = codeRow.verification_level
     promoted = true
   }
@@ -870,7 +1091,7 @@ app.post('/auth/redeem-invite', rateLimit(5, 60_000), authMiddleware, async (c) 
   return c.json({
     message: promoted
       ? 'Invite redeemed; you are now verified'
-      : 'Invite recorded; verify your email to complete promotion',
+      : 'Invite redeemed',
     user: updated ? userRowToApi(updated) : null,
   })
 })
@@ -889,14 +1110,45 @@ app.post('/auth/complete-onboarding', authMiddleware, async (c) => {
     }>()
 
     const updates: Partial<UserRow> = {}
-    if (body.firstName !== undefined) updates.first_name = body.firstName
-    if (body.lastName !== undefined) updates.last_name = body.lastName
-    if (body.dateOfBirth !== undefined) updates.date_of_birth = body.dateOfBirth
-    // Skip center_id if empty string (no center selected during onboarding)
-    if (body.centerID) updates.center_id = body.centerID
-    if (body.profileComplete !== undefined) updates.profile_complete = body.profileComplete ? 1 : 0
-    if (body.phoneNumber !== undefined) updates.phone_number = body.phoneNumber
-    if (body.interests !== undefined) updates.interests = JSON.stringify(body.interests)
+    if (body.firstName !== undefined) {
+      const firstName = validate.firstName(body.firstName)
+      if (firstName === false) return c.json({ message: 'firstName is invalid' }, 400)
+      updates.first_name = firstName ?? ''
+    }
+    if (body.lastName !== undefined) {
+      const lastName = validate.lastName(body.lastName)
+      if (lastName === false) return c.json({ message: 'lastName is invalid' }, 400)
+      updates.last_name = lastName ?? ''
+    }
+    if (body.dateOfBirth !== undefined) {
+      const dateOfBirth = validateOptionalString(body.dateOfBirth, 32)
+      if (dateOfBirth === false) return c.json({ message: 'dateOfBirth is invalid' }, 400)
+      updates.date_of_birth = dateOfBirth
+    }
+    if (body.centerID !== undefined) {
+      const requestedCenter = normalizeProfileCenter(body.centerID)
+      if (requestedCenter === false) return c.json({ message: 'centerID is invalid' }, 400)
+      if (requestedCenter !== (user.center_id ?? null)) {
+        return c.json({ message: 'Center changes require admin approval' }, 403)
+      }
+    }
+    if (body.profileComplete !== undefined) {
+      const profileComplete = validateOptionalBoolean(body.profileComplete)
+      if (profileComplete === false) {
+        return c.json({ message: 'profileComplete is invalid' }, 400)
+      }
+      updates.profile_complete = profileComplete ?? 0
+    }
+    if (body.phoneNumber !== undefined) {
+      const phone = validate.phone(body.phoneNumber)
+      if (phone === false) return c.json({ message: 'phoneNumber is invalid' }, 400)
+      updates.phone_number = phone
+    }
+    if (body.interests !== undefined) {
+      const interests = validateProfileList(body.interests)
+      if (interests === false) return c.json({ message: 'interests are invalid' }, 400)
+      updates.interests = interests ? JSON.stringify(interests) : null
+    }
 
     const result = await db.updateUser(c.env.DB, user.id, updates)
 
@@ -936,24 +1188,86 @@ app.put('/auth/update-profile', authMiddleware, async (c) => {
   }>()
 
   const updates: Partial<UserRow> = {}
-  if (body.firstName !== undefined) updates.first_name = body.firstName
-  if (body.lastName !== undefined) updates.last_name = body.lastName
-  if (body.email !== undefined) updates.email = body.email
-  if (body.dateOfBirth !== undefined) updates.date_of_birth = body.dateOfBirth
-  // Coerce empty string to null (allowed by FK), reject non-existent center IDs naturally
-  if (body.centerID !== undefined) updates.center_id = body.centerID || null
-  if (body.profileComplete !== undefined) updates.profile_complete = body.profileComplete ? 1 : 0
-  if (body.profileImage !== undefined) updates.profile_image = body.profileImage
-  if (body.bio !== undefined) updates.bio = body.bio || null
-  if (body.phoneNumber !== undefined) updates.phone_number = body.phoneNumber
-  if (body.interests !== undefined) updates.interests = JSON.stringify(body.interests)
+  if (body.firstName !== undefined) {
+    const firstName = validate.firstName(body.firstName)
+    if (firstName === false) return c.json({ message: 'firstName is invalid' }, 400)
+    updates.first_name = firstName ?? ''
+  }
+  if (body.lastName !== undefined) {
+    const lastName = validate.lastName(body.lastName)
+    if (lastName === false) return c.json({ message: 'lastName is invalid' }, 400)
+    updates.last_name = lastName ?? ''
+  }
+  if (body.email !== undefined) {
+    const requestedEmail = validate.email(body.email)
+    const currentEmail = user.email?.trim().toLowerCase() ?? null
+    if (requestedEmail === false || requestedEmail === null) {
+      return c.json({ message: 'Email cannot be changed here' }, 400)
+    }
+    if (requestedEmail.toLowerCase() !== currentEmail) {
+      return c.json({ message: 'Email changes require a verified email-change flow' }, 400)
+    }
+  }
+  if (body.dateOfBirth !== undefined) {
+    const dateOfBirth = validateOptionalString(body.dateOfBirth, 32)
+    if (dateOfBirth === false) return c.json({ message: 'dateOfBirth is invalid' }, 400)
+    updates.date_of_birth = dateOfBirth
+  }
+  if (body.centerID !== undefined) {
+    const requestedCenter = normalizeProfileCenter(body.centerID)
+    if (requestedCenter === false) return c.json({ message: 'centerID is invalid' }, 400)
+    if (requestedCenter !== (user.center_id ?? null)) {
+      return c.json({ message: 'Center changes require admin approval' }, 403)
+    }
+  }
+  if (body.profileComplete !== undefined) {
+    const profileComplete = validateOptionalBoolean(body.profileComplete)
+    if (profileComplete === false) return c.json({ message: 'profileComplete is invalid' }, 400)
+    updates.profile_complete = profileComplete ?? 0
+  }
+  if (body.profileImage !== undefined) {
+    const validProfileImage = validateHttpUrl(body.profileImage)
+    if (validProfileImage === false) {
+      return c.json({ message: 'Profile image URL is invalid' }, 400)
+    }
+    updates.profile_image = validProfileImage
+  }
+  if (body.bio !== undefined) {
+    const bio = validateOptionalString(body.bio, PROFILE_BIO_MAX)
+    if (bio === false) return c.json({ message: 'bio is invalid' }, 400)
+    updates.bio = bio
+  }
+  if (body.phoneNumber !== undefined) {
+    const phone = validate.phone(body.phoneNumber)
+    if (phone === false) return c.json({ message: 'phoneNumber is invalid' }, 400)
+    updates.phone_number = phone
+  }
+  if (body.interests !== undefined) {
+    const interests = validateProfileList(body.interests)
+    if (interests === false) return c.json({ message: 'interests are invalid' }, 400)
+    updates.interests = interests ? JSON.stringify(interests) : null
+  }
   // Minimal profile fields. Empty strings become null so the API never
   // exposes a field the user didn't fill in.
-  if (body.school !== undefined) updates.school = body.school?.trim() || null
-  if (body.work !== undefined) updates.work = body.work?.trim() || null
-  if (body.region !== undefined) updates.region = body.region?.trim() || null
+  if (body.school !== undefined) {
+    const school = validateOptionalString(body.school, PROFILE_TEXT_MAX)
+    if (school === false) return c.json({ message: 'school is invalid' }, 400)
+    updates.school = school
+  }
+  if (body.work !== undefined) {
+    const work = validateOptionalString(body.work, PROFILE_TEXT_MAX)
+    if (work === false) return c.json({ message: 'work is invalid' }, 400)
+    updates.work = work
+  }
+  if (body.region !== undefined) {
+    const region = validateOptionalString(body.region, PROFILE_TEXT_MAX)
+    if (region === false) return c.json({ message: 'region is invalid' }, 400)
+    updates.region = region
+  }
   if (body.lookingFor !== undefined) {
-    updates.looking_for = body.lookingFor.length > 0 ? JSON.stringify(body.lookingFor) : null
+    const lookingFor = validateProfileList(body.lookingFor)
+    if (lookingFor === false) return c.json({ message: 'lookingFor is invalid' }, 400)
+    updates.looking_for = lookingFor ? JSON.stringify(lookingFor) : null
   }
 
   const result = await db.updateUser(c.env.DB, user.id, updates)
@@ -1215,8 +1529,19 @@ app.post('/userUpdate', authMiddleware, async (c) => {
   if (userJSON.lastName !== undefined) updates.last_name = userJSON.lastName
   if (userJSON.dateOfBirth !== undefined) updates.date_of_birth = userJSON.dateOfBirth
   if (userJSON.profilePictureURL !== undefined) updates.profile_image = userJSON.profilePictureURL
-  if (userJSON.center !== undefined)
-    updates.center_id = userJSON.center === -1 ? null : String(userJSON.center)
+  if (userJSON.center !== undefined) {
+    let requestedCenter: string | null = null
+    if (userJSON.center !== -1 && userJSON.center !== null && userJSON.center !== '') {
+      requestedCenter = validate.id(userJSON.center)
+      if (!requestedCenter) {
+        return c.json({ message: 'center is invalid' }, 400)
+      }
+    }
+    if (!isAdmin(user) && requestedCenter !== (targetUser.center_id ?? null)) {
+      return c.json({ message: 'Center changes require admin approval' }, 403)
+    }
+    updates.center_id = requestedCenter
+  }
   if (userJSON.points !== undefined) updates.points = userJSON.points
   if (userJSON.isVerified !== undefined) updates.is_verified = userJSON.isVerified ? 1 : 0
   if (userJSON.verificationLevel !== undefined)
@@ -1251,8 +1576,19 @@ app.post('/updateRegistration', authMiddleware, async (c) => {
   if (userJSON.firstName !== undefined) updates.first_name = userJSON.firstName
   if (userJSON.lastName !== undefined) updates.last_name = userJSON.lastName
   if (userJSON.dateOfBirth !== undefined) updates.date_of_birth = userJSON.dateOfBirth
-  if (userJSON.center !== undefined)
-    updates.center_id = userJSON.center === -1 ? null : String(userJSON.center)
+  if (userJSON.center !== undefined) {
+    let requestedCenter: string | null = null
+    if (userJSON.center !== -1 && userJSON.center !== null && userJSON.center !== '') {
+      requestedCenter = validate.id(userJSON.center)
+      if (!requestedCenter) {
+        return c.json({ message: 'center is invalid' }, 400)
+      }
+    }
+    if (!isAdmin(user) && requestedCenter !== (targetUser.center_id ?? null)) {
+      return c.json({ message: 'Center changes require admin approval' }, 403)
+    }
+    updates.center_id = requestedCenter
+  }
 
   const result = await db.updateUser(c.env.DB, targetUser.id, updates)
 
@@ -1282,10 +1618,14 @@ app.post('/removeUser', authMiddleware, async (c) => {
 })
 
 app.post('/getUserEvents', authMiddleware, async (c) => {
+  const user = c.get('user')
   const { username } = await c.req.json<{ username: string }>()
   const targetUser = await db.getUserByUsername(c.env.DB, username)
   if (!targetUser) {
     return c.json({ message: 'User not found' }, 404)
+  }
+  if (!isSelfOrAdmin(user, targetUser)) {
+    return c.json({ message: 'User event history is private' }, 403)
   }
 
   const events = await db.getUserEvents(c.env.DB, targetUser.id)
@@ -1319,9 +1659,13 @@ app.get('/public-profiles/:userId', authMiddleware, async (c) => {
 })
 
 app.get('/profile/:username/events', authMiddleware, async (c) => {
+  const user = c.get('user')
   const { username } = c.req.param()
   const targetUser = await db.getUserByUsername(c.env.DB, username)
   if (!targetUser) return c.json({ message: 'User not found' }, 404)
+  if (!isSelfOrAdmin(user, targetUser)) {
+    return c.json({ message: 'User event history is private' }, 403)
+  }
   const events = await db.getUserEvents(c.env.DB, targetUser.id)
   return c.json({ events: events.map(eventRowToApi) })
 })
@@ -1335,9 +1679,13 @@ app.get('/profile/:username/posts', authMiddleware, async (c) => {
 })
 
 app.get('/profile/:username/groups', authMiddleware, async (c) => {
+  const user = c.get('user')
   const { username } = c.req.param()
   const targetUser = await db.getUserByUsername(c.env.DB, username)
   if (!targetUser) return c.json({ message: 'User not found' }, 404)
+  if (!isSelfOrAdmin(user, targetUser)) {
+    return c.json({ message: 'User group history is private' }, 403)
+  }
   const groups = targetUser.center_id
     ? [centerRowToApi(await db.getCenterById(c.env.DB, targetUser.center_id) as any)]
     : []
@@ -1944,20 +2292,21 @@ app.post('/addEvent', authMiddleware, async (c) => {
   }
 
   const data = await c.req.json<{
-    title?: string
-    description?: string
+    title?: unknown
+    description?: unknown
     latitude: number
     longitude: number
-    address?: string
+    address?: unknown
     date: string
     centerID: string
     endorsers?: string[]
-    pointOfContact?: string
-    image?: string
-    category?: number
-    externalUrl?: string | null
-    signupUrl?: string | null
-    allowJanataSignup?: boolean
+    pointOfContact?: unknown
+    image?: unknown
+    category?: unknown
+    externalUrl?: unknown
+    signupUrl?: unknown
+    allowJanataSignup?: unknown
+    requiresVerified?: unknown
   }>()
 
   // Validate required fields
@@ -1969,10 +2318,14 @@ app.post('/addEvent', authMiddleware, async (c) => {
   if (!data.date || typeof data.date !== 'string') {
     return c.json({ message: 'date is required' }, 400)
   }
+  const validDate = validateIsoDateTime(data.date)
+  if (!validDate) {
+    return c.json({ message: 'date must be a valid ISO-8601 datetime' }, 400)
+  }
 
-  const lat = typeof data.latitude === 'number' ? data.latitude : NaN
-  const lng = typeof data.longitude === 'number' ? data.longitude : NaN
-  if (isNaN(lat) || isNaN(lng) || lat < -90 || lat > 90 || lng < -180 || lng > 180) {
+  const lat = validateCoordinate(data.latitude, -90, 90)
+  const lng = validateCoordinate(data.longitude, -180, 180)
+  if (lat === null || lng === null) {
     return c.json(
       { message: 'Valid latitude (-90..90) and longitude (-180..180) are required' },
       400
@@ -1983,15 +2336,18 @@ app.post('/addEvent', authMiddleware, async (c) => {
   const validTitle = validate.title(data.title)
   const validDescription = validate.description(data.description)
   const validAddress = validate.address(data.address)
-  const validImage = validate.url(data.image)
+  const validImage = validateHttpUrl(data.image)
+  const validPointOfContact = validateOptionalString(data.pointOfContact, EVENT_CONTACT_MAX)
 
   if (
+    validTitle === null ||
     validTitle === false ||
     validDescription === false ||
     validAddress === false ||
-    validImage === false
+    validImage === false ||
+    validPointOfContact === false
   ) {
-    return c.json({ message: 'One or more fields exceed maximum length' }, 400)
+    return c.json({ message: 'One or more event fields is invalid' }, 400)
   }
 
   // Validate center exists
@@ -1999,13 +2355,28 @@ app.post('/addEvent', authMiddleware, async (c) => {
   if (!center) {
     return c.json({ message: 'Center not found.' }, 404)
   }
+  if (!isAdmin(user) && user.center_id !== validCenterID) {
+    return c.json({ message: 'Coordinators can only create events for their own center' }, 403)
+  }
 
   const eventId = crypto.randomUUID()
 
-  const validExternalUrl = validate.url(data.externalUrl)
-  const validSignupUrl = validate.url(data.signupUrl)
+  const validExternalUrl = validateHttpUrl(data.externalUrl)
+  const validSignupUrl = validateHttpUrl(data.signupUrl)
   if (validExternalUrl === false || validSignupUrl === false) {
     return c.json({ message: 'External URL or signup URL is invalid' }, 400)
+  }
+  const validCategory = validateOptionalInteger(data.category, EVENT_CATEGORIES)
+  if (validCategory === false) {
+    return c.json({ message: 'category is invalid' }, 400)
+  }
+  const allowJanataSignup = validateOptionalBoolean(data.allowJanataSignup)
+  if (allowJanataSignup === false) {
+    return c.json({ message: 'allowJanataSignup must be a boolean' }, 400)
+  }
+  const requiresVerified = validateOptionalBoolean(data.requiresVerified)
+  if (requiresVerified === false) {
+    return c.json({ message: 'requiresVerified must be a boolean' }, 400)
   }
 
   // #192 — auto-mark "official" when the creator's verification_level was
@@ -2015,19 +2386,20 @@ app.post('/addEvent', authMiddleware, async (c) => {
 
   const result = await db.createEvent(c.env.DB, {
     id: eventId,
-    title: validTitle ?? '',
+    title: validTitle,
     description: validDescription ?? '',
-    date: data.date,
+    date: validDate,
     latitude: lat,
     longitude: lng,
     address: validAddress ?? null,
     center_id: validCenterID,
-    point_of_contact: data.pointOfContact ?? null,
+    point_of_contact: validPointOfContact ?? null,
     image: validImage ?? null,
-    category: data.category ?? null,
+    category: validCategory ?? null,
     external_url: validExternalUrl ?? null,
     signup_url: validSignupUrl ?? null,
-    allow_janata_signup: data.allowJanataSignup ? 1 : 0,
+    allow_janata_signup: allowJanataSignup ?? 0,
+    requires_verified: requiresVerified ?? 0,
     is_official: isOfficial,
     created_by: user.id,
   })
@@ -2090,10 +2462,7 @@ app.post('/removeEvent', authMiddleware, async (c) => {
     return c.json({ message: 'Event not found' }, 404)
   }
 
-  // Allow admin or the event creator to delete (mirrors /updateEvent gate;
-  // legacy events with no creator are admin-only)
-  const isCreator = existing.created_by === user.id
-  if (!isAdmin(user) && !isCreator) {
+  if (!canManageEvent(user, existing)) {
     return c.json(
       { message: 'Insufficient permissions - only admin or event creator can delete' },
       401,
@@ -2149,7 +2518,11 @@ app.get('/fetchEvent', cacheControl(30), async (c) => {
 app.post('/updateEvent', authMiddleware, async (c) => {
   const user = c.get('user')
 
-  const { eventJSON } = await c.req.json<{ eventJSON: any }>()
+  const parsed = await c.req.json<{ eventJSON?: any }>().catch(() => null)
+  const eventJSON = parsed?.eventJSON
+  if (typeof eventJSON !== 'object' || eventJSON === null || Array.isArray(eventJSON)) {
+    return c.json({ message: 'eventJSON is required' }, 400)
+  }
 
   const eventId = eventJSON.id || eventJSON.eventID
   if (!eventId) {
@@ -2161,29 +2534,86 @@ app.post('/updateEvent', authMiddleware, async (c) => {
     return c.json({ message: 'Event not found' }, 404)
   }
 
-  // Allow admin or the event creator to edit (or any logged-in user for events without creator)
-  const userIsAdmin = isAdmin(user)
-  const isCreator = existing.created_by === user.id
-  const isEditable = userIsAdmin || isCreator || existing.created_by === null
-  if (!isEditable) {
+  if (!canManageEvent(user, existing)) {
     return c.json({ message: 'Insufficient permissions - only admin or event creator can edit' }, 401)
   }
 
   const updates: Partial<EventRow> = {}
-  if (eventJSON.title !== undefined) updates.title = eventJSON.title
-  if (eventJSON.description !== undefined) updates.description = eventJSON.description
-  if (eventJSON.date !== undefined) updates.date = eventJSON.date
-  if (eventJSON.latitude !== undefined) updates.latitude = parseFloat(String(eventJSON.latitude))
-  if (eventJSON.longitude !== undefined) updates.longitude = parseFloat(String(eventJSON.longitude))
-  if (eventJSON.address !== undefined) updates.address = eventJSON.address
-  if (eventJSON.centerID !== undefined) updates.center_id = eventJSON.centerID
-  if (eventJSON.pointOfContact !== undefined) updates.point_of_contact = eventJSON.pointOfContact
-  if (eventJSON.image !== undefined) updates.image = eventJSON.image
-  if (eventJSON.category !== undefined) updates.category = eventJSON.category
-  if (eventJSON.externalUrl !== undefined) updates.external_url = eventJSON.externalUrl
-  if (eventJSON.signupUrl !== undefined) updates.signup_url = eventJSON.signupUrl
-  if (eventJSON.allowJanataSignup !== undefined)
-    updates.allow_janata_signup = eventJSON.allowJanataSignup ? 1 : 0
+  if (eventJSON.title !== undefined) {
+    const title = validate.title(eventJSON.title)
+    if (!title) return c.json({ message: 'title is invalid' }, 400)
+    updates.title = title
+  }
+  if (eventJSON.description !== undefined) {
+    const description = validate.description(eventJSON.description)
+    if (description === false) return c.json({ message: 'description is invalid' }, 400)
+    updates.description = description ?? ''
+  }
+  if (eventJSON.date !== undefined) {
+    const date = validateIsoDateTime(eventJSON.date)
+    if (!date) return c.json({ message: 'date must be a valid ISO-8601 datetime' }, 400)
+    updates.date = date
+  }
+  if (eventJSON.latitude !== undefined) {
+    const lat = validateCoordinate(eventJSON.latitude, -90, 90)
+    if (lat === null) return c.json({ message: 'latitude is invalid' }, 400)
+    updates.latitude = lat
+  }
+  if (eventJSON.longitude !== undefined) {
+    const lng = validateCoordinate(eventJSON.longitude, -180, 180)
+    if (lng === null) return c.json({ message: 'longitude is invalid' }, 400)
+    updates.longitude = lng
+  }
+  if (eventJSON.address !== undefined) {
+    const address = validate.address(eventJSON.address)
+    if (address === false) return c.json({ message: 'address is invalid' }, 400)
+    updates.address = address
+  }
+  if (eventJSON.centerID !== undefined) {
+    const centerID = validate.id(eventJSON.centerID)
+    if (!centerID) return c.json({ message: 'centerID is invalid' }, 400)
+    const center = await db.getCenterById(c.env.DB, centerID)
+    if (!center) return c.json({ message: 'Center not found.' }, 404)
+    if (!isAdmin(user) && user.center_id !== centerID) {
+      return c.json({ message: 'Coordinators can only move events within their own center' }, 403)
+    }
+    updates.center_id = centerID
+  }
+  if (eventJSON.pointOfContact !== undefined) {
+    const pointOfContact = validateOptionalString(eventJSON.pointOfContact, EVENT_CONTACT_MAX)
+    if (pointOfContact === false) return c.json({ message: 'pointOfContact is invalid' }, 400)
+    updates.point_of_contact = pointOfContact
+  }
+  if (eventJSON.image !== undefined) {
+    const image = validateHttpUrl(eventJSON.image)
+    if (image === false) return c.json({ message: 'image URL is invalid' }, 400)
+    updates.image = image
+  }
+  if (eventJSON.category !== undefined) {
+    const category = validateOptionalInteger(eventJSON.category, EVENT_CATEGORIES)
+    if (category === false) return c.json({ message: 'category is invalid' }, 400)
+    updates.category = category
+  }
+  if (eventJSON.externalUrl !== undefined) {
+    const externalUrl = validateHttpUrl(eventJSON.externalUrl)
+    if (externalUrl === false) return c.json({ message: 'externalUrl is invalid' }, 400)
+    updates.external_url = externalUrl
+  }
+  if (eventJSON.signupUrl !== undefined) {
+    const signupUrl = validateHttpUrl(eventJSON.signupUrl)
+    if (signupUrl === false) return c.json({ message: 'signupUrl is invalid' }, 400)
+    updates.signup_url = signupUrl
+  }
+  if (eventJSON.allowJanataSignup !== undefined) {
+    const allowJanataSignup = validateOptionalBoolean(eventJSON.allowJanataSignup)
+    if (allowJanataSignup === false) return c.json({ message: 'allowJanataSignup must be a boolean' }, 400)
+    updates.allow_janata_signup = allowJanataSignup ?? 0
+  }
+  if (eventJSON.requiresVerified !== undefined) {
+    const requiresVerified = validateOptionalBoolean(eventJSON.requiresVerified)
+    if (requiresVerified === false) return c.json({ message: 'requiresVerified must be a boolean' }, 400)
+    updates.requires_verified = requiresVerified ?? 0
+  }
 
   const result = await db.updateEvent(c.env.DB, eventId, updates)
   if (result.success) {
@@ -2263,6 +2693,10 @@ app.get('/events/registered', authMiddleware, async (c) => {
 app.get('/events/:id/registration', authMiddleware, async (c) => {
   const user = c.get('user')
   const id = c.req.param('id')
+  const event = await db.getEventById(c.env.DB, id)
+  if (!event) {
+    return c.json({ message: 'Event not found' }, 404)
+  }
   const [isRegistered, attendeeCount] = await Promise.all([
     db.isUserAttending(c.env.DB, id, user.id),
     db.getLiveAttendeeCount(c.env.DB, id),
@@ -2283,8 +2717,7 @@ app.get('/events/:id/roster', authMiddleware, async (c) => {
     return c.json({ message: 'Event not found' }, 404)
   }
 
-  const canManage = isAdmin(user) || (!!event.created_by && event.created_by === user.id)
-  if (!canManage) {
+  if (!canManageEvent(user, event)) {
     return c.json(
       { message: 'Only the event creator or an admin can view the attendee roster' },
       403,
@@ -2443,7 +2876,7 @@ app.post('/unattendEvent', authMiddleware, async (c) => {
 
 app.post('/fetchEventsByCenter', async (c) => {
   const { centerID } = await c.req.json<{ centerID: string }>()
-  const events = await db.getEventsByCenterId(c.env.DB, centerID)
+  const events = await db.getEventsByCenterId(c.env.DB, centerID, PUBLIC_EVENT_LIST_LIMIT)
   return c.json({
     message: 'Success',
     events: events.map(eventRowToApi),
@@ -2454,7 +2887,7 @@ app.post('/fetchEventsByCenter', async (c) => {
 app.get('/fetchEventsByCenter', cacheControl(30), async (c) => {
   const centerID = c.req.query('centerID')
   if (!centerID) return c.json({ message: 'Malformed centerID' }, 400)
-  const events = await db.getEventsByCenterId(c.env.DB, centerID)
+  const events = await db.getEventsByCenterId(c.env.DB, centerID, PUBLIC_EVENT_LIST_LIMIT)
   return c.json({
     message: 'Success',
     events: events.map(eventRowToApi),
@@ -2462,15 +2895,17 @@ app.get('/fetchEventsByCenter', cacheControl(30), async (c) => {
 })
 
 app.get('/fetchAllEvents', cacheControl(30), async (c) => {
-  // Pagination (#107). Backwards-compatible: legacy callers omit `limit`
-  // and get the full list. Paginated callers pass `?limit=&offset=` and
-  // receive `{ events, total, limit, offset }` for infinite-scroll UIs.
+  // Pagination (#107). Legacy callers that omit `limit` now receive a capped
+  // first page rather than an unbounded public read.
   const limitParam = c.req.query('limit')
   if (limitParam == null) {
-    const events = await db.getAllEvents(c.env.DB)
+    const { data, total } = await db.getEventsPaginated(c.env.DB, PUBLIC_EVENT_LIST_LIMIT, 0)
     return c.json({
       message: 'Success',
-      events: events.map(eventRowToApi),
+      events: data.map(eventRowToApi),
+      total,
+      limit: PUBLIC_EVENT_LIST_LIMIT,
+      offset: 0,
     })
   }
   const limit = Number.parseInt(limitParam, 10)
@@ -2744,29 +3179,78 @@ app.put('/admin/events/:id', adminMiddleware, async (c) => {
   }
 
   const body = await c.req.json<{
-    title?: string
-    description?: string
-    date?: string
-    address?: string
-    pointOfContact?: string
-    image?: string
-    category?: number
-    externalUrl?: string | null
-    signupUrl?: string | null
-    allowJanataSignup?: boolean
-  }>()
+    title?: unknown
+    description?: unknown
+    date?: unknown
+    address?: unknown
+    pointOfContact?: unknown
+    image?: unknown
+    category?: unknown
+    externalUrl?: unknown
+    signupUrl?: unknown
+    allowJanataSignup?: unknown
+    requiresVerified?: unknown
+  }>().catch(() => null)
+  if (typeof body !== 'object' || body === null || Array.isArray(body)) {
+    return c.json({ message: 'Body must be a JSON object' }, 400)
+  }
 
   const updates: Partial<EventRow> = {}
-  if (body.title !== undefined) updates.title = body.title
-  if (body.description !== undefined) updates.description = body.description
-  if (body.date !== undefined) updates.date = body.date
-  if (body.address !== undefined) updates.address = body.address
-  if (body.pointOfContact !== undefined) updates.point_of_contact = body.pointOfContact
-  if (body.image !== undefined) updates.image = body.image
-  if (body.category !== undefined) updates.category = body.category
-  if (body.externalUrl !== undefined) updates.external_url = body.externalUrl
-  if (body.signupUrl !== undefined) updates.signup_url = body.signupUrl
-  if (body.allowJanataSignup !== undefined) updates.allow_janata_signup = body.allowJanataSignup ? 1 : 0
+  if (body.title !== undefined) {
+    const title = validate.title(body.title)
+    if (!title) return c.json({ message: 'title is invalid' }, 400)
+    updates.title = title
+  }
+  if (body.description !== undefined) {
+    const description = validate.description(body.description)
+    if (description === false) return c.json({ message: 'description is invalid' }, 400)
+    updates.description = description ?? ''
+  }
+  if (body.date !== undefined) {
+    const date = validateIsoDateTime(body.date)
+    if (!date) return c.json({ message: 'date must be a valid ISO-8601 datetime' }, 400)
+    updates.date = date
+  }
+  if (body.address !== undefined) {
+    const address = validate.address(body.address)
+    if (address === false) return c.json({ message: 'address is invalid' }, 400)
+    updates.address = address
+  }
+  if (body.pointOfContact !== undefined) {
+    const pointOfContact = validateOptionalString(body.pointOfContact, EVENT_CONTACT_MAX)
+    if (pointOfContact === false) return c.json({ message: 'pointOfContact is invalid' }, 400)
+    updates.point_of_contact = pointOfContact
+  }
+  if (body.image !== undefined) {
+    const image = validateHttpUrl(body.image)
+    if (image === false) return c.json({ message: 'image URL is invalid' }, 400)
+    updates.image = image
+  }
+  if (body.category !== undefined) {
+    const category = validateOptionalInteger(body.category, EVENT_CATEGORIES)
+    if (category === false) return c.json({ message: 'category is invalid' }, 400)
+    updates.category = category
+  }
+  if (body.externalUrl !== undefined) {
+    const externalUrl = validateHttpUrl(body.externalUrl)
+    if (externalUrl === false) return c.json({ message: 'externalUrl is invalid' }, 400)
+    updates.external_url = externalUrl
+  }
+  if (body.signupUrl !== undefined) {
+    const signupUrl = validateHttpUrl(body.signupUrl)
+    if (signupUrl === false) return c.json({ message: 'signupUrl is invalid' }, 400)
+    updates.signup_url = signupUrl
+  }
+  if (body.allowJanataSignup !== undefined) {
+    const allowJanataSignup = validateOptionalBoolean(body.allowJanataSignup)
+    if (allowJanataSignup === false) return c.json({ message: 'allowJanataSignup must be a boolean' }, 400)
+    updates.allow_janata_signup = allowJanataSignup ?? 0
+  }
+  if (body.requiresVerified !== undefined) {
+    const requiresVerified = validateOptionalBoolean(body.requiresVerified)
+    if (requiresVerified === false) return c.json({ message: 'requiresVerified must be a boolean' }, 400)
+    updates.requires_verified = requiresVerified ?? 0
+  }
 
   const result = await db.updateEvent(c.env.DB, eventId, updates)
   if (result.success) {

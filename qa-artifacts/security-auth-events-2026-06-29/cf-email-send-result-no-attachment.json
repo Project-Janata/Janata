@@ -1,0 +1,21 @@
+{
+  "status": 400,
+  "ok": false,
+  "sent_at": "2026-06-30T02:01:50.547Z",
+  "endpoint": "/client/v4/accounts/<redacted>/email/sending/send",
+  "variant": "plain-text-no-attachment",
+  "from": "me@sahastasai.com",
+  "to": "sahanavsairamesh@gmail.com",
+  "subject": "Project Janatha Auth/Event Red-Team Report Delivery Check - 2026-06-29",
+  "body": {
+    "success": false,
+    "messages": [],
+    "errors": [
+      {
+        "code": 10202,
+        "message": "email.sending.error.email.invalid"
+      }
+    ],
+    "result": null
+  }
+}

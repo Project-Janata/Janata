@@ -428,7 +428,7 @@ type TeamMember = { name: string; image: any; color?: string }
 const TEAM: TeamMember[] = [
   { name: 'Abhiram', image: require('../../assets/images/landing/abhiram.jpg') },
   { name: 'Kish', image: require('../../assets/images/landing/kish.jpg') },
-  { name: 'Sahanav', image: require('../../assets/images/landing/sahanav.jpg') },
+  { name: 'Sahanav Sai Ramesh', image: require('../../assets/images/landing/sahanav.jpg') },
   { name: 'Divita', image: require('../../assets/images/landing/divita.jpg') },
   { name: 'Pranav', image: require('../../assets/images/landing/pranav.jpg') },
 ]

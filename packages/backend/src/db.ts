@@ -55,7 +55,7 @@ export async function createUser(
         user.points ?? 0,
         user.is_verified ?? 0,
         user.verification_level ?? 45,
-        user.is_active ?? 0,
+        user.is_active ?? 1,
         user.profile_complete ?? 0,
         user.interests ?? null,
         user.invite_code ?? null,
@@ -343,8 +343,8 @@ export async function createEvent(
         `INSERT INTO events (id, title, description, date, latitude, longitude, address,
           center_id, tier, people_attending, point_of_contact, image, category,
           external_url, signup_url, allow_janata_signup, is_official,
-          created_by, created_at, updated_at)
-        VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10, ?11, ?12, ?13, ?14, ?15, ?16, ?17, ?18, ?19, ?20)`,
+          requires_verified, created_by, created_at, updated_at)
+        VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10, ?11, ?12, ?13, ?14, ?15, ?16, ?17, ?18, ?19, ?20, ?21)`,
       )
       .bind(
         event.id,
@@ -364,6 +364,7 @@ export async function createEvent(
         event.signup_url ?? null,
         event.allow_janata_signup ?? 0,
         event.is_official ?? 0,
+        event.requires_verified ?? 0,
         event.created_by ?? null,
         now,
         now,
@@ -416,7 +417,17 @@ export async function getEventsPaginated(
 export async function getEventsByCenterId(
   db: D1Database,
   centerId: string,
+  limit?: number,
 ): Promise<EventRow[]> {
+  if (limit !== undefined) {
+    const safeLimit = Math.max(1, Math.min(200, Math.floor(limit)))
+    const result = await db
+      .prepare('SELECT * FROM events WHERE center_id = ?1 ORDER BY date DESC LIMIT ?2')
+      .bind(centerId, safeLimit)
+      .all<EventRow>()
+    return result.results ?? []
+  }
+
   const result = await db
     .prepare('SELECT * FROM events WHERE center_id = ?1 ORDER BY date DESC')
     .bind(centerId)
